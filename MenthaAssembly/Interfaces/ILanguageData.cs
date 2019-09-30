@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Interfaces
 {
-    public interface ILanguagePacket : INotifyPropertyChanged
+    public interface ILanguageData : INotifyPropertyChanged
     {
 
     }
