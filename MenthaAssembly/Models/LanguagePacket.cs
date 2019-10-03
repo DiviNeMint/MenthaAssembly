@@ -61,7 +61,7 @@ namespace MenthaAssembly.Models
         {
             if (Data.GetType().GetProperty(Name) is PropertyInfo Info)
                 return Info.GetValue(Data).ToString();
-            return string.Empty;
+            return null;
         }
 
         public void Export(string DirectoryPath)
