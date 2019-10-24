@@ -34,13 +34,13 @@ namespace MenthaAssembly
         }
 
 
-        public static Int32Vector operator +(Int32Vector This, Int32Vector Targe)
-            => new Int32Vector(This.X + Targe.X, This.Y + Targe.Y);
+        public static Int32Vector operator +(Int32Vector This, Int32Vector Target)
+            => new Int32Vector(This.X + Target.X, This.Y + Target.Y);
 
         public static Int32Vector operator -(Int32Vector This)
             => new Int32Vector(-This.X, -This.Y);
-        public static Int32Vector operator -(Int32Vector This, Int32Vector Targe)
-            => new Int32Vector(This.X - Targe.X, This.Y - Targe.Y);
+        public static Int32Vector operator -(Int32Vector This, Int32Vector Target)
+            => new Int32Vector(This.X - Target.X, This.Y - Target.Y);
 
 
         public static Int32Vector operator *(Int32Vector This, int Factor)

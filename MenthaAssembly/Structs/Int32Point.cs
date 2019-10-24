@@ -22,11 +22,11 @@ namespace MenthaAssembly
         {
         }
 
-        public static Int32Point operator +(Int32Point This, Int32Point Targe)
-            => new Int32Point(This.X + Targe.X, This.Y + Targe.Y);
+        public static Int32Point operator +(Int32Point This, Int32Point Target)
+            => new Int32Point(This.X + Target.X, This.Y + Target.Y);
 
-        public static Int32Point operator -(Int32Point This, Int32Point Targe)
-            => new Int32Point(This.X - Targe.X, This.Y - Targe.Y);
+        public static Int32Point operator -(Int32Point This, Int32Point Target)
+            => new Int32Point(This.X - Target.X, This.Y - Target.Y);
 
         public static Int32Point operator *(Int32Point This, int Factor)
             => new Int32Point(This.X * Factor, This.Y * Factor);
@@ -41,8 +41,8 @@ namespace MenthaAssembly
 
         public static Int32Point operator -(Int32Point This)
             => new Int32Point(-This.X, -This.Y);
-        public static Int32Point operator -(Int32Point This, Int32Vector Targe)
-            => new Int32Point(This.X - Targe.X, This.Y - Targe.Y);
+        public static Int32Point operator -(Int32Point This, Int32Vector Target)
+            => new Int32Point(This.X - Target.X, This.Y - Target.Y);
 
 
 

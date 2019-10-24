@@ -29,10 +29,22 @@ namespace MenthaAssembly
         {
             this.Width = Width;
             this.Height = Height;
-            this.Channel = 1;
-            this.Scan0 = Scan0;
             this.Stride = Stride;
+            this.Scan0 = Scan0;
             this.PixelBytes = PixelBytes;
+            this.Channel = 1;
+        }
+
+        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB)
+        {
+            this.Width = Width;
+            this.Height = Height;
+            this.Stride = Width;
+            this.ScanR = ScanR;
+            this.ScanG = ScanG;
+            this.ScanB = ScanB;
+            this.PixelBytes = 3;
+            this.Channel = 3;
         }
 
         protected byte[] Datas { set; get; } = new byte[0];
@@ -51,31 +63,5 @@ namespace MenthaAssembly
                     Scan0 = (IntPtr)Buffer;
             }
         }
-
-        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride)
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Channel = 3;
-            this.ScanR = ScanR;
-            this.ScanG = ScanG;
-            this.ScanB = ScanB;
-            this.Stride = Stride;
-            this.PixelBytes = 3;
-        }
-
-        public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride)
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Channel = 4;
-            this.ScanA = ScanA;
-            this.ScanR = ScanR;
-            this.ScanG = ScanG;
-            this.ScanB = ScanB;
-            this.Stride = Stride;
-            this.PixelBytes = 4;
-        }
-
     }
 }
