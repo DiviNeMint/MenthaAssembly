@@ -70,7 +70,7 @@ namespace System
         {
             try
             {
-                Convert.ChangeType(This, ValueType);
+                return Convert.ChangeType(This, ValueType);
             }
             catch
             {
