@@ -1,5 +1,4 @@
-﻿using MenthaAssembly.Interfaces;
-using MenthaAssembly.Models;
+﻿using MenthaAssembly.Globalization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -92,10 +91,11 @@ namespace MenthaAssembly
         }
 
         public static LanguagePacket GetLanguagePacket(string Name)
-            => new LanguagePacket
+        {
+            return new LanguagePacket
             {
                 Name = Name
             };
-
+        }
     }
 }

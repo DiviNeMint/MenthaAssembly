@@ -42,7 +42,14 @@ namespace System.Linq
             }
         }
 
+        public static bool Contains<TSource>(this IEnumerable<TSource> Source, Func<TSource, bool> Predicate)
+        {
+            foreach (TSource Item in Source)
+                if (Predicate(Item))
+                    return true;
 
+            return false;
+        }
 
 
     }

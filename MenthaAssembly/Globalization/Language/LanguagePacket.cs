@@ -1,10 +1,9 @@
-﻿using MenthaAssembly.Interfaces;
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 
-namespace MenthaAssembly.Models
+namespace MenthaAssembly.Globalization
 {
     public class LanguagePacket : INotifyPropertyChanged
     {
@@ -29,8 +28,8 @@ namespace MenthaAssembly.Models
                     if (Data is null)
                     {
                         if (!(AppDomain.CurrentDomain.GetAssemblies()
-                                                      .SelectMany(i => i.GetTypes())
-                                                      .FirstOrDefault(i => i.IsClass && !i.IsAbstract && i.GetInterface(nameof(ILanguageData)) != null) is Type DataType))
+                                                     .TrySelectMany(i => i.GetTypes())
+                                                     .FirstOrDefault(i => i.IsClass && !i.IsAbstract && i.GetInterface(nameof(ILanguageData)) != null) is Type DataType))
                             return;
                         Data = (ILanguageData)Activator.CreateInstance(DataType);
                     }
@@ -65,8 +64,9 @@ namespace MenthaAssembly.Models
         }
 
         public void Export(string DirectoryPath)
-            => Data?.Export(Name, DirectoryPath);
-
+        {
+            Data?.Export(Name, DirectoryPath);
+        }
 
         public void SetLanguageData(string Name, ILanguageData Data)
         {
@@ -76,8 +76,9 @@ namespace MenthaAssembly.Models
         }
 
         public void OnPropertyChanged()
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(""));
-
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(""));
+        }
     }
 
 }

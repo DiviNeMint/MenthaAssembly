@@ -14,4 +14,8 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Media\Imaging\Utils\" />
+  </ItemGroup>
+
 </Project>

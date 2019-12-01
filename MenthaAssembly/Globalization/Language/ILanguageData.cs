@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace MenthaAssembly.Interfaces
+namespace MenthaAssembly.Globalization
 {
     public interface ILanguageData : INotifyPropertyChanged
     {
