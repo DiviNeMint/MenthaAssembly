@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MenthaAssembly
 {
@@ -24,24 +25,28 @@ namespace MenthaAssembly
 
         public int BitsPerPixel { get; }
 
-        public ImageContext(int Width, int Height, IntPtr Scan0) : this(Width, Height, Scan0, Width)
+        public IList<int> Palette { get; }
+
+        public ImageContext(int Width, int Height, IntPtr Scan0, IList<int> Palette = null) : this(Width, Height, Scan0, Width, Palette)
         {
         }
-        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride)
+        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, IList<int> Palette = null)
         {
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
             this.BitsPerPixel = (Stride << 3) / Width;
+            this.Palette = Palette;
             this.Scan0 = Scan0;
             this.Channels = 1;
         }
-        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, int BitsPerPixel)
+        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, int BitsPerPixel, IList<int> Palette = null)
         {
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
             this.BitsPerPixel = BitsPerPixel;
+            this.Palette = Palette;
             this.Scan0 = Scan0;
             this.Channels = 1;
         }
@@ -76,12 +81,13 @@ namespace MenthaAssembly
         }
 
         internal protected byte[][] Datas { set; get; } = new byte[4][];
-        public ImageContext(int Width, int Height, byte[] Data)
+        public ImageContext(int Width, int Height, byte[] Data, IList<int> Palette = null)
         {
             this.Width = Width;
             this.Height = Height;
             this.Stride = Data.Length / Height;
             this.BitsPerPixel = (this.Stride << 3) / Width;
+            this.Palette = Palette;
             this.Channels = 1;
 
             this.Datas[0] = Data;

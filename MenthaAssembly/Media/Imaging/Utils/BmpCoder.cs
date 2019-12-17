@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -34,8 +35,11 @@ namespace MenthaAssembly.Media.Imaging
             Stream.Read(Datas, 0, Datas.Length);
             int Offset = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
 
+            // HeaderSize
+            Stream.Read(Datas, 0, Datas.Length);
+            int HeaderSize = (Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24) + 14; // ImageStruct + FileHeader 
+
             // Width
-            Stream.Seek(18, SeekOrigin.Begin);
             Stream.Read(Datas, 0, Datas.Length);
             int Width = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
 
@@ -49,6 +53,32 @@ namespace MenthaAssembly.Media.Imaging
             int Bits = Datas[0] | Datas[1] << 8;
             int Channels = (Bits + 7) >> 3;
             int Stride = (((Width * Bits) >> 3) + 3) >> 2 << 2;
+
+            //// Compression
+            //Stream.Read(Datas, 0, Datas.Length);
+            //int Compression = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+
+            // Palette
+            IList<int> Palette = null;
+            if (Offset > HeaderSize)
+            {
+                Palette = new List<int>();
+
+                // NColors
+                Stream.Seek(46, SeekOrigin.Begin);
+                Stream.Read(Datas, 0, Datas.Length);
+                int NColors = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+
+                if (NColors.Equals(0))
+                    NColors = 1 << Bits;
+
+                Stream.Seek(HeaderSize, SeekOrigin.Begin);
+                for (int i = 0; i < NColors; i++)
+                {
+                    Stream.Read(Datas, 0, Datas.Length);
+                    Palette.Add(Datas[0] | Datas[1] << 8 | Datas[2] << 16 | -16777216); // 0xFF << 24 = -16777216
+                }
+            }
 
             // ImageDatas
             int ChannelStride = Channels > 1 ? Width : Stride;
@@ -83,7 +113,7 @@ namespace MenthaAssembly.Media.Imaging
             switch (ImageDatas.Length)
             {
                 case 1:
-                    Image = new ImageContext(Width, Height, ImageDatas[0]);
+                    Image = new ImageContext(Width, Height, ImageDatas[0], Palette);
                     return true;
                 case 3:
                     Image = new ImageContext(Width, Height, ImageDatas[2], ImageDatas[1], ImageDatas[0]);
@@ -128,14 +158,31 @@ namespace MenthaAssembly.Media.Imaging
             };
             Stream.Write(InfoDatas, 0, InfoDatas.Length);
 
-            // Plate
+            // Palette
             if (HeaderOffset > 54)
             {
-                int ColorStep = byte.MaxValue / ((1 << Image.BitsPerPixel) - 1);
-                for (int i = 0; i < 256; i += ColorStep)
+                byte[] Datas = new byte[sizeof(int)];
+                if (Image.Palette is null)
                 {
-                    byte Value = (byte)i;
-                    Stream.Write(new byte[] { Value, Value, Value, 0 }, 0, 4);
+                    int ColorStep = byte.MaxValue / ((1 << Image.BitsPerPixel) - 1);
+                    for (int i = 0; i < 256; i += ColorStep)
+                    {
+                        Datas[0] = (byte)i;
+                        Datas[1] = Datas[0];
+                        Datas[2] = Datas[0];
+                        Stream.Write(Datas, 0, Datas.Length);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < Image.Palette.Count; i++)
+                    {
+                        int Value = Image.Palette[i];
+                        Datas[0] = (byte)Value;
+                        Datas[1] = (byte)(Value >> 8);
+                        Datas[2] = (byte)(Value >> 16);
+                        Stream.Write(Datas, 0, Datas.Length);
+                    }
                 }
             }
 
@@ -282,7 +329,7 @@ namespace MenthaAssembly.Media.Imaging
             int Compression = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
             Debug.WriteLine($"Compression : {Compression}");
 
-            // Compression
+            // ImageSize
             FS.Read(Datas, 0, Datas.Length);
             int ImageSize = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
             Debug.WriteLine($"ImageSize   : {ImageSize}");
@@ -307,13 +354,13 @@ namespace MenthaAssembly.Media.Imaging
             int ImportantColors = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
             Debug.WriteLine($"ImpColors   : {ImportantColors}");
 
-            // Plate
-            int PlateSize = Offset - (int)FS.Position;
-            if (PlateSize > 0)
+            // Palette
+            int PaletteSize = Offset - (int)FS.Position;
+            if (PaletteSize > 0)
             {
-                Debug.WriteLine($"Plate       :");
+                Debug.WriteLine($"Palette     :");
                 Datas = new byte[sizeof(int)];
-                for (int i = 0; i < PlateSize >> 2; i++)
+                for (int i = 0; i < PaletteSize >> 2; i++)
                 {
                     FS.Read(Datas, 0, Datas.Length);
                     if (i > 99)
