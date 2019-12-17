@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Threading;
 
 namespace MenthaAssembly
@@ -8,9 +9,10 @@ namespace MenthaAssembly
 
     public static class ConcurrentHelper
     {
-        public static void OnPropertyChanged(this INotifyPropertyChanged This, string PropertyName)
+        public static void OnPropertyChanged(this INotifyPropertyChanged This, [CallerMemberName]string PropertyName = null)
         {
-            if (!(This.GetEventField("PropertyChanged") is MulticastDelegate Handler))
+            if (PropertyName is null ||
+                !(This.GetEventField("PropertyChanged") is MulticastDelegate Handler))
                 return;
 
             Delegate[] Invocations = Handler.GetInvocationList();
