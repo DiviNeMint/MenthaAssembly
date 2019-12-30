@@ -18,6 +18,7 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static bool TryDecode(Stream Stream, out ImageContext Image)
         {
+            bool CheckCRC32 = true;
             byte[] Datas = new byte[IdentifyHeaderSize];
 
             if (Stream.Position != 0)
@@ -32,19 +33,9 @@ namespace MenthaAssembly.Media.Imaging
                 return false;
             }
 
-            // IHDR
-            Datas = new byte[10];
-            Stream.Seek(8, SeekOrigin.Current);     // Skip Length & TypeCode (8 Bytes), Length = 13 & TypeCode = IHDR(0x49, 0x48, 0x44, 0x52)
-            Stream.Read(Datas, 0, Datas.Length);
-            int Width = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
-            int Height = Datas[4] << 24 | Datas[5] << 16 | Datas[6] << 8 | Datas[7];
-            byte BitDepth = Datas[8];
-            byte ColorType = Datas[9];
-            Stream.Seek(7, SeekOrigin.Current);     // Skip Compression & Filter & Interlace & CRC32 (7 Bytes).
-                                                    //byte Compression = Datas[10];           // Always be 0 (ZibCompress).
-                                                    //byte Filter = Datas[11];                // Always be 0.
-                                                    //byte Interlace = Datas[12];             //
 
+
+            byte[] TypeCode = new byte[sizeof(int)];
             do
             {
                 Datas = new byte[sizeof(int)];
@@ -52,28 +43,44 @@ namespace MenthaAssembly.Media.Imaging
                 Stream.Read(Datas, 0, Datas.Length);
                 int Length = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
 
-                Stream.Read(Datas, 0, Datas.Length);
+                Stream.Read(TypeCode, 0, TypeCode.Length);  // TypeCode
 
                 // IEND
-                if (Datas[0].Equals(0x49) && Datas[1].Equals(0x45) && Datas[2].Equals(0x4E) && Datas[3].Equals(0x44))
+                if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x45) && TypeCode[2].Equals(0x4E) && TypeCode[3].Equals(0x44))
                     break;
 
+                // IHDR
+                if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x48) && TypeCode[2].Equals(0x44) && TypeCode[3].Equals(0x52))
+                {
+                    Datas = new byte[Length];
+                    Stream.Read(Datas, 0, Datas.Length);
+
+                    //int Width = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
+                    //int Height = Datas[4] << 24 | Datas[5] << 16 | Datas[6] << 8 | Datas[7];
+                    //byte BitDepth = Datas[8];
+                    //byte ColorType = Datas[9];
+                    //Stream.Seek(7, SeekOrigin.Current);     // Skip Compression & Filter & Interlace & CRC32 (7 Bytes).
+                    //                                        //byte Compression = Datas[10];           // Always be 0 (ZibCompress).
+                    //                                        //byte Filter = Datas[11];                // Always be 0.
+                    //                                        //byte Interlace = Datas[12];   
+                }
+                else
                 // sBIT
-                //if (Datas[0].Equals(0x73) && Datas[1].Equals(0x42) && Datas[2].Equals(0x49) && Datas[3].Equals(0x54)) { }
+                //if (TypeCode[0].Equals(0x73) && TypeCode[1].Equals(0x42) && TypeCode[2].Equals(0x49) && TypeCode[3].Equals(0x54)) { }
                 // PLTE
-                if (Datas[0].Equals(0x50) && Datas[1].Equals(0x4C) && Datas[2].Equals(0x54) && Datas[3].Equals(0x45))
+                if (TypeCode[0].Equals(0x50) && TypeCode[1].Equals(0x4C) && TypeCode[2].Equals(0x54) && TypeCode[3].Equals(0x45))
                 {
                     Datas = new byte[Length];
                     Stream.Read(Datas, 0, Datas.Length);
                 }
                 else
                 // pHYs
-                //if (Datas[0].Equals(0x70) && Datas[1].Equals(0x48) && Datas[2].Equals(0x59) && Datas[3].Equals(0x73)) { }
+                //if (TypeCode[0].Equals(0x70) && TypeCode[1].Equals(0x48) && TypeCode[2].Equals(0x59) && TypeCode[3].Equals(0x73)) { }
                 // tEXt
-                //if (Datas[0].Equals(0x74) && Datas[1].Equals(0x45) && Datas[2].Equals(0x58) && Datas[3].Equals(0x74)) { }
+                //if (TypeCode[0].Equals(0x74) && TypeCode[1].Equals(0x45) && TypeCode[2].Equals(0x58) && TypeCode[3].Equals(0x74)) { }
 
                 // IDAT
-                if (Datas[0].Equals(0x49) && Datas[1].Equals(0x44) && Datas[2].Equals(0x41) && Datas[3].Equals(0x54))
+                if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x44) && TypeCode[2].Equals(0x41) && TypeCode[3].Equals(0x54))
                 {
 
                     MemoryStream DataStream = new MemoryStream();
@@ -104,11 +111,29 @@ namespace MenthaAssembly.Media.Imaging
                 }
                 else if (Length > 0)
                 {
-                    Datas = new byte[Length];
-                    Stream.Read(Datas, 0, Datas.Length);
+                    Stream.Seek(Length + sizeof(int), SeekOrigin.Current);  // Skip Datas & CRC32.
+                    continue;
                 }
 
-                Stream.Seek(sizeof(int), SeekOrigin.Current);   // Skip 4 Bytes, This is CRC32.
+                if (CheckCRC32)
+                {
+                    CRC32.Calculate(TypeCode, out uint NextRegister);
+                    CRC32.Calculate(Datas, out int CRCResult, NextRegister);
+                    Datas = new byte[sizeof(int)];
+                    Stream.Read(Datas, 0, Datas.Length);
+                    if (!CRCResult.Equals(Datas[0] << 24 |
+                                          Datas[1] << 16 |
+                                          Datas[2] << 8 |
+                                          Datas[3]))
+                    {
+                        Image = null;
+                        return false;
+                    }
+                }
+                else
+                {
+                    Stream.Seek(sizeof(int), SeekOrigin.Current);   // Skip CRC32.
+                }
             } while (Stream.Position < Stream.Length);
             Stream.Close();
 
@@ -384,15 +409,13 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         private static bool IdentifyRFC1950(byte[] Datas)
-        {
-            return (Datas[0].Equals(0x08) && (Datas[1].Equals(0x1D) || Datas[1].Equals(0x5B) || Datas[1].Equals(0x99) || Datas[1].Equals(0xD7))) ||
-                   (Datas[0].Equals(0x18) && (Datas[1].Equals(0x19) || Datas[1].Equals(0x57) || Datas[1].Equals(0x95) || Datas[1].Equals(0xD3))) ||
-                   (Datas[0].Equals(0x28) && (Datas[1].Equals(0x15) || Datas[1].Equals(0x53) || Datas[1].Equals(0x91) || Datas[1].Equals(0xCF))) ||
-                   (Datas[0].Equals(0x38) && (Datas[1].Equals(0x11) || Datas[1].Equals(0x4F) || Datas[1].Equals(0x8D) || Datas[1].Equals(0xCB))) ||
-                   (Datas[0].Equals(0x48) && (Datas[1].Equals(0x0D) || Datas[1].Equals(0x4B) || Datas[1].Equals(0x89) || Datas[1].Equals(0xC7))) ||
-                   (Datas[0].Equals(0x58) && (Datas[1].Equals(0x09) || Datas[1].Equals(0x47) || Datas[1].Equals(0x85) || Datas[1].Equals(0xC3))) ||
-                   (Datas[0].Equals(0x68) && (Datas[1].Equals(0x05) || Datas[1].Equals(0x43) || Datas[1].Equals(0x81) || Datas[1].Equals(0xDE))) ||
-                   (Datas[0].Equals(0x78) && (Datas[1].Equals(0x01) || Datas[1].Equals(0x5E) || Datas[1].Equals(0x9C) || Datas[1].Equals(0xDA)));
-        }
+            => (Datas[0].Equals(0x08) && (Datas[1].Equals(0x1D) || Datas[1].Equals(0x5B) || Datas[1].Equals(0x99) || Datas[1].Equals(0xD7))) ||
+               (Datas[0].Equals(0x18) && (Datas[1].Equals(0x19) || Datas[1].Equals(0x57) || Datas[1].Equals(0x95) || Datas[1].Equals(0xD3))) ||
+               (Datas[0].Equals(0x28) && (Datas[1].Equals(0x15) || Datas[1].Equals(0x53) || Datas[1].Equals(0x91) || Datas[1].Equals(0xCF))) ||
+               (Datas[0].Equals(0x38) && (Datas[1].Equals(0x11) || Datas[1].Equals(0x4F) || Datas[1].Equals(0x8D) || Datas[1].Equals(0xCB))) ||
+               (Datas[0].Equals(0x48) && (Datas[1].Equals(0x0D) || Datas[1].Equals(0x4B) || Datas[1].Equals(0x89) || Datas[1].Equals(0xC7))) ||
+               (Datas[0].Equals(0x58) && (Datas[1].Equals(0x09) || Datas[1].Equals(0x47) || Datas[1].Equals(0x85) || Datas[1].Equals(0xC3))) ||
+               (Datas[0].Equals(0x68) && (Datas[1].Equals(0x05) || Datas[1].Equals(0x43) || Datas[1].Equals(0x81) || Datas[1].Equals(0xDE))) ||
+               (Datas[0].Equals(0x78) && (Datas[1].Equals(0x01) || Datas[1].Equals(0x5E) || Datas[1].Equals(0x9C) || Datas[1].Equals(0xDA)));
     }
 }

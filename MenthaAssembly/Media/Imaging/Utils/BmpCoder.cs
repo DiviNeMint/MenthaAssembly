@@ -153,7 +153,7 @@ namespace MenthaAssembly.Media.Imaging
                 (byte)ImageSize, (byte)(ImageSize >> 8), (byte)(ImageSize >> 16), (byte)(ImageSize >> 24),              // ImageSize    , 4 Bytes
                 0, 0, 0, 0,                                                                                             // XResolution  , 4 Bytes (Dpi * 39.37)
                 0, 0, 0, 0,                                                                                             // YResolution  , 4 Bytes
-                0, 0, 0, 0,                                                                                             // NColors     , 4 Bytes
+                0, 0, 0, 0,                                                                                             // NColors      , 4 Bytes
                 0, 0, 0, 0,                                                                                             // ImportantColours  , 4 Bytes
             };
             Stream.Write(InfoDatas, 0, InfoDatas.Length);

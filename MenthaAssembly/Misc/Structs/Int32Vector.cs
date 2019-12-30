@@ -1,6 +1,4 @@
-﻿using System.Windows;
-
-namespace MenthaAssembly
+﻿namespace System.Windows
 {
     public struct Int32Vector
     {
@@ -30,7 +28,7 @@ namespace MenthaAssembly
         {
         }
 
-
+        // Int32Vector
         public static Int32Vector operator +(Int32Vector This, Int32Vector Target)
             => new Int32Vector(This.X + Target.X, This.Y + Target.Y);
 
@@ -50,17 +48,35 @@ namespace MenthaAssembly
         public static Int32Vector operator /(Int32Vector This, double Factor)
             => new Int32Vector(This.X / Factor, This.Y / Factor);
 
-        // Rect
+        // Vector
+        public static Vector operator +(Vector This, Int32Vector Target)
+            => new Vector(This.X + Target.X, This.Y + Target.Y);
+        public static Vector operator -(Vector This, Int32Vector Target)
+            => new Vector(This.X - Target.X, This.Y - Target.Y);
+
+        // Int32Rect
         public static Int32Rect operator +(Int32Rect This, Int32Vector Vector)
             => new Int32Rect(This.X + Vector.X, This.Y + Vector.Y, This.Width, This.Height);
         public static Int32Rect operator -(Int32Rect This, Int32Vector Vector)
             => new Int32Rect(This.X - Vector.X, This.Y - Vector.Y, This.Width, This.Height);
 
-        // Point
+        // Rect
+        public static Rect operator +(Rect This, Int32Vector Vector)
+            => new Rect(This.X + Vector.X, This.Y + Vector.Y, This.Width, This.Height);
+        public static Rect operator -(Rect This, Int32Vector Vector)
+            => new Rect(This.X - Vector.X, This.Y - Vector.Y, This.Width, This.Height);
+
+        // Int32Point
         public static Int32Point operator +(Int32Point This, Int32Vector Vector)
             => new Int32Point(This.X + Vector.X, This.Y + Vector.Y);
         public static Int32Point operator -(Int32Point This, Int32Vector Vector)
             => new Int32Point(This.X - Vector.X, This.Y - Vector.Y);
+
+        // Point
+        public static Point operator +(Point This, Int32Vector Vector)
+            => new Point(This.X + Vector.X, This.Y + Vector.Y);
+        public static Point operator -(Point This, Int32Vector Vector)
+            => new Point(This.X - Vector.X, This.Y - Vector.Y);
 
         public override string ToString()
             => $@"{{ X : {this.X}, Y : {this.Y} }}";

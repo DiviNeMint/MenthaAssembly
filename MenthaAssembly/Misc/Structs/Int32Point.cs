@@ -1,6 +1,4 @@
-﻿using System.Windows;
-
-namespace MenthaAssembly
+﻿namespace System.Windows
 {
     public struct Int32Point
     {
