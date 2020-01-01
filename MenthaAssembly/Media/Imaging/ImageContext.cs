@@ -147,14 +147,5 @@ namespace MenthaAssembly
             }
         }
 
-        ~ImageContext()
-        {
-            Datas[0] = null;
-            Datas[1] = null;
-            Datas[2] = null;
-            Datas[3] = null;
-            Datas = null;
-            GC.Collect();
-        }
     }
 }

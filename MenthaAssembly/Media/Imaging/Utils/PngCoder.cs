@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -13,9 +14,7 @@ namespace MenthaAssembly.Media.Imaging
         public static int IdentifyHeaderSize => 8;
 
         public static bool TryDecode(string FilePath, out ImageContext Image)
-        {
-            return TryDecode(new FileStream(FilePath, FileMode.Open, FileAccess.Read), out Image);
-        }
+            => TryDecode(new FileStream(FilePath, FileMode.Open, FileAccess.Read), out Image);
         public static bool TryDecode(Stream Stream, out ImageContext Image)
         {
             bool CheckCRC32 = true;
@@ -33,7 +32,16 @@ namespace MenthaAssembly.Media.Imaging
                 return false;
             }
 
-
+            int Width = 0,
+                Height = 0,
+                Bits = 0,
+                Channels = 0,
+                Stride = 0;
+            byte[][] ImageDatas = null;
+            IList<int> Palette = null;
+            //byte Compression,
+            //Filter,
+            //Interlace;
 
             byte[] TypeCode = new byte[sizeof(int)];
             do
@@ -55,14 +63,28 @@ namespace MenthaAssembly.Media.Imaging
                     Datas = new byte[Length];
                     Stream.Read(Datas, 0, Datas.Length);
 
-                    //int Width = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
-                    //int Height = Datas[4] << 24 | Datas[5] << 16 | Datas[6] << 8 | Datas[7];
-                    //byte BitDepth = Datas[8];
-                    //byte ColorType = Datas[9];
-                    //Stream.Seek(7, SeekOrigin.Current);     // Skip Compression & Filter & Interlace & CRC32 (7 Bytes).
-                    //                                        //byte Compression = Datas[10];           // Always be 0 (ZibCompress).
-                    //                                        //byte Filter = Datas[11];                // Always be 0.
-                    //                                        //byte Interlace = Datas[12];   
+                    Width = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
+                    Height = Datas[4] << 24 | Datas[5] << 16 | Datas[6] << 8 | Datas[7];
+                    switch (Datas[9])
+                    {
+                        case 0:
+                        case 3:
+                            Bits = Datas[8];
+                            break;
+                        case 2:
+                            Bits = 24;
+                            break;
+                        case 4:
+                        case 6:
+                            Bits = 32;
+                            break;
+                    }
+
+                    //Compression = Datas[10];           // Always be 0 (ZibCompress).
+                    //Filter = Datas[11];                // Always be 0.
+                    //Interlace = Datas[12];   
+                    Channels = (Bits + 7) >> 3;
+                    Stride = (((Width * Bits) >> 3) + 3) >> 2 << 2;
                 }
                 else
                 // sBIT
@@ -72,42 +94,58 @@ namespace MenthaAssembly.Media.Imaging
                 {
                     Datas = new byte[Length];
                     Stream.Read(Datas, 0, Datas.Length);
+
+                    Palette = new List<int>();
+                    for (int i = 0; i < Length; i += 3)
+                        Palette.Add(Datas[i] << 16 |
+                                    Datas[i + 1] << 8 |
+                                    Datas[i + 2] |
+                                    -16777216); // 0xFF << 24 = -16777216
                 }
                 else
                 // pHYs
                 //if (TypeCode[0].Equals(0x70) && TypeCode[1].Equals(0x48) && TypeCode[2].Equals(0x59) && TypeCode[3].Equals(0x73)) { }
+                //else
                 // tEXt
                 //if (TypeCode[0].Equals(0x74) && TypeCode[1].Equals(0x45) && TypeCode[2].Equals(0x58) && TypeCode[3].Equals(0x74)) { }
-
+                //else
                 // IDAT
                 if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x44) && TypeCode[2].Equals(0x41) && TypeCode[3].Equals(0x54))
                 {
+                    Datas = new byte[Length];
+                    Stream.Read(Datas, 0, Datas.Length);
 
                     MemoryStream DataStream = new MemoryStream();
-
-                    Datas = new byte[2];
-                    Stream.Read(Datas, 0, Datas.Length);
-
-                    bool IsRFC1950Header = IdentifyRFC1950(Datas);
-
-                    if (!IdentifyRFC1950(Datas))
-                        DataStream.Write(Datas, 0, Datas.Length);
-
-                    Datas = new byte[Length - 2];
-                    Stream.Read(Datas, 0, Datas.Length);
-
-                    DataStream.Write(Datas, 0, Datas.Length);
+                    DataStream.Write(Datas.AsSpan(IdentifyRFC1950(Datas) ? 2 : 0));
                     DataStream.Position = 0;
 
-                    List<byte> DecodeDatas = new List<byte>();
-                    Datas = new byte[1024];
+                    //if (IdentifyRFC1950(Datas))
+                    //    DataStream.Write(Datas, 2, Datas.Length - 2);
+                    //else
+                    //    DataStream.Write(Datas, 0, Datas.Length);
+                    //DataStream.Position = 0;
+
                     using DeflateStream Decompressor = new DeflateStream(DataStream, CompressionMode.Decompress);
-                    int ReadLength;
-                    do
+                    byte[] DecodeDatas = new byte[Stride + 1];
+                    // ImageDatas
+                    int Offset = 0,
+                        ChannelStride = Channels > 1 ? Width : Stride,
+                        ChannelSize = ChannelStride * Height;
+                    ImageDatas = new byte[Channels][];
+                    for (int j = 0; j < Height; j++)
                     {
-                        ReadLength = Decompressor.Read(Datas, 0, Datas.Length);
-                        DecodeDatas.AddRange(Datas.Take(ReadLength));
-                    } while (ReadLength.Equals(Datas.Length));
+                        Decompressor.Read(DecodeDatas, 0, DecodeDatas.Length);
+                        Parallel.For(0, ImageDatas.Length,
+                            (c) =>
+                            {
+                                if (ImageDatas[c] is null)
+                                    ImageDatas[c] = new byte[ChannelSize];
+
+                                for (int i = 0; i < ChannelStride; i++)
+                                    ImageDatas[c][Offset + i] = DecodeDatas[i * Channels + c + 1];
+                            });
+                        Offset += ChannelStride;
+                    }
                 }
                 else if (Length > 0)
                 {
@@ -137,8 +175,20 @@ namespace MenthaAssembly.Media.Imaging
             } while (Stream.Position < Stream.Length);
             Stream.Close();
 
+            switch (ImageDatas.Length)
+            {
+                case 1:
+                    Image = new ImageContext(Width, Height, ImageDatas[0], Palette);
+                    return true;
+                case 3:
+                    Image = new ImageContext(Width, Height, ImageDatas[0], ImageDatas[1], ImageDatas[2]);
+                    return true;
+                case 4:
+                    Image = new ImageContext(Width, Height, ImageDatas[3], ImageDatas[0], ImageDatas[1], ImageDatas[2]);
+                    return true;
+            }
             Image = null;
-            return true;
+            return false;
         }
 
         public static void Encode(ImageContext Image, string FilePath)
@@ -333,7 +383,7 @@ namespace MenthaAssembly.Media.Imaging
                 FS.Read(Datas, 0, Datas.Length);
                 int Length = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
                 FS.Read(Datas, 0, Datas.Length);
-                string TypeCode = Encoding.Default.GetString(Datas, 0, Datas.Length);
+                string TypeCode = Encoding.Default.GetString(Datas);
 
                 Result = "========================\r\n" +
                          $"          {TypeCode} ({string.Join(", ", Datas.Select(i => $"0x{i.ToString("X2")}"))})\r\n" +
@@ -355,8 +405,8 @@ namespace MenthaAssembly.Media.Imaging
                             Result += $"Compression : {Datas[2]}\r\n";
                             Result += $"Filter      : {Datas[3]}\r\n";
                             Result += $"Interlace   : {Datas[4]}\r\n";
+                            break;
                         }
-                        break;
                     case "IDAT":
                         {
                             Datas = new byte[Length];
@@ -386,8 +436,15 @@ namespace MenthaAssembly.Media.Imaging
                             }
                             Result += $"Size   : {DecodeDatas.Count}\r\n";
                             Result += $"Decode : {string.Join(", ", DecodeDatas.Select(i => i.ToString("X2")))}\r\n";
+                            break;
                         }
-                        break;
+                    //case "tEXt":
+                    //    {
+                    //        Datas = new byte[Length];
+                    //        FS.Read(Datas, 0, Datas.Length);
+                    //        Result += $"Content: {Encoding.Default.GetString(Datas)}\r\n";
+                    //        break;
+                    //    }
                     default:
                         if (Length > 0)
                         {

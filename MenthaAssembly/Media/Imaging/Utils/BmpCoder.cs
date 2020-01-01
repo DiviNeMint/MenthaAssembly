@@ -50,9 +50,9 @@ namespace MenthaAssembly.Media.Imaging
             // BitsPerPixel
             Stream.Seek(28, SeekOrigin.Begin);
             Stream.Read(Datas, 0, sizeof(short));
-            int Bits = Datas[0] | Datas[1] << 8;
-            int Channels = (Bits + 7) >> 3;
-            int Stride = (((Width * Bits) >> 3) + 3) >> 2 << 2;
+            int Bits = Datas[0] | Datas[1] << 8,
+                Channels = (Bits + 7) >> 3,
+                Stride = (((Width * Bits) >> 3) + 3) >> 2 << 2;
 
             //// Compression
             //Stream.Read(Datas, 0, Datas.Length);
@@ -76,13 +76,16 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 0; i < NColors; i++)
                 {
                     Stream.Read(Datas, 0, Datas.Length);
-                    Palette.Add(Datas[0] | Datas[1] << 8 | Datas[2] << 16 | -16777216); // 0xFF << 24 = -16777216
+                    Palette.Add(Datas[0] |
+                                Datas[1] << 8 |
+                                Datas[2] << 16 |
+                                -16777216); // 0xFF << 24 = -16777216
                 }
             }
 
             // ImageDatas
-            int ChannelStride = Channels > 1 ? Width : Stride;
-            int ChannelSize = ChannelStride * Height;
+            int ChannelStride = Channels > 1 ? Width : Stride,
+                ChannelSize = ChannelStride * Height;
             byte[][] ImageDatas = new byte[Channels][];
 
             Datas = new byte[Stride];
