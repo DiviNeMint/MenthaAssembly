@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
@@ -139,7 +140,7 @@ namespace MenthaAssembly.Media.Imaging
 
             int Stride = (((Image.Width * Image.BitsPerPixel) >> 3) + 3) >> 2 << 2;
             int ImageSize = Stride * Image.Height;
-            int HeaderOffset = Image.BitsPerPixel > 8 ? 54 : 54 + (4 << (Image.BitsPerPixel));
+            int HeaderOffset = Image.BitsPerPixel > 8 ? 54 : 54 + (4 << Image.BitsPerPixel);
             int FileSize = ImageSize + HeaderOffset;
             byte[] InfoDatas =
             {
@@ -197,9 +198,10 @@ namespace MenthaAssembly.Media.Imaging
                         byte[] ImageDatas = new byte[Stride];
                         for (int j = Image.Height - 1; j >= 0; j--)
                         {
-                            byte* Source = (byte*)(Image.Scan0 + Image.Stride * j);
-                            for (int i = 0; i < Image.Stride; i++)
-                                ImageDatas[i] = *Source++;
+                            Marshal.Copy(Image.Scan0 + Image.Stride * j, ImageDatas, 0, Image.Stride);
+                            //byte* Source = (byte*)(Image.Scan0 + Image.Stride * j);
+                            //for (int i = 0; i < Image.Stride; i++)
+                            //    ImageDatas[i] = *Source++;
 
                             Stream.Write(ImageDatas, 0, ImageDatas.Length);
                         }

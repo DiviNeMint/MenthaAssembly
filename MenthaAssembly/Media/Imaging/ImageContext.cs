@@ -13,15 +13,85 @@ namespace MenthaAssembly
 
         public int Channels { get; }
 
-        public IntPtr Scan0 { get; }
+        internal protected IntPtr? _Scan0;
+        public IntPtr Scan0
+        {
+            get
+            {
+                if (_Scan0 is IntPtr Result)
+                    return Result;
 
-        public IntPtr ScanA { get; }
+                unsafe
+                {
+                    fixed (byte* S0 = &this.Datas[0][0])
+                        return (IntPtr)S0;
+                }
+            }
+        }
 
-        public IntPtr ScanR { get; }
+        internal protected IntPtr? _ScanA;
+        public IntPtr ScanA 
+        {
+            get 
+            {
+                if (_ScanA is IntPtr Result)
+                    return Result;
 
-        public IntPtr ScanG { get; }
+                unsafe
+                {
+                    fixed (byte* A = &this.Datas[1][0])
+                        return (IntPtr)A;
+                }
+            } 
+        }
 
-        public IntPtr ScanB { get; }
+        internal protected IntPtr? _ScanR;
+        public IntPtr ScanR
+        {
+            get
+            {
+                if (_ScanR is IntPtr Result)
+                    return Result;
+
+                unsafe
+                {
+                    fixed (byte* R = &this.Datas[2][0])
+                        return (IntPtr)R;
+                }
+            }
+        }
+
+        internal protected IntPtr? _ScanG;
+        public IntPtr ScanG
+        {
+            get
+            {
+                if (_ScanG is IntPtr Result)
+                    return Result;
+
+                unsafe
+                {
+                    fixed (byte* G = &this.Datas[3][0])
+                        return (IntPtr)G;
+                }
+            }
+        }
+
+        internal protected IntPtr? _ScanB;
+        public IntPtr ScanB
+        {
+            get
+            {
+                if (_ScanB is IntPtr Result)
+                    return Result;
+
+                unsafe
+                {
+                    fixed (byte* B = &this.Datas[4][0])
+                        return (IntPtr)B;
+                }
+            }
+        }
 
         public int BitsPerPixel { get; }
 
@@ -37,7 +107,7 @@ namespace MenthaAssembly
             this.Stride = Stride;
             this.BitsPerPixel = (Stride << 3) / Width;
             this.Palette = Palette;
-            this.Scan0 = Scan0;
+            this._Scan0 = Scan0;
             this.Channels = 1;
         }
         public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, int BitsPerPixel, IList<int> Palette = null)
@@ -47,7 +117,7 @@ namespace MenthaAssembly
             this.Stride = Stride;
             this.BitsPerPixel = BitsPerPixel;
             this.Palette = Palette;
-            this.Scan0 = Scan0;
+            this._Scan0 = Scan0;
             this.Channels = 1;
         }
         public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) : this(Width, Height, ScanR, ScanG, ScanB, Width)
@@ -58,9 +128,9 @@ namespace MenthaAssembly
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
-            this.ScanR = ScanR;
-            this.ScanG = ScanG;
-            this.ScanB = ScanB;
+            this._ScanR = ScanR;
+            this._ScanG = ScanG;
+            this._ScanB = ScanB;
             this.BitsPerPixel = 24;
             this.Channels = 3;
         }
@@ -72,15 +142,23 @@ namespace MenthaAssembly
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
-            this.ScanA = ScanA;
-            this.ScanR = ScanR;
-            this.ScanG = ScanG;
-            this.ScanB = ScanB;
+            this._ScanA = ScanA;
+            this._ScanR = ScanR;
+            this._ScanG = ScanG;
+            this._ScanB = ScanB;
             this.BitsPerPixel = 32;
             this.Channels = 4;
         }
 
-        internal protected byte[][] Datas { set; get; } = new byte[4][];
+        /// <summary>
+        /// Index :
+        /// Scan0 = 0, 
+        /// ScanA = 1, 
+        /// ScanR = 2, 
+        /// ScanG = 3, 
+        /// ScanB = 4
+        /// </summary>
+        internal protected byte[][] Datas { set; get; } = new byte[5][];
         public ImageContext(int Width, int Height, byte[] Data, IList<int> Palette = null)
         {
             this.Width = Width;
@@ -91,11 +169,6 @@ namespace MenthaAssembly
             this.Channels = 1;
 
             this.Datas[0] = Data;
-            unsafe
-            {
-                fixed (byte* Buffer = &this.Datas[0][0])
-                    Scan0 = (IntPtr)Buffer;
-            }
         }
         public ImageContext(int Width, int Height, byte[] DataR, byte[] DataG, byte[] DataB)
         {
@@ -105,20 +178,9 @@ namespace MenthaAssembly
             this.BitsPerPixel = 24;
             this.Channels = 3;
 
-            this.Datas[0] = DataR;
-            this.Datas[1] = DataG;
-            this.Datas[2] = DataB;
-            unsafe
-            {
-                fixed (byte* R = &this.Datas[0][0],
-                             G = &this.Datas[1][0],
-                             B = &this.Datas[2][0])
-                {
-                    ScanR = (IntPtr)R;
-                    ScanG = (IntPtr)G;
-                    ScanB = (IntPtr)B;
-                }
-            }
+            this.Datas[2] = DataR;
+            this.Datas[3] = DataG;
+            this.Datas[4] = DataB;
         }
         public ImageContext(int Width, int Height, byte[] DataA, byte[] DataR, byte[] DataG, byte[] DataB)
         {
@@ -128,23 +190,10 @@ namespace MenthaAssembly
             this.Channels = 4;
             this.BitsPerPixel = 32;
 
-            this.Datas[0] = DataA;
-            this.Datas[1] = DataR;
-            this.Datas[2] = DataG;
-            this.Datas[3] = DataB;
-            unsafe
-            {
-                fixed (byte* A = &this.Datas[0][0],
-                             R = &this.Datas[1][0],
-                             G = &this.Datas[2][0],
-                             B = &this.Datas[3][0])
-                {
-                    ScanA = (IntPtr)A;
-                    ScanR = (IntPtr)R;
-                    ScanG = (IntPtr)G;
-                    ScanB = (IntPtr)B;
-                }
-            }
+            this.Datas[1] = DataA;
+            this.Datas[2] = DataR;
+            this.Datas[3] = DataG;
+            this.Datas[4] = DataB;
         }
 
     }
