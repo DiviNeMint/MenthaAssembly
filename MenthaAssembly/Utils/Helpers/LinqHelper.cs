@@ -51,6 +51,18 @@ namespace System.Linq
             return false;
         }
 
+        public static int FindIndex<TSource>(this IEnumerable<TSource> Source, Func<TSource, bool> Predicate)
+        {
+            int Index = 0;
+            foreach (TSource Item in Source)
+            {
+                if (Predicate(Item))
+                    return Index;
+                Index++;
+            }
+
+            return -1;
+        }
 
     }
 }

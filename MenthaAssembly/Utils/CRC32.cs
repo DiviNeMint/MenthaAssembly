@@ -67,6 +67,31 @@ namespace MenthaAssembly
             CRCResult = unchecked((int)~Register);
         }
 
+        public static void Calculate(ReadOnlySpan<byte> SpanDatas, out uint NewRegister, uint Register = 0xFFFFFFFFU)
+        {
+            if (SpanDatas.IsEmpty ||
+                SpanDatas.Length == 0)
+                throw new ArgumentNullException("The Data buffer must not be null.");
+
+            NewRegister = Register;
+            // BZip Algorithm
+            foreach (byte Data in SpanDatas)
+                NewRegister = (NewRegister >> 8) ^ Table[(NewRegister & 0x000000FF) ^ Data];
+
+        }
+        public static void Calculate(ReadOnlySpan<byte> SpanDatas, out int CRCResult, uint Register = 0xFFFFFFFFU)
+        {
+            if (SpanDatas.IsEmpty ||
+                SpanDatas.Length == 0)
+                throw new ArgumentNullException("The Data buffer must not be null.");
+
+            // BZip Algorithm
+            foreach (byte Data in SpanDatas)
+                Register = (Register >> 8) ^ Table[(Register & 0x000000FF) ^ Data];
+
+            CRCResult = unchecked((int)~Register);
+        }
+
         public static void Calculate(byte[] Datas,int Offset, int Length, out uint NewRegister, uint Register = 0xFFFFFFFFU)
         {
             if (Datas is null ||

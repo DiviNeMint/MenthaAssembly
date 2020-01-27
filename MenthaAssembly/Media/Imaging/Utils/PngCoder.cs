@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    // PNG Specification
+    // https://www.w3.org/TR/PNG/
     public static class PngCoder
     {
         public static int IdentifyHeaderSize => 8;
@@ -43,6 +45,13 @@ namespace MenthaAssembly.Media.Imaging
             //byte Compression,
             //Filter,
             //Interlace;
+
+            MemoryStream DataStream = new MemoryStream();
+            DeflateStream Decompressor = new DeflateStream(DataStream, CompressionMode.Decompress);
+            int IDAT_Offset = 0,
+                IDAT_DecodeLength = 0,
+                IDAT_DecodeHeight = 0;
+            byte[] DecodeDatas = null;
 
             byte[] TypeCode = new byte[sizeof(int)];
             do
@@ -112,16 +121,30 @@ namespace MenthaAssembly.Media.Imaging
                 // pHYs
                 //if (TypeCode[0].Equals(0x70) && TypeCode[1].Equals(0x48) && TypeCode[2].Equals(0x59) && TypeCode[3].Equals(0x73)) { }
                 //else
-                // tEXt
-                //if (TypeCode[0].Equals(0x74) && TypeCode[1].Equals(0x45) && TypeCode[2].Equals(0x58) && TypeCode[3].Equals(0x74)) { }
-                //else
+                #region tEXt
+                if (TypeCode[0].Equals(0x74) && TypeCode[1].Equals(0x45) && TypeCode[2].Equals(0x58) && TypeCode[3].Equals(0x74))
+                {
+                    Datas = new byte[Length];
+                    Stream.Read(Datas, 0, Datas.Length);
+
+                    int SeparatorIndex = Datas.FindIndex(i => i.Equals(0x00));
+                    if (SeparatorIndex > 0)
+                    {
+                        string Property = Encoding.Default.GetString(Datas, 0, SeparatorIndex),
+                               Content = Encoding.Default.GetString(Datas.AsSpan(SeparatorIndex + 1));
+                        Debug.WriteLine($"{Property} : {Content}");
+                    }
+                }
+                else
+                #endregion
+
                 #region IDAT
                 if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x44) && TypeCode[2].Equals(0x41) && TypeCode[3].Equals(0x54))
                 {
                     Datas = new byte[Length];
                     Stream.Read(Datas, 0, Datas.Length);
 
-                    MemoryStream DataStream = new MemoryStream();
+                    DataStream.Position = 0;
                     DataStream.Write(Datas.AsSpan(IdentifyRFC1950(Datas) ? 2 : 0));
                     DataStream.Position = 0;
 
@@ -131,16 +154,31 @@ namespace MenthaAssembly.Media.Imaging
                     //    DataStream.Write(Datas, 0, Datas.Length);
                     //DataStream.Position = 0;
 
-                    using DeflateStream Decompressor = new DeflateStream(DataStream, CompressionMode.Decompress);
-                    byte[] DecodeDatas = new byte[Stride + 1];
+
                     // ImageDatas
-                    int Offset = 0,
-                        ChannelStride = Channels > 1 ? Width : Stride,
+                    int ChannelStride = Channels > 1 ? Width : Stride,
                         ChannelSize = ChannelStride * Height;
-                    ImageDatas = new byte[Channels][];
-                    for (int j = 0; j < Height; j++)
+                    if (ImageDatas is null)
+                        ImageDatas = new byte[Channels][];
+                    if (DecodeDatas is null)
+                        DecodeDatas = new byte[Stride + 1];
+
+                    for (int j = IDAT_DecodeHeight; j < Height; j++)
                     {
-                        Decompressor.Read(DecodeDatas, 0, DecodeDatas.Length);
+                        // Check First IDAT Chunks
+                        if (IDAT_DecodeLength.Equals(0) ||
+                            IDAT_DecodeLength.Equals(DecodeDatas.Length))
+                        {
+                            IDAT_DecodeLength = Decompressor.Read(DecodeDatas, 0, DecodeDatas.Length);
+                        }
+                        else
+                        {
+                            IDAT_DecodeLength = Decompressor.Read(DecodeDatas, IDAT_DecodeLength, DecodeDatas.Length - IDAT_DecodeLength);
+                            IDAT_DecodeLength = DecodeDatas.Length;
+                        }
+                        if (IDAT_DecodeLength < DecodeDatas.Length)
+                            break;
+
                         // IDAT Filter
                         //https://www.w3.org/TR/2003/REC-PNG-20031110/#7Filtering
                         switch (DecodeDatas[0])
@@ -153,10 +191,10 @@ namespace MenthaAssembly.Media.Imaging
                                             if (ImageDatas[c] is null)
                                                 ImageDatas[c] = new byte[ChannelSize];
 
-                                            ImageDatas[c][Offset] = DecodeDatas[c + 1];
+                                            ImageDatas[c][IDAT_Offset] = DecodeDatas[c + 1];
                                             for (int i = 1; i < ChannelStride; i++)
-                                                ImageDatas[c][Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] + 
-                                                                                   ImageDatas[c][Offset + i - 1]);
+                                                ImageDatas[c][IDAT_Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] +
+                                                                                        ImageDatas[c][IDAT_Offset + i - 1]);
                                         });
                                     break;
                                 }
@@ -168,32 +206,55 @@ namespace MenthaAssembly.Media.Imaging
                                             if (ImageDatas[c] is null)
                                                 ImageDatas[c] = new byte[ChannelSize];
                                             for (int i = 0; i < ChannelStride; i++)
-                                                ImageDatas[c][Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] + 
-                                                                                   ImageDatas[c][Offset - ChannelStride + i]);
+                                                ImageDatas[c][IDAT_Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] +
+                                                                                        ImageDatas[c][IDAT_Offset - ChannelStride + i]);
                                         });
                                     break;
                                 }
                             case 3:     // Average
-                                //{
-                                //    Parallel.For(0, ImageDatas.Length,
-                                //        (c) =>
-                                //        {
-                                //            if (ImageDatas[c] is null)
-                                //                ImageDatas[c] = new byte[ChannelSize];
+                                {
+                                    Parallel.For(0, ImageDatas.Length,
+                                        (c) =>
+                                        {
+                                            if (ImageDatas[c] is null)
+                                                ImageDatas[c] = new byte[ChannelSize];
 
-                                //            ImageDatas[c][Offset] = DecodeDatas[c + 1];
-                                //            for (int i = 1; i < ChannelStride; i++)
-                                //            {
-                                //                //byte PreviousLine = ImageDatas[c][Offset - ChannelStride + i];
-                                //                //byte Last = ImageDatas[c][Offset + i - 1];
-                                //                ImageDatas[c][Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] + 
-                                //                                                   Math.Floor((double)(ImageDatas[c][Offset - ChannelStride + i] + ImageDatas[c][Offset + i - 1]) / 2));
-                                //            }
-                                //        });
-                                //    break;
-                                //}
+                                            // FirstData (no last data)
+                                            ImageDatas[c][IDAT_Offset] = (byte)(DecodeDatas[c + 1] +
+                                                                                Math.Floor(ImageDatas[c][IDAT_Offset - ChannelStride] / 2d));
+                                            for (int i = 1; i < ChannelStride; i++)
+                                            {
+                                                int Index = IDAT_Offset + i;
+                                                ImageDatas[c][Index] = (byte)(DecodeDatas[i * Channels + c + 1] +
+                                                                              Math.Floor((ImageDatas[c][Index - ChannelStride] + ImageDatas[c][Index - 1]) / 2d));
+
+                                            }
+                                        });
+                                    break;
+                                }
                             case 4:     // Paeth
-                                //break;
+                                {
+                                    Parallel.For(0, ImageDatas.Length,
+                                        (c) =>
+                                        {
+                                            if (ImageDatas[c] is null)
+                                                ImageDatas[c] = new byte[ChannelSize];
+
+                                            // FirstData (no last data)
+                                            ImageDatas[c][IDAT_Offset] = (byte)(DecodeDatas[c + 1] + ImageDatas[c][IDAT_Offset - ChannelStride]);
+                                            for (int i = 1; i < ChannelStride; i++)
+                                            {
+                                                int Index = IDAT_Offset + i;
+                                                byte Last = ImageDatas[c][Index - 1];
+                                                byte PreviousLine = ImageDatas[c][Index - ChannelStride];
+                                                byte PreviousLineLast = ImageDatas[c][Index - ChannelStride - 1];
+
+                                                ImageDatas[c][Index] = (byte)(DecodeDatas[i * Channels + c + 1] +
+                                                                              CalculatePaeth(ImageDatas[c][Index - 1], ImageDatas[c][Index - ChannelStride], ImageDatas[c][Index - ChannelStride - 1]));
+                                            }
+                                        });
+                                    break;
+                                }
                             case 0:     // None
                             default:
                                 {
@@ -203,19 +264,19 @@ namespace MenthaAssembly.Media.Imaging
                                             if (ImageDatas[c] is null)
                                                 ImageDatas[c] = new byte[ChannelSize];
                                             for (int i = 0; i < ChannelStride; i++)
-                                                ImageDatas[c][Offset + i] = DecodeDatas[i * Channels + c + 1];
+                                                ImageDatas[c][IDAT_Offset + i] = DecodeDatas[i * Channels + c + 1];
                                         });
                                     break;
                                 }
                         }
-                        Offset += ChannelStride;
+                        IDAT_Offset += ChannelStride;
+                        IDAT_DecodeHeight++;
                     }
                 }
                 else
                 #endregion
 
                 #region Other
-
                 if (Length > 0)
                 {
                     Stream.Seek(Length + sizeof(int), SeekOrigin.Current);  // Skip Datas & CRC32.
@@ -226,8 +287,8 @@ namespace MenthaAssembly.Media.Imaging
                 #region CRC32
                 if (CheckCRC32)
                 {
-                    CRC32.Calculate(TypeCode, out uint NextRegister);
-                    CRC32.Calculate(Datas, out int CRCResult, NextRegister);
+                    CRC32.Calculate(Datas: TypeCode, out uint NextRegister);
+                    CRC32.Calculate(Datas: Datas, out int CRCResult, NextRegister);
                     Datas = new byte[sizeof(int)];
                     Stream.Read(Datas, 0, Datas.Length);
                     if (!CRCResult.Equals(Datas[0] << 24 |
@@ -246,7 +307,9 @@ namespace MenthaAssembly.Media.Imaging
 
                 #endregion
             } while (Stream.Position < Stream.Length);
-            Stream.Close();
+            Decompressor.Dispose();
+            DataStream.Dispose();
+            Stream.Dispose();
 
             switch (ImageDatas.Length)
             {
@@ -268,10 +331,6 @@ namespace MenthaAssembly.Media.Imaging
             => Encode(Image, new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write));
         public static void Encode(ImageContext Image, Stream Stream)
         {
-            // Png File Struct
-            // https://ifun01.com/WM2YFYH.html
-            // https://codertw.com/人工智慧/131990/
-
             // IdentifyHeader
             byte[] Datas = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
             Stream.Write(Datas, 0, Datas.Length);
@@ -323,57 +382,30 @@ namespace MenthaAssembly.Media.Imaging
             #endregion
 
             #region IDAT
-            //Stream.Seek(4, SeekOrigin.Current); // Skip Chunk Length's byte
-            //int IDATLength = 0;
-
-            //// TypeCode
-            //Datas = new byte[] { 0x49, 0x44, 0x41, 0x54 };
-            //Stream.Write(Datas, 0, Datas.Length);
-            //CRC32.Calculate(Datas, out uint IDATRegister);
-
             // ImageDatas
-            int Stride = (Image.Width * Image.BitsPerPixel + 7 ) >> 3;
+            int Stride = (Image.Width * Image.BitsPerPixel + 7) >> 3;
             byte[] ImageDatas = new byte[Stride + 1];
+
             using MemoryStream DataStream = new MemoryStream();
+            // Mark LZ77 Compress ()
+            DataStream.Write(new byte[] { 0x78, 0xDA }, 0, 2);
+
             Stream Compressor = new DeflateStream(DataStream, CompressionLevel.Optimal, true);
             switch (Image.Channels)
             {
                 case 1:
-                    //unsafe
-                    //{
-                    //    byte[] ImageDatas = new byte[Stride + 1];
-                    //    for (int j = 0; j < Image.Height; j++)
-                    //    {
-                    //        Marshal.Copy(Image.Scan0 + Image.Stride * j, ImageDatas, 1, Stride);
-                    //        //byte* Source = (byte*)(Image.Scan0 + Stride * j);
-                    //        //for (int i = 1; i <= Stride; i++)
-                    //        //    ImageDatas[i] = *Source++;
-
-                    //        Compressor.Write(ImageDatas, 0, ImageDatas.Length);
-
-                    //        Datas = DataStream.ToArray();
-                    //        IDATLength += Datas.Length;
-                    //        Stream.Write(Datas, 0, Datas.Length);
-                    //        CRC32.Calculate(Datas, out IDATRegister, IDATRegister);
-                    //    }
-                    //}
-                    //unsafe
-                    //{
-                    //    byte[] ImageDatas = new byte[Stride];
-                    //    for (int j = Image.Height - 1; j >= 0; j--)
-                    //    {
-                    //        byte* Source = (byte*)(Image.Scan0 + Image.Stride * j);
-                    //        for (int i = 0; i < Stride; i++)
-                    //            ImageDatas[i] = *Source++;
-
-                    //        Stream.Write(ImageDatas, 0, ImageDatas.Length);
-                    //    }
-                    //}
+                    unsafe
+                    {
+                        for (int j = 0; j < Image.Height; j++)
+                        {
+                            Marshal.Copy(Image.Scan0 + Image.Stride * j, ImageDatas, 1, Stride);
+                            Compressor.Write(ImageDatas, 0, ImageDatas.Length);
+                        }
+                    }
                     break;
                 case 3:
                     unsafe
                     {
-                        ImageDatas[0] = 0x00;
                         for (int j = 0; j < Image.Height; j++)
                         {
                             int Offset = Image.Stride * j;
@@ -413,30 +445,29 @@ namespace MenthaAssembly.Media.Imaging
                                                *SourceB++ << 16;    // B
 
                             Compressor.Write(ImageDatas, 0, ImageDatas.Length);
-                            //Compressor.Flush();
-                            //Datas = DataStream.ToArray();
-                            //IDATLength += (int)DataStream.Position;
-                            //Stream.Write(Datas, 0, (int)DataStream.Position);
-                            //DataStream.Seek(0, SeekOrigin.Begin);
-                            //CRC32.Calculate(Datas, out IDATRegister, IDATRegister);
                         }
                     }
                     break;
             }
 
-            Compressor.Close();
+            Compressor.Dispose();
             WriteChunk(Stream,
                        new byte[] { 0x49, 0x44, 0x41, 0x54 },
                        DataStream.ToArray());
+            #endregion
 
-            //// Length
-            //byte[] IDATLengthDatas = { (byte)(IDATLength >> 24), (byte)(IDATLength >> 16), (byte)(IDATLength >> 8), (byte)IDATLength };
-            //Stream.Seek(-IDATLength + 4, SeekOrigin.Current); // Go back Chunks Length's byte
-            //Stream.Write(IDATLengthDatas, 0, IDATLengthDatas.Length);
-            //Stream.Seek(IDATLength, SeekOrigin.Current); // Go back Chunks Length's byte
-
-            //// CRC32
-            //Stream.Write(new byte[] { (byte)(IDATRegister >> 24), (byte)(IDATRegister >> 16), (byte)(IDATRegister >> 8), (byte)IDATRegister }, 0, sizeof(int));
+            #region tEXt
+            //bool HasDescription = false;
+            //if (HasDescription)
+            //{
+            //    List<byte> TextDatas = new List<byte>();
+            //    TextDatas.AddRange(Encoding.Default.GetBytes("Property"));
+            //    TextDatas.Add(0x00);
+            //    TextDatas.AddRange(Encoding.Default.GetBytes("Content)"));
+            //    WriteChunk(Stream,
+            //               new byte[] { 0x74, 0x45, 0x58, 0x74 },
+            //               TextDatas.ToArray());
+            //}
 
             #endregion
 
@@ -471,7 +502,22 @@ namespace MenthaAssembly.Media.Imaging
             // Datas
             Stream.Write(Datas, 0, Datas.Length);
 
-            CRC32.Calculate(TypeCode, out uint NewRegister);
+            CRC32.Calculate(Datas: TypeCode, out uint NewRegister);
+            CRC32.Calculate(Datas: Datas, out int CRCResult, NewRegister);
+            Buffers = new byte[] { (byte)(CRCResult >> 24), (byte)(CRCResult >> 16), (byte)(CRCResult >> 8), (byte)CRCResult };
+            Stream.Write(Buffers, 0, Buffers.Length);
+        }
+        private static void WriteChunk(Stream Stream, byte[] TypeCode, ReadOnlySpan<byte> Datas)
+        {
+            // Length
+            byte[] Buffers = { (byte)(Datas.Length >> 24), (byte)(Datas.Length >> 16), (byte)(Datas.Length >> 8), (byte)Datas.Length };
+            Stream.Write(Buffers, 0, Buffers.Length);
+            // TypeCode
+            Stream.Write(TypeCode, 0, TypeCode.Length);
+            // Datas
+            Stream.Write(Datas);
+
+            CRC32.Calculate(Datas: TypeCode, out uint NewRegister);
             CRC32.Calculate(Datas, out int CRCResult, NewRegister);
             Buffers = new byte[] { (byte)(CRCResult >> 24), (byte)(CRCResult >> 16), (byte)(CRCResult >> 8), (byte)CRCResult };
             Stream.Write(Buffers, 0, Buffers.Length);
@@ -486,9 +532,33 @@ namespace MenthaAssembly.Media.Imaging
             // ChunkDatas
             Stream.Write(ChunkDatas, 0, ChunkDatas.Length);
 
-            CRC32.Calculate(ChunkDatas, out int CRCResult);
+            CRC32.Calculate(Datas: ChunkDatas, out int CRCResult);
             Buffers = new byte[] { (byte)(CRCResult >> 24), (byte)(CRCResult >> 16), (byte)(CRCResult >> 8), (byte)CRCResult };
             Stream.Write(Buffers, 0, Buffers.Length);
+        }
+
+
+        /// <summary>
+        /// ∥c∥b∥
+        /// <para></para>
+        /// ∥a∥x∥
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <param name="c"></param>
+        private static byte CalculatePaeth(byte a, byte b, byte c)
+        {
+            int pa = Math.Abs(b - c);
+            int pb = Math.Abs(a - c);
+            int pc = Math.Abs(a + b - 2 * c);
+
+            if (pa <= pb && pa <= pc)
+                return a;
+
+            if (pb <= pc)
+                return b;
+
+            return c;
         }
 
         public static bool Identify(byte[] Data)
@@ -507,9 +577,10 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         [Conditional("DEBUG")]
-        public static void Parse(string FilePath)
+        public static void Parse(string FilePath, bool ShowIDAT = true)
         {
             FileStream FS = new FileStream(FilePath, FileMode.Open, FileAccess.Read);
+
             byte[] Datas = new byte[IdentifyHeaderSize];
             FS.Read(Datas, 0, Datas.Length);
 
@@ -519,6 +590,8 @@ namespace MenthaAssembly.Media.Imaging
                 return;
             }
 
+            MemoryStream DataStream = new MemoryStream();
+            DeflateStream Decompressor = new DeflateStream(DataStream, CompressionMode.Decompress);
             string Result;
             do
             {
@@ -555,11 +628,14 @@ namespace MenthaAssembly.Media.Imaging
                             Datas = new byte[Length];
                             FS.Read(Datas, 0, Datas.Length);
 
+                            if (!ShowIDAT)
+                                break;
+
                             Result += $"Data   : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}\r\n";
 
-                            MemoryStream DataStream = new MemoryStream();
                             bool IsRFC1950Header = IdentifyRFC1950(Datas);
 
+                            DataStream.Position = 0;
                             if (IsRFC1950Header)
                                 DataStream.Write(Datas, 2, Datas.Length - 2);
                             else
@@ -568,26 +644,28 @@ namespace MenthaAssembly.Media.Imaging
 
                             List<byte> DecodeDatas = new List<byte>();
                             Datas = new byte[1024];
-                            using (DeflateStream Decompressor = new DeflateStream(DataStream, CompressionMode.Decompress))
+
+                            int ReadLength;
+                            do
                             {
-                                int ReadLength;
-                                do
-                                {
-                                    ReadLength = Decompressor.Read(Datas, 0, Datas.Length);
-                                    DecodeDatas.AddRange(Datas.Take(ReadLength));
-                                } while (ReadLength.Equals(Datas.Length));
-                            }
+                                ReadLength = Decompressor.Read(Datas, 0, Datas.Length);
+                                DecodeDatas.AddRange(Datas.Take(ReadLength));
+                            } while (ReadLength.Equals(Datas.Length));
+
                             Result += $"Size   : {DecodeDatas.Count}\r\n";
                             Result += $"Decode : {string.Join(", ", DecodeDatas.Select(i => i.ToString("X2")))}\r\n";
                             break;
                         }
-                    //case "tEXt":
-                    //    {
-                    //        Datas = new byte[Length];
-                    //        FS.Read(Datas, 0, Datas.Length);
-                    //        Result += $"Content: {Encoding.Default.GetString(Datas)}\r\n";
-                    //        break;
-                    //    }
+                    case "tEXt":
+                        {
+                            Datas = new byte[Length];
+                            FS.Read(Datas, 0, Datas.Length);
+
+                            int SeparatorIndex = Datas.FindIndex(i => i.Equals(0x00));
+                            if (SeparatorIndex > 0)
+                                Result += $"{Encoding.Default.GetString(Datas, 0, SeparatorIndex)} : {Encoding.Default.GetString(Datas, SeparatorIndex + 1, Datas.Length - SeparatorIndex - 1)}\r\n";
+                            break;
+                        }
                     default:
                         if (Length > 0)
                         {
@@ -605,6 +683,8 @@ namespace MenthaAssembly.Media.Imaging
                 Debug.WriteLine(Result);
             } while (FS.Position < FS.Length);
 
+            Decompressor.Dispose();
+            DataStream.Dispose();
             FS.Close();
         }
 
