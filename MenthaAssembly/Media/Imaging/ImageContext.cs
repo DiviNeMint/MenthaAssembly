@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Windows;
 
 namespace MenthaAssembly
 {
@@ -30,9 +33,9 @@ namespace MenthaAssembly
         }
 
         internal protected IntPtr? _ScanA;
-        public IntPtr ScanA 
+        public IntPtr ScanA
         {
-            get 
+            get
             {
                 if (_ScanA is IntPtr Result)
                     return Result;
@@ -42,7 +45,7 @@ namespace MenthaAssembly
                     fixed (byte* A = &this.Datas[1][0])
                         return (IntPtr)A;
                 }
-            } 
+            }
         }
 
         internal protected IntPtr? _ScanR;
@@ -194,6 +197,302 @@ namespace MenthaAssembly
             this.Datas[2] = DataR;
             this.Datas[3] = DataG;
             this.Datas[4] = DataB;
+        }
+
+
+        public void DrawLine(int X0, int Y0, int X1, int Y1, byte Value, int PenWidth)
+            => DrawLine(X0, Y0, X1, Y1, byte.MaxValue, Value, Value, Value, PenWidth);
+        public void DrawLine(int X0, int Y0, int X1, int Y1, byte A, byte R, byte G, byte B, int PenWidth)
+        {
+            switch (BitsPerPixel)
+            {
+                case 1:
+                case 4:
+                    break;
+                case 8:
+                    unsafe
+                    {
+                        bool IsOdd = (PenWidth & 1).Equals(1);
+                        int HalfWidth = (PenWidth + 1) >> 1,
+                            DeltaX = X1 - X0;
+                        //Vertical Line
+                        if (DeltaX is 0)
+                        {
+                            if (X0 < 0 || Width < X0)
+                                return;
+
+                            if (Y0 > Y1)
+                                MathHelper.Swap(ref Y0, ref Y1);
+
+                            Y0 = Math.Min(Math.Max(Y0, 0), Height - 1);
+                            Y1 = Math.Min(Math.Max(Y1, 0), Height - 1);
+
+                            int PenX0 = Math.Min(Math.Max(X0 - HalfWidth, 0), Width),
+                                PenX1 = Math.Min(Math.Max(X0 + HalfWidth + (IsOdd ? 1 : 0), 0), Width),
+                                PenDeltaX = PenX1 - PenX0;
+
+                            if (PenDeltaX <= 0)
+                                return;
+
+                            byte* RectDatas = (byte*)(Scan0 + Y0 * Stride + PenX0);
+                            for (int j = Y0; j <= Y1; j++)
+                            {
+                                for (int i = PenX0; i < PenX1; i++)
+                                    *RectDatas++ = R;
+
+                                RectDatas += Stride - PenDeltaX;
+                            }
+                            return;
+                        }
+
+                        int DeltaY = Y1 - Y0;
+                        // Horizontal Line
+                        if (DeltaY is 0)
+                        {
+                            if (Y0 < 0 || Width < Y0)
+                                return;
+
+                            if (X0 > X1)
+                                MathHelper.Swap(ref X0, ref X1);
+
+                            X0 = Math.Min(Math.Max(X0, 0), Width - 1);
+                            X1 = Math.Min(Math.Max(X1, 0), Width - 1);
+
+
+                            int PenY0 = Math.Min(Math.Max(Y0 - HalfWidth, 0), Height),
+                                PenY1 = Math.Min(Math.Max(Y0 + HalfWidth + (IsOdd ? 1 : 0), 0), Height),
+                                PenDeltaX = X1 - X0;
+
+                            if (PenY1 - PenY0 <= 0)
+                                return;
+
+                            byte* RectDatas = (byte*)(Scan0 + PenY0 * Stride + X0);
+
+                            for (int j = PenY0; j < PenY1; j++)
+                            {
+                                for (int i = X0; i <= X1; i++)
+                                    *RectDatas++ = R;
+
+                                RectDatas += Stride - PenDeltaX - 1;
+                            }
+                            return;
+                        }
+
+                        // Slash Line
+                        int PenHalfWidthSquare = HalfWidth * HalfWidth,
+                            AbsDeltaX = DeltaX.Abs(),
+                            AbsDeltaY = DeltaY.Abs();
+
+                        bool IsPositiveM = (DeltaX > 0 && DeltaY > 0) || (DeltaX < 0 && DeltaY < 0);
+                        if (AbsDeltaX >= AbsDeltaY)
+                        {
+                            if (X0 > X1)
+                            {
+                                MathHelper.Swap(ref X0, ref X1);
+                                MathHelper.Swap(ref Y0, ref Y1);
+                            }
+
+                            List<Int32Vector> WidthDeltas = new List<Int32Vector>();
+                            int Temp = AbsDeltaX >> 1,
+                                TempX = 0;
+
+                            // Calculate WidthDeltas
+                            for (int TempY = 0; TempY < HalfWidth; TempY++)
+                            {
+                                Int32Vector Delta = new Int32Vector(TempX, TempY);
+                                if (Delta.LengthSquare > PenHalfWidthSquare)
+                                    break;
+
+                                WidthDeltas.Add(Delta);
+                                if (!Delta.IsZero)
+                                    WidthDeltas.Add(-Delta);
+
+                                Temp -= AbsDeltaY;
+                                if (Temp < 0)
+                                {
+                                    Temp += AbsDeltaX;
+                                    TempX += IsPositiveM ? -1 : 1;
+                                }
+                            }
+
+                            byte* RectDatas = (byte*)(Scan0 + Y0 * Stride + X0);
+                            int Error = AbsDeltaX >> 1,
+                                DeltaY2 = 0;
+
+                            bool IsSearchFillGaps = false,
+                                 DrawingSucceed = false;
+                            bool[] IsFillGaps = new bool[WidthDeltas.Count];
+
+                            // Draw
+                            for (; X0 <= X1; X0++)
+                            {
+                                for (int i = 0; i < WidthDeltas.Count; i++)
+                                {
+                                    Int32Vector Delta = WidthDeltas[i];
+                                    // Search ShiftFillDeltas
+                                    if (!IsSearchFillGaps && DeltaY2 != 0)
+                                        IsFillGaps[i] = DeltaY2 != 0 &&
+                                                        WidthDeltas.FirstOrNull(j => j.Y == Delta.Y + DeltaY2 && j.X - Delta.X != 0) != null;
+
+                                    bool FillGap = DeltaY2 != 0 && IsFillGaps[i];
+                                    int X2 = X0 + Delta.X,
+                                        Y2 = Y0 + Delta.Y,
+                                        Offset = Delta.Y * Stride + Delta.X;
+                                    if (0 <= Y2 && Y2 < Height)
+                                    {
+                                        if (0 <= X2 && X2 < Width)
+                                        {
+                                            *(RectDatas + Offset) = R;
+                                            DrawingSucceed = true;
+                                        }
+
+                                        if (FillGap && 0 < X2 && X2 <= Width)
+                                        {
+                                            *(RectDatas + Offset - 1) = R;
+                                            DrawingSucceed = true;
+                                        }
+                                    }
+                                }
+
+                                if (!DrawingSucceed)
+                                    return;
+
+                                // Reset
+                                if (DeltaY2 != 0)
+                                    IsSearchFillGaps = true;
+                                DrawingSucceed = false;
+
+                                // Calculate NextPoint
+                                Error -= AbsDeltaY;
+                                if (Error < 0)
+                                {
+                                    Error += AbsDeltaX;
+                                    if (Y1 > Y0)
+                                    {
+                                        Y0++;
+                                        DeltaY2 = 1;
+                                        RectDatas += Stride + 1;
+                                    }
+                                    else
+                                    {
+                                        Y0--;
+                                        DeltaY2 = -1;
+                                        RectDatas += ~Stride + 2;
+                                    }
+                                    continue;
+                                }
+                                DeltaY2 = 0;
+                                RectDatas++;
+                            }
+                        }
+                        else
+                        {
+                            if (Y0 > Y1)
+                            {
+                                MathHelper.Swap(ref X0, ref X1);
+                                MathHelper.Swap(ref Y0, ref Y1);
+                            }
+
+                            List<Int32Vector> WidthDeltas = new List<Int32Vector>();
+                            int Temp = AbsDeltaY >> 1,
+                                TempY = 0;
+
+                            // Calculate WidthDeltas
+                            for (int TempX = 0; TempX < HalfWidth; TempX++)
+                            {
+                                Int32Vector Delta = new Int32Vector(TempX, TempY);
+                                if (Delta.LengthSquare > PenHalfWidthSquare)
+                                    break;
+
+                                WidthDeltas.Add(Delta);
+                                if (!Delta.IsZero)
+                                    WidthDeltas.Add(-Delta);
+
+                                Temp -= AbsDeltaX;
+                                if (Temp < 0)
+                                {
+                                    Temp += AbsDeltaY;
+                                    TempY += IsPositiveM ? -1 : 1;
+                                }
+                            }
+
+                            byte* RectDatas = (byte*)(Scan0 + Y0 * Stride + X0);
+                            int Error = AbsDeltaY >> 1,
+                                DeltaX2 = 0;
+
+                            bool IsSearchFillGaps = false,
+                                 DrawingSucceed = false;
+                            bool[] IsFillGaps = new bool[WidthDeltas.Count];
+
+                            // Draw
+                            for (; Y0 <= Y1; Y0++)
+                            {
+                                for (int i = 0; i < WidthDeltas.Count; i++)
+                                {
+                                    Int32Vector Delta = WidthDeltas[i];
+                                    // Search ShiftFillDeltas
+                                    if (!IsSearchFillGaps && DeltaX2 != 0)
+                                        IsFillGaps[i] = DeltaX2 != 0 &&
+                                                        WidthDeltas.FirstOrNull(j => j.X == Delta.X + DeltaX2 && j.Y - Delta.Y != 0) != null;
+
+                                    bool FillGap = DeltaX2 != 0 && IsFillGaps[i];
+                                    int X2 = X0 + Delta.X,
+                                        Y2 = Y0 + Delta.Y,
+                                        Offset = Delta.Y * Stride + Delta.X;
+                                    if (0 <= X2 && X2 < Width)
+                                    {
+                                        if (0 <= Y2 && Y2 < Height)
+                                        {
+                                            *(RectDatas + Offset) = R;
+                                            DrawingSucceed = true;
+                                        }
+
+                                        if (FillGap && 0 < Y2 && Y2 <= Height)
+                                        {
+                                            *(RectDatas + Offset - Stride) = R;
+                                            DrawingSucceed = true;
+                                        }
+                                    }
+                                }
+
+                                if (!DrawingSucceed)
+                                    return;
+
+                                // Reset
+                                if (DeltaX2 != 0)
+                                    IsSearchFillGaps = true;
+                                DrawingSucceed = false;
+
+                                // Calculate NextPoint
+                                Error -= AbsDeltaX;
+                                if (Error < 0)
+                                {
+                                    Error += AbsDeltaY;
+                                    if (X1 > X0)
+                                    {
+                                        X0++;
+                                        DeltaX2 = 1;
+                                        RectDatas += Stride + 1;
+                                    }
+                                    else
+                                    {
+                                        X0--;
+                                        DeltaX2 = -1;
+                                        RectDatas += Stride - 1;
+                                    }
+                                    continue;
+                                }
+                                DeltaX2 = 0;
+                                RectDatas += Stride;
+                            }
+                        }
+                        break;
+                    }
+                case 24:
+                case 32:
+                default:
+                    break;
+            }
         }
 
     }

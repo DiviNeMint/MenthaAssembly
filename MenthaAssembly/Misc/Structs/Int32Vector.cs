@@ -6,6 +6,11 @@
 
         public int Y { get; }
 
+        public int LengthSquare => X * X + Y * Y;
+
+        public bool IsZero => X is 0 && 
+                              Y is 0;
+
         public Int32Vector(int X, int Y)
         {
             this.X = X;

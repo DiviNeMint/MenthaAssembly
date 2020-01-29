@@ -548,9 +548,9 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="c"></param>
         private static byte CalculatePaeth(byte a, byte b, byte c)
         {
-            int pa = Math.Abs(b - c);
-            int pb = Math.Abs(a - c);
-            int pc = Math.Abs(a + b - 2 * c);
+            int pa = (b - c).Abs();
+            int pb = (a - c).Abs();
+            int pc = (a + b - 2 * c).Abs();
 
             if (pa <= pb && pa <= pc)
                 return a;
