@@ -16,9 +16,9 @@ namespace MenthaAssembly.Media.Imaging
     {
         public static int IdentifyHeaderSize => 8;
 
-        public static bool TryDecode(string FilePath, out ImageContext Image)
+        public static bool TryDecode(string FilePath, out IImageContext Image)
             => TryDecode(new FileStream(FilePath, FileMode.Open, FileAccess.Read), out Image);
-        public static bool TryDecode(Stream Stream, out ImageContext Image)
+        public static bool TryDecode(Stream Stream, out IImageContext Image)
         {
             bool CheckCRC32 = true;
             byte[] Datas = new byte[IdentifyHeaderSize];
@@ -41,7 +41,7 @@ namespace MenthaAssembly.Media.Imaging
                 Channels = 0,
                 Stride = 0;
             byte[][] ImageDatas = null;
-            IList<int> Palette = null;
+            IList<BGRA> Palette = null;
             //byte Compression,
             //Filter,
             //Interlace;
@@ -109,12 +109,9 @@ namespace MenthaAssembly.Media.Imaging
                     Datas = new byte[Length];
                     Stream.Read(Datas, 0, Datas.Length);
 
-                    Palette = new List<int>();
+                    Palette = new List<BGRA>();
                     for (int i = 0; i < Length; i += 3)
-                        Palette.Add(Datas[i] << 16 |
-                                    Datas[i + 1] << 8 |
-                                    Datas[i + 2] |
-                                    -16777216); // 0xFF << 24 = -16777216
+                        Palette.Add(new BGRA(Datas[i + 2], Datas[i + 1], Datas[i], byte.MaxValue));
                 }
                 else
                 #endregion
@@ -314,22 +311,22 @@ namespace MenthaAssembly.Media.Imaging
             switch (ImageDatas.Length)
             {
                 case 1:
-                    Image = new ImageContext(Width, Height, ImageDatas[0], Palette);
+                    Image = new ImageContext<Gray8>(Width, Height, ImageDatas[0], Palette);
                     return true;
                 case 3:
-                    Image = new ImageContext(Width, Height, ImageDatas[0], ImageDatas[1], ImageDatas[2]);
+                    Image = new ImageContext<RGB>(Width, Height, ImageDatas[0], ImageDatas[1], ImageDatas[2]);
                     return true;
                 case 4:
-                    Image = new ImageContext(Width, Height, ImageDatas[3], ImageDatas[0], ImageDatas[1], ImageDatas[2]);
+                    Image = new ImageContext<ARGB>(Width, Height, ImageDatas[3], ImageDatas[0], ImageDatas[1], ImageDatas[2]);
                     return true;
             }
             Image = null;
             return false;
         }
 
-        public static void Encode(ImageContext Image, string FilePath)
+        public static void Encode(IImageContext Image, string FilePath)
             => Encode(Image, new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write));
-        public static void Encode(ImageContext Image, Stream Stream)
+        public static void Encode(IImageContext Image, Stream Stream)
         {
             // IdentifyHeader
             byte[] Datas = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
@@ -367,10 +364,10 @@ namespace MenthaAssembly.Media.Imaging
                     Datas = new byte[Image.Palette.Count * 3];
                     for (int i = 0; i < Image.Palette.Count; i++)
                     {
-                        int Value = Image.Palette[i];
-                        Datas[i * 3] = (byte)(Value >> 16);
-                        Datas[i * 3 + 1] = (byte)(Value >> 8);
-                        Datas[i * 3 + 2] = (byte)Value;
+                        ARGB Value = Image.Palette[i];
+                        Datas[i * 3] = Value.R;
+                        Datas[i * 3 + 1] = Value.G;
+                        Datas[i * 3 + 2] = Value.B;
                     }
                 }
 

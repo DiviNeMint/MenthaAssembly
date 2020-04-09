@@ -79,5 +79,19 @@ namespace System
             return Activator.CreateInstance(ValueType);
         }
 
+        public static string GetNextName(string Seed, Predicate<string> ContainPredicate)
+            => GetNextName((i) => $"{Seed} {i}", ContainPredicate);
+        public static string GetNextName(Func<int, string> Format, Predicate<string> ContainPredicate)
+        {
+            int Index = 1;
+            string DefaultName;
+            do
+            {
+                DefaultName = Format.Invoke(Index++);
+            } while (ContainPredicate.Invoke(DefaultName));
+
+            return DefaultName;
+        }
+
     }
 }

@@ -1,12 +1,15 @@
-﻿using System;
+﻿using MenthaAssembly.Media.Imaging;
+using MenthaAssembly.Media.Imaging.Primitives;
+using MenthaAssembly.Media.Imaging.Utils;
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 
 namespace MenthaAssembly
 {
-    public class ImageContext
+    public class ImageContext<PixelStruct> : IImageContext
+        where PixelStruct : unmanaged, IPixelBase
     {
         public int Width { get; }
 
@@ -14,195 +17,898 @@ namespace MenthaAssembly
 
         public int Stride { get; }
 
+        public int BitsPerPixel { get; }
+
         public int Channels { get; }
 
+        public Type PixelType { get; } = typeof(PixelStruct);
+
+        public IList<BGRA> Palette { get; }
+
+        protected bool IsPixelIndexed { get; }
+
+        internal protected byte[] Data0;
         internal protected IntPtr? _Scan0;
-        public IntPtr Scan0
+        public unsafe IntPtr Scan0
         {
             get
             {
                 if (_Scan0 is IntPtr Result)
                     return Result;
 
-                unsafe
-                {
-                    fixed (byte* S0 = &this.Datas[0][0])
-                        return (IntPtr)S0;
-                }
+                fixed (byte* S0 = &this.Data0[0])
+                    return (IntPtr)S0;
             }
         }
 
+        internal protected byte[] DataA;
         internal protected IntPtr? _ScanA;
-        public IntPtr ScanA
+        public unsafe IntPtr ScanA
         {
             get
             {
                 if (_ScanA is IntPtr Result)
                     return Result;
 
-                unsafe
-                {
-                    fixed (byte* A = &this.Datas[1][0])
-                        return (IntPtr)A;
-                }
+                fixed (byte* A = &DataA[0])
+                    return (IntPtr)A;
             }
         }
 
+        internal protected byte[] DataR;
         internal protected IntPtr? _ScanR;
-        public IntPtr ScanR
+        public unsafe IntPtr ScanR
         {
             get
             {
                 if (_ScanR is IntPtr Result)
                     return Result;
 
-                unsafe
-                {
-                    fixed (byte* R = &this.Datas[2][0])
-                        return (IntPtr)R;
-                }
+                fixed (byte* R = &this.DataR[0])
+                    return (IntPtr)R;
             }
         }
 
+        internal protected byte[] DataG;
         internal protected IntPtr? _ScanG;
-        public IntPtr ScanG
+        public unsafe IntPtr ScanG
         {
             get
             {
                 if (_ScanG is IntPtr Result)
                     return Result;
 
-                unsafe
-                {
-                    fixed (byte* G = &this.Datas[3][0])
-                        return (IntPtr)G;
-                }
+                fixed (byte* G = &DataG[0])
+                    return (IntPtr)G;
             }
         }
 
+        internal protected byte[] DataB;
         internal protected IntPtr? _ScanB;
-        public IntPtr ScanB
+        public unsafe IntPtr ScanB
         {
             get
             {
                 if (_ScanB is IntPtr Result)
                     return Result;
 
-                unsafe
-                {
-                    fixed (byte* B = &this.Datas[4][0])
-                        return (IntPtr)B;
-                }
+                fixed (byte* B = &this.DataB[0])
+                    return (IntPtr)B;
             }
         }
 
-        public int BitsPerPixel { get; }
+        private readonly Func<IPixel, PixelStruct> ToPixel;
+        private readonly Func<int, int, PixelStruct> GetPixel;
+        private readonly Action<int, int, PixelStruct> SetPixel;
+        public unsafe PixelStruct this[int X, int Y]
+        {
+            get
+            {
+                if (X < 0 || X >= Width ||
+                    Y < 0 || Y >= Height)
+                    throw new IndexOutOfRangeException();
 
-        public IList<int> Palette { get; }
+                return GetPixel(X, Y);
+            }
+            set
+            {
+                if (X < 0 || X >= Width ||
+                    Y < 0 || Y >= Height)
+                    throw new IndexOutOfRangeException();
 
-        public ImageContext(int Width, int Height, IntPtr Scan0, IList<int> Palette = null) : this(Width, Height, Scan0, Width, Palette)
-        {
+                SetPixel(X, Y, value);
+            }
         }
-        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, IList<int> Palette = null)
+        unsafe IPixel IImageContext.this[int X, int Y]
+        {
+            get
+            {
+                PixelStruct Result = this[X, Y];
+                if (Result is IPixelIndexed Indexed)
+                    return Palette[Indexed[X * BitsPerPixel % Indexed.Length]];
+
+                return (IPixel)Result;
+            }
+            set
+            {
+                if (X < 0 || X >= Width ||
+                    Y < 0 || Y >= Height)
+                    throw new IndexOutOfRangeException();
+
+                if (IsPixelIndexed &&
+                    GetPixel(X, Y) is IPixelIndexed Indexed)
+                {
+                    ARGB Color = new ARGB(value.A, value.R, value.G, value.B);
+                    int Index = Palette.IndexOf(Color);
+                    if (Index == -1)
+                    {
+                        if ((1 << Indexed.BitsPerPixel) <= Palette.Count)
+                            throw new IndexOutOfRangeException("Palette is full.");
+
+                        Index = Palette.Count;
+                        Palette.Add(Color);
+                    }
+
+                    Indexed[X * BitsPerPixel % Indexed.Length] = (byte)Index;
+
+                    PixelStruct Result = default;
+                    byte* ResultPointer = (byte*)&Result;
+                    *ResultPointer = Indexed.Data;
+                    SetPixel(X, Y, Result);
+                    return;
+                }
+                SetPixel(X, Y, ToPixel(value));
+            }
+        }
+
+        private ImageContext()
+        {
+            PixelStruct PixelFormat = default;
+            this.IsPixelIndexed = PixelFormat is IPixelIndexed;
+            this.BitsPerPixel = PixelFormat.BitsPerPixel;
+
+            if (PixelType == typeof(BGRA))
+            {
+                ToPixel = (IPixel) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        *PixelPointer++ = IPixel.B;
+                        *PixelPointer++ = IPixel.G;
+                        *PixelPointer++ = IPixel.R;
+                        *PixelPointer = IPixel.A;
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(ARGB))
+            {
+                ToPixel = (IPixel) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        *PixelPointer++ = IPixel.A;
+                        *PixelPointer++ = IPixel.R;
+                        *PixelPointer++ = IPixel.G;
+                        *PixelPointer = IPixel.B;
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(BGR))
+            {
+                ToPixel = (IPixel) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        *PixelPointer++ = IPixel.B;
+                        *PixelPointer++ = IPixel.G;
+                        *PixelPointer = IPixel.R;
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(RGB))
+            {
+                ToPixel = (IPixel) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        *PixelPointer++ = IPixel.R;
+                        *PixelPointer++ = IPixel.G;
+                        *PixelPointer = IPixel.B;
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(Gray8))
+            {
+                ToPixel = (IPixel) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        *PixelPointer = (byte)((IPixel.R * 30 +
+                                                IPixel.G * 59 +
+                                                IPixel.B * 11 + 50) / 100);
+                        return Pixel;
+                    }
+                };
+            }
+            else
+            {
+                ToPixel = (IPixel) =>
+                {
+                    unsafe
+                    {
+                        dynamic Result = new BGRA(IPixel.B, IPixel.G, IPixel.R, IPixel.A);
+                        return (PixelStruct)Result;
+                    }
+                };
+            }
+        }
+
+        public ImageContext(int Width, int Height) : this()
         {
             this.Width = Width;
             this.Height = Height;
-            this.Stride = Stride;
-            this.BitsPerPixel = (Stride << 3) / Width;
-            this.Palette = Palette;
-            this._Scan0 = Scan0;
+            this.Stride = ((Width * BitsPerPixel) + 7) >> 3;
             this.Channels = 1;
+
+            if (IsPixelIndexed)
+                Palette = new List<BGRA>();
+
+            this.Data0 = new byte[this.Stride * Height];
+            Array.Fill(Data0, byte.MaxValue);
         }
-        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, int BitsPerPixel, IList<int> Palette = null)
+
+        public ImageContext(int Width, int Height, IntPtr Scan0, IList<BGRA> Palette = null) : this(Width, Height, Scan0, Width, Palette)
+        {
+        }
+        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, IList<BGRA> Palette = null) : this()
         {
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
-            this.BitsPerPixel = BitsPerPixel;
-            this.Palette = Palette;
-            this._Scan0 = Scan0;
             this.Channels = 1;
+
+            this.Palette = Palette;
+
+            this._Scan0 = Scan0;
+
+            GetPixel = (X, Y) =>
+            {
+                unsafe
+                {
+                    long Offset = Stride * (long)Y + ((X * BitsPerPixel) >> 3);
+                    return *(PixelStruct*)((byte*)Scan0 + Offset);
+                }
+            };
+            SetPixel = (X, Y, Value) =>
+            {
+                unsafe
+                {
+                    long Offset = Stride * (long)Y + ((X * BitsPerPixel) >> 3);
+                    *(PixelStruct*)((byte*)Scan0 + Offset) = Value;
+                }
+            };
         }
-        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) : this(Width, Height, ScanR, ScanG, ScanB, Width)
+        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) :
+            this(Width, Height, ScanR, ScanG, ScanB, Width)
         {
         }
-        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride)
+        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride) : this()
         {
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
+            this.Channels = 3;
+
             this._ScanR = ScanR;
             this._ScanG = ScanG;
             this._ScanB = ScanB;
-            this.BitsPerPixel = 24;
-            this.Channels = 3;
+
+            if (PixelType == typeof(BGR))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer++ = *((byte*)ScanB + Offset);
+                        *PixelPointer++ = *((byte*)ScanG + Offset);
+                        *PixelPointer = *((byte*)ScanR + Offset);
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte* PixelPointer = (byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanB + Offset) = *PixelPointer++;
+                        *((byte*)ScanG + Offset) = *PixelPointer++;
+                        *((byte*)ScanR + Offset) = *PixelPointer;
+                    }
+                };
+            }
+            else if (PixelType == typeof(RGB))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer++ = *((byte*)ScanR + Offset);
+                        *PixelPointer++ = *((byte*)ScanG + Offset);
+                        *PixelPointer = *((byte*)ScanB + Offset);
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte* PixelPointer = (byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanR + Offset) = *PixelPointer++;
+                        *((byte*)ScanG + Offset) = *PixelPointer++;
+                        *((byte*)ScanB + Offset) = *PixelPointer;
+                    }
+                };
+            }
+            else if (PixelType == typeof(Gray8))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer = (byte)((*((byte*)ScanR + Offset) * 30 +
+                                                *((byte*)ScanG + Offset) * 59 +
+                                                *((byte*)ScanB + Offset) * 11 + 50) / 100);
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte Gray = *(byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanR + Offset) = Gray;
+                        *((byte*)ScanG + Offset) = Gray;
+                        *((byte*)ScanB + Offset) = Gray;
+                    }
+                };
+            }
+            else if (PixelType == typeof(BGRA))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer++ = *((byte*)ScanB + Offset);
+                        *PixelPointer++ = *((byte*)ScanG + Offset);
+                        *PixelPointer++ = *((byte*)ScanR + Offset);
+                        *PixelPointer = byte.MaxValue;
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte* PixelPointer = (byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanB + Offset) = *PixelPointer++;
+                        *((byte*)ScanG + Offset) = *PixelPointer++;
+                        *((byte*)ScanR + Offset) = *PixelPointer;
+                    }
+                };
+            }
+            else if (PixelType == typeof(ARGB))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer++ = byte.MaxValue;
+                        *PixelPointer++ = *((byte*)ScanR + Offset);
+                        *PixelPointer++ = *((byte*)ScanG + Offset);
+                        *PixelPointer = *((byte*)ScanB + Offset);
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte* PixelPointer = (byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        PixelPointer++;
+                        *((byte*)ScanR + Offset) = *PixelPointer++;
+                        *((byte*)ScanG + Offset) = *PixelPointer++;
+                        *((byte*)ScanB + Offset) = *PixelPointer;
+                    }
+                };
+            }
+            else
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        long Offset = Stride * (long)Y + X;
+                        dynamic Result = new BGRA(*((byte*)ScanB + Offset),
+                                                  *((byte*)ScanG + Offset),
+                                                  *((byte*)ScanR + Offset),
+                                                  byte.MaxValue);
+                        return (PixelStruct)Result;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        IPixel Pixel = (IPixel)Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanR + Offset) = Pixel.R;
+                        *((byte*)ScanG + Offset) = Pixel.G;
+                        *((byte*)ScanB + Offset) = Pixel.B;
+                    }
+                };
+            }
+
         }
-        public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) : this(Width, Height, ScanA, ScanR, ScanG, ScanB, Width)
+        public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) :
+            this(Width, Height, ScanA, ScanR, ScanG, ScanB, Width)
         {
         }
-        public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride)
+        public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride) : this()
         {
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
+            this.Channels = 4;
+
             this._ScanA = ScanA;
             this._ScanR = ScanR;
             this._ScanG = ScanG;
             this._ScanB = ScanB;
-            this.BitsPerPixel = 32;
-            this.Channels = 4;
+
+            if (PixelType == typeof(BGRA))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer++ = *((byte*)ScanB + Offset);
+                        *PixelPointer++ = *((byte*)ScanG + Offset);
+                        *PixelPointer++ = *((byte*)ScanR + Offset);
+                        *PixelPointer = *((byte*)ScanA + Offset);
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte* PixelPointer = (byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanB + Offset) = *PixelPointer++;
+                        *((byte*)ScanG + Offset) = *PixelPointer++;
+                        *((byte*)ScanR + Offset) = *PixelPointer++;
+                        *((byte*)ScanA + Offset) = *PixelPointer;
+                    }
+                };
+            }
+            else if (PixelType == typeof(ARGB))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer++ = *((byte*)ScanA + Offset);
+                        *PixelPointer++ = *((byte*)ScanR + Offset);
+                        *PixelPointer++ = *((byte*)ScanG + Offset);
+                        *PixelPointer = *((byte*)ScanB + Offset);
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte* PixelPointer = (byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanA + Offset) = *PixelPointer++;
+                        *((byte*)ScanR + Offset) = *PixelPointer++;
+                        *((byte*)ScanG + Offset) = *PixelPointer++;
+                        *((byte*)ScanB + Offset) = *PixelPointer;
+                    }
+                };
+            }
+            else if (PixelType == typeof(BGR))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer++ = *((byte*)ScanB + Offset);
+                        *PixelPointer++ = *((byte*)ScanG + Offset);
+                        *PixelPointer = *((byte*)ScanR + Offset);
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte* PixelPointer = (byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanB + Offset) = *PixelPointer++;
+                        *((byte*)ScanG + Offset) = *PixelPointer++;
+                        *((byte*)ScanR + Offset) = *PixelPointer;
+                        *((byte*)ScanA + Offset) = byte.MaxValue;
+                    }
+                };
+            }
+            else if (PixelType == typeof(RGB))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer++ = *((byte*)ScanR + Offset);
+                        *PixelPointer++ = *((byte*)ScanG + Offset);
+                        *PixelPointer = *((byte*)ScanB + Offset);
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte* PixelPointer = (byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanA + Offset) = byte.MaxValue;
+                        *((byte*)ScanR + Offset) = *PixelPointer++;
+                        *((byte*)ScanG + Offset) = *PixelPointer++;
+                        *((byte*)ScanB + Offset) = *PixelPointer;
+                    }
+                };
+            }
+            else if (PixelType == typeof(Gray8))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        long Offset = Stride * (long)Y + X;
+                        *PixelPointer = (byte)((*((byte*)ScanR + Offset) * 30 +
+                                                *((byte*)ScanG + Offset) * 59 +
+                                                *((byte*)ScanB + Offset) * 11 + 50) / 100);
+                        return Pixel;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        byte Gray = *(byte*)&Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanR + Offset) = Gray;
+                        *((byte*)ScanG + Offset) = Gray;
+                        *((byte*)ScanB + Offset) = Gray;
+                        *((byte*)ScanA + Offset) = byte.MaxValue;
+                    }
+                };
+            }
+            else
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        long Offset = Stride * (long)Y + X;
+                        dynamic Result = new BGRA(*((byte*)ScanB + Offset),
+                                                  *((byte*)ScanG + Offset),
+                                                  *((byte*)ScanR + Offset),
+                                                  *((byte*)ScanA + Offset));
+                        return (PixelStruct)Result;
+                    }
+                };
+                SetPixel = (X, Y, Value) =>
+                {
+                    unsafe
+                    {
+                        IPixel Pixel = (IPixel)Value;
+                        long Offset = Stride * (long)Y + X;
+                        *((byte*)ScanR + Offset) = Pixel.R;
+                        *((byte*)ScanG + Offset) = Pixel.G;
+                        *((byte*)ScanB + Offset) = Pixel.B;
+                        *((byte*)ScanA + Offset) = Pixel.A;
+                    }
+                };
+            }
         }
 
-        /// <summary>
-        /// Index :
-        /// Scan0 = 0, 
-        /// ScanA = 1, 
-        /// ScanR = 2, 
-        /// ScanG = 3, 
-        /// ScanB = 4
-        /// </summary>
-        internal protected byte[][] Datas { set; get; } = new byte[5][];
-        public ImageContext(int Width, int Height, byte[] Data, IList<int> Palette = null)
+        public ImageContext(int Width, int Height, byte[] Data, IList<BGRA> Palette = null) : this()
         {
             this.Width = Width;
             this.Height = Height;
-            this.Stride = Data.Length / Height;
-            this.BitsPerPixel = (this.Stride << 3) / Width;
-            this.Palette = Palette;
+            this.Stride = Data.Length / Width;
             this.Channels = 1;
 
-            this.Datas[0] = Data;
+            this.Palette = Palette;
+
+            this.Data0 = Data;
+
+            GetPixel = (X, Y) =>
+            {
+                unsafe
+                {
+                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + ((X * BitsPerPixel) >> 3)])
+                        return *(PixelStruct*)PixelPointer;
+                }
+            };
+            SetPixel = (X, Y, Value) =>
+            {
+                unsafe
+                {
+                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + ((X * BitsPerPixel) >> 3)])
+                        *(PixelStruct*)PixelPointer = Value;
+                }
+            };
         }
-        public ImageContext(int Width, int Height, byte[] DataR, byte[] DataG, byte[] DataB)
+        public ImageContext(int Width, int Height, byte[] DataR, byte[] DataG, byte[] DataB) : this()
         {
             this.Width = Width;
             this.Height = Height;
-            this.Stride = DataR.Length / Height;
-            this.BitsPerPixel = 24;
+            this.Stride = DataR.Length / Width;
             this.Channels = 3;
 
-            this.Datas[2] = DataR;
-            this.Datas[3] = DataG;
-            this.Datas[4] = DataB;
+            this.DataR = DataR;
+            this.DataG = DataG;
+            this.DataB = DataB;
+
+            if (PixelType == typeof(BGR))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer++ = this.DataB[Offset];
+                        *PixelPointer++ = this.DataG[Offset];
+                        *PixelPointer = this.DataR[Offset];
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(RGB))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer++ = this.DataR[Offset];
+                        *PixelPointer++ = this.DataG[Offset];
+                        *PixelPointer = this.DataB[Offset];
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(Gray8))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer = (byte)((this.DataR[Offset] * 30 + this.DataG[Offset] * 59 + this.DataB[Offset] * 11 + 50) / 100);
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(BGRA))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer++ = this.DataB[Offset];
+                        *PixelPointer++ = this.DataG[Offset];
+                        *PixelPointer++ = this.DataR[Offset];
+                        *PixelPointer = byte.MaxValue;
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(ARGB))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer++ = byte.MaxValue;
+                        *PixelPointer++ = this.DataR[Offset];
+                        *PixelPointer++ = this.DataG[Offset];
+                        *PixelPointer = this.DataB[Offset];
+                        return Pixel;
+                    }
+                };
+            }
+            else
+            {
+                GetPixel = (X, Y) =>
+                {
+                    int Offset = Stride * Y + X;
+                    dynamic Result = new BGRA(this.DataB[Offset],
+                                              this.DataG[Offset],
+                                              this.DataR[Offset],
+                                              this.DataA?[Offset] ?? byte.MaxValue);
+                    return (PixelStruct)Result;
+                };
+            }
         }
-        public ImageContext(int Width, int Height, byte[] DataA, byte[] DataR, byte[] DataG, byte[] DataB)
+        public ImageContext(int Width, int Height, byte[] DataA, byte[] DataR, byte[] DataG, byte[] DataB) : this()
         {
             this.Width = Width;
             this.Height = Height;
-            this.Stride = DataA.Length / Height;
+            this.Stride = DataA.Length / Width;
             this.Channels = 4;
-            this.BitsPerPixel = 32;
 
-            this.Datas[1] = DataA;
-            this.Datas[2] = DataR;
-            this.Datas[3] = DataG;
-            this.Datas[4] = DataB;
+            this.DataA = DataA;
+            this.DataR = DataR;
+            this.DataG = DataG;
+            this.DataB = DataB;
+
+            if (PixelType == typeof(BGRA))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer++ = this.DataB[Offset];
+                        *PixelPointer++ = this.DataG[Offset];
+                        *PixelPointer++ = this.DataR[Offset];
+                        *PixelPointer = this.DataA[Offset];
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(ARGB))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer++ = this.DataA[Offset];
+                        *PixelPointer++ = this.DataR[Offset];
+                        *PixelPointer++ = this.DataG[Offset];
+                        *PixelPointer = this.DataB[Offset];
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(BGR))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer++ = this.DataB[Offset];
+                        *PixelPointer++ = this.DataG[Offset];
+                        *PixelPointer = this.DataR[Offset];
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(RGB))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer++ = this.DataR[Offset];
+                        *PixelPointer++ = this.DataG[Offset];
+                        *PixelPointer = this.DataB[Offset];
+                        return Pixel;
+                    }
+                };
+            }
+            else if (PixelType == typeof(Gray8))
+            {
+                GetPixel = (X, Y) =>
+                {
+                    unsafe
+                    {
+                        PixelStruct Pixel = default;
+                        byte* PixelPointer = (byte*)&Pixel;
+                        int Offset = Stride * Y + X;
+                        *PixelPointer = (byte)((this.DataR[Offset] * 30 + this.DataG[Offset] * 59 + this.DataB[Offset] * 11 + 50) / 100);
+                        return Pixel;
+                    }
+                };
+            }
+            else
+            {
+                GetPixel = (X, Y) =>
+                {
+                    int Offset = Stride * Y + X;
+                    dynamic Result = new BGRA(this.DataB[Offset],
+                                              this.DataG[Offset],
+                                              this.DataR[Offset],
+                                              this.DataA[Offset]);
+                    return (PixelStruct)Result;
+                };
+            }
         }
 
-
-        public void DrawLine(int X0, int Y0, int X1, int Y1, byte Value, int PenWidth)
-            => DrawLine(X0, Y0, X1, Y1, byte.MaxValue, Value, Value, Value, PenWidth);
-        public void DrawLine(int X0, int Y0, int X1, int Y1, byte A, byte R, byte G, byte B, int PenWidth)
+        public unsafe void DrawLine(int X0, int Y0, int X1, int Y1, byte A, byte R, byte G, byte B, int PenWidth)
         {
             switch (BitsPerPixel)
             {
@@ -210,7 +916,6 @@ namespace MenthaAssembly
                 case 4:
                     break;
                 case 8:
-                    unsafe
                     {
                         bool IsOdd = (PenWidth & 1).Equals(1);
                         int HalfWidth = (PenWidth + 1) >> 1,
@@ -495,5 +1200,426 @@ namespace MenthaAssembly
             }
         }
 
+        public unsafe void DrawLine(double X0, double Y0, double X1, double Y1, IPixel Color, double PenWidth)
+        {
+            int IntX0 = (int)(X0 * 128),
+                IntY0 = (int)(Y0 * 128),
+                IntX1 = (int)(X1 * 128),
+                IntY1 = (int)(Y1 * 128),
+                IntHalfPen = (int)(PenWidth * 64);
+
+            if (IntHalfPen == 0 ||
+                (IntX0 == IntX1 && IntY0 == IntY1))
+                return;
+
+            if (IntY0 > IntY1)
+            {
+                MathHelper.Swap(ref IntX0, ref IntX1);
+                MathHelper.Swap(ref IntY0, ref IntY1);
+            }
+
+            int DeltaX = IntX1 - IntX0,
+                AbsDeltaX = DeltaX.Abs(),
+                AbsDeltaY = IntY1 - IntY0;
+
+            Dictionary<int, int> Bounds = new Dictionary<int, int>();
+
+            #region Define FillScan
+            Action<int, int, int> FillScan;
+            switch (Channels)
+            {
+                case 1:
+#pragma warning disable IDE0059 // 指派了不必要的值
+                    PixelStruct Pixel = ToPixel(Color);
+#pragma warning restore IDE0059 // 指派了不必要的值
+                    FillScan = (X0, X1, Y) => this.FillScan((byte*)this.Scan0, X0, X1, Y, Pixel);
+                    break;
+                case 3:
+                    FillScan = (X0, X1, Y) => this.FillScan((byte*)this.ScanR, (byte*)this.ScanG, (byte*)this.ScanB, X0, X1, Y, Color);
+                    break;
+                case 4:
+                    FillScan = (X0, X1, Y) => this.FillScan((byte*)this.ScanA, (byte*)this.ScanR, (byte*)this.ScanG, (byte*)this.ScanB, X0, X1, Y, Color);
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+
+            #endregion
+
+            #region Vertical Line
+            if (DeltaX == 0)
+            {
+                IntY0 = Math.Max(IntY0 >> 7, 0);
+                IntY1 = Math.Min(IntY1 >> 7, this.Height);
+
+                for (; IntY0 <= IntY1; IntY0++)
+                    FillScan((IntX0 - IntHalfPen) >> 7, (IntX0 + IntHalfPen) >> 7, IntY0);
+                return;
+            }
+            #endregion
+            #region Horizontal Line
+            if (DeltaX == 0)
+            {
+                IntY0 = Math.Max((IntY0 - IntHalfPen) >> 7, 0);
+                IntY1 = Math.Min((IntY0 + IntHalfPen) >> 7, this.Height);
+
+                for (; IntY0 <= IntY1; IntY0++)
+                    FillScan(IntX0 >> 7, IntX1 >> 7, IntY0);
+                return;
+            }
+            #endregion
+
+            // Define Push
+            void Push(int X, int Y)
+            {
+                if (Bounds.TryGetValue(Y, out int X1))
+                {
+                    Bounds.Remove(Y);
+
+                    // Convert to real value
+                    X >>= 7;
+                    Y >>= 7;
+                    X1 >>= 7;
+
+                    // Fill
+                    FillScan(X, X1, Y);
+                }
+                else
+                    Bounds.Add(Y, X);
+            }
+
+            #region Define WidthEdgeHandler
+            Action<Int32Vector, Int32Vector> WidthEdgeHandler;
+            Action<Int32Point, Int32Point, Int32Vector> LineEdgeHandler;
+
+            if (AbsDeltaX < AbsDeltaY)
+            {
+                if (DeltaX > 0)
+                {
+                    WidthEdgeHandler = (LastDelta, Delta) =>
+                    {
+                        Push(IntX0 + Delta.X, IntY0 + Delta.Y);
+                        Push(IntX1 - Delta.X, IntY1 - Delta.Y);
+                        Push(IntX0 - LastDelta.X, IntY0 - LastDelta.Y);
+                        Push(IntX1 + LastDelta.X, IntY1 + LastDelta.Y);
+                    };
+                }
+                else
+                {
+                    WidthEdgeHandler = (LastDelta, Delta) =>
+                    {
+                        Push(IntX0 + LastDelta.X, IntY0 + LastDelta.Y);
+                        Push(IntX1 - LastDelta.X, IntY1 - LastDelta.Y);
+                        Push(IntX0 - Delta.X, IntY0 - Delta.Y);
+                        Push(IntX1 + Delta.X, IntY1 + Delta.Y);
+                    };
+                }
+
+                LineEdgeHandler = (LastPoint, Point, Delta) =>
+                {
+                    Push(Point.X + Delta.X, Point.Y + Delta.Y);
+                    Push(Point.X - Delta.X, Point.Y - Delta.Y);
+                };
+            }
+            else
+            {
+                WidthEdgeHandler = (LastDelta, Delta) =>
+                {
+                    Push(IntX0 + Delta.X, IntY0 + Delta.Y);
+                    Push(IntX0 - Delta.X, IntY0 - Delta.Y);
+                    Push(IntX1 + Delta.X, IntY1 + Delta.Y);
+                    Push(IntX1 - Delta.X, IntY1 - Delta.Y);
+                };
+
+                Push(IntX0, IntY0);
+                Push(IntX1, IntY1);
+
+                if (DeltaX > 0)
+                {
+                    LineEdgeHandler = (LastPoint, Point, Delta) =>
+                    {
+                        Push(LastPoint.X + Delta.X, LastPoint.Y + Delta.Y);
+                        Push(Point.X - Delta.X, Point.Y - Delta.Y);
+                    };
+                }
+                else
+                {
+                    LineEdgeHandler = (LastPoint, Point, Delta) =>
+                    {
+                        Push(Point.X + Delta.X, Point.Y + Delta.Y);
+                        Push(LastPoint.X - Delta.X, LastPoint.Y - Delta.Y);
+                    };
+                }
+            }
+
+            #endregion
+
+            Int32Vector WidthDelta = default;
+            int IntPenSquare = IntHalfPen * IntHalfPen;
+            // Calculate PenWidth Delta
+            foreach (Int32Vector d in LineDrawer.LoopNextWidthDelta(AbsDeltaY, -DeltaX, AbsDeltaX, 128))
+            {
+                if (d.LengthSquare > IntPenSquare)
+                    break;
+
+                if (d.Y != WidthDelta.Y)
+                    WidthEdgeHandler(WidthDelta, d);
+
+                WidthDelta = d;
+            }
+
+            // Draw
+            Int32Point LastPoint = new Int32Point(IntX0, IntY0);
+            foreach (Int32Point p in MathHelper.LinePoints(IntX0, IntY0, IntX1, IntY1, 128, DeltaX, AbsDeltaX, AbsDeltaY))
+            {
+                if (LastPoint.Y != p.Y)
+                    LineEdgeHandler(LastPoint, p, WidthDelta);
+
+                LastPoint = p;
+            }
+        }
+
+        public unsafe void DrawLine2(double X0, double Y0, double X1, double Y1, IPixel Color, double PenWidth)
+        {
+            int IntX0 = (int)(X0 * 128),
+                IntY0 = (int)(Y0 * 128),
+                IntX1 = (int)(X1 * 128),
+                IntY1 = (int)(Y1 * 128),
+                IntHalfPen = (int)(PenWidth * 64);
+
+            if (IntHalfPen == 0 ||
+                (IntX0 == IntX1 && IntY0 == IntY1))
+                return;
+
+            if (IntY0 > IntY1)
+            {
+                MathHelper.Swap(ref IntX0, ref IntX1);
+                MathHelper.Swap(ref IntY0, ref IntY1);
+            }
+
+            int DeltaX = IntX1 - IntX0,
+                AbsDeltaX = DeltaX.Abs(),
+                AbsDeltaY = IntY1 - IntY0;
+
+            Dictionary<int, int> Bounds = new Dictionary<int, int>();
+
+            #region Define FillScan
+            Action<int, int, int> FillScan;
+            switch (Channels)
+            {
+                case 1:
+#pragma warning disable IDE0059 // 指派了不必要的值
+                    PixelStruct Pixel = ToPixel(Color);
+#pragma warning restore IDE0059 // 指派了不必要的值
+                    FillScan = (X0, X1, Y) => this.FillScan((byte*)this.Scan0, X0, X1, Y, Pixel);
+                    break;
+                case 3:
+                    FillScan = (X0, X1, Y) => this.FillScan((byte*)this.ScanR, (byte*)this.ScanG, (byte*)this.ScanB, X0, X1, Y, Color);
+                    break;
+                case 4:
+                    FillScan = (X0, X1, Y) => this.FillScan((byte*)this.ScanA, (byte*)this.ScanR, (byte*)this.ScanG, (byte*)this.ScanB, X0, X1, Y, Color);
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+
+            #endregion
+
+            #region Vertical Line
+            if (DeltaX == 0)
+            {
+                IntY0 = Math.Max(IntY0 >> 7, 0);
+                IntY1 = Math.Min(IntY1 >> 7, this.Height);
+
+                for (; IntY0 <= IntY1; IntY0++)
+                    FillScan((IntX0 - IntHalfPen) >> 7, (IntX0 + IntHalfPen) >> 7, IntY0);
+                return;
+            }
+            #endregion
+            #region Horizontal Line
+            if (DeltaX == 0)
+            {
+                IntY0 = Math.Max((IntY0 - IntHalfPen) >> 7, 0);
+                IntY1 = Math.Min((IntY0 + IntHalfPen) >> 7, this.Height);
+
+                for (; IntY0 <= IntY1; IntY0++)
+                    FillScan(IntX0 >> 7, IntX1 >> 7, IntY0);
+                return;
+            }
+            #endregion
+
+            // Define Push
+            void Push(int X, int Y)
+            {
+                if (Bounds.TryGetValue(Y, out int X1))
+                {
+                    Bounds.Remove(Y);
+
+                    // Convert to real value
+                    X >>= 7;
+                    Y >>= 7;
+                    X1 >>= 7;
+
+                    // Fill
+                    FillScan(X, X1, Y);
+                }
+                else
+                    Bounds.Add(Y, X);
+            }
+
+            #region Define WidthEdgeHandler
+            Action<Int32Vector, Int32Vector> WidthEdgeHandler;
+            Action<Int32Point, Int32Point, Int32Vector> LineEdgeHandler;
+
+            if (AbsDeltaX < AbsDeltaY)
+            {
+                if (DeltaX > 0)
+                {
+                    WidthEdgeHandler = (LastDelta, Delta) =>
+                    {
+                        Push(IntX0 + Delta.X, IntY0 + Delta.Y);
+                        Push(IntX1 - Delta.X, IntY1 - Delta.Y);
+                        Push(IntX0 - LastDelta.X, IntY0 - LastDelta.Y);
+                        Push(IntX1 + LastDelta.X, IntY1 + LastDelta.Y);
+                    };
+                }
+                else
+                {
+                    WidthEdgeHandler = (LastDelta, Delta) =>
+                    {
+                        Push(IntX0 + LastDelta.X, IntY0 + LastDelta.Y);
+                        Push(IntX1 - LastDelta.X, IntY1 - LastDelta.Y);
+                        Push(IntX0 - Delta.X, IntY0 - Delta.Y);
+                        Push(IntX1 + Delta.X, IntY1 + Delta.Y);
+                    };
+                }
+
+                LineEdgeHandler = (LastPoint, Point, Delta) =>
+                {
+                    Push(Point.X + Delta.X, Point.Y + Delta.Y);
+                    Push(Point.X - Delta.X, Point.Y - Delta.Y);
+                };
+            }
+            else
+            {
+                WidthEdgeHandler = (LastDelta, Delta) =>
+                {
+                    Push(IntX0 + Delta.X, IntY0 + Delta.Y);
+                    Push(IntX0 - Delta.X, IntY0 - Delta.Y);
+                    Push(IntX1 + Delta.X, IntY1 + Delta.Y);
+                    Push(IntX1 - Delta.X, IntY1 - Delta.Y);
+                };
+
+                Push(IntX0, IntY0);
+                Push(IntX1, IntY1);
+
+                if (DeltaX > 0)
+                {
+                    LineEdgeHandler = (LastPoint, Point, Delta) =>
+                    {
+                        Push(LastPoint.X + Delta.X, LastPoint.Y + Delta.Y);
+                        Push(Point.X - Delta.X, Point.Y - Delta.Y);
+                    };
+                }
+                else
+                {
+                    LineEdgeHandler = (LastPoint, Point, Delta) =>
+                    {
+                        Push(Point.X + Delta.X, Point.Y + Delta.Y);
+                        Push(LastPoint.X - Delta.X, LastPoint.Y - Delta.Y);
+                    };
+                }
+            }
+
+            #endregion
+
+            Int32Vector WidthDelta = default;
+            int IntPenSquare = IntHalfPen * IntHalfPen;
+            // Calculate PenWidth Delta
+            foreach (Int32Vector d in LineDrawer.LoopNextWidthDelta(AbsDeltaY, -DeltaX, AbsDeltaX, 128))
+            {
+                if (d.LengthSquare > IntPenSquare)
+                    break;
+
+                if (d.Y != WidthDelta.Y)
+                    WidthEdgeHandler(WidthDelta, d);
+
+                WidthDelta = d;
+            }
+
+            // Draw
+            Int32Point LastPoint = new Int32Point(IntX0, IntY0);
+            foreach (Int32Point p in MathHelper.LinePoints(IntX0, IntY0, IntX1, IntY1, 128, DeltaX, AbsDeltaX, AbsDeltaY))
+            {
+                if (LastPoint.Y != p.Y)
+                    LineEdgeHandler(LastPoint, p, WidthDelta);
+
+                LastPoint = p;
+            }
+        }
+
+        private unsafe void FillScan(byte* Scan0, int X0, int X1, int Y, PixelStruct Pixel)
+        {
+            if (X0 > X1)
+                MathHelper.Swap(ref X0, ref X1);
+
+            X0 = Math.Max(0, X0);
+            X1 = Math.Min(this.Width, X1);
+
+            long Offset = (long)Y * Stride + (X0 * BitsPerPixel >> 3);
+            PixelStruct* Scan = (PixelStruct*)(Scan0 + Offset);
+
+            // Draw
+            for (; X0 <= X1; X0++)
+                *Scan++ = Pixel;
+        }
+        private unsafe void FillScan(byte* ScanR0, byte* ScanG0, byte* ScanB0, int X0, int X1, int Y, IPixel Pixel)
+        {
+            if (X0 > X1)
+                MathHelper.Swap(ref X0, ref X1);
+
+            X0 = Math.Max(0, X0);
+            X1 = Math.Min(this.Width, X1);
+
+            long Offset = (long)Y * Stride + (X0 * BitsPerPixel >> 3);
+            byte* ScanR = ScanR0 + Offset,
+                  ScanG = ScanG0 + Offset,
+                  ScanB = ScanB0 + Offset;
+
+            // Draw
+            for (; X0 <= X1; X0++)
+            {
+                *ScanR++ = Pixel.R;
+                *ScanG++ = Pixel.G;
+                *ScanB++ = Pixel.B;
+            }
+        }
+        private unsafe void FillScan(byte* ScanA0, byte* ScanR0, byte* ScanG0, byte* ScanB0, int X0, int X1, int Y, IPixel Pixel)
+        {
+            if (X0 > X1)
+                MathHelper.Swap(ref X0, ref X1);
+
+
+            X0 = Math.Max(0, X0);
+            X1 = Math.Min(this.Width, X1);
+
+            long Offset = (long)Y * Stride + (X0 * BitsPerPixel >> 3);
+            byte* ScanA = ScanA0 + Offset,
+                  ScanR = ScanR0 + Offset,
+                  ScanG = ScanG0 + Offset,
+                  ScanB = ScanB0 + Offset;
+
+            // Draw
+            for (; X0 <= X1; X0++)
+            {
+                *ScanA++ = Pixel.A;
+                *ScanR++ = Pixel.R;
+                *ScanG++ = Pixel.G;
+                *ScanB++ = Pixel.B;
+            }
+        }
+
     }
+
+
 }

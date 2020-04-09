@@ -1,4 +1,4 @@
-﻿namespace System.Windows
+﻿namespace MenthaAssembly
 {
     public struct Int32Size
     {

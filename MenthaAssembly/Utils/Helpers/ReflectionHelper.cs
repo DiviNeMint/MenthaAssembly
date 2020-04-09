@@ -1,4 +1,6 @@
-﻿namespace System.Reflection
+﻿using System.Collections.Generic;
+
+namespace System.Reflection
 {
     public static class ReflectionHelper
     {
@@ -55,6 +57,13 @@
             return Handler;
         }
 
+        public static IEnumerable<PropertyInfo> GetProperties(this Type This, params string[] PropertyNames)
+        {
+            foreach (string Name in PropertyNames)
+                if (This.GetProperty(Name) is PropertyInfo Info)
+                    yield return Info;
+        }
+
         public static T GetInternalValue<T>(this object This, string PropertyName)
         {
             Type BaseType = This.GetType();
@@ -87,5 +96,4 @@
         }
 
     }
-
 }

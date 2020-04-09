@@ -42,15 +42,6 @@ namespace System.Linq
             }
         }
 
-        public static bool Contains<TSource>(this IEnumerable<TSource> Source, Func<TSource, bool> Predicate)
-        {
-            foreach (TSource Item in Source)
-                if (Predicate(Item))
-                    return true;
-
-            return false;
-        }
-
         public static int FindIndex<TSource>(this IEnumerable<TSource> Source, Func<TSource, bool> Predicate)
         {
             int Index = 0;
@@ -58,6 +49,20 @@ namespace System.Linq
             {
                 if (Predicate(Item))
                     return Index;
+                Index++;
+            }
+
+            return -1;
+        }
+
+        public static int IndexOf<TSource>(this IList<TSource> Source, Func<TSource, bool> Predicate)
+        {
+            int Index = 0;
+            foreach (TSource Item in Source)
+            {
+                if (Predicate(Item))
+                    return Index;
+
                 Index++;
             }
 
@@ -73,5 +78,6 @@ namespace System.Linq
 
             return null;
         }
+
     }
 }

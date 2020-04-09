@@ -12,9 +12,9 @@ namespace MenthaAssembly.Media.Imaging
     {
         public static int IdentifyHeaderSize => 2;
 
-        public static bool TryDecode(string FilePath, out ImageContext Image)
+        public static bool TryDecode(string FilePath, out IImageContext Image)
             => TryDecode(new FileStream(FilePath, FileMode.Open, FileAccess.Read), out Image);
-        public static bool TryDecode(Stream Stream, out ImageContext Image)
+        public static bool TryDecode(Stream Stream, out IImageContext Image)
         {
             byte[] Datas = new byte[IdentifyHeaderSize];
 
@@ -52,18 +52,17 @@ namespace MenthaAssembly.Media.Imaging
             Stream.Seek(28, SeekOrigin.Begin);
             Stream.Read(Datas, 0, sizeof(short));
             int Bits = Datas[0] | Datas[1] << 8,
-                Channels = (Bits + 7) >> 3,
-                Stride = (((Width * Bits) >> 3) + 3) >> 2 << 2;
+                Stride = (((Width * Bits) >> 3) + 3) & 2147483644;
 
             //// Compression
             //Stream.Read(Datas, 0, Datas.Length);
             //int Compression = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
 
             // Palette
-            IList<int> Palette = null;
+            IList<BGRA> Palette = null;
             if (Offset > HeaderSize)
             {
-                Palette = new List<int>();
+                Palette = new List<BGRA>();
 
                 // NColors
                 Stream.Seek(46, SeekOrigin.Begin);
@@ -77,63 +76,53 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 0; i < NColors; i++)
                 {
                     Stream.Read(Datas, 0, Datas.Length);
-                    Palette.Add(Datas[0] |
-                                Datas[1] << 8 |
-                                Datas[2] << 16 |
-                                -16777216); // 0xFF << 24 = -16777216
+                    Palette.Add(new BGRA(Datas[0], Datas[1], Datas[2], byte.MaxValue));
                 }
             }
 
             // ImageDatas
-            int ChannelStride = Channels > 1 ? Width : Stride,
-                ChannelSize = ChannelStride * Height;
-            byte[][] ImageDatas = new byte[Channels][];
-
-            Datas = new byte[Stride];
-            Stream.Seek(Offset, SeekOrigin.Begin);
+            byte[] ImageDatas = new byte[Stride * Height];
 
             bool IsHeightNegative = Height < 0;
             if (IsHeightNegative)
                 Height = ~Height + 1;   // Abs
 
-            for (int j = 0; j < Height; j++)
-            {
-                Stream.Read(Datas, 0, Datas.Length);
+            Stream.Seek(Offset, SeekOrigin.Begin);
+            if (IsHeightNegative)
+                Stream.Read(ImageDatas, 0, ImageDatas.Length);
+            else
+                for (int j = Height - 1; j >= 0; j--)
+                    Stream.Read(ImageDatas, j * Stride, Stride);
 
-                Offset = (IsHeightNegative ? j : Height - j - 1) * ChannelStride;
-                Parallel.For(0, ImageDatas.Length,
-                    (c) =>
-                    {
-                        if (ImageDatas[c] is null)
-                            ImageDatas[c] = new byte[ChannelSize];
-
-                        for (int i = 0; i < ChannelStride; i++)
-                            ImageDatas[c][Offset + i] = Datas[i * Channels + c];
-                    });
-            }
-
-            Stream.Close();
-
-            switch (ImageDatas.Length)
+            switch (Bits)
             {
                 case 1:
-                    Image = new ImageContext(Width, Height, ImageDatas[0], Palette);
-                    return true;
-                case 3:
-                    Image = new ImageContext(Width, Height, ImageDatas[2], ImageDatas[1], ImageDatas[0]);
+                    Image = new ImageContext<Indexed1>(Width, Height, ImageDatas, Palette);
                     return true;
                 case 4:
-                    Image = new ImageContext(Width, Height, ImageDatas[3], ImageDatas[2], ImageDatas[1], ImageDatas[0]);
+                    Image = new ImageContext<Indexed4>(Width, Height, ImageDatas, Palette);
+                    return true;
+                case 8:
+                    Image = Palette is null ? 
+                            (IImageContext)new ImageContext<Gray8>(Width, Height, ImageDatas, Palette) :
+                                           new ImageContext<Indexed8>(Width, Height, ImageDatas, Palette);
+                    return true;
+                case 24:
+                    Image = new ImageContext<BGR>(Width, Height, ImageDatas);
+                    return true;
+                case 32:
+                    Image = new ImageContext<BGRA>(Width, Height, ImageDatas);
                     return true;
             }
+
 
             Image = null;
             return false;
         }
 
-        public static void Encode(ImageContext Image, string FilePath)
+        public static void Encode(IImageContext Image, string FilePath)
             => Encode(Image, new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write));
-        public static void Encode(ImageContext Image, Stream Stream)
+        public static void Encode(IImageContext Image, Stream Stream)
         {
             // Bitmap File Struct
             // https://crazycat1130.pixnet.net/blog/post/1345538#mark-4
@@ -181,10 +170,10 @@ namespace MenthaAssembly.Media.Imaging
                 {
                     for (int i = 0; i < Image.Palette.Count; i++)
                     {
-                        int Value = Image.Palette[i];
-                        Datas[0] = (byte)Value;
-                        Datas[1] = (byte)(Value >> 8);
-                        Datas[2] = (byte)(Value >> 16);
+                        BGRA Value = Image.Palette[i];
+                        Datas[0] = Value.R;
+                        Datas[1] = Value.G;
+                        Datas[2] = Value.B;
                         Stream.Write(Datas, 0, Datas.Length);
                     }
                 }
