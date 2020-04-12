@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Devices
 {
-    public enum MouseButton
+    public enum MouseKey
     {
         Left,
         Middle,

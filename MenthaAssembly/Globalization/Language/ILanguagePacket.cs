@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace MenthaAssembly.Globalization
 {
@@ -20,9 +19,8 @@ namespace MenthaAssembly.Globalization
             return null;
         }
 
-        protected void OnPropertyChanged([CallerMemberName]string PropertyName = null)
-            => this.PropertyChanged(this, new PropertyChangedEventArgs(PropertyName));
-        internal protected void OnPropertyChanged() 
-            => this.PropertyChanged(this, new PropertyChangedEventArgs(""));
+        internal protected void OnPropertyChanged()
+            => this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(""));
+
     }
 }

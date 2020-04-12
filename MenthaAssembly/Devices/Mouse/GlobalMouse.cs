@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Devices
@@ -7,45 +8,56 @@ namespace MenthaAssembly.Devices
     public static class GlobalMouse
     {
         #region Windows API
+        //https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexa
         private const int WH_MOUSE_LL = 14;
 
-        private const int WM_MOUSEMOVE = 0x200;
-        private const int WM_LBUTTONDOWN = 0x201;
-        private const int WM_LBUTTONUP = 0x202;
-        //private const int WM_LBUTTONDBLCLK = 0x203;
+        //https://docs.microsoft.com/en-us/windows/win32/inputdev/mouse-input-notifications
+        private const int WM_MouseMove = 0x200;
+        private const int WM_LButtonDown = 0x201;
+        private const int WM_LButtonUp = 0x202;
 
-        private const int WM_RBUTTONDOWN = 0x204;
-        private const int WM_RBUTTONUP = 0x205;
-        //private const int WM_RBUTTONDBLCLK = 0x206;
+        private const int WM_RButtonDown = 0x204;
+        private const int WM_RButtonUp = 0x205;
 
-        private const int WM_MBUTTONDOWN = 0x207;
-        private const int WM_MBUTTONUP = 0x208;
-        //private const int WM_MBUTTONDBLCLK = 0x209;
+        private const int WM_MButtonDown = 0x207;
+        private const int WM_MButtonUp = 0x208;
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct MSLLHOOKSTRUCT
+        internal struct MouseInputInfo
         {
-            public Int32Point Position;
-            public uint MouseData;
-            public uint Flags;
-            public uint Time;
-            public IntPtr dwExtraInfo;
+            public Int32Point Position { set; get; }
+
+            public int MouseData { set; get; }
+
+            public MouseFlag Flags { set; get; }
+
+            public uint Time { set; get; }
+
+            public IntPtr ExtraInfo { get; }
+        }
+
+        private enum MouseData : int
+        {
+            None = 0,
+            XButton1,
+            XButton2
         }
 
         [Flags]
-        private enum MouseEventFlags : uint
+        internal enum MouseFlag : uint
         {
-            LEFTDOWN = 0x00000002,
-            LEFTUP = 0x00000004,
-            MIDDLEDOWN = 0x00000020,
-            MIDDLEUP = 0x00000040,
-            MOVE = 0x00000001,
-            ABSOLUTE = 0x00008000,
-            RIGHTDOWN = 0x00000008,
-            RIGHTUP = 0x00000010,
-            WHEEL = 0x00000800,
-            XDOWN = 0x00000080,
-            XUP = 0x00000100
+            Move = 1,
+            LeftDown = 2,
+            LeftUp = 4,
+            RightDown = 8,
+            RightUp = 10,
+            MiddleDown = 20,
+            MiddleUp = 40,
+            XDown = 90,
+            XUp = 100,
+            Wheel = 800,
+            VirtualDesk = 4000,
+            Absolute = 8000,
         }
 
         private delegate int HookProc(int nCode, int wParam, IntPtr lParam);
@@ -64,7 +76,7 @@ namespace MenthaAssembly.Devices
 
         //https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-mouse_event
         [DllImport("user32.dll")]
-        private static extern void mouse_event(MouseEventFlags dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
+        private static extern void mouse_event(MouseFlag dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
 
         #endregion
 
@@ -163,16 +175,16 @@ namespace MenthaAssembly.Devices
                 IsCapturing = false;
             }
         }
-        private static int MouseHookProc(int nCode, int wParam, IntPtr lParam)
+        private unsafe static int MouseHookProc(int nCode, int wParam, IntPtr lParam)
         {
             if (nCode >= 0)
             {
-                MSLLHOOKSTRUCT MouseHookInfo = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                MouseInputInfo* Info = (MouseInputInfo*)lParam;
                 switch (wParam)
                 {
-                    case WM_LBUTTONDOWN:
+                    case WM_LButtonDown:
                         {
-                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(MouseHookInfo.Position, MouseButton.Left);
+                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(Info->Position, MouseKey.Left);
                             _MouseDown?.Invoke(e);
 
                             if (e.Handled)
@@ -180,9 +192,9 @@ namespace MenthaAssembly.Devices
 
                             break;
                         }
-                    case WM_RBUTTONDOWN:
+                    case WM_RButtonDown:
                         {
-                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(MouseHookInfo.Position, MouseButton.Right);
+                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(Info->Position, MouseKey.Right);
                             _MouseDown?.Invoke(e);
 
                             if (e.Handled)
@@ -190,9 +202,9 @@ namespace MenthaAssembly.Devices
 
                             break;
                         }
-                    case WM_MBUTTONDOWN:
+                    case WM_MButtonDown:
                         {
-                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(MouseHookInfo.Position, MouseButton.Middle);
+                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(Info->Position, MouseKey.Middle);
                             _MouseDown?.Invoke(e);
 
                             if (e.Handled)
@@ -200,9 +212,9 @@ namespace MenthaAssembly.Devices
 
                             break;
                         }
-                    case WM_LBUTTONUP:
+                    case WM_LButtonUp:
                         {
-                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(MouseHookInfo.Position, MouseButton.Left);
+                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(Info->Position, MouseKey.Left);
                             _MouseUp?.Invoke(e);
 
                             if (e.Handled)
@@ -210,9 +222,9 @@ namespace MenthaAssembly.Devices
 
                             break;
                         }
-                    case WM_RBUTTONUP:
+                    case WM_RButtonUp:
                         {
-                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(MouseHookInfo.Position, MouseButton.Right);
+                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(Info->Position, MouseKey.Right);
                             _MouseUp?.Invoke(e);
 
                             if (e.Handled)
@@ -220,9 +232,9 @@ namespace MenthaAssembly.Devices
 
                             break;
                         }
-                    case WM_MBUTTONUP:
+                    case WM_MButtonUp:
                         {
-                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(MouseHookInfo.Position, MouseButton.Middle);
+                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(Info->Position, MouseKey.Middle);
                             _MouseUp?.Invoke(e);
 
                             if (e.Handled)
@@ -230,139 +242,141 @@ namespace MenthaAssembly.Devices
 
                             break;
                         }
-                    case WM_MOUSEMOVE:
-                        _MouseMove?.Invoke(MouseHookInfo.Position);
+                    case WM_MouseMove:
+                        _MouseMove?.Invoke(Info->Position);
                         break;
                 }
             }
             return CallNextHookEx(HookId, nCode, wParam, lParam);
         }
 
-        public static void DoMouseDown(MouseButton Button)
+        public static void DoMouseDown(MouseKey Button)
         {
             switch (Button)
             {
-                case MouseButton.Left:
-                    mouse_event(MouseEventFlags.LEFTDOWN, 0, 0, 0, 0);
+                case MouseKey.Left:
+                    mouse_event(MouseFlag.LeftDown, 0, 0, 0, 0);
                     break;
-                case MouseButton.Right:
-                    mouse_event(MouseEventFlags.RIGHTDOWN, 0, 0, 0, 0);
+                case MouseKey.Right:
+                    mouse_event(MouseFlag.RightDown, 0, 0, 0, 0);
                     break;
-                case MouseButton.Middle:
-                    mouse_event(MouseEventFlags.MIDDLEDOWN, 0, 0, 0, 0);
+                case MouseKey.Middle:
+                    mouse_event(MouseFlag.MiddleDown, 0, 0, 0, 0);
                     break;
-                case MouseButton.XButton1:
-                    mouse_event(MouseEventFlags.XDOWN, 0, 0, 1, 0);
+                case MouseKey.XButton1:
+                    mouse_event(MouseFlag.XDown, 0, 0, (int)MouseData.XButton1, 0);
                     break;
-                case MouseButton.XButton2:
-                    mouse_event(MouseEventFlags.XDOWN, 0, 0, 2, 0);
+                case MouseKey.XButton2:
+                    mouse_event(MouseFlag.XDown, 0, 0, (int)MouseData.XButton2, 0);
                     break;
             }
         }
-        public static void DoMouseDown(MouseButton Button, int X, int Y)
+        public static void DoMouseDown(MouseKey Button, int X, int Y)
         {
             switch (Button)
             {
-                case MouseButton.Left:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.LEFTDOWN, X, Y, 0, 0);
+                case MouseKey.Left:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.LeftDown, X, Y, 0, 0);
                     break;
-                case MouseButton.Right:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.RIGHTDOWN, X, Y, 0, 0);
+                case MouseKey.Right:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.RightDown, X, Y, 0, 0);
                     break;
-                case MouseButton.Middle:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.MIDDLEDOWN, X, Y, 0, 0);
+                case MouseKey.Middle:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.MiddleDown, X, Y, 0, 0);
                     break;
-                case MouseButton.XButton1:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.XDOWN, X, Y, 1, 0);
+                case MouseKey.XButton1:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.XDown, X, Y, (int)MouseData.XButton1, 0);
                     break;
-                case MouseButton.XButton2:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.XDOWN, X, Y, 2, 0);
-                    break;
-            }
-        }
-
-        public static void DoMouseUp(MouseButton Button)
-        {
-            switch (Button)
-            {
-                case MouseButton.Left:
-                    mouse_event(MouseEventFlags.LEFTUP, 0, 0, 0, 0);
-                    break;
-                case MouseButton.Right:
-                    mouse_event(MouseEventFlags.RIGHTUP, 0, 0, 0, 0);
-                    break;
-                case MouseButton.Middle:
-                    mouse_event(MouseEventFlags.MIDDLEUP, 0, 0, 0, 0);
-                    break;
-                case MouseButton.XButton1:
-                    mouse_event(MouseEventFlags.XUP, 0, 0, 1, 0);
-                    break;
-                case MouseButton.XButton2:
-                    mouse_event(MouseEventFlags.XUP, 0, 0, 2, 0);
-                    break;
-            }
-        }
-        public static void DoMouseUp(MouseButton Button, int X, int Y)
-        {
-            switch (Button)
-            {
-                case MouseButton.Left:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.LEFTUP, X, Y, 0, 0);
-                    break;
-                case MouseButton.Right:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.RIGHTUP, X, Y, 0, 0);
-                    break;
-                case MouseButton.Middle:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.MIDDLEUP, X, Y, 0, 0);
-                    break;
-                case MouseButton.XButton1:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.XUP, X, Y, 1, 0);
-                    break;
-                case MouseButton.XButton2:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.XUP, X, Y, 2, 0);
+                case MouseKey.XButton2:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.XDown, X, Y, (int)MouseData.XButton2, 0);
                     break;
             }
         }
 
-        public static void DoClick(MouseButton Button)
+        public static void DoMouseUp(MouseKey Button)
         {
             switch (Button)
             {
-                case MouseButton.Left:
-                    mouse_event(MouseEventFlags.LEFTDOWN | MouseEventFlags.LEFTUP, 0, 0, 0, 0);
+                case MouseKey.Left:
+                    mouse_event(MouseFlag.LeftUp, 0, 0, 0, 0);
                     break;
-                case MouseButton.Right:
-                    mouse_event(MouseEventFlags.RIGHTDOWN | MouseEventFlags.RIGHTUP, 0, 0, 0, 0);
+                case MouseKey.Right:
+                    mouse_event(MouseFlag.RightUp, 0, 0, 0, 0);
                     break;
-                case MouseButton.Middle:
-                    mouse_event(MouseEventFlags.MIDDLEDOWN | MouseEventFlags.MIDDLEUP, 0, 0, 0, 0);
+                case MouseKey.Middle:
+                    mouse_event(MouseFlag.MiddleUp, 0, 0, 0, 0);
                     break;
-                case MouseButton.XButton1:
-                    mouse_event(MouseEventFlags.XDOWN | MouseEventFlags.XUP, 0, 0, 1, 0);
+                case MouseKey.XButton1:
+                    mouse_event(MouseFlag.XUp, 0, 0, (int)MouseData.XButton1, 0);
                     break;
-                case MouseButton.XButton2:
-                    mouse_event(MouseEventFlags.XDOWN | MouseEventFlags.XUP, 0, 0, 2, 0);
+                case MouseKey.XButton2:
+                    mouse_event(MouseFlag.XUp, 0, 0, (int)MouseData.XButton2, 0);
+                    break;
+                default:
+                    throw new NotImplementedException($"Not imaplement MouseKey.{Button}.");
+            }
+        }
+        public static void DoMouseUp(MouseKey Button, int X, int Y)
+        {
+            switch (Button)
+            {
+                case MouseKey.Left:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.LeftUp, X, Y, 0, 0);
+                    break;
+                case MouseKey.Right:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.RightUp, X, Y, 0, 0);
+                    break;
+                case MouseKey.Middle:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.MiddleUp, X, Y, 0, 0);
+                    break;
+                case MouseKey.XButton1:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.XUp, X, Y, (int)MouseData.XButton1, 0);
+                    break;
+                case MouseKey.XButton2:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.XUp, X, Y, (int)MouseData.XButton2, 0);
                     break;
             }
         }
-        public static void DoClick(MouseButton Button, int X, int Y)
+
+        public static void DoClick(MouseKey Button)
         {
             switch (Button)
             {
-                case MouseButton.Left:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.LEFTDOWN | MouseEventFlags.LEFTUP, X, Y, 0, 0);
+                case MouseKey.Left:
+                    mouse_event(MouseFlag.LeftDown | MouseFlag.LeftUp, 0, 0, 0, 0);
                     break;
-                case MouseButton.Right:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.RIGHTDOWN | MouseEventFlags.RIGHTUP, X, Y, 0, 0);
+                case MouseKey.Right:
+                    mouse_event(MouseFlag.RightDown | MouseFlag.RightUp, 0, 0, 0, 0);
                     break;
-                case MouseButton.Middle:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.MIDDLEDOWN | MouseEventFlags.MIDDLEUP, X, Y, 0, 0);
+                case MouseKey.Middle:
+                    mouse_event(MouseFlag.MiddleDown | MouseFlag.MiddleUp, 0, 0, 0, 0);
                     break;
-                case MouseButton.XButton1:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.XDOWN | MouseEventFlags.XUP, X, Y, 1, 0);
+                case MouseKey.XButton1:
+                    mouse_event(MouseFlag.XDown | MouseFlag.XUp, 0, 0, (int)MouseData.XButton1, 0);
                     break;
-                case MouseButton.XButton2:
-                    mouse_event(MouseEventFlags.ABSOLUTE | MouseEventFlags.XDOWN | MouseEventFlags.XUP, X, Y, 2, 0);
+                case MouseKey.XButton2:
+                    mouse_event(MouseFlag.XDown | MouseFlag.XUp, 0, 0, (int)MouseData.XButton2, 0);
+                    break;
+            }
+        }
+        public static void DoClick(MouseKey Button, int X, int Y)
+        {
+            switch (Button)
+            {
+                case MouseKey.Left:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.LeftDown | MouseFlag.LeftUp, X, Y, 0, 0);
+                    break;
+                case MouseKey.Right:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.RightDown | MouseFlag.RightUp, X, Y, 0, 0);
+                    break;
+                case MouseKey.Middle:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.MiddleDown | MouseFlag.MiddleUp, X, Y, 0, 0);
+                    break;
+                case MouseKey.XButton1:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.XDown | MouseFlag.XUp, X, Y, (int)MouseData.XButton1, 0);
+                    break;
+                case MouseKey.XButton2:
+                    mouse_event(MouseFlag.Absolute | MouseFlag.XDown | MouseFlag.XUp, X, Y, (int)MouseData.XButton2, 0);
                     break;
             }
         }

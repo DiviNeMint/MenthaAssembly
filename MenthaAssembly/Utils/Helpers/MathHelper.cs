@@ -172,5 +172,12 @@ namespace MenthaAssembly
             return m == d ? 0 : m;
         }
 
+        public static T MaxAndMin<T>(this T Value, T Max, T Min)
+            where T : IComparable
+        {
+            int Result = Value.CompareTo(Min);
+            return Result < 0 ? Min : (Result > 0 ? Max : Value);
+        }
+
     }
 }

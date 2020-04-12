@@ -1,18 +1,16 @@
 ﻿using System;
-using System.Windows;
-using System.Windows.Input;
 
 namespace MenthaAssembly.Devices
 {
     public class GlobalMouseEventArgs : EventArgs
     {
-        public Int32Point Position { get; }
-
-        public MouseButton ChangedButton { get; }
-
         public bool Handled { set; get; }
 
-        public GlobalMouseEventArgs(Int32Point Position, MouseButton ChangedButton)
+        public Int32Point Position { get; }
+
+        public MouseKey ChangedButton { get; }
+
+        public GlobalMouseEventArgs(Int32Point Position, MouseKey ChangedButton)
         {
             this.Position = Position;
             this.ChangedButton = ChangedButton;
