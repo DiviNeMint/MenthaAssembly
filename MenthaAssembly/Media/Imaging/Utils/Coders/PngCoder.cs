@@ -311,7 +311,7 @@ namespace MenthaAssembly.Media.Imaging
             switch (ImageDatas.Length)
             {
                 case 1:
-                    Image = new ImageContext<Gray8>(Width, Height, ImageDatas[0], Palette);
+                    Image = new ImageContext<Gray8>(Width, Height, ImageDatas[0], Palette?.Cast<Gray8>().ToList());
                     return true;
                 case 3:
                     Image = new ImageContext<RGB>(Width, Height, ImageDatas[0], ImageDatas[1], ImageDatas[2]);
@@ -348,7 +348,9 @@ namespace MenthaAssembly.Media.Imaging
             #region PLTE
             if (Image.BitsPerPixel <= 8)
             {
-                if (Image.Palette is null)
+                IList<IPixel> Palette = Image.Palette;
+                if (Palette is null ||
+                    Palette.Count == 0)
                 {
                     Datas = new byte[3 << Image.BitsPerPixel];
                     int ColorStep = byte.MaxValue / ((1 << Image.BitsPerPixel) - 1);
@@ -361,10 +363,10 @@ namespace MenthaAssembly.Media.Imaging
                 }
                 else
                 {
-                    Datas = new byte[Image.Palette.Count * 3];
-                    for (int i = 0; i < Image.Palette.Count; i++)
+                    Datas = new byte[Palette.Count * 3];
+                    for (int i = 0; i < Palette.Count; i++)
                     {
-                        ARGB Value = Image.Palette[i];
+                        IPixel Value = Palette[i];
                         Datas[i * 3] = Value.R;
                         Datas[i * 3 + 1] = Value.G;
                         Datas[i * 3 + 2] = Value.B;

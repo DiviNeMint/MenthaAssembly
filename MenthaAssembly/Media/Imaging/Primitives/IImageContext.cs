@@ -1,5 +1,4 @@
-﻿using MenthaAssembly.Media.Imaging.Primitives;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging
@@ -18,6 +17,8 @@ namespace MenthaAssembly.Media.Imaging
 
         public Type PixelType { get; }
 
+        public Type StructType { get; }
+
         public IPixel this[int X, int Y] { set; get; }
 
         public IntPtr Scan0 { get; }
@@ -30,10 +31,22 @@ namespace MenthaAssembly.Media.Imaging
 
         public IntPtr ScanB { get; }
 
-        public IList<BGRA> Palette { get; }
+        public IList<IPixel> Palette { get; }
 
-        public void DrawLine(int X0, int Y0, int X1, int Y1, byte A, byte R, byte G, byte B, int PenWidth);
-        public void DrawLine(double X0, double Y0, double X1, double Y1, IPixel Color, double PenWidth);
+        /// <summary>
+        /// Flips (reflects the image) either vertical or horizontal.
+        /// </summary>
+        /// <param name="Mode">The flip mode.</param>
+        public IImageContext Flip(FlipMode Mode);
+
+        /// <summary>
+        /// Creates a new cropped IImageContext.
+        /// </summary>
+        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
+        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
+        public IImageContext Crop(int X, int Y, int Width, int Height);
 
     }
 }

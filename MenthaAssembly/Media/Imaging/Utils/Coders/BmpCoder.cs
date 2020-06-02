@@ -73,10 +73,16 @@ namespace MenthaAssembly.Media.Imaging
                     NColors = 1 << Bits;
 
                 Stream.Seek(HeaderSize, SeekOrigin.Begin);
+                BGRA BlackColor = new BGRA(0, 0, 0, 255),
+                     Color;
                 for (int i = 0; i < NColors; i++)
                 {
                     Stream.Read(Datas, 0, Datas.Length);
-                    Palette.Add(new BGRA(Datas[0], Datas[1], Datas[2], byte.MaxValue));
+                    Color = new BGRA(Datas[0], Datas[1], Datas[2], byte.MaxValue);
+
+                    if (!(Color == BlackColor && Datas[3] == 0) &&
+                        !Palette.Contains(Color))
+                        Palette.Add(Color);
                 }
             }
 
@@ -97,15 +103,15 @@ namespace MenthaAssembly.Media.Imaging
             switch (Bits)
             {
                 case 1:
-                    Image = new ImageContext<Indexed1>(Width, Height, ImageDatas, Palette);
+                    Image = new ImageContext<BGRA, Indexed1>(Width, Height, ImageDatas, Palette);
                     return true;
                 case 4:
-                    Image = new ImageContext<Indexed4>(Width, Height, ImageDatas, Palette);
+                    Image = new ImageContext<BGRA, Indexed4>(Width, Height, ImageDatas, Palette);
                     return true;
                 case 8:
-                    Image = Palette is null ? 
-                            (IImageContext)new ImageContext<Gray8>(Width, Height, ImageDatas, Palette) :
-                                           new ImageContext<Indexed8>(Width, Height, ImageDatas, Palette);
+                    Image = Palette is null ?
+                            (IImageContext)new ImageContext<Gray8>(Width, Height, ImageDatas) :
+                                           new ImageContext<BGRA, Indexed8>(Width, Height, ImageDatas, Palette);
                     return true;
                 case 24:
                     Image = new ImageContext<BGR>(Width, Height, ImageDatas);
@@ -127,10 +133,11 @@ namespace MenthaAssembly.Media.Imaging
             // Bitmap File Struct
             // https://crazycat1130.pixnet.net/blog/post/1345538#mark-4
 
-            int Stride = (((Image.Width * Image.BitsPerPixel) >> 3) + 3) >> 2 << 2;
-            int ImageSize = Stride * Image.Height;
-            int HeaderOffset = Image.BitsPerPixel > 8 ? 54 : 54 + (4 << Image.BitsPerPixel);
-            int FileSize = ImageSize + HeaderOffset;
+            int Stride = (((Image.Width * Image.BitsPerPixel) >> 3) + 3) >> 2 << 2,
+                PaletteByteLength = 4 << Image.BitsPerPixel,
+                ImageSize = Stride * Image.Height,
+                HeaderOffset = Image.BitsPerPixel > 8 ? 54 : 54 + PaletteByteLength,
+                FileSize = ImageSize + HeaderOffset;
             byte[] InfoDatas =
             {
                 66, 77,                                                                                                 // Format       , 2 Bytes
@@ -154,8 +161,10 @@ namespace MenthaAssembly.Media.Imaging
             // Palette
             if (HeaderOffset > 54)
             {
+                IList<IPixel> Palette = Image.Palette;
                 byte[] Datas = new byte[sizeof(int)];
-                if (Image.Palette is null)
+                if (Palette is null ||
+                    Palette.Count == 0)
                 {
                     int ColorStep = byte.MaxValue / ((1 << Image.BitsPerPixel) - 1);
                     for (int i = 0; i < 256; i += ColorStep)
@@ -168,13 +177,20 @@ namespace MenthaAssembly.Media.Imaging
                 }
                 else
                 {
-                    for (int i = 0; i < Image.Palette.Count; i++)
+                    for (int i = 0; i < Palette.Count; i++)
                     {
-                        BGRA Value = Image.Palette[i];
-                        Datas[0] = Value.R;
+                        IPixel Value = Palette[i];
+                        Datas[0] = Value.B;
                         Datas[1] = Value.G;
-                        Datas[2] = Value.B;
+                        Datas[2] = Value.R;
                         Stream.Write(Datas, 0, Datas.Length);
+                    }
+
+                    int CurrentLength = Palette.Count << 2;
+                    if (CurrentLength < PaletteByteLength)
+                    {
+                        int EmptyLength = PaletteByteLength - CurrentLength;
+                        Stream.Write(new byte[EmptyLength], 0, EmptyLength);
                     }
                 }
             }

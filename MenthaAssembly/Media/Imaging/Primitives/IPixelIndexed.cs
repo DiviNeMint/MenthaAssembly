@@ -1,4 +1,6 @@
-﻿namespace MenthaAssembly.Media.Imaging.Primitives
+﻿using MenthaAssembly.Media.Imaging.Primitives;
+
+namespace MenthaAssembly.Media.Imaging
 {
     public interface IPixelIndexed : IPixelBase
     {
