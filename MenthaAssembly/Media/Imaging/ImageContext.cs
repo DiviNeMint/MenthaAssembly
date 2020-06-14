@@ -2,7 +2,6 @@
 using MenthaAssembly.Media.Imaging.Primitives;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace MenthaAssembly
@@ -10,6 +9,11 @@ namespace MenthaAssembly
     public class ImageContext<Pixel> : ImageContextBase<Pixel, Pixel>
         where Pixel : unmanaged, IPixel
     {
+        public new IntPtr ScanA => base.ScanA;
+        public new IntPtr ScanR => base.ScanR;
+        public new IntPtr ScanG => base.ScanG;
+        public new IntPtr ScanB => base.ScanB;
+
         public ImageContext(int Width, int Height) : base(Width, Height)
         {
         }
@@ -55,50 +59,87 @@ namespace MenthaAssembly
         {
         }
 
+        /// <summary>
+        /// Create a new flipped ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
+        /// </summary>
+        /// <param name="Mode">The flip mode.</param>
         public ImageContext<Pixel> Flip(FlipMode Mode)
+            => this.Flip<Pixel>(Mode) ?? this;
+        /// <summary>
+        /// Create a new flipped ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <param name="Mode">The flip mode.</param>
+        public unsafe ImageContext<T> Flip<T>(FlipMode Mode)
+            where T : unmanaged, IPixel
         {
             if (Mode == FlipMode.Vertical)
             {
-                Parallel.For(0, Height >> 1, (y) =>
+                // Create Result
+                ImageContext<T> Result = new ImageContext<T>(Width, Height);
+
+                SetPixelValue Handler = CreateSetPixelValue<T>();
+                int DestStride = Result.Stride;
+                byte* Dest0 = (byte*)Result.Scan0;
+                Parallel.For(0, Height, (y) =>
                 {
-                    int DestY = Height - 1 - y;
-                    for (int x = 0; x < Width; x++)
-                    {
-                        Pixel Pixel = GetPixel(x, y);
-                        SetPixel(x, y, GetPixel(x, DestY));
-                        SetPixel(x, DestY, Pixel);
-                    }
+                    byte* Dest = Dest0 + DestStride * (Height - 1 - y);
+                    ScanLineCopy(0, y, Width, Dest, Handler);
                 });
+
+                return Result;
             }
             else if (Mode == FlipMode.Horizontal)
             {
-                Parallel.For(0, Width >> 1, (x) =>
+                // Create Result
+                ImageContext<T> Result = new ImageContext<T>(Width, Height);
+
+                SetPixelValue Handler = CreateSetPixelValue<T>();
+
+                int DestStride = Result.Stride;
+                byte* Dest0 = (byte*)Result.Scan0;
+                Parallel.For(0, Height, (y) =>
                 {
-                    int DestX = Width - 1 - x;
-                    for (int y = 0; y < Height; y++)
+                    byte* Dest = Dest0 + DestStride * y;
+
+                    int SourceX = Width - 1;
+                    for (int x = 0; x < Width; x++)
                     {
-                        Pixel Pixel = GetPixel(x, y);
-                        SetPixel(x, y, GetPixel(DestX, y));
-                        SetPixel(DestX, y, Pixel);
+                        Pixel Pixel = GetPixel(SourceX--, y);
+                        Handler(ref Dest, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+                        Dest++;
                     }
                 });
+
+                return Result;
             }
 
-            return this;
+            return null;
         }
+        protected override IImageContext FlipHandler(FlipMode Mode)
+            => this.Flip(Mode);
 
         /// <summary>
-        /// Creates a new cropped ImageContext<<typeparamref name="T"/>>.
+        /// Creates a new cropped ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
         /// </summary>
         /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
         /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
         /// <param name="Width">The width of the rectangle that defines the crop region.</param>
         /// <param name="Height">The height of the rectangle that defines the crop region.</param>
-        public unsafe ImageContext<Pixel> Crop(int X, int Y, int Width, int Height)
+        public ImageContext<Pixel> Crop(int X, int Y, int Width, int Height)
+            => this.Crop<Pixel>(X, Y, Width, Height);
+        /// <summary>
+        /// Creates a new cropped ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
+        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
+        public unsafe ImageContext<T> Crop<T>(int X, int Y, int Width, int Height)
+            where T : unmanaged, IPixel
         {
             // If the rectangle is completely out of the bitmap
             if (X > this.Width || Y > this.Height)
-                return new ImageContext<Pixel>(0, 0);
+                return new ImageContext<T>(0, 0);
 
             // Clamp to boundaries
             X = Math.Max(X, 0);
@@ -107,44 +148,157 @@ namespace MenthaAssembly
             Height = Math.Max(Math.Min(Height, this.Height - Y), 0);
 
             // Create Result
-            ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+            ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-            Parallel.For(0, Height, (j) =>
-            {
-                Pixel* Pixels = (Pixel*)Result.Scan0;
-                Pixels += j * (long)Width;
-
-                int SourceY = Y + j;
-                for (int i = 0; i < Width; i++)
-                    *Pixels++ = this.GetPixel(X + i, SourceY);
-            });
+            this.BlockCopy<T>(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride);
 
             return Result;
         }
-        protected override IImageContext HandleCrop(int X, int Y, int Width, int Height)
-            => this.Crop(X, Y, Width, Height);
+        protected override IImageContext CropHandler(int X, int Y, int Width, int Height)
+            => this.Crop<Pixel>(X, Y, Width, Height);
 
-        public unsafe ImageContext<T> Cast<T>()
-            where T : unmanaged, IPixel
+        /// <summary>
+        /// Creates a new filtered ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
+        /// </summary>
+        /// <param name="Kernel">The kernel used for convolution.</param>
+        /// <param name="KernelFactorSum">The factor used for the kernel summing.</param>
+        /// <param name="KernelOffsetSum">The offset used for the kernel summing.</param>
+        public ImageContext<Pixel> Convolute(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
         {
-            ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
+            int KH = Kernel.GetUpperBound(0) + 1,
+                KW = Kernel.GetUpperBound(1) + 1;
 
-            Parallel.For(0, this.Height, (Y) =>
+            if ((KW & 1) == 0)
+                throw new InvalidOperationException("Kernel width must be odd!");
+
+            if ((KH & 1) == 0)
+                throw new InvalidOperationException("Kernel height must be odd!");
+
+            KernelFactorSum = Math.Max(KernelFactorSum, 1);
+
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(this.Width, this.Height);
+
+            int kwh = KW >> 1;
+            int khh = KH >> 1;
+
+            // Init Common Function
+            Pixel[] GetVerticalPixels(int X, int Y)
             {
-                T* Pixels = (T*)Result.Scan0;
-                Pixels += Y * (long)Width;
+                Pixel[] Pixels = new Pixel[KH];
+                for (int j = 0; j < KH; j++)
+                    Pixels[j] = this.GetPixel(X, Math.Min(Math.Max(Y + j - khh, 0), this.Height - 1));
 
-                Pixel SourcePixel;
-                for (int X = 0; X < Width; X++)
+                return Pixels;
+            };
+
+            Parallel.For(0, this.Height, (y) =>
+            {
+                Queue<Pixel[]> PixelBlock = new Queue<Pixel[]>();
+
+                // Init Block
+                Pixel[] LeftBoundPixels = GetVerticalPixels(0, y);
+
+                // Repeat pixels at borders
+                for (int i = 0; i <= kwh; i++)
+                    PixelBlock.Enqueue(LeftBoundPixels);
+
+                // Fill pixels at center
+                for (int i = 1; i < kwh; i++)
+                    PixelBlock.Enqueue(GetVerticalPixels(Math.Min(i, this.Width - 1), y));
+
+                for (int x = 0; x < this.Width; x++)
                 {
-                    SourcePixel = this.GetPixel(X, Y);
-                    *Pixels++ = Result.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B);
+                    int A = 0,
+                        R = 0,
+                        G = 0,
+                        B = 0;
+
+                    // Left Bound and not enqueue.
+                    int KXIndex = 0;
+                    Pixel[] Pixels = PixelBlock.Dequeue();
+                    for (int j = 0; j < KH; j++)
+                    {
+                        int k = Kernel[j, KXIndex];
+                        if (k == 0)
+                            continue;
+
+                        Pixel Pixel = Pixels[j];
+                        A += Pixel.A * k;
+                        R += Pixel.R * k;
+                        G += Pixel.G * k;
+                        B += Pixel.B * k;
+                    }
+
+                    for (KXIndex = 1; KXIndex < KW - 1; KXIndex++)
+                    {
+                        Pixels = PixelBlock.Dequeue();
+                        for (int j = 0; j < KH; j++)
+                        {
+                            int k = Kernel[j, KXIndex];
+                            if (k == 0)
+                                continue;
+
+                            Pixel Pixel = Pixels[j];
+                            A += Pixel.A * k;
+                            R += Pixel.R * k;
+                            G += Pixel.G * k;
+                            B += Pixel.B * k;
+                        }
+
+                        PixelBlock.Enqueue(Pixels);
+                    }
+
+                    // Right Bound and enqueue
+                    Pixels = new Pixel[KH];
+                    for (int j = 0; j < KH; j++)
+                    {
+                        Pixel Pixel = this.GetPixel(Math.Min(x + kwh, this.Width - 1), Math.Min(Math.Max(y + j - khh, 0), this.Height - 1));
+                        Pixels[j] = Pixel;
+
+                        int k = Kernel[j, KXIndex];
+                        if (k == 0)
+                            continue;
+
+                        A += Pixel.A * k;
+                        R += Pixel.R * k;
+                        G += Pixel.G * k;
+                        B += Pixel.B * k;
+                    }
+
+                    PixelBlock.Enqueue(Pixels);
+
+                    Result.SetPixel(x, y, ToPixel((byte)Math.Min(Math.Max((A / KernelFactorSum) + KernelOffsetSum, 0), 255),
+                                                  (byte)Math.Min(Math.Max((R / KernelFactorSum) + KernelOffsetSum, 0), 255),
+                                                  (byte)Math.Min(Math.Max((G / KernelFactorSum) + KernelOffsetSum, 0), 255),
+                                                  (byte)Math.Min(Math.Max((B / KernelFactorSum) + KernelOffsetSum, 0), 255)));
                 }
             });
 
             return Result;
         }
-        public unsafe ImageContext<T, U> Cast<T, U>()
+        /// <summary>
+        /// Creates a new filtered ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
+        /// </summary>
+        /// <param name="Kernel">The kernel used for convolution.</param>
+        public ImageContext<Pixel> Convolute(ConvoluteKernel Kernel)
+            => Convolute(Kernel.Datas, Kernel.FactorSum, Kernel.Offset);
+        protected override IImageContext ConvoluteHandler(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
+            => this.Convolute(Kernel, KernelFactorSum, KernelOffsetSum);
+
+        protected override IImageContext CastHandler<T>()
+            => this.Cast<T>();
+        protected override IImageContext CastHandler<T, U>()
+            => this.Cast<T, U>();
+        public unsafe ImageContext<T> Cast<T>()
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
+
+            this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
+
+            return Result;
+        }
+        public ImageContext<T, U> Cast<T, U>()
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
         {
@@ -163,19 +317,16 @@ namespace MenthaAssembly
             return Result;
         }
 
-
-
-
         /// <summary>
-        /// Rotates the bitmap in any degree returns a new rotated WriteableBitmap.
+        /// Rotates the bitmap in any degree returns a new rotated ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
         /// </summary>
-        /// <param name="angle">Arbitrary angle in 360 Degrees (positive = clockwise).</param>
-        /// <param name="crop">if true: keep the size, false: adjust canvas to new size</param>
+        /// <param name="Angle">Arbitrary angle in 360 Degrees (positive = clockwise).</param>
+        /// <param name="Crop">if true: keep the size, false: adjust canvas to new size</param>
         /// <returns>A new WriteableBitmap that is a rotated version of the input.</returns>
-        public ImageContext<Pixel> RotateFree(double angle, bool crop = true)
+        public ImageContext<Pixel> Rotate(double Angle, bool Crop = true)
         {
             // rotating clockwise, so it's negative relative to Cartesian quadrants
-            double cnAngle = -1.0 * MathHelper.UnitTheta * angle;
+            double cnAngle = -Angle * MathHelper.UnitTheta;
 
             // general iterators
             int i, j;
@@ -205,24 +356,24 @@ namespace MenthaAssembly
             iWidth = this.Width;
             iHeight = this.Height;
 
-            if (crop)
+            if (Crop)
             {
                 newWidth = iWidth;
                 newHeight = iHeight;
             }
             else
             {
-                double rad = angle * MathHelper.UnitTheta;
-                newWidth = (int)Math.Ceiling(Math.Abs(Math.Sin(rad) * iHeight) + Math.Abs(Math.Cos(rad) * iWidth));
-                newHeight = (int)Math.Ceiling(Math.Abs(Math.Sin(rad) * iWidth) + Math.Abs(Math.Cos(rad) * iHeight));
+                double Rad = Angle * MathHelper.UnitTheta;
+                newWidth = (int)Math.Ceiling(Math.Abs(Math.Sin(Rad) * iHeight) + Math.Abs(Math.Cos(Rad) * iWidth));
+                newHeight = (int)Math.Ceiling(Math.Abs(Math.Sin(Rad) * iWidth) + Math.Abs(Math.Cos(Rad) * iHeight));
             }
 
 
-            iCentreX = iWidth / 2;
-            iCentreY = iHeight / 2;
+            iCentreX = iWidth >> 1;
+            iCentreY = iHeight >> 1;
 
-            iDestCentreX = newWidth / 2;
-            iDestCentreY = newHeight / 2;
+            iDestCentreX = newWidth >> 1;
+            iDestCentreY = newHeight >> 1;
 
             ImageContext<Pixel> Result = new ImageContext<Pixel>(newWidth, newHeight);
 
@@ -262,7 +413,7 @@ namespace MenthaAssembly
                     fTrueY = fDistance * Math.Sin(fPolarAngle);
 
                     // convert Cartesian to raster
-                    fTrueX = fTrueX + iCentreX;
+                    fTrueX += iCentreX;
                     fTrueY = iCentreY - fTrueY;
 
                     iFloorX = (int)Math.Floor(fTrueX);
@@ -309,23 +460,31 @@ namespace MenthaAssembly
                     if (iAlpha < 0) iAlpha = 0;
                     if (iAlpha > 255) iAlpha = 255;
 
-                    int a = iAlpha + 1;
                     Result.SetPixel(i, j, ToPixel((byte)iAlpha,
-                                                 (byte)(((iRed * a) >> 8) << 16),
-                                                 (byte)(((iGreen * a) >> 8) << 8),
-                                                 (byte)((iBlue * a) >> 8)));
-
+                                                  (byte)iRed,
+                                                  (byte)iGreen,
+                                                  (byte)iBlue));
                 }
             }
             return Result;
         }
 
+        protected override IImageContext CloneHandler()
+            => this.Cast<Pixel>();
+        public unsafe ImageContext<Pixel> Clone()
+            => this.Cast<Pixel>();
 
     }
     public class ImageContext<Pixel, PixelIndexed> : ImageContextBase<Pixel, PixelIndexed>
         where Pixel : unmanaged, IPixel
         where PixelIndexed : unmanaged, IPixelIndexed
     {
+
+        protected override IntPtr ScanA => throw new NotImplementedException();
+        protected override IntPtr ScanR => throw new NotImplementedException();
+        protected override IntPtr ScanG => throw new NotImplementedException();
+        protected override IntPtr ScanB => throw new NotImplementedException();
+
         public ImageContext(int Width, int Height) : base(Width, Height)
         {
         }
@@ -344,40 +503,87 @@ namespace MenthaAssembly
         {
         }
 
-        public ImageContext<Pixel, PixelIndexed> Flip(FlipMode Mode)
+        /// <summary>
+        /// Create a new flipped ImageContext&lt;<typeparamref name="Pixel"/>, <typeparamref name="PixelIndexed"/>&gt;.
+        /// </summary>
+        /// <param name="Mode">The flip mode.</param>
+        public unsafe ImageContext<Pixel, PixelIndexed> Flip(FlipMode Mode)
         {
             if (Mode == FlipMode.Vertical)
             {
-                Parallel.For(0, Height >> 1, (y) =>
+                ImageContext<Pixel, PixelIndexed> Result = new ImageContext<Pixel, PixelIndexed>(this.Width, this.Height);
+
+                foreach (Pixel color in this.Palette)
+                    Result.Palette.Add(color);
+
+                int dStride = Result.Stride;
+                byte* sScan0 = (byte*)this.Scan0,
+                      dScan0 = (byte*)Result.Scan0;
+                Parallel.For(0, this.Height, (y) =>
                 {
-                    int DestY = Height - 1 - y;
-                    for (int x = 0; x < Width; x++)
-                    {
-                        Pixel Pixel = GetPixel(x, y);
-                        SetPixel(x, y, GetPixel(x, DestY));
-                        SetPixel(x, DestY, Pixel);
-                    }
+                    PixelIndexed* sIndexed = (PixelIndexed*)(sScan0 + this.Stride *(this.Height - y - 1)),
+                                  dIndexed = (PixelIndexed*)(dScan0 + dStride * y);
+
+                    for (int i = 0; i < Result.Stride; i++)
+                        *dIndexed++ = *sIndexed++;
                 });
+
+                return Result;
             }
             else if (Mode == FlipMode.Horizontal)
             {
-                Parallel.For(0, Width >> 1, (x) =>
+                ImageContext<Pixel, PixelIndexed> Result = new ImageContext<Pixel, PixelIndexed>(this.Width, this.Height);
+
+                foreach (Pixel Color in this.Palette)
+                    Result.Palette.Add(Color);
+
+                int dStride = Result.Stride,
+                    dXBit = Result.Width * Result.BitsPerPixel;
+                byte* sScan0 = (byte*)this.Scan0,
+                      dScan0 = (byte*)Result.Scan0 + (dXBit >> 3);
+                Parallel.For(0, this.Height, (y) =>
                 {
-                    int DestX = Width - 1 - x;
-                    for (int y = 0; y < Height; y++)
+                    PixelIndexed* sIndexed = (PixelIndexed*)(sScan0 + this.Stride * y),
+                                  dIndexed = (PixelIndexed*)(dScan0 + dStride * y);
+
+                    PixelIndexed sPixel = *sIndexed,
+                                 dPixel = *dIndexed;
+
+                    int dWidth = Result.Width,
+                        dIndexLength = dPixel.Length - 1,
+                        sIndexLength = sPixel.Length - 1,
+                        dIndex = dXBit % dPixel.Length,
+                        sIndex = 0;
+
+                    for (int i = 0; i < dWidth;)
                     {
-                        Pixel Pixel = GetPixel(x, y);
-                        SetPixel(x, y, GetPixel(DestX, y));
-                        SetPixel(DestX, y, Pixel);
+                        dPixel[dIndex--] = sPixel[sIndex++];
+                        i++;
+                        if (dIndex < 0)
+                        {
+                            *dIndexed-- = dPixel;
+                            dPixel = *dIndexed;
+                            dIndex = dIndexLength;
+                        }
+                        if (sIndex >= sIndexLength)
+                        {
+                            *sIndexed++ = sPixel;
+                            sPixel = *sIndexed;
+                            sIndex = 0;
+                        }
                     }
                 });
+
+                return Result;
             }
 
             return this;
         }
+        protected override IImageContext FlipHandler(FlipMode Mode)
+            => this.Flip(Mode);
 
         /// <summary>
-        /// Creates a new cropped ImageContext<<typeparamref name="Pixel"/>>.
+        /// Creates a new cropped ImageContext&lt;<typeparamref name="Pixel"/>, <typeparamref name="PixelIndexed"/>&gt;.
         /// </summary>
         /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
         /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
@@ -408,26 +614,145 @@ namespace MenthaAssembly
 
             return Result;
         }
-        protected override IImageContext HandleCrop(int X, int Y, int Width, int Height)
+        protected override IImageContext CropHandler(int X, int Y, int Width, int Height)
             => this.Crop(X, Y, Width, Height);
 
+        /// <summary>
+        /// Creates a new filtered ImageContext&lt;<typeparamref name="Pixel"/>, <typeparamref name="PixelIndexed"/>&gt;.
+        /// </summary>
+        /// <param name="Kernel">The kernel used for convolution.</param>
+        /// <param name="KernelFactorSum">The factor used for the kernel summing.</param>
+        /// <param name="KernelOffsetSum">The offset used for the kernel summing.</param>
+        public ImageContext<Pixel, PixelIndexed> Convolute(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
+        {
+            int KH = Kernel.GetUpperBound(0) + 1,
+                KW = Kernel.GetUpperBound(1) + 1;
+
+            if ((KW & 1) == 0)
+                throw new InvalidOperationException("Kernel width must be odd!");
+
+            if ((KH & 1) == 0)
+                throw new InvalidOperationException("Kernel height must be odd!");
+
+            ImageContext<Pixel, PixelIndexed> Result = new ImageContext<Pixel, PixelIndexed>(this.Width, this.Height);
+
+            int kwh = KW >> 1;
+            int khh = KH >> 1;
+
+            // Init Common Function
+            Pixel[] GetVerticalPixels(int X, int Y)
+            {
+                Pixel[] Pixels = new Pixel[KH];
+                for (int j = 0; j < KH; j++)
+                    Pixels[j] = this.GetPixel(X, Math.Min(Math.Max(Y + j - khh, 0), this.Height - 1));
+
+                return Pixels;
+            };
+
+            Parallel.For(0, this.Height, (y) =>
+            {
+                Queue<Pixel[]> PixelBlock = new Queue<Pixel[]>();
+
+                // Init Block
+                Pixel[] LeftBoundPixels = GetVerticalPixels(0, y);
+
+                // Repeat pixels at borders
+                for (int i = 0; i <= kwh; i++)
+                    PixelBlock.Enqueue(LeftBoundPixels);
+
+                // Fill pixels at center
+                for (int i = 1; i < kwh; i++)
+                    PixelBlock.Enqueue(GetVerticalPixels(Math.Min(i, this.Width - 1), y));
+
+                for (int x = 0; x < this.Width; x++)
+                {
+                    int A = 0,
+                        R = 0,
+                        G = 0,
+                        B = 0;
+
+                    // Left Bound and not enqueue.
+                    int KXIndex = 0;
+                    Pixel[] Pixels = PixelBlock.Dequeue();
+                    for (int j = 0; j < KH; j++)
+                    {
+                        int k = Kernel[j, KXIndex];
+                        if (k == 0)
+                            continue;
+
+                        Pixel Pixel = Pixels[j];
+                        A += Pixel.A * k;
+                        R += Pixel.R * k;
+                        G += Pixel.G * k;
+                        B += Pixel.B * k;
+                    }
+
+                    for (KXIndex = 1; KXIndex < KW - 1; KXIndex++)
+                    {
+                        Pixels = PixelBlock.Dequeue();
+                        for (int j = 0; j < KH; j++)
+                        {
+                            int k = Kernel[j, KXIndex];
+                            if (k == 0)
+                                continue;
+
+                            Pixel Pixel = Pixels[j];
+                            A += Pixel.A * k;
+                            R += Pixel.R * k;
+                            G += Pixel.G * k;
+                            B += Pixel.B * k;
+                        }
+
+                        PixelBlock.Enqueue(Pixels);
+                    }
+
+                    // Right Bound and enqueue
+                    Pixels = new Pixel[KH];
+                    for (int j = 0; j < KH; j++)
+                    {
+                        Pixel Pixel = this.GetPixel(Math.Min(x + kwh, this.Width - 1), Math.Min(Math.Max(y + j - khh, 0), this.Height - 1));
+                        Pixels[j] = Pixel;
+
+                        int k = Kernel[j, KXIndex];
+                        if (k == 0)
+                            continue;
+
+                        A += Pixel.A * k;
+                        R += Pixel.R * k;
+                        G += Pixel.G * k;
+                        B += Pixel.B * k;
+                    }
+
+                    PixelBlock.Enqueue(Pixels);
+
+                    Result.SetPixel(x, y, ToPixel((byte)Math.Min(Math.Max((A / KernelFactorSum) + KernelOffsetSum, 0), 255),
+                                                  (byte)Math.Min(Math.Max((R / KernelFactorSum) + KernelOffsetSum, 0), 255),
+                                                  (byte)Math.Min(Math.Max((G / KernelFactorSum) + KernelOffsetSum, 0), 255),
+                                                  (byte)Math.Min(Math.Max((B / KernelFactorSum) + KernelOffsetSum, 0), 255)));
+                }
+            });
+
+            return Result;
+        }
+        /// <summary>
+        /// Creates a new filtered ImageContext&lt;<typeparamref name="Pixel"/>, <typeparamref name="PixelIndexed"/>&gt;.
+        /// </summary>
+        /// <param name="Kernel">The kernel used for convolution.</param>
+        public ImageContext<Pixel, PixelIndexed> Convolute(ConvoluteKernel Kernel)
+            => Convolute(Kernel.Datas, Kernel.FactorSum, Kernel.Offset);
+        protected override IImageContext ConvoluteHandler(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
+            => this.Convolute(Kernel, KernelFactorSum, KernelOffsetSum);
+
+        protected override IImageContext CastHandler<T>()
+            => this.Cast<T>();
+        protected override IImageContext CastHandler<T, U>()
+            => this.Cast<T, U>();
         public unsafe ImageContext<T> Cast<T>()
             where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
 
-            Parallel.For(0, this.Height, (Y) =>
-            {
-                T* Pixels = (T*)Result.Scan0;
-                Pixels += Y * (long)Width;
-
-                Pixel SourcePixel;
-                for (int X = 0; X < Width; X++)
-                {
-                    SourcePixel = this.GetPixel(X, Y);
-                    *Pixels++ = Result.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B);
-                }
-            });
+            this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
 
             return Result;
         }
@@ -450,823 +775,25 @@ namespace MenthaAssembly
             return Result;
         }
 
-    }
-
-    public abstract partial class ImageContextBase<Pixel, Struct> : IImageContext
-        where Pixel : unmanaged, IPixel
-        where Struct : unmanaged, IPixelBase
-    {
-        public int Width { get; protected set; }
-
-        public int Height { get; protected set; }
-
-        public int Stride { get; protected set; }
-
-        public int BitsPerPixel { get; }
-
-        public int Channels { get; protected set; }
-
-        public Type PixelType { get; } = typeof(Pixel);
-
-        public Type StructType { get; } = typeof(Struct);
-
-        protected bool IsStructIndexed { get; }
-
-        internal readonly Func<byte, byte, byte, byte, Pixel> ToPixel;
-        internal Func<int, int, Pixel> GetPixel;
-        internal unsafe Action<int, int, Pixel> SetPixel;
-        public unsafe Pixel this[int X, int Y]
+        protected override IImageContext CloneHandler()
+            => this.Clone();
+        public unsafe ImageContext<Pixel, PixelIndexed> Clone()
         {
-            get
-            {
-                if (X < 0 || X >= Width ||
-                    Y < 0 || Y >= Height)
-                    throw new IndexOutOfRangeException();
+            ImageContext<Pixel, PixelIndexed> Result = new ImageContext<Pixel, PixelIndexed>(this.Width, this.Height);
 
-                return GetPixel(X, Y);
-            }
-            set
-            {
-                if (X < 0 || X >= Width ||
-                    Y < 0 || Y >= Height)
-                    throw new IndexOutOfRangeException();
+            foreach (Pixel color in this.Palette)
+                Result.Palette.Add(color);
 
-                SetPixel(X, Y, value);
-            }
+            PixelIndexed* pIndexed = (PixelIndexed*)this.Scan0,
+                          dIndexed = (PixelIndexed*)Result.Scan0;
+            Parallel.For(0, this.Height, (y) =>
+            {
+                for (int i = 0; i < Result.Stride; i++)
+                    *dIndexed++ = *pIndexed++;
+            });
+
+            return Result;
         }
-        unsafe IPixel IImageContext.this[int X, int Y]
-        {
-            get => this[X, Y];
-            set => this[X, Y] = ToPixel(value.A, value.R, value.G, value.B);
-        }
-
-        internal protected byte[] Data0;
-        internal protected IntPtr? _Scan0;
-        public unsafe IntPtr Scan0
-        {
-            get
-            {
-                if (_Scan0 is IntPtr Result)
-                    return Result;
-
-                fixed (byte* S0 = &this.Data0[0])
-                    return (IntPtr)S0;
-            }
-        }
-
-        internal protected byte[] DataA;
-        internal protected IntPtr? _ScanA;
-        public unsafe IntPtr ScanA
-        {
-            get
-            {
-                if (_ScanA is IntPtr Result)
-                    return Result;
-
-                fixed (byte* A = &DataA[0])
-                    return (IntPtr)A;
-            }
-        }
-
-        internal protected byte[] DataR;
-        internal protected IntPtr? _ScanR;
-        public unsafe IntPtr ScanR
-        {
-            get
-            {
-                if (_ScanR is IntPtr Result)
-                    return Result;
-
-                fixed (byte* R = &this.DataR[0])
-                    return (IntPtr)R;
-            }
-        }
-
-        internal protected byte[] DataG;
-        internal protected IntPtr? _ScanG;
-        public unsafe IntPtr ScanG
-        {
-            get
-            {
-                if (_ScanG is IntPtr Result)
-                    return Result;
-
-                fixed (byte* G = &DataG[0])
-                    return (IntPtr)G;
-            }
-        }
-
-        internal protected byte[] DataB;
-        internal protected IntPtr? _ScanB;
-        public unsafe IntPtr ScanB
-        {
-            get
-            {
-                if (_ScanB is IntPtr Result)
-                    return Result;
-
-                fixed (byte* B = &this.DataB[0])
-                    return (IntPtr)B;
-            }
-        }
-
-        public IList<Pixel> Palette { get; }
-
-        IList<IPixel> IImageContext.Palette
-            => this.Palette.Cast<IPixel>().ToList();
-
-        internal unsafe ImageContextBase()
-        {
-            Struct StructFormat = default;
-            this.IsStructIndexed = StructFormat is IPixelIndexed;
-            this.BitsPerPixel = StructFormat.BitsPerPixel;
-
-            if (PixelType == typeof(BGRA))
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer++ = B;
-                    *PixelPointer++ = G;
-                    *PixelPointer++ = R;
-                    *PixelPointer = A;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(ARGB))
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer++ = A;
-                    *PixelPointer++ = R;
-                    *PixelPointer++ = G;
-                    *PixelPointer = B;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(BGR))
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer++ = B;
-                    *PixelPointer++ = G;
-                    *PixelPointer = R;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(RGB))
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer++ = R;
-                    *PixelPointer++ = G;
-                    *PixelPointer = B;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(Gray8))
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer = (byte)((R * 30 +
-                                            G * 59 +
-                                            B * 11 + 50) / 100);
-                    return Pixel;
-                };
-            }
-            else
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    dynamic Result = new BGRA(B, G, R, A);
-                    return (Pixel)Result;
-                };
-            }
-        }
-
-        internal unsafe ImageContextBase(int Width, int Height) : this()
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Stride = ((Width * BitsPerPixel) + 7) >> 3;
-            this.Channels = 1;
-
-            this.Palette = new List<Pixel>();
-
-            this.Data0 = new byte[this.Stride * Height];
-
-            if (IsStructIndexed)
-            {
-                GetPixel = (X, Y) =>
-                {
-                    int XBits = X * BitsPerPixel;
-
-                    IPixelIndexed Indexed;
-                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + (XBits >> 3)])
-                        Indexed = *(Struct*)PixelPointer as IPixelIndexed;
-
-                    return Palette[Indexed[XBits % Indexed.Length]];
-                };
-                SetPixel = (X, Y, Pixel) =>
-                {
-                    int XBits = X * BitsPerPixel;
-
-                    IPixelIndexed Indexed;
-                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + (XBits >> 3)])
-                    {
-                        Indexed = *(Struct*)PixelPointer as IPixelIndexed;
-
-                        int Index = Palette.IndexOf(Pixel);
-                        if (Index == -1)
-                        {
-                            if ((1 << Indexed.BitsPerPixel) <= Palette.Count)
-                                throw new IndexOutOfRangeException("Palette is full.");
-
-                            Index = Palette.Count;
-                            Palette.Add(Pixel);
-                        }
-
-                        Indexed[XBits % Indexed.Length] = Index;
-
-                        *PixelPointer = Indexed.Data;
-                    }
-                };
-            }
-            else
-            {
-                GetPixel = (X, Y) =>
-                {
-                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + ((X * BitsPerPixel) >> 3)])
-                        return *(Pixel*)PixelPointer;
-                };
-                SetPixel = (X, Y, Value) =>
-                {
-                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + ((X * BitsPerPixel) >> 3)])
-                        *(Pixel*)PixelPointer = Value;
-                };
-            }
-
-        }
-
-        internal unsafe ImageContextBase(int Width, int Height, IntPtr Scan0, int Stride, IList<Pixel> Palette) : this()
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Stride = Stride;
-            this.Channels = 1;
-
-            this.Palette = Palette ?? new List<Pixel>();
-
-            this._Scan0 = Scan0;
-
-            if (IsStructIndexed)
-            {
-                GetPixel = (X, Y) =>
-                {
-                    int XBits = X * BitsPerPixel;
-                    long Offset = Stride * (long)Y + (XBits >> 3);
-
-                    IPixelIndexed Indexed = *(Struct*)((byte*)Scan0 + Offset) as IPixelIndexed;
-                    return Palette[Indexed[XBits % Indexed.Length]];
-                };
-                SetPixel = (X, Y, Pixel) =>
-                {
-                    int XBits = X * BitsPerPixel;
-                    long Offset = Stride * (long)Y + (XBits >> 3);
-
-                    IPixelIndexed Indexed = *(Struct*)((byte*)Scan0 + Offset) as IPixelIndexed;
-
-                    int Index = Palette.IndexOf(Pixel);
-                    if (Index == -1)
-                    {
-                        if ((1 << Indexed.BitsPerPixel) <= Palette.Count)
-                            throw new IndexOutOfRangeException("Palette is full.");
-
-                        Index = Palette.Count;
-                        Palette.Add(Pixel);
-                    }
-
-                    Indexed[XBits % Indexed.Length] = Index;
-                };
-            }
-            else
-            {
-                GetPixel = (X, Y) =>
-                {
-                    long Offset = Stride * (long)Y + ((X * BitsPerPixel) >> 3);
-                    return *(Pixel*)((byte*)Scan0 + Offset);
-                };
-                SetPixel = (X, Y, Pixel) =>
-                {
-                    long Offset = Stride * (long)Y + ((X * BitsPerPixel) >> 3);
-                    *(Pixel*)((byte*)Scan0 + Offset) = Pixel;
-                };
-            }
-        }
-        internal unsafe ImageContextBase(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride) : this()
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Stride = Stride;
-            this.Channels = 3;
-
-            this._ScanR = ScanR;
-            this._ScanG = ScanG;
-            this._ScanB = ScanB;
-
-            SetPixel = (X, Y, Pixel) =>
-            {
-                long Offset = Stride * (long)Y + X;
-                *((byte*)ScanR + Offset) = Pixel.R;
-                *((byte*)ScanG + Offset) = Pixel.G;
-                *((byte*)ScanB + Offset) = Pixel.B;
-            };
-
-            if (PixelType == typeof(BGR))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer++ = *((byte*)ScanB + Offset);
-                    *PixelPointer++ = *((byte*)ScanG + Offset);
-                    *PixelPointer = *((byte*)ScanR + Offset);
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(RGB))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer++ = *((byte*)ScanR + Offset);
-                    *PixelPointer++ = *((byte*)ScanG + Offset);
-                    *PixelPointer = *((byte*)ScanB + Offset);
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(Gray8))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer = (byte)((*((byte*)ScanR + Offset) * 30 +
-                                            *((byte*)ScanG + Offset) * 59 +
-                                            *((byte*)ScanB + Offset) * 11 + 50) / 100);
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(BGRA))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer++ = *((byte*)ScanB + Offset);
-                    *PixelPointer++ = *((byte*)ScanG + Offset);
-                    *PixelPointer++ = *((byte*)ScanR + Offset);
-                    *PixelPointer = byte.MaxValue;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(ARGB))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer++ = byte.MaxValue;
-                    *PixelPointer++ = *((byte*)ScanR + Offset);
-                    *PixelPointer++ = *((byte*)ScanG + Offset);
-                    *PixelPointer = *((byte*)ScanB + Offset);
-                    return Pixel;
-                };
-            }
-            else
-            {
-                GetPixel = (X, Y) =>
-                {
-                    long Offset = Stride * (long)Y + X;
-                    dynamic Result = new BGR(*((byte*)ScanB + Offset),
-                                             *((byte*)ScanG + Offset),
-                                             *((byte*)ScanR + Offset));
-                    return (Pixel)Result;
-                };
-            }
-
-        }
-        internal unsafe ImageContextBase(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride) : this()
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Stride = Stride;
-            this.Channels = 4;
-
-            this._ScanA = ScanA;
-            this._ScanR = ScanR;
-            this._ScanG = ScanG;
-            this._ScanB = ScanB;
-
-            SetPixel = (X, Y, Pixel) =>
-            {
-                long Offset = Stride * (long)Y + X;
-                *((byte*)ScanR + Offset) = Pixel.R;
-                *((byte*)ScanG + Offset) = Pixel.G;
-                *((byte*)ScanB + Offset) = Pixel.B;
-                *((byte*)ScanA + Offset) = Pixel.A;
-            };
-
-            if (PixelType == typeof(BGRA))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer++ = *((byte*)ScanB + Offset);
-                    *PixelPointer++ = *((byte*)ScanG + Offset);
-                    *PixelPointer++ = *((byte*)ScanR + Offset);
-                    *PixelPointer = *((byte*)ScanA + Offset);
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(ARGB))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer++ = *((byte*)ScanA + Offset);
-                    *PixelPointer++ = *((byte*)ScanR + Offset);
-                    *PixelPointer++ = *((byte*)ScanG + Offset);
-                    *PixelPointer = *((byte*)ScanB + Offset);
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(BGR))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer++ = *((byte*)ScanB + Offset);
-                    *PixelPointer++ = *((byte*)ScanG + Offset);
-                    *PixelPointer = *((byte*)ScanR + Offset);
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(RGB))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer++ = *((byte*)ScanR + Offset);
-                    *PixelPointer++ = *((byte*)ScanG + Offset);
-                    *PixelPointer = *((byte*)ScanB + Offset);
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(Gray8))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    long Offset = Stride * (long)Y + X;
-                    *PixelPointer = (byte)((*((byte*)ScanR + Offset) * 30 +
-                                            *((byte*)ScanG + Offset) * 59 +
-                                            *((byte*)ScanB + Offset) * 11 + 50) / 100);
-                    return Pixel;
-                };
-            }
-            else
-            {
-                GetPixel = (X, Y) =>
-                {
-                    long Offset = Stride * (long)Y + X;
-                    dynamic Result = new BGRA(*((byte*)ScanB + Offset),
-                                              *((byte*)ScanG + Offset),
-                                              *((byte*)ScanR + Offset),
-                                              *((byte*)ScanA + Offset));
-                    return (Pixel)Result;
-                };
-            }
-
-        }
-
-        internal unsafe ImageContextBase(int Width, int Height, byte[] Data, IList<Pixel> Palette) : this()
-        {
-            this.Width = Width;
-            this.Height = Height;
-
-            this.Stride = Data.Length / Width;
-            this.Channels = 1;
-
-            this.Palette = Palette ?? new List<Pixel>();
-
-            this.Data0 = Data;
-
-            if (IsStructIndexed)
-            {
-                GetPixel = (X, Y) =>
-                {
-                    int XBits = X * BitsPerPixel;
-
-                    IPixelIndexed Indexed;
-                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + (XBits >> 3)])
-                        Indexed = *(Struct*)PixelPointer as IPixelIndexed;
-
-                    return Palette[Indexed[XBits % Indexed.Length]];
-                };
-                SetPixel = (X, Y, Pixel) =>
-                {
-                    int XBits = X * BitsPerPixel;
-
-                    IPixelIndexed Indexed;
-                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + (XBits >> 3)])
-                        Indexed = *(Struct*)PixelPointer as IPixelIndexed;
-
-                    int Index = Palette.IndexOf(Pixel);
-                    if (Index == -1)
-                    {
-                        if ((1 << Indexed.BitsPerPixel) <= Palette.Count)
-                            throw new IndexOutOfRangeException("Palette is full.");
-
-                        Index = Palette.Count;
-                        Palette.Add(Pixel);
-                    }
-
-                    Indexed[XBits % Indexed.Length] = Index;
-                };
-            }
-            else
-            {
-                GetPixel = (X, Y) =>
-                {
-                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + ((X * BitsPerPixel) >> 3)])
-                        return *(Pixel*)PixelPointer;
-                };
-                SetPixel = (X, Y, Value) =>
-                {
-                    fixed (byte* PixelPointer = &this.Data0[Stride * Y + ((X * BitsPerPixel) >> 3)])
-                        *(Pixel*)PixelPointer = Value;
-                };
-            }
-
-        }
-        internal unsafe ImageContextBase(int Width, int Height, byte[] DataR, byte[] DataG, byte[] DataB) : this()
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Stride = DataR.Length / Width;
-            this.Channels = 3;
-
-            this.DataR = DataR;
-            this.DataG = DataG;
-            this.DataB = DataB;
-
-            SetPixel = (X, Y, Pixel) =>
-            {
-                int Offset = Stride * Y + X;
-                DataR[Offset] = Pixel.R;
-                DataG[Offset] = Pixel.G;
-                DataB[Offset] = Pixel.B;
-            };
-
-            if (PixelType == typeof(BGR))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer++ = this.DataB[Offset];
-                    *PixelPointer++ = this.DataG[Offset];
-                    *PixelPointer = this.DataR[Offset];
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(RGB))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer++ = this.DataR[Offset];
-                    *PixelPointer++ = this.DataG[Offset];
-                    *PixelPointer = this.DataB[Offset];
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(Gray8))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer = (byte)((this.DataR[Offset] * 30 + this.DataG[Offset] * 59 + this.DataB[Offset] * 11 + 50) / 100);
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(BGRA))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer++ = this.DataB[Offset];
-                    *PixelPointer++ = this.DataG[Offset];
-                    *PixelPointer++ = this.DataR[Offset];
-                    *PixelPointer = byte.MaxValue;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(ARGB))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer++ = byte.MaxValue;
-                    *PixelPointer++ = this.DataR[Offset];
-                    *PixelPointer++ = this.DataG[Offset];
-                    *PixelPointer = this.DataB[Offset];
-                    return Pixel;
-                };
-            }
-            else
-            {
-                GetPixel = (X, Y) =>
-                {
-                    int Offset = Stride * Y + X;
-                    dynamic Result = new BGRA(this.DataB[Offset],
-                                              this.DataG[Offset],
-                                              this.DataR[Offset],
-                                              this.DataA?[Offset] ?? byte.MaxValue);
-                    return (Pixel)Result;
-                };
-            }
-        }
-        internal unsafe ImageContextBase(int Width, int Height, byte[] DataA, byte[] DataR, byte[] DataG, byte[] DataB) : this()
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Stride = DataA.Length / Width;
-            this.Channels = 4;
-
-            this.DataA = DataA;
-            this.DataR = DataR;
-            this.DataG = DataG;
-            this.DataB = DataB;
-
-            SetPixel = (X, Y, Pixel) =>
-            {
-                int Offset = Stride * Y + X;
-                DataR[Offset] = Pixel.R;
-                DataG[Offset] = Pixel.G;
-                DataB[Offset] = Pixel.B;
-                DataA[Offset] = Pixel.A;
-            };
-
-            if (PixelType == typeof(BGRA))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer++ = this.DataB[Offset];
-                    *PixelPointer++ = this.DataG[Offset];
-                    *PixelPointer++ = this.DataR[Offset];
-                    *PixelPointer = this.DataA[Offset];
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(ARGB))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer++ = this.DataA[Offset];
-                    *PixelPointer++ = this.DataR[Offset];
-                    *PixelPointer++ = this.DataG[Offset];
-                    *PixelPointer = this.DataB[Offset];
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(BGR))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer++ = this.DataB[Offset];
-                    *PixelPointer++ = this.DataG[Offset];
-                    *PixelPointer = this.DataR[Offset];
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(RGB))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer++ = this.DataR[Offset];
-                    *PixelPointer++ = this.DataG[Offset];
-                    *PixelPointer = this.DataB[Offset];
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(Gray8))
-            {
-                GetPixel = (X, Y) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    int Offset = Stride * Y + X;
-                    *PixelPointer = (byte)((this.DataR[Offset] * 30 + this.DataG[Offset] * 59 + this.DataB[Offset] * 11 + 50) / 100);
-                    return Pixel;
-                };
-            }
-            else
-            {
-                GetPixel = (X, Y) =>
-                {
-                    int Offset = Stride * Y + X;
-                    dynamic Result = new BGRA(this.DataB[Offset],
-                                              this.DataG[Offset],
-                                              this.DataR[Offset],
-                                              this.DataA[Offset]);
-                    return (Pixel)Result;
-                };
-            }
-        }
-
-        IImageContext IImageContext.Flip(FlipMode Mode)
-        {
-            if (Mode == FlipMode.Vertical)
-            {
-                Parallel.For(0, Height >> 1, (y) =>
-                {
-                    int DestY = Height - 1 - y;
-                    for (int x = 0; x < Width; x++)
-                    {
-                        Pixel Pixel = GetPixel(x, y);
-                        SetPixel(x, y, GetPixel(x, DestY));
-                        SetPixel(x, DestY, Pixel);
-                    }
-                });
-            }
-            else if (Mode == FlipMode.Horizontal)
-            {
-                Parallel.For(0, Width >> 1, (x) =>
-                {
-                    int DestX = Width - 1 - x;
-                    for (int y = 0; y < Height; y++)
-                    {
-                        Pixel Pixel = GetPixel(x, y);
-                        SetPixel(x, y, GetPixel(DestX, y));
-                        SetPixel(DestX, y, Pixel);
-                    }
-                });
-            }
-
-            return this;
-        }
-
-        IImageContext IImageContext.Crop(int X, int Y, int Width, int Height)
-           => HandleCrop(X, Y, Width, Height);
-        protected abstract IImageContext HandleCrop(int X, int Y, int Width, int Height);
-
 
     }
 

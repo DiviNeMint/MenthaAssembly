@@ -1,8 +1,6 @@
-﻿using MenthaAssembly.Media.Imaging;
-using MenthaAssembly.Media.Imaging.Primitives;
-using System;
+﻿using System;
 
-namespace MenthaAssembly
+namespace MenthaAssembly.Media.Imaging.Primitives
 {
     public abstract partial class ImageContextBase<Pixel, Struct> : IImageContext
         where Pixel : unmanaged, IPixel

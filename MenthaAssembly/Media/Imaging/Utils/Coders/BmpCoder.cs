@@ -79,9 +79,10 @@ namespace MenthaAssembly.Media.Imaging
                 {
                     Stream.Read(Datas, 0, Datas.Length);
                     Color = new BGRA(Datas[0], Datas[1], Datas[2], byte.MaxValue);
+                    //!(Color == BlackColor && Datas[3] == 0) &&
 
-                    if (!(Color == BlackColor && Datas[3] == 0) &&
-                        !Palette.Contains(Color))
+
+                    //if (!Palette.Contains(Color))
                         Palette.Add(Color);
                 }
             }

@@ -1,11 +1,9 @@
-﻿using MenthaAssembly.Media.Imaging;
-using MenthaAssembly.Media.Imaging.Primitives;
-using MenthaAssembly.Media.Imaging.Utils;
+﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MenthaAssembly
+namespace MenthaAssembly.Media.Imaging.Primitives
 {
     public abstract partial class ImageContextBase<Pixel, Struct> : IImageContext
         where Pixel : unmanaged, IPixel
@@ -1446,7 +1444,7 @@ namespace MenthaAssembly
 
             // Middle segments
             int i;
-            for (i = 1; i < Points.Length - 2; i ++)
+            for (i = 1; i < Points.Length - 2; i++)
             {
                 DrawCurveSegment(Points[i - 1].X, Points[i - 1].Y, Points[i].X, Points[i].Y, Points[i + 1].X, Points[i + 1].Y, Points[i + 2].X, Points[i + 2].Y, Tension, Color);
             }
@@ -1500,7 +1498,7 @@ namespace MenthaAssembly
 
             // Middle segments
             int i;
-            for (i = 1; i < pn - 2; i ++)
+            for (i = 1; i < pn - 2; i++)
             {
                 DrawCurveSegment(Points[i - 1].X, Points[i - 1].Y, Points[i].X, Points[i].Y, Points[i + 1].X, Points[i + 1].Y, Points[i + 2].X, Points[i + 2].Y, Tension, Color);
             }
