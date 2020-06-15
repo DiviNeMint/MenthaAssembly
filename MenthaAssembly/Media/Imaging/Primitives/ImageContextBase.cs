@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging.Primitives
 {
-    public abstract partial class ImageContextBase<Pixel, Struct> : IImageContext
+    public unsafe abstract partial class ImageContextBase<Pixel, Struct> : IImageContext
         where Pixel : unmanaged, IPixel
         where Struct : unmanaged, IPixelBase
     {
@@ -137,76 +137,86 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             this.IsStructIndexed = StructFormat is IPixelIndexed;
             this.BitsPerPixel = StructFormat.BitsPerPixel;
 
-            if (PixelType == typeof(BGRA))
+            this.CopyPixelHandler = CreateCopyPixelHandler<Pixel>();
+
+            ToPixel = (A, R, G, B) =>
             {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer++ = B;
-                    *PixelPointer++ = G;
-                    *PixelPointer++ = R;
-                    *PixelPointer = A;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(ARGB))
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer++ = A;
-                    *PixelPointer++ = R;
-                    *PixelPointer++ = G;
-                    *PixelPointer = B;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(BGR))
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer++ = B;
-                    *PixelPointer++ = G;
-                    *PixelPointer = R;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(RGB))
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer++ = R;
-                    *PixelPointer++ = G;
-                    *PixelPointer = B;
-                    return Pixel;
-                };
-            }
-            else if (PixelType == typeof(Gray8))
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    Pixel Pixel = default;
-                    byte* PixelPointer = (byte*)&Pixel;
-                    *PixelPointer = (byte)((R * 30 +
-                                            G * 59 +
-                                            B * 11 + 50) / 100);
-                    return Pixel;
-                };
-            }
-            else
-            {
-                ToPixel = (A, R, G, B) =>
-                {
-                    dynamic Result = new BGRA(B, G, R, A);
-                    return (Pixel)Result;
-                };
-            }
+                Pixel Pixel = default;
+                byte* pPixel = (byte*)&Pixel;
+                this.CopyPixelHandler(ref pPixel, A, R, G, B);
+                return Pixel;
+            };
+
+            //if (PixelType == typeof(BGRA))
+            //{
+            //    ToPixel = (A, R, G, B) =>
+            //    {
+            //        Pixel Pixel = default;
+            //        byte* PixelPointer = (byte*)&Pixel;
+            //        *PixelPointer++ = B;
+            //        *PixelPointer++ = G;
+            //        *PixelPointer++ = R;
+            //        *PixelPointer = A;
+            //        return Pixel;
+            //    };
+            //}
+            //else if (PixelType == typeof(ARGB))
+            //{
+            //    ToPixel = (A, R, G, B) =>
+            //    {
+            //        Pixel Pixel = default;
+            //        byte* PixelPointer = (byte*)&Pixel;
+            //        *PixelPointer++ = A;
+            //        *PixelPointer++ = R;
+            //        *PixelPointer++ = G;
+            //        *PixelPointer = B;
+            //        return Pixel;
+            //    };
+            //}
+            //else if (PixelType == typeof(BGR))
+            //{
+            //    ToPixel = (A, R, G, B) =>
+            //    {
+            //        Pixel Pixel = default;
+            //        byte* PixelPointer = (byte*)&Pixel;
+            //        *PixelPointer++ = B;
+            //        *PixelPointer++ = G;
+            //        *PixelPointer = R;
+            //        return Pixel;
+            //    };
+            //}
+            //else if (PixelType == typeof(RGB))
+            //{
+            //    ToPixel = (A, R, G, B) =>
+            //    {
+            //        Pixel Pixel = default;
+            //        byte* PixelPointer = (byte*)&Pixel;
+            //        *PixelPointer++ = R;
+            //        *PixelPointer++ = G;
+            //        *PixelPointer = B;
+            //        return Pixel;
+            //    };
+            //}
+            //else if (PixelType == typeof(Gray8))
+            //{
+            //    ToPixel = (A, R, G, B) =>
+            //    {
+            //        Pixel Pixel = default;
+            //        byte* PixelPointer = (byte*)&Pixel;
+            //        *PixelPointer = (byte)((R * 30 +
+            //                                G * 59 +
+            //                                B * 11 + 50) / 100);
+            //        return Pixel;
+            //    };
+            //}
+            //else
+            //{
+            //    ToPixel = (A, R, G, B) =>
+            //    {
+            //        dynamic Result = new BGRA(B, G, R, A);
+            //        return (Pixel)Result;
+            //    };
+            //}
         }
 
         internal unsafe ImageContextBase(int Width, int Height) : this(Width, Height, new byte[Width * sizeof(Struct) * Height], null)
@@ -377,6 +387,29 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                     }
                 };
 
+                ScanLinePaste3 = (OffsetX, Y, Length, SourceR, SourceG, SourceB) =>
+                {
+                    long Offset = Stride * Y + (((long)OffsetX * BitsPerPixel) >> 3);
+                    byte* pScan0 = (byte*)Scan0 + Offset;
+
+                    for (int i = 0; i < Length; i++)
+                    {
+                        this.CopyPixelHandler(ref pScan0, byte.MaxValue, *SourceR++, *SourceG++, *SourceB++);
+                        pScan0++;
+                    }
+                };
+                ScanLinePaste4 = (OffsetX, Y, Length, SourceA, SourceR, SourceG, SourceB) =>
+                {
+                    long Offset = Stride * Y + (((long)OffsetX * BitsPerPixel) >> 3);
+                    byte* pScan0 = (byte*)Scan0 + Offset;
+
+                    for (int i = 0; i < Length; i++)
+                    {
+                        this.CopyPixelHandler(ref pScan0, *SourceA++, *SourceR++, *SourceG++, *SourceB++);
+                        pScan0++;
+                    }
+                };
+
             }
 
             #endregion
@@ -520,6 +553,35 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                     *DestR++ = *PixelR++;
                     *DestG++ = *PixelG++;
                     *DestB++ = *PixelB++;
+                }
+            };
+
+            ScanLinePaste3 = (OffsetX, Y, Length, SourceR, SourceG, SourceB) =>
+            {
+                long Offset = Stride * Y + (((long)OffsetX * BitsPerPixel) >> 3);
+                byte* PixelR = (byte*)ScanR + Offset,
+                      PixelG = (byte*)ScanG + Offset,
+                      PixelB = (byte*)ScanB + Offset;
+
+                for (int i = 0; i < Length; i++)
+                {
+                    *PixelR++ = *SourceR++;
+                    *PixelG++ = *SourceG++;
+                    *PixelB++ = *SourceB++;
+                }
+            };
+            ScanLinePaste4 = (OffsetX, Y, Length, SourceA, SourceR, SourceG, SourceB) =>
+            {
+                long Offset = Stride * Y + (((long)OffsetX * BitsPerPixel) >> 3);
+                byte* PixelR = (byte*)ScanR + Offset,
+                      PixelG = (byte*)ScanG + Offset,
+                      PixelB = (byte*)ScanB + Offset;
+
+                for (int i = 0; i < Length; i++)
+                {
+                    *PixelR++ = *SourceR++;
+                    *PixelG++ = *SourceG++;
+                    *PixelB++ = *SourceB++;
                 }
             };
 
@@ -670,6 +732,39 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                     *DestR++ = *PixelR++;
                     *DestG++ = *PixelG++;
                     *DestB++ = *PixelB++;
+                }
+            };
+
+            ScanLinePaste3 = (OffsetX, Y, Length, SourceR, SourceG, SourceB) =>
+            {
+                long Offset = Stride * Y + (((long)OffsetX * BitsPerPixel) >> 3);
+                byte* PixelA = (byte*)ScanA + Offset,
+                      PixelR = (byte*)ScanR + Offset,
+                      PixelG = (byte*)ScanG + Offset,
+                      PixelB = (byte*)ScanB + Offset;
+
+                for (int i = 0; i < Length; i++)
+                {
+                    *PixelA++ = byte.MaxValue;
+                    *PixelR++ = *SourceR++;
+                    *PixelG++ = *SourceG++;
+                    *PixelB++ = *SourceB++;
+                }
+            };
+            ScanLinePaste4 = (OffsetX, Y, Length, SourceA, SourceR, SourceG, SourceB) =>
+            {
+                long Offset = Stride * Y + (((long)OffsetX * BitsPerPixel) >> 3);
+                byte* PixelA = (byte*)ScanA + Offset,
+                      PixelR = (byte*)ScanR + Offset,
+                      PixelG = (byte*)ScanG + Offset,
+                      PixelB = (byte*)ScanB + Offset;
+
+                for (int i = 0; i < Length; i++)
+                {
+                    *PixelA++ = *SourceA++;
+                    *PixelR++ = *SourceR++;
+                    *PixelG++ = *SourceG++;
+                    *PixelB++ = *SourceB++;
                 }
             };
 
@@ -832,24 +927,63 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 ScanLineCopy3 = (OffsetX, Y, Length, DestR, DestG, DestB) =>
                 {
                     int Offset = Stride * Y + ((OffsetX * BitsPerPixel) >> 3);
+
+                    Pixel* pPixels;
+                    fixed (byte* pScan0 = &this.Data0[Offset])
+                        pPixels = (Pixel*)pScan0;
+
                     for (int i = 0; i < Length; i++)
                     {
-                        *DestR++ = DataR[Offset];
-                        *DestG++ = DataG[Offset];
-                        *DestB++ = DataB[Offset];
-                        Offset++;
+                        *DestR++ = pPixels->R;
+                        *DestG++ = pPixels->G;
+                        *DestB++ = pPixels->B;
+                        pPixels++;
                     }
                 };
                 ScanLineCopy4 = (OffsetX, Y, Length, DestA, DestR, DestG, DestB) =>
                 {
                     int Offset = Stride * Y + ((OffsetX * BitsPerPixel) >> 3);
+
+                    Pixel* pPixels;
+                    fixed (byte* pScan0 = &this.Data0[Offset])
+                        pPixels = (Pixel*)pScan0;
+
                     for (int i = 0; i < Length; i++)
                     {
-                        *DestA++ = DataA[Offset];
-                        *DestR++ = DataR[Offset];
-                        *DestG++ = DataG[Offset];
-                        *DestB++ = DataB[Offset];
-                        Offset++;
+                        *DestA++ = pPixels->A;
+                        *DestR++ = pPixels->R;
+                        *DestG++ = pPixels->G;
+                        *DestB++ = pPixels->B;
+                        pPixels++;
+                    }
+                };
+
+                ScanLinePaste3 = (OffsetX, Y, Length, SourceR, SourceG, SourceB) =>
+                {
+                    int Offset = Stride * Y + ((OffsetX * BitsPerPixel) >> 3);
+
+                    byte* pScan0;
+                    fixed (byte* pTemp = &this.Data0[Offset])
+                        pScan0 = pTemp;
+
+                    for (int i = 0; i < Length; i++)
+                    {
+                        this.CopyPixelHandler(ref pScan0, byte.MaxValue, *SourceR++, *SourceG++, *SourceB++);
+                        pScan0++;
+                    }
+                };
+                ScanLinePaste4 = (OffsetX, Y, Length, SourceA, SourceR, SourceG, SourceB) =>
+                {
+                    int Offset = Stride * Y + ((OffsetX * BitsPerPixel) >> 3);
+
+                    byte* pScan0;
+                    fixed (byte* pTemp = &this.Data0[Offset])
+                        pScan0 = pTemp;
+
+                    for (int i = 0; i < Length; i++)
+                    {
+                        this.CopyPixelHandler(ref pScan0, *SourceA++, *SourceR++, *SourceG++, *SourceB++);
+                        pScan0++;
                     }
                 };
 
@@ -990,6 +1124,29 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 }
             };
 
+            ScanLinePaste3 = (OffsetX, Y, Length, SourceR, SourceG, SourceB) =>
+            {
+                int Offset = Stride * Y + ((OffsetX * BitsPerPixel) >> 3);
+                for (int i = 0; i < Length; i++)
+                {
+                    DataR[Offset] = *SourceR++;
+                    DataG[Offset] = *SourceG++;
+                    DataB[Offset] = *SourceB++;
+                    Offset++;
+                }
+            };
+            ScanLinePaste4 = (OffsetX, Y, Length, SourceA, SourceR, SourceG, SourceB) =>
+            {
+                int Offset = Stride * Y + ((OffsetX * BitsPerPixel) >> 3);
+                for (int i = 0; i < Length; i++)
+                {
+                    DataR[Offset] = *SourceR++;
+                    DataG[Offset] = *SourceG++;
+                    DataB[Offset] = *SourceB++;
+                    Offset++;
+                }
+            };
+
             #endregion
         }
         internal unsafe ImageContextBase(int Width, int Height, byte[] DataA, byte[] DataR, byte[] DataG, byte[] DataB) : this()
@@ -1122,6 +1279,31 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                     *DestR++ = DataR[Offset];
                     *DestG++ = DataG[Offset];
                     *DestB++ = DataB[Offset];
+                    Offset++;
+                }
+            };
+
+            ScanLinePaste3 = (OffsetX, Y, Length, SourceR, SourceG, SourceB) =>
+            {
+                int Offset = Stride * Y + ((OffsetX * BitsPerPixel) >> 3);
+                for (int i = 0; i < Length; i++)
+                {
+                    DataA[Offset] = byte.MaxValue;
+                    DataR[Offset] = *SourceR++;
+                    DataG[Offset] = *SourceG++;
+                    DataB[Offset] = *SourceB++;
+                    Offset++;
+                }
+            };
+            ScanLinePaste4 = (OffsetX, Y, Length, SourceA, SourceR, SourceG, SourceB) =>
+            {
+                int Offset = Stride * Y + ((OffsetX * BitsPerPixel) >> 3);
+                for (int i = 0; i < Length; i++)
+                {
+                    DataA[Offset] = *SourceA++;
+                    DataR[Offset] = *SourceR++;
+                    DataG[Offset] = *SourceG++;
+                    DataB[Offset] = *SourceB++;
                     Offset++;
                 }
             };

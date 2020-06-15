@@ -77,7 +77,7 @@ namespace MenthaAssembly
                 // Create Result
                 ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-                SetPixelValue Handler = CreateSetPixelValue<T>();
+                CopyPixelAction Handler = CreateCopyPixelHandler<T>();
                 int DestStride = Result.Stride;
                 byte* Dest0 = (byte*)Result.Scan0;
                 Parallel.For(0, Height, (y) =>
@@ -93,7 +93,7 @@ namespace MenthaAssembly
                 // Create Result
                 ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-                SetPixelValue Handler = CreateSetPixelValue<T>();
+                CopyPixelAction Handler = CreateCopyPixelHandler<T>();
 
                 int DestStride = Result.Stride;
                 byte* Dest0 = (byte*)Result.Scan0;
@@ -150,7 +150,7 @@ namespace MenthaAssembly
             // Create Result
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-            this.BlockCopy<T>(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride);
+            this.BlockCopy(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride, CreateCopyPixelHandler<T>());
 
             return Result;
         }
@@ -294,7 +294,7 @@ namespace MenthaAssembly
         {
             ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
 
-            this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
+            this.BlockCopy(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride, CreateCopyPixelHandler<T>());
 
             return Result;
         }
@@ -752,7 +752,7 @@ namespace MenthaAssembly
         {
             ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
 
-            this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
+            this.BlockCopy(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride, CreateCopyPixelHandler<T>());
 
             return Result;
         }
