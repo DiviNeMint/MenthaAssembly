@@ -423,7 +423,8 @@ namespace MenthaAssembly
 
                     // check bounds
                     if (iFloorX < 0 || iCeilingX < 0 || iFloorX >= iWidth || iCeilingX >= iWidth || iFloorY < 0 ||
-                        iCeilingY < 0 || iFloorY >= iHeight || iCeilingY >= iHeight) continue;
+                        iCeilingY < 0 || iFloorY >= iHeight || iCeilingY >= iHeight)
+                        continue;
 
                     fDeltaX = fTrueX - iFloorX;
                     fDeltaY = fTrueY - iFloorY;
@@ -451,14 +452,22 @@ namespace MenthaAssembly
                     iAlpha = (int)(Math.Round((1 - fDeltaY) * fTopAlpha + fDeltaY * fBottomAlpha));
 
                     // make sure color values are valid
-                    if (iRed < 0) iRed = 0;
-                    if (iRed > 255) iRed = 255;
-                    if (iGreen < 0) iGreen = 0;
-                    if (iGreen > 255) iGreen = 255;
-                    if (iBlue < 0) iBlue = 0;
-                    if (iBlue > 255) iBlue = 255;
-                    if (iAlpha < 0) iAlpha = 0;
-                    if (iAlpha > 255) iAlpha = 255;
+                    if (iRed < 0)
+                        iRed = 0;
+                    if (iRed > 255)
+                        iRed = 255;
+                    if (iGreen < 0)
+                        iGreen = 0;
+                    if (iGreen > 255)
+                        iGreen = 255;
+                    if (iBlue < 0)
+                        iBlue = 0;
+                    if (iBlue > 255)
+                        iBlue = 255;
+                    if (iAlpha < 0)
+                        iAlpha = 0;
+                    if (iAlpha > 255)
+                        iAlpha = 255;
 
                     Result.SetPixel(i, j, ToPixel((byte)iAlpha,
                                                   (byte)iRed,
@@ -521,7 +530,7 @@ namespace MenthaAssembly
                       dScan0 = (byte*)Result.Scan0;
                 Parallel.For(0, this.Height, (y) =>
                 {
-                    PixelIndexed* sIndexed = (PixelIndexed*)(sScan0 + this.Stride *(this.Height - y - 1)),
+                    PixelIndexed* sIndexed = (PixelIndexed*)(sScan0 + this.Stride * (this.Height - y - 1)),
                                   dIndexed = (PixelIndexed*)(dScan0 + dStride * y);
 
                     for (int i = 0; i < Result.Stride; i++)

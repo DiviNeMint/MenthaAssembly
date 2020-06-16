@@ -8,25 +8,24 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         where Pixel : unmanaged, IPixel
         where Struct : unmanaged, IPixelBase
     {
-        public int Width { get; protected set; }
+        public int Width { get; }
 
-        public int Height { get; protected set; }
+        public int Height { get; }
 
-        public int Stride { get; protected set; }
+        public int Stride { get; }
 
         public int BitsPerPixel { get; }
 
-        public int Channels { get; protected set; }
+        public int Channels { get; }
 
-        public Type PixelType { get; } = typeof(Pixel);
+        protected Type PixelType = typeof(Pixel);
+        Type IImageContext.PixelType => this.PixelType;
 
-        public Type StructType { get; } = typeof(Struct);
+        protected Type StructType = typeof(Pixel);
+        Type IImageContext.StructType => this.StructType;
 
         protected bool IsStructIndexed { get; }
 
-        internal readonly Func<byte, byte, byte, byte, Pixel> ToPixel;
-        internal Func<int, int, Pixel> GetPixel;
-        internal unsafe Action<int, int, Pixel> SetPixel;
         public unsafe Pixel this[int X, int Y]
         {
             get
@@ -146,77 +145,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 this.CopyPixelHandler(ref pPixel, A, R, G, B);
                 return Pixel;
             };
-
-            //if (PixelType == typeof(BGRA))
-            //{
-            //    ToPixel = (A, R, G, B) =>
-            //    {
-            //        Pixel Pixel = default;
-            //        byte* PixelPointer = (byte*)&Pixel;
-            //        *PixelPointer++ = B;
-            //        *PixelPointer++ = G;
-            //        *PixelPointer++ = R;
-            //        *PixelPointer = A;
-            //        return Pixel;
-            //    };
-            //}
-            //else if (PixelType == typeof(ARGB))
-            //{
-            //    ToPixel = (A, R, G, B) =>
-            //    {
-            //        Pixel Pixel = default;
-            //        byte* PixelPointer = (byte*)&Pixel;
-            //        *PixelPointer++ = A;
-            //        *PixelPointer++ = R;
-            //        *PixelPointer++ = G;
-            //        *PixelPointer = B;
-            //        return Pixel;
-            //    };
-            //}
-            //else if (PixelType == typeof(BGR))
-            //{
-            //    ToPixel = (A, R, G, B) =>
-            //    {
-            //        Pixel Pixel = default;
-            //        byte* PixelPointer = (byte*)&Pixel;
-            //        *PixelPointer++ = B;
-            //        *PixelPointer++ = G;
-            //        *PixelPointer = R;
-            //        return Pixel;
-            //    };
-            //}
-            //else if (PixelType == typeof(RGB))
-            //{
-            //    ToPixel = (A, R, G, B) =>
-            //    {
-            //        Pixel Pixel = default;
-            //        byte* PixelPointer = (byte*)&Pixel;
-            //        *PixelPointer++ = R;
-            //        *PixelPointer++ = G;
-            //        *PixelPointer = B;
-            //        return Pixel;
-            //    };
-            //}
-            //else if (PixelType == typeof(Gray8))
-            //{
-            //    ToPixel = (A, R, G, B) =>
-            //    {
-            //        Pixel Pixel = default;
-            //        byte* PixelPointer = (byte*)&Pixel;
-            //        *PixelPointer = (byte)((R * 30 +
-            //                                G * 59 +
-            //                                B * 11 + 50) / 100);
-            //        return Pixel;
-            //    };
-            //}
-            //else
-            //{
-            //    ToPixel = (A, R, G, B) =>
-            //    {
-            //        dynamic Result = new BGRA(B, G, R, A);
-            //        return (Pixel)Result;
-            //    };
-            //}
         }
 
         internal unsafe ImageContextBase(int Width, int Height) : this(Width, Height, new byte[Width * sizeof(Struct) * Height], null)

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public interface IImageContext : ICloneable
+    public unsafe interface IImageContext : ICloneable
     {
         public int Width { get; }
 
@@ -67,7 +67,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public IImageContext Cast<T>() 
+        public IImageContext Cast<T>()
             where T : unmanaged, IPixel;
 
         /// <summary>
@@ -79,6 +79,43 @@ namespace MenthaAssembly.Media.Imaging
         public IImageContext Cast<T, U>()
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed;
+
+
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0) where T : unmanaged, IPixel;
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0) where T : unmanaged, IPixel;
+        public void BlockCopy(int X, int Y, int Width, int Height, byte* Dest0);
+        public void BlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset);
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset) where T : unmanaged, IPixel;
+        public void BlockCopy(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB);
+        public void BlockCopy(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB);
+        public void BlockCopy(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB);
+        public void BlockCopy(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB);
+
+        public void ScanLineCopy<T>(int OffsetX, int Y, int Length, T* Dest0) where T : unmanaged, IPixel;
+        public void ScanLineCopy<T>(int OffsetX, int Y, int Length, T[] Dest0) where T : unmanaged, IPixel;
+        public void ScanLineCopy(int OffsetX, int Y, int Length, byte* Dest0);
+        public void ScanLineCopy(int OffsetX, int Y, int Length, byte[] Dest0, int DestOffset);
+        public void ScanLineCopy<T>(int OffsetX, int Y, int Length, byte[] Dest0, int DestOffset) where T : unmanaged, IPixel;
+        public void ScanLineCopy(int OffsetX, int Y, int Length, byte* DestR, byte* DestG, byte* DestB);
+        public void ScanLineCopy(int OffsetX, int Y, int Length, byte[] DestR, byte[] DestG, byte[] DestB);
+        public void ScanLineCopy(int OffsetX, int Y, int Length, byte* DestA, byte* DestR, byte* DestG, byte* DestB);
+        public void ScanLineCopy(int OffsetX, int Y, int Length, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB);
+
+        public void BlockPaste<T>(int X, int Y, int Width, int Height, T* Source) where T : unmanaged, IPixel;
+        public void BlockPaste<T>(int X, int Y, int Width, int Height, T[] Source) where T : unmanaged, IPixel;
+        public void BlockPaste<T>(int X, int Y, int Width, int Height, byte[] Source, int SourceOffset) where T : unmanaged, IPixel;
+        public void BlockPaste(int X, int Y, int Width, int Height, byte* SourceR, byte* SourceG, byte* SourceB);
+        public void BlockPaste(int X, int Y, int Width, int Height, byte[] SourceR, byte[] SourceG, byte[] SourceB);
+        public void BlockPaste(int X, int Y, int Width, int Height, byte* SourceA, byte* SourceR, byte* SourceG, byte* SourceB);
+        public void BlockPaste(int X, int Y, int Width, int Height, byte[] SourceA, byte[] SourceR, byte[] SourceG, byte[] SourceB);
+
+        public void ScanLinePaste<T>(int OffsetX, int Y, int Length, T* Source) where T : unmanaged, IPixel;
+        public void ScanLinePaste<T>(int OffsetX, int Y, IEnumerable<T> Source) where T : unmanaged, IPixel;
+        public void ScanLinePaste<T>(int OffsetX, int Y, int Length, byte[] Source, int SourceOffset) where T : unmanaged, IPixel;
+        public void ScanLinePaste(int OffsetX, int Y, int Length, byte* SourceR, byte* SourceG, byte* SourceB);
+        public void ScanLinePaste(int OffsetX, int Y, int Length, byte[] SourceR, byte[] SourceG, byte[] SourceB);
+        public void ScanLinePaste(int OffsetX, int Y, int Length, byte* SourceA, byte* SourceR, byte* SourceG, byte* SourceB);
+        public void ScanLinePaste(int OffsetX, int Y, int Length, byte[] SourceA, byte[] SourceR, byte[] SourceG, byte[] SourceB);
 
     }
 }

@@ -67,6 +67,7 @@ namespace MenthaAssembly
             CRCResult = unchecked((int)~Register);
         }
 
+#if NETSTANDARD2_1
         public static void Calculate(ReadOnlySpan<byte> SpanDatas, out uint NewRegister, uint Register = 0xFFFFFFFFU)
         {
             if (SpanDatas.IsEmpty ||
@@ -91,6 +92,7 @@ namespace MenthaAssembly
 
             CRCResult = unchecked((int)~Register);
         }
+#endif
 
         public static void Calculate(byte[] Datas,int Offset, int Length, out uint NewRegister, uint Register = 0xFFFFFFFFU)
         {

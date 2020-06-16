@@ -1,6 +1,4 @@
-﻿using MenthaAssembly.Media.Imaging.Primitives;
-
-namespace MenthaAssembly.Media.Imaging
+﻿namespace MenthaAssembly.Media.Imaging
 {
     public struct BGRA : IPixel
     {
@@ -28,6 +26,8 @@ namespace MenthaAssembly.Media.Imaging
         public static implicit operator BGRA(RGB Target) => new BGRA(Target.B, Target.G, Target.R, 0xFF);
         public static implicit operator BGRA(BGR Target) => new BGRA(Target.B, Target.G, Target.R, 0xFF);
         public static implicit operator BGRA(ARGB Target) => new BGRA(Target.B, Target.G, Target.R, Target.A);
+        public static implicit operator BGRA(ABGR Target) => new BGRA(Target.B, Target.G, Target.R, Target.A);
+        public static implicit operator BGRA(RGBA Target) => new BGRA(Target.B, Target.G, Target.R, Target.A);
         public static implicit operator BGRA(Gray8 Target) => new BGRA(Target.B, Target.G, Target.R, 0xFF);
         public static implicit operator int(BGRA This) => This.A << 24 | This.R << 16 | This.G << 8 | This.B;
     }

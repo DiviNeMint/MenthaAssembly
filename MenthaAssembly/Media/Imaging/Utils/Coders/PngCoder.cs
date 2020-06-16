@@ -128,7 +128,7 @@ namespace MenthaAssembly.Media.Imaging
                     if (SeparatorIndex > 0)
                     {
                         string Property = Encoding.Default.GetString(Datas, 0, SeparatorIndex),
-                               Content = Encoding.Default.GetString(Datas.AsSpan(SeparatorIndex + 1));
+                               Content = Encoding.Default.GetString(Datas.Skip(SeparatorIndex).ToArray());
                         Debug.WriteLine($"{Property} : {Content}");
                     }
                 }
@@ -142,15 +142,15 @@ namespace MenthaAssembly.Media.Imaging
                     Stream.Read(Datas, 0, Datas.Length);
 
                     DataStream.Position = 0;
+#if NETSTANDARD2_1
                     DataStream.Write(Datas.AsSpan(IdentifyRFC1950(Datas) ? 2 : 0));
+#else
+                    if (IdentifyRFC1950(Datas))
+                        DataStream.Write(Datas, 2, Datas.Length - 2);
+                    else
+                        DataStream.Write(Datas, 0, Datas.Length);
+#endif
                     DataStream.Position = 0;
-
-                    //if (IdentifyRFC1950(Datas))
-                    //    DataStream.Write(Datas, 2, Datas.Length - 2);
-                    //else
-                    //    DataStream.Write(Datas, 0, Datas.Length);
-                    //DataStream.Position = 0;
-
 
                     // ImageDatas
                     int ChannelStride = Channels > 1 ? Width : Stride,
@@ -314,10 +314,10 @@ namespace MenthaAssembly.Media.Imaging
                     Image = new ImageContext<Gray8>(Width, Height, ImageDatas[0], Palette?.Cast<Gray8>().ToList());
                     return true;
                 case 3:
-                    Image = new ImageContext<RGB>(Width, Height, ImageDatas[0], ImageDatas[1], ImageDatas[2]);
+                    Image = new ImageContext<BGR>(Width, Height, ImageDatas[0], ImageDatas[1], ImageDatas[2]);
                     return true;
                 case 4:
-                    Image = new ImageContext<ARGB>(Width, Height, ImageDatas[3], ImageDatas[0], ImageDatas[1], ImageDatas[2]);
+                    Image = new ImageContext<BGRA>(Width, Height, ImageDatas[3], ImageDatas[0], ImageDatas[1], ImageDatas[2]);
                     return true;
             }
             Image = null;
@@ -386,67 +386,18 @@ namespace MenthaAssembly.Media.Imaging
             byte[] ImageDatas = new byte[Stride + 1];
 
             using MemoryStream DataStream = new MemoryStream();
-            // Mark LZ77 Compress ()
+            // Mark LZ77 Compress
             DataStream.Write(new byte[] { 0x78, 0xDA }, 0, 2);
 
             Stream Compressor = new DeflateStream(DataStream, CompressionLevel.Optimal, true);
-            switch (Image.Channels)
+
+            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ?
+                                         new Action<int>((j) => Image.ScanLineCopy<RGBA>(0, j, Image.Width, ImageDatas, 1)) :
+                                         (y) => Image.ScanLineCopy<RGB>(0, y, Image.Width, ImageDatas, 1);
+            for (int j = 0; j < Image.Height; j++)
             {
-                case 1:
-                    unsafe
-                    {
-                        for (int j = 0; j < Image.Height; j++)
-                        {
-                            Marshal.Copy(Image.Scan0 + Image.Stride * j, ImageDatas, 1, Stride);
-                            Compressor.Write(ImageDatas, 0, ImageDatas.Length);
-                        }
-                    }
-                    break;
-                case 3:
-                    unsafe
-                    {
-                        for (int j = 0; j < Image.Height; j++)
-                        {
-                            int Offset = Image.Stride * j;
-                            byte* SourceR = (byte*)(Image.ScanR + Offset),
-                                  SourceG = (byte*)(Image.ScanG + Offset),
-                                  SourceB = (byte*)(Image.ScanB + Offset);
-                            for (int i = 1; i < ImageDatas.Length - 1; i += 3)
-                            {
-                                ImageDatas[i] = *SourceR++;         // R
-                                ImageDatas[i + 1] = *SourceG++;     // G
-                                ImageDatas[i + 2] = *SourceB++;     // B
-                            }
-
-                            Compressor.Write(ImageDatas, 0, ImageDatas.Length);
-                        }
-                    }
-                    break;
-                case 4:
-                    unsafe
-                    {
-                        IntPtr DataPointer;
-                        fixed (byte* DataScan = &ImageDatas[1])
-                            DataPointer = (IntPtr)DataScan;
-
-                        for (int j = 0; j < Image.Height; j++)
-                        {
-                            int Offset = Image.Stride * j;
-                            int* DataScan0 = (int*)DataPointer;
-                            byte* SourceA = (byte*)(Image.ScanA + Offset),
-                                  SourceR = (byte*)(Image.ScanR + Offset),
-                                  SourceG = (byte*)(Image.ScanG + Offset),
-                                  SourceB = (byte*)(Image.ScanB + Offset);
-                            for (int i = 0; i < ImageDatas.Length; i += 4)
-                                *DataScan0++ = *SourceA++ << 24 |   // A
-                                               *SourceR++ |         // R
-                                               *SourceG++ << 8 |    // G
-                                               *SourceB++ << 16;    // B
-
-                            Compressor.Write(ImageDatas, 0, ImageDatas.Length);
-                        }
-                    }
-                    break;
+                DataCopyAction(j);
+                Compressor.Write(ImageDatas, 0, ImageDatas.Length);
             }
 
             Compressor.Dispose();
@@ -503,21 +454,6 @@ namespace MenthaAssembly.Media.Imaging
 
             CRC32.Calculate(Datas: TypeCode, out uint NewRegister);
             CRC32.Calculate(Datas: Datas, out int CRCResult, NewRegister);
-            Buffers = new byte[] { (byte)(CRCResult >> 24), (byte)(CRCResult >> 16), (byte)(CRCResult >> 8), (byte)CRCResult };
-            Stream.Write(Buffers, 0, Buffers.Length);
-        }
-        private static void WriteChunk(Stream Stream, byte[] TypeCode, ReadOnlySpan<byte> Datas)
-        {
-            // Length
-            byte[] Buffers = { (byte)(Datas.Length >> 24), (byte)(Datas.Length >> 16), (byte)(Datas.Length >> 8), (byte)Datas.Length };
-            Stream.Write(Buffers, 0, Buffers.Length);
-            // TypeCode
-            Stream.Write(TypeCode, 0, TypeCode.Length);
-            // Datas
-            Stream.Write(Datas);
-
-            CRC32.Calculate(Datas: TypeCode, out uint NewRegister);
-            CRC32.Calculate(Datas, out int CRCResult, NewRegister);
             Buffers = new byte[] { (byte)(CRCResult >> 24), (byte)(CRCResult >> 16), (byte)(CRCResult >> 8), (byte)CRCResult };
             Stream.Write(Buffers, 0, Buffers.Length);
         }

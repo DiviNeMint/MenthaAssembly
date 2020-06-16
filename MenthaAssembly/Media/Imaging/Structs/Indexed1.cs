@@ -1,5 +1,4 @@
-﻿using MenthaAssembly.Media.Imaging.Primitives;
-using System;
+﻿using System;
 
 namespace MenthaAssembly.Media.Imaging
 {

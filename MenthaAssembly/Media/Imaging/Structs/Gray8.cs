@@ -1,6 +1,4 @@
-﻿using MenthaAssembly.Media.Imaging.Primitives;
-
-namespace MenthaAssembly.Media.Imaging
+﻿namespace MenthaAssembly.Media.Imaging
 {
     public struct Gray8 : IPixel
     {
@@ -30,6 +28,8 @@ namespace MenthaAssembly.Media.Imaging
         public static implicit operator Gray8(RGB Target) => new Gray8(Target.R, Target.G, Target.B);
         public static implicit operator Gray8(BGR Target) => new Gray8(Target.R, Target.G, Target.B);
         public static implicit operator Gray8(ARGB Target) => new Gray8(Target.R, Target.G, Target.B);
+        public static implicit operator Gray8(ABGR Target) => new Gray8(Target.R, Target.G, Target.B);
+        public static implicit operator Gray8(RGBA Target) => new Gray8(Target.R, Target.G, Target.B);
         public static implicit operator Gray8(BGRA Target) => new Gray8(Target.R, Target.G, Target.B);
 
     }

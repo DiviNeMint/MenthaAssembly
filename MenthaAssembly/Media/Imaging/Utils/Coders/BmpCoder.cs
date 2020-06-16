@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -79,10 +77,9 @@ namespace MenthaAssembly.Media.Imaging
                 {
                     Stream.Read(Datas, 0, Datas.Length);
                     Color = new BGRA(Datas[0], Datas[1], Datas[2], byte.MaxValue);
-                    //!(Color == BlackColor && Datas[3] == 0) &&
 
-
-                    //if (!Palette.Contains(Color))
+                    if (!(Color == BlackColor && Datas[3] == 0) &&
+                        !Palette.Contains(Color))
                         Palette.Add(Color);
                 }
             }
@@ -196,69 +193,16 @@ namespace MenthaAssembly.Media.Imaging
                 }
             }
 
-            switch (Image.Channels)
+            // Datas
+            byte[] ImageDatas = new byte[Stride];
+            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ?
+                                         new Action<int>((j) => Image.ScanLineCopy<BGRA>(0, j, Image.Width, ImageDatas, 0)) :
+                                         (y) => Image.ScanLineCopy<BGR>(0, y, Image.Width, ImageDatas, 0);
+
+            for (int j = Image.Height - 1; j >= 0; j--)
             {
-                case 1:
-                    unsafe
-                    {
-                        byte[] ImageDatas = new byte[Stride];
-                        for (int j = Image.Height - 1; j >= 0; j--)
-                        {
-                            Marshal.Copy(Image.Scan0 + Image.Stride * j, ImageDatas, 0, Image.Stride);
-                            //byte* Source = (byte*)(Image.Scan0 + Image.Stride * j);
-                            //for (int i = 0; i < Image.Stride; i++)
-                            //    ImageDatas[i] = *Source++;
-
-                            Stream.Write(ImageDatas, 0, ImageDatas.Length);
-                        }
-                    }
-                    break;
-                case 3:
-                    unsafe
-                    {
-                        byte[] ImageDatas = new byte[Stride];
-                        for (int j = Image.Height - 1; j >= 0; j--)
-                        {
-                            int Offset = Image.Stride * j;
-                            byte* SourceR = (byte*)(Image.ScanR + Offset),
-                                  SourceG = (byte*)(Image.ScanG + Offset),
-                                  SourceB = (byte*)(Image.ScanB + Offset);
-                            for (int i = 0; i < ImageDatas.Length - 2; i += 3)
-                            {
-                                ImageDatas[i] = *SourceB++;         // B
-                                ImageDatas[i + 1] = *SourceG++;     // G
-                                ImageDatas[i + 2] = *SourceR++;     // R
-                            }
-                            Stream.Write(ImageDatas, 0, ImageDatas.Length);
-                        }
-                    }
-                    break;
-                case 4:
-                    unsafe
-                    {
-                        byte[] ImageDatas = new byte[Stride];
-                        IntPtr DataPointer;
-                        fixed (byte* DataScan = &ImageDatas[0])
-                            DataPointer = (IntPtr)DataScan;
-
-                        for (int j = Image.Height - 1; j >= 0; j--)
-                        {
-                            int Offset = Image.Stride * j;
-                            int* DataScan0 = (int*)DataPointer;
-                            byte* SourceA = (byte*)(Image.ScanA + Offset),
-                                  SourceR = (byte*)(Image.ScanR + Offset),
-                                  SourceG = (byte*)(Image.ScanG + Offset),
-                                  SourceB = (byte*)(Image.ScanB + Offset);
-                            for (int i = 0; i < ImageDatas.Length; i += 4)
-                                *DataScan0++ = *SourceA++ << 24 |  // A
-                                               *SourceR++ << 16 |  // R
-                                               *SourceG++ << 8 |   // G
-                                               *SourceB++;         // B
-
-                            Stream.Write(ImageDatas, 0, ImageDatas.Length);
-                        }
-                    }
-                    break;
+                DataCopyAction(j);
+                Stream.Write(ImageDatas, 0, ImageDatas.Length);
             }
 
             Stream.Close();
