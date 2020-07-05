@@ -70,11 +70,9 @@ namespace System.Reflection
             return true;
         }
 
-        public static bool TryGetEventField<T>(string EventName, out MulticastDelegate Delegates)
-            => TryGetEventField(typeof(T), EventName, out Delegates);
-        public static bool TryGetEventField(this Type This, string EventName, out MulticastDelegate Delegates)
+        public static bool TryGetEventField(this object This, string EventName, out MulticastDelegate Delegates)
         {
-            Type BaseType = This;
+            Type BaseType = This?.GetType();
             FieldInfo EventField = BaseType?.GetField(EventName, InternalFlags);
             while (EventField is null)
             {
@@ -190,7 +188,7 @@ namespace System.Reflection
 
         public static void RaiseEvent(this object This, string EventName, params object[] Args)
         {
-            if (!TryGetEventField(This?.GetType(), EventName, out MulticastDelegate Handler))
+            if (!TryGetEventField(This, EventName, out MulticastDelegate Handler))
                 return;
 
             foreach (Delegate InvocationMethod in Handler.GetInvocationList())
