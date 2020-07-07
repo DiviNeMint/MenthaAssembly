@@ -1,4 +1,5 @@
-﻿using System.Collections.Specialized;
+﻿using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -8,6 +9,13 @@ namespace MenthaAssembly
     public class ConcurrentObservableCollection<T> : ConcurrentCollection<T>, INotifyCollectionChanged, INotifyPropertyChanged
     {
         private readonly SynchronizationContext OriginalSynchronizationContext = SynchronizationContext.Current;
+
+        public ConcurrentObservableCollection() : base()
+        {
+        }
+        public ConcurrentObservableCollection(IEnumerable<T> Items) : base(Items)
+        {
+        }
 
         public event PropertyChangedEventHandler PropertyChanged;
         public event NotifyCollectionChangedEventHandler CollectionChanged;

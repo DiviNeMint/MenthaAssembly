@@ -18,10 +18,10 @@ namespace MenthaAssembly
             this.BaseCollection = new Collection<T>();
             this.BaseList = BaseCollection;
         }
-        public ConcurrentCollection(IList<T> List)
+        public ConcurrentCollection(IEnumerable<T> Items) : this()
         {
-            this.BaseCollection = new Collection<T>(List);
-            this.BaseList = BaseCollection;
+            foreach (T Item in Items)
+                BaseCollection.Add(Item);
         }
 
         public virtual T this[int Index]
