@@ -1,38 +1,72 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Network
 {
     public class MSRemoteDesktop
     {
-        public string Domain { get; set; }
+        #region Windows API
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
-        public string Host { get; set; }
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-        public string Username { get; set; }
+        #endregion
 
-        public string Password { set; get; }
+        internal static readonly ConcurrentObservableCollection<MSRemoteDesktop> InternalRemoteDesktops = new ConcurrentObservableCollection<MSRemoteDesktop>();
+        public static ReadOnlyConcurrentObservableCollection<MSRemoteDesktop> RemoteDesktops { get; } = new ReadOnlyConcurrentObservableCollection<MSRemoteDesktop>(InternalRemoteDesktops);
+
+        public static int Timeout { set; get; } = 3000;
+
+        public string Host { get; }
+
+        public string Domain { get; }
+
+        public string Username { get; }
+
+        private readonly string Password;
 
         public bool KeepCredentials { set; get; } = true;
 
-        public bool IsFullScreen { set; get; } = true;
-
-        private Process RemoteDesktop;
-        public bool Login(int Timeout = 3000)
+        internal MSRemoteDesktop(string Host, string Domain, string Username, string Password)
         {
-            if (CreateCredentials(Timeout))
+            this.Host = Host;
+            this.Domain = Domain;
+            this.Username = Username;
+            this.Password = Password;
+        }
+
+        /// <summary>
+        /// Activates the window and displays it in its current size and position. 
+        /// </summary>
+        public bool ActivateWindow()
+        {
+            bool Result = ShowWindow(RemoteProcess.MainWindowHandle, 9);
+            SetForegroundWindow(RemoteProcess.MainWindowHandle);
+            return Result;
+        }
+
+        private Process RemoteProcess;
+        private bool Login()
+        {
+            if (CreateCredentials())
             {
-                RemoteDesktop = new Process
+                RemoteProcess = new Process
                 {
+                    EnableRaisingEvents = true,
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = Environment.ExpandEnvironmentVariables(@"%SystemRoot%\system32\mstsc.exe"),
                         WindowStyle = ProcessWindowStyle.Normal,
-                        Arguments = $"{(IsFullScreen ? "/f " : string.Empty)}/v {Host}"
+                        Arguments = $"/f /v {Host}"
                     }
                 };
+                RemoteProcess.Exited += (s, e) => InternalRemoteDesktops.Remove(this);
 
-                RemoteDesktop.Start();
+                RemoteProcess.Start();
 
                 return true;
             }
@@ -41,14 +75,16 @@ namespace MenthaAssembly.Network
         }
         public void Logout()
         {
-            if (!RemoteDesktop.HasExited)
-                RemoteDesktop?.Kill();
+            if (!RemoteProcess.HasExited)
+                RemoteProcess?.Kill();
 
             if (!KeepCredentials)
                 DeleteCredentials();
+
+            InternalRemoteDesktops.Remove(this);
         }
 
-        private bool CreateCredentials(int Timeout)
+        private bool CreateCredentials()
         {
             Process CmdKey = new Process
             {
@@ -79,9 +115,46 @@ namespace MenthaAssembly.Network
             CmdKey.Start();
         }
 
+        public bool Equals(string Host, string Domain, string Username, string Password)
+            => this.Host.Equals(Host) &&
+               this.Username.Equals(Username) &&
+               this.Password.Equals(Password) &&
+               string.IsNullOrEmpty(this.Domain) ? string.IsNullOrEmpty(Domain) :
+                                                   this.Domain.Equals(Domain);
+
+        public override string ToString()
+            => $"Host : {Host}, User : {(string.IsNullOrEmpty(Domain) ? Username : $"{Domain}\\{Username}")}";
+
         ~MSRemoteDesktop()
         {
             Logout();
+        }
+
+        public static MSRemoteDesktop Login(string Host, string Domain, string Username, string Password)
+        {
+            if (string.IsNullOrEmpty(Host))
+                throw new ArgumentException($"Host is null or empty.");
+
+            if (string.IsNullOrEmpty(Username))
+                throw new ArgumentException($"Username is null or empty.");
+
+            if (string.IsNullOrEmpty(Password))
+                throw new ArgumentException($"Password is null or empty.");
+
+            if (InternalRemoteDesktops.Handle(() => InternalRemoteDesktops.FirstOrDefault((i) => i.Equals(Host, Domain, Username, Password))) is MSRemoteDesktop Remote)
+            {
+                Remote.ActivateWindow();
+                return Remote;
+            }
+
+            Remote = new MSRemoteDesktop(Host, Domain, Username, Password);
+            if (Remote.Login())
+            {
+                InternalRemoteDesktops.Add(Remote);
+                return Remote;
+            }
+
+            return null;
         }
 
     }
