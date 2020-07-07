@@ -1,6 +1,5 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Devices
@@ -12,16 +11,19 @@ namespace MenthaAssembly.Devices
         private const int WH_MOUSE_LL = 14;
 
         //https://docs.microsoft.com/en-us/windows/win32/inputdev/mouse-input-notifications
-        private const int WM_MouseMove = 0x200;
-        private const int WM_LButtonDown = 0x201;
-        private const int WM_LButtonUp = 0x202;
+        private const int WM_MouseMove = 0x200,
+                          WM_LButtonDown = 0x201,
+                          WM_LButtonUp = 0x202,
 
-        private const int WM_RButtonDown = 0x204;
-        private const int WM_RButtonUp = 0x205;
+                          WM_RButtonDown = 0x204,
+                          WM_RButtonUp = 0x205,
 
-        private const int WM_MButtonDown = 0x207;
-        private const int WM_MButtonUp = 0x208;
+                          WM_MButtonDown = 0x207,
+                          WM_MButtonUp = 0x208,
+                          WM_MouseWheel = 0x20A;
 
+        // MSLLHOOKSTRUCT
+        // https://docs.microsoft.com/zh-tw/windows/win32/api/winuser/ns-winuser-msllhookstruct
         [StructLayout(LayoutKind.Sequential)]
         internal struct MouseInputInfo
         {
@@ -94,7 +96,8 @@ namespace MenthaAssembly.Devices
 
                 if (_MouseDown is null &&
                     _MouseUp is null &&
-                    _MouseMove is null)
+                    _MouseMove is null &&
+                    _MouseWheel is null)
                     ReleaseGlobalMouse();
             }
         }
@@ -113,7 +116,8 @@ namespace MenthaAssembly.Devices
 
                 if (_MouseUp is null &&
                     _MouseDown is null &&
-                    _MouseMove is null)
+                    _MouseMove is null &&
+                    _MouseWheel is null)
                     ReleaseGlobalMouse();
             }
         }
@@ -132,7 +136,28 @@ namespace MenthaAssembly.Devices
 
                 if (_MouseMove is null &&
                     _MouseDown is null &&
-                    _MouseUp is null)
+                    _MouseUp is null &&
+                    _MouseWheel is null)
+                    ReleaseGlobalMouse();
+            }
+        }
+
+        private static event Action<GlobalMouseEventArgs, int> _MouseWheel;
+        public static event Action<GlobalMouseEventArgs, int> MouseWheel
+        {
+            add
+            {
+                _MouseWheel += value;
+                CaptureGlobalMouse();
+            }
+            remove
+            {
+                _MouseWheel -= value;
+
+                if (_MouseWheel is null &&
+                    _MouseUp is null &&
+                    _MouseDown is null &&
+                    _MouseMove is null)
                     ReleaseGlobalMouse();
             }
         }
@@ -245,6 +270,16 @@ namespace MenthaAssembly.Devices
                     case WM_MouseMove:
                         _MouseMove?.Invoke(Info->Position);
                         break;
+                    case WM_MouseWheel:
+                        {
+                            GlobalMouseEventArgs e = new GlobalMouseEventArgs(Info->Position, MouseKey.Middle);
+                            _MouseWheel?.Invoke(e, Info->MouseData >> 16);
+
+                            if (e.Handled)
+                                return 1;
+
+                            break;
+                        }
                 }
             }
             return CallNextHookEx(HookId, nCode, wParam, lParam);
