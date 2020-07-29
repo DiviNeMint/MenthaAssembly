@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 
 namespace System.Linq
 {
@@ -42,27 +43,13 @@ namespace System.Linq
             }
         }
 
-        public static int FindIndex<TSource>(this IEnumerable<TSource> Source, Func<TSource, bool> Predicate)
+        public static int IndexOf<TSource>(this IEnumerable<TSource> Source, Func<TSource, bool> Predicate)
         {
             int Index = 0;
             foreach (TSource Item in Source)
             {
                 if (Predicate(Item))
                     return Index;
-                Index++;
-            }
-
-            return -1;
-        }
-
-        public static int IndexOf<TSource>(this IList<TSource> Source, Func<TSource, bool> Predicate)
-        {
-            int Index = 0;
-            foreach (TSource Item in Source)
-            {
-                if (Predicate(Item))
-                    return Index;
-
                 Index++;
             }
 
@@ -77,6 +64,55 @@ namespace System.Linq
                     return Item;
 
             return null;
+        }
+
+        public static bool Any(this IEnumerable Source, object Item)
+        {
+            foreach (object i in Source)
+                if (Item.Equals(i))
+                    return true;
+
+            return false;
+        }
+        public static bool Any<T>(this IEnumerable Source, T Item)
+        {
+            foreach (T i in Source.OfType<T>())
+                if (Item.Equals(i))
+                    return true;
+
+            return false;
+        }
+
+        public static int IndexOf(this IEnumerable Source, object Item)
+        {
+            int Index = 0;
+            foreach (object i in Source)
+            {
+                if (Item.Equals(i))
+                    return Index;
+
+                Index++;
+            }
+
+            return -1;
+        }
+
+        public static IEnumerable<TResult> TrySelect<TResult>(this IEnumerable Source, Func<object, TResult> Selector)
+        {
+            TResult Result;
+            foreach (object Item in Source)
+            {
+                try
+                {
+                    Result = Selector.Invoke(Item);
+                }
+                catch// (Exception ex)
+                {
+                    //Console.WriteLine($"{ex.Message}\r\n{ex.Source}\r\n{ex.StackTrace}");
+                    continue;
+                }
+                yield return Result;
+            }
         }
 
     }
