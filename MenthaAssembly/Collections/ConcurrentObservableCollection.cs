@@ -10,15 +10,15 @@ namespace MenthaAssembly
     {
         private readonly SynchronizationContext OriginalSynchronizationContext = SynchronizationContext.Current;
 
+        public event PropertyChangedEventHandler PropertyChanged;
+        public event NotifyCollectionChangedEventHandler CollectionChanged;
+
         public ConcurrentObservableCollection() : base()
         {
         }
         public ConcurrentObservableCollection(IEnumerable<T> Items) : base(Items)
         {
         }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        public event NotifyCollectionChangedEventHandler CollectionChanged;
 
         protected override void SetItem(int Index, T Value)
             => Handle(() =>
