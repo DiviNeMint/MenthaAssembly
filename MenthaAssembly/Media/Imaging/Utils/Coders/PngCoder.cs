@@ -124,7 +124,7 @@ namespace MenthaAssembly.Media.Imaging
                     Datas = new byte[Length];
                     Stream.Read(Datas, 0, Datas.Length);
 
-                    int SeparatorIndex = Datas.FindIndex(i => i.Equals(0x00));
+                    int SeparatorIndex = Datas.IndexOf(i => i.Equals(0x00));
                     if (SeparatorIndex > 0)
                     {
                         string Property = Encoding.Default.GetString(Datas, 0, SeparatorIndex),
@@ -596,7 +596,7 @@ namespace MenthaAssembly.Media.Imaging
                             Datas = new byte[Length];
                             FS.Read(Datas, 0, Datas.Length);
 
-                            int SeparatorIndex = Datas.FindIndex(i => i.Equals(0x00));
+                            int SeparatorIndex = Datas.IndexOf(i => i.Equals(0x00));
                             if (SeparatorIndex > 0)
                                 Result += $"{Encoding.Default.GetString(Datas, 0, SeparatorIndex)} : {Encoding.Default.GetString(Datas, SeparatorIndex + 1, Datas.Length - SeparatorIndex - 1)}\r\n";
                             break;
