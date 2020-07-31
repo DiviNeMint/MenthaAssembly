@@ -33,7 +33,7 @@ namespace MenthaAssembly.Network
 
             if (!SetSocketOption())
                 throw new NotSupportedException();
-
+            
             Listen();
         }
 
@@ -83,6 +83,12 @@ namespace MenthaAssembly.Network
                     IProtocolHeader ProtocolHeader = null;
                     switch (pIPHeader->Protocol)
                     {
+                        case ProtocolType.Icmp:
+                            ProtocolHeader = *(IcmpHeader*)(pBuffer + pIPHeader->HeaderLength);
+                            break;
+                        case ProtocolType.Ggp:
+                            ProtocolHeader = *(GgpHeader*)(pBuffer + pIPHeader->HeaderLength);
+                            break;
                         case ProtocolType.Tcp:
                             ProtocolHeader = *(TcpHeader*)(pBuffer + pIPHeader->HeaderLength);
                             break;
