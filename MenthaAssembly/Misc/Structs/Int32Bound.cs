@@ -106,5 +106,8 @@ namespace MenthaAssembly
                    Bottom < Y && Y < Top;
         }
 
+        public override string ToString()
+            => $"{{ Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom} }}";
+
     }
 }

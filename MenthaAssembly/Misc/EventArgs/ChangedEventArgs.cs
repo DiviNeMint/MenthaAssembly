@@ -1,14 +1,12 @@
-﻿using System;
+﻿using System.ComponentModel;
 
 namespace MenthaAssembly
 {
-    public class ChangedEventArgs<T> : EventArgs
+    public class ChangedEventArgs<T> : HandledEventArgs
     {
         public T OldValue { get; }
 
         public T NewValue { get; }
-
-        public bool Handled { set; get; }
 
         public ChangedEventArgs(T OldValue, T NewValue)
         {

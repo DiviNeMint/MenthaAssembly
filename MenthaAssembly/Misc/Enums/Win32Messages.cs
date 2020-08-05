@@ -204,13 +204,13 @@
         WM_MouseMove = 512,
         WM_LButtonDown = 513,
         WM_LButtonUp = 514,
-        WM_LButtonDBLCLK = 515,
+        WM_LButtonDoubleClick = 515,
         WM_RButtonDown = 516,
         WM_RButtonUp = 517,
-        WM_RButtonDBLCLK = 518,
+        WM_RButtonDoubleClick = 518,
         WM_MButtonDown = 519,
         WM_MButtonUp = 520,
-        WM_MButtonDBLCLK = 521,
+        WM_MButtonDoubleClick = 521,
         WM_MouseLAST = 521,
         WM_MouseWheel = 522,
         WM_XButtonDown = 523,
@@ -301,6 +301,42 @@
         TBM_GetPOS = 1024,
         WM_PSD_PageSetUpDLG = 1024,
         WM_User = 1024,
+
+        /// <summary>
+        /// This message is only send when using NOTIFYICON_VERSION_4, the Shell now sends the associated application an NIN_Select notification.
+        /// Send when a notify icon is activated with SPACEBAR or ENTER key.
+        /// Earlier versions send WM_RBUTTONDOWN and WM_RBUTTONUP messages.
+        /// </summary>
+        NIN_KeySelect = 1025,
+        /// <summary>
+        /// Sent when the balloon is shown (balloons are queued).
+        /// </summary>
+        NIN_BalloonShow = 1026,
+        /// <summary>
+        /// Sent when the balloon disappears. For example, when the icon is deleted.
+        /// This message is not sent if the balloon is dismissed because of a timeout or if the user clicks the mouse.
+        ///
+        /// As of Windows 7, NIN_BalloonHide is also sent when a notification with the NIIF_RESPECT_QUIET_TIME flag set attempts to display during quiet time (a user's first hour on a new computer).
+        /// In that case, the balloon is never displayed at all.
+        /// </summary>
+        NIN_BalloonHide = 1027,
+        /// <summary>
+        /// Sent when the balloon is dismissed because of a timeout.
+        /// </summary>
+        NIN_BalloonTimeout = 1028,
+        /// <summary>
+        /// Sent when the balloon is dismissed because the user clicked the mouse.
+        /// </summary>
+        NIN_BalloonUserClick = 1029,
+        /// <summary>
+        /// Sent when the user hovers the cursor over an icon to indicate that the richer pop-up UI should be used in place of a standard textual tooltip.
+        /// </summary>
+        NIN_PopupOpen = 1030,
+        /// <summary>
+        /// Sent when a cursor no longer hovers over an icon to indicate that the rich pop-up UI should be closed.
+        /// </summary>
+        NIN_PopupClose = 1031,
+
         CBEM_InsertItemA = 1025,
         DDM_Draw = 1025,
         DM_SetDEFID = 1025,

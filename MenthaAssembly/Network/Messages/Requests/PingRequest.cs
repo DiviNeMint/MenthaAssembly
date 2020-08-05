@@ -7,9 +7,8 @@ namespace MenthaAssembly.Network.Messages
     {
         public DateTime SendTime { get; }
 
-        public PingRequest()
+        public PingRequest() : this(DateTime.Now)
         {
-            this.SendTime = DateTime.Now;
         }
         private PingRequest(DateTime SendTime)
         {

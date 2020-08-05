@@ -70,6 +70,10 @@ namespace MenthaAssembly.Network
         {
             try
             {
+                // Reset
+                this.Dispose();
+                IsDisposed = false;
+
                 // Create New Listener
                 Listener = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 Listener.Bind(IPEndPoint);

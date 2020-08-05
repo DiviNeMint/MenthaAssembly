@@ -7,6 +7,8 @@ namespace MenthaAssembly.Devices
     public static class Screen
     {
         #region Windows API
+        private delegate bool MonitorEnumProc(IntPtr hDesktop, IntPtr hdc, ref Int32Bound pRect, int dwData);
+
         [DllImport("user32")]
         private static extern IntPtr MonitorFromPoint(Int32Point Position, MonitorOptions dwFlags);
 
@@ -16,7 +18,11 @@ namespace MenthaAssembly.Devices
         [DllImport("user32")]
         private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lpRect, MonitorEnumProc callback, int dwData);
 
-        private delegate bool MonitorEnumProc(IntPtr hDesktop, IntPtr hdc, ref Int32Bound pRect, int dwData);
+        //[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        //private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        //[DllImport("shell32.dll")]
+        //private static extern uint SHAppBarMessage(uint dwMessage, ref AppBarData data);
 
         private enum MonitorOptions : uint
         {
@@ -24,6 +30,14 @@ namespace MenthaAssembly.Devices
             Monitor_DefaultToPrimary,
             Monitor_DefaultToNearest
         }
+
+        //public enum AppBarSide : uint
+        //{
+        //    Left = 0,
+        //    Top,
+        //    Right,
+        //    Bottom
+        //}
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         private struct MonitorInfo
@@ -36,6 +50,17 @@ namespace MenthaAssembly.Devices
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
             public string DeviceId;
         }
+
+        //[StructLayout(LayoutKind.Sequential)]
+        //private struct AppBarData
+        //{
+        //    public int cbSize;
+        //    public IntPtr Hwnd;
+        //    public uint uCallbackMessage;
+        //    public AppBarSide uEdge;
+        //    public Int32Bound Bound;
+        //    public int lParam;
+        //}
 
         #endregion
 
@@ -50,7 +75,7 @@ namespace MenthaAssembly.Devices
                     Info.cbSize = Marshal.SizeOf(Info);
 
                     if (GetMonitorInfo(pScreen, ref Info))
-                        Result.Add(new ScreenInfo(Info.DeviceId, Info.rcMonitor, Info.rcWork));
+                        Result.Add(new ScreenInfo(pScreen, Info.DeviceId, Info.rcMonitor, Info.rcWork));
 
                     return true;
                 }
@@ -73,12 +98,34 @@ namespace MenthaAssembly.Devices
                     Info.cbSize = Marshal.SizeOf(Info);
 
                     if (GetMonitorInfo(pScreen, ref Info))
-                        return new ScreenInfo(Info.DeviceId, Info.rcMonitor, Info.rcWork);
+                        return new ScreenInfo(pScreen, Info.DeviceId, Info.rcMonitor, Info.rcWork);
                 }
 
                 return null;
             }
         }
+
+        //public static AppBarInfo AppBar
+        //{
+        //    get
+        //    {
+        //        AppBarData Data = new AppBarData
+        //        {
+        //            cbSize = Marshal.SizeOf<AppBarData>()
+        //        };
+
+        //        IntPtr Hwnd = FindWindow("Shell_TrayWnd", null);
+        //        if (Hwnd != IntPtr.Zero)
+        //        {
+        //            uint uResult = SHAppBarMessage(ABM_GETTASKBARPOS, ref Data);
+
+        //            if (uResult != 1)
+        //                throw new Exception("Failed to communicate with the given AppBar");
+        //        }
+
+        //        return null;
+        //    }
+        //}
 
     }
 }
