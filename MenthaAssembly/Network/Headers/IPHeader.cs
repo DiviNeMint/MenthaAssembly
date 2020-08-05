@@ -15,8 +15,8 @@ namespace MenthaAssembly.Network.Primitives
         public int HeaderLength => (_IPInfoDatas & 0x0F) << 2;
 
         [FieldOffset(1)]
-        private readonly byte _TOS;     // Type of service 
-        public byte TOS => _TOS;     // Type of service 
+        private readonly byte _TOS; 
+        public byte TOS => _TOS;        // Type of service 
 
         [FieldOffset(2)]
         private readonly byte PacketLength1;
@@ -25,15 +25,15 @@ namespace MenthaAssembly.Network.Primitives
         public int PacketLength => (PacketLength1 << 8) | PacketLength2;
 
         [FieldOffset(4)]
-        private readonly ushort _ID; // unique identifier 
-        public ushort ID => _ID; // unique identifier 
+        private readonly ushort _ID;
+        public ushort ID => _ID;        // unique identifier 
 
         [FieldOffset(6)]
         public readonly ushort FlagDatas; // flags and offset 
 
         [FieldOffset(8)]
-        private readonly byte _TTL; // Time To Live 
-        public byte TTL => _TTL;
+        private readonly byte _TTL;
+        public byte TTL => _TTL;        // Time To Live 
 
         [FieldOffset(9)]
         private readonly byte _Protocol;
