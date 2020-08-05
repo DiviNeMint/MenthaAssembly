@@ -126,7 +126,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static void Encode(IImageContext Image, string FilePath)
             => Encode(Image, new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write));
-        public static void Encode(IImageContext Image, Stream Stream)
+        public static void Encode(IImageContext Image, Stream Stream, bool KeepStreamAlive = false)
         {
             // Bitmap File Struct
             // https://crazycat1130.pixnet.net/blog/post/1345538#mark-4
@@ -205,8 +205,12 @@ namespace MenthaAssembly.Media.Imaging
                 Stream.Write(ImageDatas, 0, ImageDatas.Length);
             }
 
-            Stream.Close();
-            Stream.Dispose();
+
+            if (!KeepStreamAlive)
+            {
+                Stream.Close();
+                Stream.Dispose();
+            }
         }
 
         public static bool Identify(byte[] Data)

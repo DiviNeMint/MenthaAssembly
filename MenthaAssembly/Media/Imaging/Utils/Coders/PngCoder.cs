@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -326,7 +325,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static void Encode(IImageContext Image, string FilePath)
             => Encode(Image, new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write));
-        public static void Encode(IImageContext Image, Stream Stream)
+        public static void Encode(IImageContext Image, Stream Stream, bool KeepStreamAlive = false)
         {
             // IdentifyHeader
             byte[] Datas = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
@@ -432,7 +431,11 @@ namespace MenthaAssembly.Media.Imaging
 
             #endregion
 
-            Stream.Close();
+            if (!KeepStreamAlive)
+            {
+                Stream.Close();
+                Stream.Dispose();
+            }
         }
 
         /// <summary>
