@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using static MenthaAssembly.Devices.Screen;
 
 namespace MenthaAssembly.Devices
 {
@@ -21,7 +22,31 @@ namespace MenthaAssembly.Devices
 
         private readonly IntPtr pScreen;
 
+        public int Index
+        {
+            get
+            {
+                bool Success = false;
+
+                int Counter = 0;
+                bool Callback(IntPtr pScreen, IntPtr hdc, ref Int32Bound prect, int d)
+                {
+                    Success = this.pScreen == pScreen;
+                    if (Success)
+                        return false;
+
+                    Counter++;
+                    return true;
+                }
+
+                Screen.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, Callback, 0);
+                return Success ? Counter : -1;
+            }
+        }
+
         public string DeviceID { get; }
+
+        public bool IsPrimary { get; }
 
         public Int32Bound Bound { get; }
 
@@ -35,7 +60,7 @@ namespace MenthaAssembly.Devices
                 if (_DpiX == 0 &&
                     !TryGetDpi(DpiType.Default, out _DpiX, out _DpiY))
                     _DpiX = 0;
-                
+
                 return _DpiX;
             }
         }
@@ -62,12 +87,13 @@ namespace MenthaAssembly.Devices
         private bool TryGetDpi(DpiType Type, out uint DpiX, out uint DpiY)
             => GetDpiForMonitor(pScreen, Type, out DpiX, out DpiY) == 0;
 
-        internal ScreenInfo(IntPtr pScreen, string DeviceID, Int32Bound Bound, Int32Bound WorkArea)
+        internal ScreenInfo(IntPtr pScreen, MonitorInfo Info)
         {
             this.pScreen = pScreen;
-            this.DeviceID = DeviceID;
-            this.Bound = Bound;
-            this.WorkArea = WorkArea;
+            this.DeviceID = Info.DeviceId;
+            this.IsPrimary = Info.dwFlags == 1;
+            this.Bound = Info.rcMonitor;
+            this.WorkArea = Info.rcWork;
         }
 
     }

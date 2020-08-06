@@ -103,7 +103,7 @@ namespace MenthaAssembly
                 return false;
 
             return Left < X && X < Right &&
-                   Bottom < Y && Y < Top;
+                   Top < Y && Y < Bottom;
         }
 
         public override string ToString()
