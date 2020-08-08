@@ -169,7 +169,7 @@ namespace MenthaAssembly.Devices
                 if (GetCursorPos(out Int32Point Position))
                     return Position;
 
-                return new Int32Point(-1, -1);
+                return new Int32Point();
             }
         }
 

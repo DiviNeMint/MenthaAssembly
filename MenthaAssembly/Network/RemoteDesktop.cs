@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Network
 {
-    public class MSRemoteDesktop
+    public class RemoteDesktop
     {
         #region Windows API
         [DllImport("user32.dll")]
@@ -16,8 +16,8 @@ namespace MenthaAssembly.Network
 
         #endregion
 
-        internal static readonly ConcurrentObservableCollection<MSRemoteDesktop> InternalRemoteDesktops = new ConcurrentObservableCollection<MSRemoteDesktop>();
-        public static ReadOnlyConcurrentObservableCollection<MSRemoteDesktop> RemoteDesktops { get; } = new ReadOnlyConcurrentObservableCollection<MSRemoteDesktop>(InternalRemoteDesktops);
+        internal static readonly ConcurrentObservableCollection<RemoteDesktop> InternalRemoteDesktops = new ConcurrentObservableCollection<RemoteDesktop>();
+        public static ReadOnlyConcurrentObservableCollection<RemoteDesktop> RemoteDesktops { get; } = new ReadOnlyConcurrentObservableCollection<RemoteDesktop>(InternalRemoteDesktops);
 
         public static int Timeout { set; get; } = 3000;
 
@@ -31,7 +31,7 @@ namespace MenthaAssembly.Network
 
         public bool KeepCredentials { set; get; } = true;
 
-        internal MSRemoteDesktop(string Host, string Domain, string Username, string Password)
+        internal RemoteDesktop(string Host, string Domain, string Username, string Password)
         {
             this.Host = Host;
             this.Domain = Domain;
@@ -125,12 +125,12 @@ namespace MenthaAssembly.Network
         public override string ToString()
             => $"Host : {Host}, User : {(string.IsNullOrEmpty(Domain) ? Username : $"{Domain}\\{Username}")}";
 
-        ~MSRemoteDesktop()
+        ~RemoteDesktop()
         {
             Logout();
         }
 
-        public static MSRemoteDesktop Login(string Host, string Domain, string Username, string Password)
+        public static RemoteDesktop Login(string Host, string Domain, string Username, string Password)
         {
             if (string.IsNullOrEmpty(Host))
                 throw new ArgumentException($"Host is null or empty.");
@@ -141,13 +141,13 @@ namespace MenthaAssembly.Network
             if (string.IsNullOrEmpty(Password))
                 throw new ArgumentException($"Password is null or empty.");
 
-            if (InternalRemoteDesktops.Handle(() => InternalRemoteDesktops.FirstOrDefault((i) => i.Equals(Host, Domain, Username, Password))) is MSRemoteDesktop Remote)
+            if (InternalRemoteDesktops.Handle(() => InternalRemoteDesktops.FirstOrDefault((i) => i.Equals(Host, Domain, Username, Password))) is RemoteDesktop Remote)
             {
                 Remote.ActivateWindow();
                 return Remote;
             }
 
-            Remote = new MSRemoteDesktop(Host, Domain, Username, Password);
+            Remote = new RemoteDesktop(Host, Domain, Username, Password);
             if (Remote.Login())
             {
                 InternalRemoteDesktops.Add(Remote);

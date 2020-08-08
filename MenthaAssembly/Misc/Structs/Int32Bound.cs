@@ -88,11 +88,13 @@ namespace MenthaAssembly
         }
 
         public void Offset(Int32Vector Vector)
+            => Offset(Vector.X, Vector.Y);
+        public void Offset(int X, int Y)
         {
-            Left += Vector.X;
-            Right += Vector.X;
-            Top += Vector.Y;
-            Bottom += Vector.Y;
+            Left += X;
+            Right += X;
+            Top += Y;
+            Bottom += Y;
         }
 
         public bool Contains(Int32Point Point)
@@ -103,7 +105,7 @@ namespace MenthaAssembly
                 return false;
 
             return Left < X && X < Right &&
-                   Bottom < Y && Y < Top;
+                   Top < Y && Y < Bottom;
         }
 
         public override string ToString()
