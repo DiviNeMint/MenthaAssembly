@@ -81,6 +81,9 @@ namespace MenthaAssembly.Win32
         [DllImport("gdi32.dll")]
         internal static extern bool BitBlt(IntPtr hDCDest, int nXDest, int nYDest, int nWidth, int nHeight, IntPtr hDCSrc, int nXSrc, int nYSrc, TernaryRasterOperations dwRop);
 
+        #endregion
+
+        #region Windows API (Bitmap)
         /// <summary>
         /// Retrieves the bits of the specified compatible bitmap and copies them into a buffer as a DIB using the specified format.
         /// </summary>
@@ -98,7 +101,26 @@ namespace MenthaAssembly.Win32
         [DllImport("gdi32.dll", EntryPoint = "GetDIBits")]
         internal unsafe static extern int GetDIBits(IntPtr hDC, IntPtr hbmp, int uStartScan, int cScanLines, byte* lpvBits, BitmapInfoHeader* lpbi, DIBColorMode uUsage);
 
+        [DllImport("gdi32.dll")]
+        internal static extern IntPtr CreateBitmap(int Width, int Height, int cPlanes, int cBitsPerPel, IntPtr lpvBits);
+
 
         #endregion
+
+        #region Windows API (Icon)
+        [DllImport("user32.dll")]
+        internal static extern IntPtr CreateIconIndirect(ref IconInfo piconinfo);
+
+        [DllImport("user32.dll")]
+        internal static extern IntPtr CopyIcon(IntPtr hIcon);
+
+        [DllImport("user32.dll")]
+        internal static extern bool DestroyIcon(IntPtr hIcon);
+
+        [DllImport("user32.dll")]
+        internal static extern bool GetIconInfo(IntPtr hIcon, out IconInfo pIconInfo);
+
+        #endregion
+
     }
 }

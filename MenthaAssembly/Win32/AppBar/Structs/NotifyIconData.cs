@@ -41,7 +41,7 @@ namespace MenthaAssembly.Win32
         /// A handle to the icon that should be displayed. Just
         /// <c>Icon.Handle</c>.
         /// </summary>
-        public IntPtr Hicon;
+        public IntPtr HIcon;
 
         /// <summary>
         /// String with the text for a standard ToolTip. It can have a maximum of 64 characters including

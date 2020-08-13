@@ -60,7 +60,6 @@ namespace MenthaAssembly.Win32
             this.Side = (Sides)Data.uEdge;
             this.Bound = Data.Bound;
 
-
             //IntPtr pTaskTray = FindWindowEx(Handle, IntPtr.Zero, "ReBarWindow32", null);
             //if (pTaskTray != IntPtr.Zero)
             //{
@@ -75,7 +74,6 @@ namespace MenthaAssembly.Win32
             //        }
             //    }
             //}
-
 
         }
     }

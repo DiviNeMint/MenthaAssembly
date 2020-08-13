@@ -378,7 +378,7 @@ namespace MenthaAssembly.Win32
 
         public static ImageContext<BGR> Snapshot(IntPtr Hwnd)
         {
-            if (Snapshot(Hwnd, out WindowInfo Info, out int Width, out int Height, out bool IsAeroStyle) is byte[] Datas)
+            if (SnapshotEntireWindow(Hwnd, out WindowInfo Info, out int Width, out int Height, out bool IsAeroStyle) is byte[] Datas)
             {
                 ImageContext<BGR> Image = new ImageContext<BGR>(Width, Height, Datas);
                 int PaddingX = Info.cxWindowBorders - 1,
@@ -391,7 +391,7 @@ namespace MenthaAssembly.Win32
 
             return null;
         }
-        private unsafe static byte[] Snapshot(IntPtr Hwnd, out WindowInfo WInfo, out int IWidth, out int IHeight, out bool IsAeroStyle)
+        private unsafe static byte[] SnapshotEntireWindow(IntPtr Hwnd, out WindowInfo WInfo, out int IWidth, out int IHeight, out bool IsAeroStyle)
         {
             if (GetWindowPlacement(Hwnd, out WindowPlacementData PlacementData) &&
                 GetWindowInfo(Hwnd, out WInfo))

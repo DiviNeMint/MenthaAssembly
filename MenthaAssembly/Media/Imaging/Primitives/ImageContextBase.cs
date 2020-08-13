@@ -1267,6 +1267,9 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         object ICloneable.Clone()
             => CloneHandler();
 
+        public IntPtr CreateHBitmap()
+            => Win32.Graphic.CreateBitmap(Width, Height, 1, BitsPerPixel, Scan0);
+
     }
 
 }

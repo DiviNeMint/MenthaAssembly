@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Win32
@@ -78,6 +76,9 @@ namespace MenthaAssembly.Win32
         /// <returns></returns>
         [DllImport("user32.dll")]
         internal static extern bool SystemParametersInfo(SystemParameterActionType Action, uint uiParam, IntPtr pvParam, SystemParameterInfoFlags fWinIni);
+
+        [DllImport("user32.dll")]
+        internal static extern bool SetSystemCursor(IntPtr hCursor, CursorID type);
 
         #endregion
 

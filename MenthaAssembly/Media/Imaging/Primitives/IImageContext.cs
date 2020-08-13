@@ -80,6 +80,15 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed;
 
+        /// <summary>
+        /// Creates a bitmap.<para/>
+        /// When you no longer need the bitmap, call the <see cref="Win32.Graphic.DeleteObject(IntPtr)"/> function to delete it.
+        /// </summary>
+        /// <returns>
+        /// If the function succeeds, the return value is a handle to a bitmap.<para/>
+        /// If the function fails, the return value is <see cref="IntPtr.Zero"/>.
+        /// </returns>
+        public IntPtr CreateHBitmap();
 
         public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0) where T : unmanaged, IPixel;
         public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0) where T : unmanaged, IPixel;
