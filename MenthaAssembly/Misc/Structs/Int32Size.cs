@@ -4,9 +4,9 @@
     {
         public static Int32Size Empty => new Int32Size();
 
-        public int Width { get; }
+        public int Width { set; get; }
 
-        public int Height { get; }
+        public int Height { set; get; }
 
         public bool IsEmpty => Width.Equals(0) || Height.Equals(0);
 
@@ -16,7 +16,7 @@
             this.Height = Height;
         }
 
-        public Int32Size(double Width, double Height) : this((int)Width,(int)Height)
+        public Int32Size(double Width, double Height) : this((int)Width, (int)Height)
         {
         }
 

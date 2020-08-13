@@ -2,9 +2,9 @@
 {
     public struct Int32Point
     {
-        public int X { get; }
+        public int X { set; get; }
 
-        public int Y { get; }
+        public int Y { set; get; }
 
         public bool IsOriginalPoint => X == 0 && Y == 0;
 
