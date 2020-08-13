@@ -70,16 +70,14 @@ namespace MenthaAssembly.Win32
             //        pTaskTray = FindWindowEx(pTaskTray, IntPtr.Zero, "MSTaskListWClass", null);
             //        if (pTaskTray != IntPtr.Zero)
             //        {
-            //            ToolbarWindow32 ToolBar = new ToolbarWindow32(pTaskTray);
-
-            //            var a = ToolBar.Buttons.ToArray();
-
+            //            //int Count = SendMessage(pTaskTray, Win32Messages.LVM_GetItemCount, IntPtr.Zero, IntPtr.Zero);
+            //            //Count = SendMessage(pTaskTray, Win32Messages.TB_ButtonCount, IntPtr.Zero, IntPtr.Zero);
             //        }
             //    }
             //}
 
 
         }
-
     }
+
 }
