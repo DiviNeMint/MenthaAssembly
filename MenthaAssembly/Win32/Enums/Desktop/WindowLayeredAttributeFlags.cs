@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Win32
 {
-    public enum WindowLayeredAttributeFlags
+    internal enum WindowLayeredAttributeFlags
     {
         /// <summary>
         /// Use bAlpha to determine the opacity of the layered window. 

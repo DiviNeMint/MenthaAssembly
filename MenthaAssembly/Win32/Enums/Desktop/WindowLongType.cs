@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Win32
 {
-    public enum WindowLongType
+    internal enum WindowLongType
     {
         /// <summary>
         /// Set/Get a new address for the window procedure. 

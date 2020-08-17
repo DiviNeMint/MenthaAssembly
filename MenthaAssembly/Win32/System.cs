@@ -44,17 +44,6 @@ namespace MenthaAssembly.Win32
 
         #region Windows API (System parameter)
         /// <summary>
-        /// Gets the maximum number of milliseconds that can elapse between a
-        /// first click and a second click for the OS to consider the
-        /// mouse action a double-click.
-        /// </summary>
-        /// <returns>The maximum amount of time, in milliseconds, that can
-        /// elapse between a first click and a second click for the OS to
-        /// consider the mouse action a double-click.</returns>
-        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
-        internal static extern int GetDoubleClickTime();
-
-        /// <summary>
         /// Windows API : <see href="https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfoa">SystemParametersInfo</see>
         /// </summary>
         /// <param name="uiParam">
@@ -77,11 +66,27 @@ namespace MenthaAssembly.Win32
         [DllImport("user32.dll")]
         internal static extern bool SystemParametersInfo(SystemParameterActionType Action, uint uiParam, IntPtr pvParam, SystemParameterInfoFlags fWinIni);
 
+        /// <summary>
+        /// Gets the maximum number of milliseconds that can elapse between a
+        /// first click and a second click for the OS to consider the
+        /// mouse action a double-click.
+        /// </summary>
+        /// <returns>The maximum amount of time, in milliseconds, that can
+        /// elapse between a first click and a second click for the OS to
+        /// consider the mouse action a double-click.</returns>
+        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+        internal static extern int GetDoubleClickTime();
+
         [DllImport("user32.dll")]
         internal static extern bool SetSystemCursor(IntPtr hCursor, CursorID type);
 
-        #endregion
+        //[DllImport("kernel32.dll")]
+        //internal static extern void GetLocalTime(out SystemTime lpSystemTime);
 
+        [DllImport("kernel32.dll")]
+        internal static extern bool SetLocalTime(ref SystemTime lpSystemTime);
+
+        #endregion
 
         public static unsafe bool EnableMinMaxAnimation
         {
@@ -102,6 +107,34 @@ namespace MenthaAssembly.Win32
                 Data[0] = 8;
                 Data[1] = value ? 1 : 0;
                 SystemParametersInfo(SystemParameterActionType.SetAnimation, 8, (IntPtr)Data, SystemParameterInfoFlags.SendChange);
+            }
+        }
+
+        public static DateTime LocalTime
+        {
+            //GetLocalTime(out SystemTime SystemTime);
+            //return new DateTime(SystemTime.Year, 
+            //                    SystemTime.Month, 
+            //                    SystemTime.Day, 
+            //                    SystemTime.Hour, 
+            //                    SystemTime.Minute, 
+            //                    SystemTime.Second, 
+            //                    SystemTime.Miliseconds, 
+            //                    DateTimeKind.Local);
+            get => DateTime.Now;
+            set
+            {
+                SystemTime SysTime = new SystemTime
+                {
+                    Year = (ushort)value.Year,
+                    Month = (ushort)value.Month,
+                    Day = (ushort)value.Day,
+                    Hour = (ushort)value.Hour,
+                    Minute = (ushort)value.Minute,
+                    Second = (ushort)value.Second,
+                    Miliseconds = (ushort)value.Millisecond,
+                };
+                SetLocalTime(ref SysTime);
             }
         }
 

@@ -3,7 +3,7 @@
 namespace MenthaAssembly.Win32
 {
     [Flags]
-    public enum WindowPlacementFlags : uint
+    internal enum WindowPlacementFlags : uint
     {
         /// <summary>
         /// The coordinates of the minimized window may be specified. 

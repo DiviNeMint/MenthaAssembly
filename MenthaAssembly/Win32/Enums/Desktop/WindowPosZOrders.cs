@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Win32
 {
-    public enum WindowPosZOrders
+    internal enum WindowPosZOrders
     {
         /// <summary>
         /// Places the window above all non-topmost windows (that is, behind all topmost windows). 

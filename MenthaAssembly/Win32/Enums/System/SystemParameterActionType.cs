@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Win32
 {
-    public enum SystemParameterActionType : uint
+    internal enum SystemParameterActionType : uint
     {
         /// <summary>
         /// Determines whether the warning beeper is on. 
@@ -63,7 +63,8 @@
         IconHorizontalSpacing = 0x000D,
 
         /// <summary>
-        /// Retrieves the screen saver time-out value, in seconds. The pvParam parameter must point to an integer variable that receives the value.
+        /// Retrieves the screen saver time-out value, in seconds. 
+        /// The pvParam parameter must point to an integer variable that receives the value.
         /// </summary>
         GetScreenSaveTimeout = 0x000E,
 
@@ -96,7 +97,8 @@
         SetGridGranularity = 0x0013,
 
         /// <summary>
-        /// Sets the desktop wallpaper. The value of the pvParam parameter determines the new wallpaper. To specify a wallpaper bitmap, 
+        /// Sets the desktop wallpaper. 
+        /// The value of the pvParam parameter determines the new wallpaper. To specify a wallpaper bitmap, 
         /// set pvParam to point to a null-terminated string containing the name of a bitmap file. Setting pvParam to "" removes the wallpaper. 
         /// Setting pvParam to SetWallPaper_Default or null reverts to the default wallpaper.
         /// </summary>
@@ -182,7 +184,7 @@
         /// Swaps or restores the meaning of the left and right mouse buttons. The uiParam parameter specifies TRUE to swap the meanings 
         /// of the buttons, or FALSE to restore their original meanings.
         /// </summary>
-        SetMouseButtonSWAP = 0x0021,
+        SetMouseButtonSwap = 0x0021,
 
         /// <summary>
         /// Sets the font that is used for icon titles. The uiParam parameter specifies the size of a LogFont structure, 
@@ -191,18 +193,19 @@
         SetIconTitleLogFont = 0x0022,
 
         /// <summary>
-        /// This flag is obsolete. Previous versions of the system use this flag to determine whether ALT+TAB fast task switching is enabled. 
+        /// This flag is obsolete. 
+        /// Previous versions of the system use this flag to determine whether ALT+TAB fast task switching is enabled. 
         /// For Windows 95, Windows 98, and Windows NT version 4.0 and later, fast task switching is always enabled.
         /// </summary>
         GetFastTaskSwitch = 0x0023,
 
         /// <summary>
-        /// This flag is obsolete. Previous versions of the system use this flag to enable or disable ALT+TAB fast task switching. 
+        /// This flag is obsolete. 
+        /// Previous versions of the system use this flag to enable or disable ALT+TAB fast task switching. 
         /// For Windows 95, Windows 98, and Windows NT version 4.0 and later, fast task switching is always enabled.
         /// </summary>
         SetFastTaskSwitch = 0x0024,
 
-        //#if(WINVER >= 0x0400)
         /// <summary>
         /// Sets dragging of full windows either on or off. The uiParam parameter specifies TRUE for on, or FALSE for off. 
         /// Windows 95:  This flag is supported only if Windows Plus! is installed. See GetWindowsExtension.
@@ -217,16 +220,17 @@
         GetDragFullWindows = 0x0026,
 
         /// <summary>
-        /// Retrieves the metrics associated with the nonClient area of nonminimized windows. The pvParam parameter must point 
-        /// to a NonClientMetrics structure that receives the information. Set the cbSize member of this structure and the uiParam parameter 
-        /// to sizeof(NonClientMetrics).
+        /// Retrieves the metrics associated with the nonClient area of nonminimized windows. 
+        /// The pvParam parameter must point to a NonClientMetrics structure that receives the information.
+        /// Set the cbSize member of this structure and the uiParam parameter to sizeof(NonClientMetrics).
         /// </summary>
         GetNonClientMetrics = 0x0029,
 
         /// <summary>
-        /// Sets the metrics associated with the nonClient area of nonminimized windows. The pvParam parameter must point 
-        /// to a NonClientMetrics structure that contains the new parameters. Set the cbSize member of this structure 
-        /// and the uiParam parameter to sizeof(NonClientMetrics). Also, the lfHeight member of the LogFont structure must be a negative value.
+        /// Sets the metrics associated with the nonClient area of nonminimized windows. 
+        /// The pvParam parameter must point to a NonClientMetrics structure that contains the new parameters. 
+        /// Set the cbSize member of this structure and the uiParam parameter to sizeof(NonClientMetrics). 
+        /// Also, the lfHeight member of the LogFont structure must be a negative value.
         /// </summary>
         SetNonClientMetrics = 0x002A,
 
@@ -243,22 +247,24 @@
         SetMinimizedMetrics = 0x002C,
 
         /// <summary>
-        /// Retrieves the metrics associated with icons. The pvParam parameter must point to an IconMetrics structure that receives 
-        /// the information. Set the cbSize member of this structure and the uiParam parameter to sizeof(IconMetrics).
+        /// Retrieves the metrics associated with icons. 
+        /// The pvParam parameter must point to an IconMetrics structure that receives the information. 
+        /// Set the cbSize member of this structure and the uiParam parameter to sizeof(IconMetrics).
         /// </summary>
         GetIconMetrics = 0x002D,
 
         /// <summary>
-        /// Sets the metrics associated with icons. The pvParam parameter must point to an IconMetrics structure that contains 
-        /// the new parameters. Set the cbSize member of this structure and the uiParam parameter to sizeof(IconMetrics).
+        /// Sets the metrics associated with icons. 
+        /// The pvParam parameter must point to an IconMetrics structure that contains the new parameters. 
+        /// Set the cbSize member of this structure and the uiParam parameter to sizeof(IconMetrics).
         /// </summary>
         SetIconMetrics = 0x002E,
 
         /// <summary>
-        /// Sets the size of the work area. The work area is the portion of the screen not obscured by the system taskbar 
-        /// or by application desktop toolbars. The pvParam parameter is a pointer to a RECT structure that specifies the new work area rectangle, 
-        /// expressed in virtual screen coordinates. In a system with multiple display monitors, the function sets the work area 
-        /// of the monitor that contains the specified rectangle.
+        /// Sets the size of the work area. 
+        /// The work area is the portion of the screen not obscured by the system taskbar or by application desktop toolbars. 
+        /// The pvParam parameter is a pointer to a RECT structure that specifies the new work area rectangle, expressed in virtual screen coordinates. 
+        /// In a system with multiple display monitors, the function sets the work area of the monitor that contains the specified rectangle.
         /// </summary>
         SetWorkArea = 0x002F,
 
