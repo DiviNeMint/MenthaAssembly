@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Win32
 {
-    public enum TernaryRasterOperations : uint
+    internal enum TernaryRasterOperations : uint
     {
         /// <summary>
         /// Copies the source rectangle directly to the destination rectangle. 

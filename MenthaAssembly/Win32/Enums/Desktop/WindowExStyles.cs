@@ -3,7 +3,7 @@
 namespace MenthaAssembly.Win32
 {
     [Flags]
-    public enum WindowExStyles : uint
+    internal enum WindowExStyles : uint
     {
         /// <summary>
         /// Specifies a window that accepts drag-drop files.

@@ -3,7 +3,7 @@
 namespace MenthaAssembly.Win32
 {
     [Flags]
-    public enum WindowPosFlags : uint
+    internal enum WindowPosFlags : uint
     {
         /// <summary>
         /// Retains the current size (ignores the cx and cy members). 

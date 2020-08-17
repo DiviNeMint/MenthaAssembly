@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Win32
 {
-    public enum WindowShowType : uint
+    internal enum WindowShowType : uint
     {
         /// <summary>
         /// Hides the window and activates another window. 

@@ -290,6 +290,9 @@ namespace MenthaAssembly.Win32
         //#endif
         #endregion
 
+        public static IntPtr Handle
+            => GetDesktopWindow();
+
         public static AppBarInfo PrimaryAppBar
         {
             get
@@ -314,16 +317,23 @@ namespace MenthaAssembly.Win32
         }
 
         /// <summary>
-        /// Screenshot Current Screen.
+        /// Screenshot current screen.
         /// </summary>
         public static ImageContext<BGR> Screenshot()
         {
             Int32Bound ScreenArea = Screen.Current.Bound;
-            return Screenshot(ScreenArea.Left, 
-                              ScreenArea.Top, 
+            return Screenshot(ScreenArea.Left,
+                              ScreenArea.Top,
                               ScreenArea.Width,
                               ScreenArea.Height);
         }
+        /// <summary>
+        /// Screenshot all screen at special rectangle.
+        /// </summary>
+        /// <param name="X">X-coordinate of Screen.</param>
+        /// <param name="Y">Y-coordinate of Screen.</param>
+        /// <param name="Width">Width of snapshot size.</param>
+        /// <param name="Height">Height of snapshot size.</param>
         public unsafe static ImageContext<BGR> Screenshot(int X, int Y, int Width, int Height)
         {
             IntPtr Hwnd = GetDesktopWindow(),
@@ -376,44 +386,29 @@ namespace MenthaAssembly.Win32
             }
         }
 
-        public static ImageContext<BGR> Snapshot(IntPtr Hwnd)
+        /// <summary>
+        /// Snapshot window
+        /// </summary>
+        /// <param name="Hwnd">A handle to the window that will be snapshotted.</param>
+        public unsafe static ImageContext<BGR> Snapshot(IntPtr Hwnd)
         {
-            if (SnapshotEntireWindow(Hwnd, out WindowInfo Info, out int Width, out int Height, out bool IsAeroStyle) is byte[] Datas)
+            if (GetWindowPlacement(Hwnd, out WindowPlacementData PlacementData))
             {
-                ImageContext<BGR> Image = new ImageContext<BGR>(Width, Height, Datas);
-                int PaddingX = Info.cxWindowBorders - 1,
-                    PaddingY = Info.cyWindowBorders - 1;
-
-                return Info.rcWindow.Top < 0 ? Image.Crop(PaddingX, PaddingY, Image.Width - PaddingX * 2, Image.Height - PaddingY * 2) :
-                                               IsAeroStyle ? Image.Crop(PaddingX, 0, Image.Width - PaddingX * 2, Image.Height - PaddingY) :
-                                                             Image;
-            }
-
-            return null;
-        }
-        private unsafe static byte[] SnapshotEntireWindow(IntPtr Hwnd, out WindowInfo WInfo, out int IWidth, out int IHeight, out bool IsAeroStyle)
-        {
-            if (GetWindowPlacement(Hwnd, out WindowPlacementData PlacementData) &&
-                GetWindowInfo(Hwnd, out WInfo))
-            {
-                IsAeroStyle = Environment.OSVersion.Version > new Version(6, 1);
-                IWidth = WInfo.rcWindow.Width;
-                IHeight = WInfo.rcWindow.Height;
-
-                bool IsMoreThanWin7 = IsAeroStyle;
-                int Width = IWidth,
-                    Height = IHeight;
-
-                byte[] DoSnapshot()
+                ImageContext<BGR> DoSnapshot()
                 {
+                    if (!GetWindowInfo(Hwnd, out WindowInfo Info))
+                        return null;
+
+                    int Width = Info.rcWindow.Width,
+                        Height = Info.rcWindow.Height;
+
                     IntPtr hdcSrc = GetWindowDC(Hwnd),
                            hdcDest = CreateCompatibleDC(hdcSrc),
                            hBitmap = CreateCompatibleBitmap(hdcSrc, Width, Height),
                            hObject = SelectObject(hdcDest, hBitmap);
                     try
                     {
-                        if (PrintWindow(Hwnd, hdcDest, IsMoreThanWin7 ? WindowPrintFlags.RenderFullContent :
-                                                                        WindowPrintFlags.EntireWindow))
+                        if (PrintWindow(Hwnd, hdcDest, WindowPrintFlags.EntireWindow))
                         {
                             SelectObject(hdcDest, hObject);
 
@@ -437,7 +432,19 @@ namespace MenthaAssembly.Win32
                                 fixed (byte* pDatas = Datas)
                                 {
                                     if (GetDIBits(hdcSrc, hBitmap, 0, BmpHeader.biHeight, pDatas, &BmpHeader, DIBColorMode.RGB_Colors) != 0)
-                                        return Datas;
+                                    {
+                                        ImageContext<BGR> Snap = new ImageContext<BGR>(Width, Height, Datas);
+
+                                        // Maximized
+                                        if (Info.rcWindow.Top < 0)
+                                        {
+                                            int ThicknessX = Info.cxWindowBorders,
+                                                ThicknessY = Info.cyWindowBorders;
+                                            return Snap.Crop(ThicknessX, ThicknessY, Snap.Width - ThicknessX * 2, Snap.Height - ThicknessY * 2);
+                                        }
+
+                                        return Snap;
+                                    }
                                 }
                             }
                         }
@@ -494,10 +501,6 @@ namespace MenthaAssembly.Win32
                 return DoSnapshot();
             }
 
-            WInfo = default;
-            IsAeroStyle = false;
-            IWidth = default;
-            IHeight = default;
             return null;
         }
 

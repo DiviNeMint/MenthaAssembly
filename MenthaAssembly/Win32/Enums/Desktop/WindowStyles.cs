@@ -3,7 +3,7 @@
 namespace MenthaAssembly.Win32
 {
     [Flags]
-    public enum WindowStyles : uint
+    internal enum WindowStyles : uint
     {
         /// <summary>
         /// The window has a thin-line border.
