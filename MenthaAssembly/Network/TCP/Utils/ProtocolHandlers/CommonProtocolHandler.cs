@@ -19,6 +19,7 @@ namespace MenthaAssembly.Network.Utils
                 GetTimeResponse GetTimeResponse => new ConcatStream(new byte[] { 5 }, GetTimeResponse.Encode(GetTimeResponse)),
                 SendSerializeObjectRequest SendSerializeObjectRequest => new ConcatStream(new byte[] { 6 }, SendSerializeObjectRequest.Encode(SendSerializeObjectRequest)),
                 SendSerializeObjectResponse SendSerializeObjectResponse => new ConcatStream(new byte[] { 7 }, SendSerializeObjectResponse.Encode(SendSerializeObjectResponse)),
+                SuccessMessage SuccessMessage => new ConcatStream(new byte[] { 8 }, SuccessMessage.Encode(SuccessMessage)),
                 _ => null
             };
 
@@ -33,6 +34,7 @@ namespace MenthaAssembly.Network.Utils
                 5 => GetTimeResponse.Decode(Stream),
                 6 => SendSerializeObjectRequest.Decode(Stream),
                 7 => SendSerializeObjectResponse.Decode(Stream),
+                8 => new SuccessMessage(SuccessMessage.Decode(Stream)),
                 _ => null
             };
 

@@ -1,10 +1,10 @@
-﻿using MenthaAssembly.Media.Imaging;
-using MenthaAssembly.Media.Imaging.Primitives;
+﻿using MenthaAssembly.Media.Imaging.Primitives;
+using MenthaAssembly.Media.Imaging.Utils;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace MenthaAssembly
+namespace MenthaAssembly.Media.Imaging
 {
     public class ImageContext<Pixel> : ImageContextBase<Pixel, Pixel>
         where Pixel : unmanaged, IPixel
@@ -77,13 +77,13 @@ namespace MenthaAssembly
                 // Create Result
                 ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-                CopyPixelAction Handler = CreateCopyPixelHandler<T>();
+                PixelOperator<T> Operator = PixelOperator<T>.GetOperator();
                 int DestStride = Result.Stride;
                 byte* Dest0 = (byte*)Result.Scan0;
                 Parallel.For(0, Height, (y) =>
                 {
                     byte* Dest = Dest0 + DestStride * (Height - 1 - y);
-                    ScanLineCopy(0, y, Width, Dest, Handler);
+                    this.Operator.ScanLineCopy(this, 0, y, Width, Dest, Operator);
                 });
 
                 return Result;
@@ -93,7 +93,7 @@ namespace MenthaAssembly
                 // Create Result
                 ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-                CopyPixelAction Handler = CreateCopyPixelHandler<T>();
+                PixelOperator<T> Operator = PixelOperator<T>.GetOperator();
 
                 int DestStride = Result.Stride;
                 byte* Dest0 = (byte*)Result.Scan0;
@@ -104,8 +104,8 @@ namespace MenthaAssembly
                     int SourceX = Width - 1;
                     for (int x = 0; x < Width; x++)
                     {
-                        Pixel Pixel = GetPixel(SourceX--, y);
-                        Handler(ref Dest, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+                        Pixel Pixel = this.Operator.GetPixel(this, SourceX--, y);
+                        Operator.Override(ref Dest, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
                         Dest++;
                     }
                 });
@@ -150,7 +150,7 @@ namespace MenthaAssembly
             // Create Result
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-            this.BlockCopy(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride, CreateCopyPixelHandler<T>());
+            this.BlockCopy<T>(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride);
 
             return Result;
         }
@@ -186,7 +186,7 @@ namespace MenthaAssembly
             {
                 Pixel[] Pixels = new Pixel[KH];
                 for (int j = 0; j < KH; j++)
-                    Pixels[j] = this.GetPixel(X, Math.Min(Math.Max(Y + j - khh, 0), this.Height - 1));
+                    Pixels[j] = this.Operator.GetPixel(this, X, Math.Min(Math.Max(Y + j - khh, 0), this.Height - 1));
 
                 return Pixels;
             };
@@ -252,7 +252,7 @@ namespace MenthaAssembly
                     Pixels = new Pixel[KH];
                     for (int j = 0; j < KH; j++)
                     {
-                        Pixel Pixel = this.GetPixel(Math.Min(x + kwh, this.Width - 1), Math.Min(Math.Max(y + j - khh, 0), this.Height - 1));
+                        Pixel Pixel = this.Operator.GetPixel(this, Math.Min(x + kwh, this.Width - 1), Math.Min(Math.Max(y + j - khh, 0), this.Height - 1));
                         Pixels[j] = Pixel;
 
                         int k = Kernel[j, KXIndex];
@@ -267,7 +267,7 @@ namespace MenthaAssembly
 
                     PixelBlock.Enqueue(Pixels);
 
-                    Result.SetPixel(x, y, ToPixel((byte)Math.Min(Math.Max((A / KernelFactorSum) + KernelOffsetSum, 0), 255),
+                    Result.Operator.SetPixel(Result, x, y, this.Operator.ToPixel((byte)Math.Min(Math.Max((A / KernelFactorSum) + KernelOffsetSum, 0), 255),
                                                   (byte)Math.Min(Math.Max((R / KernelFactorSum) + KernelOffsetSum, 0), 255),
                                                   (byte)Math.Min(Math.Max((G / KernelFactorSum) + KernelOffsetSum, 0), 255),
                                                   (byte)Math.Min(Math.Max((B / KernelFactorSum) + KernelOffsetSum, 0), 255)));
@@ -294,7 +294,7 @@ namespace MenthaAssembly
         {
             ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
 
-            this.BlockCopy(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride, CreateCopyPixelHandler<T>());
+            this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
 
             return Result;
         }
@@ -309,8 +309,8 @@ namespace MenthaAssembly
                 Pixel SourcePixel;
                 for (int X = 0; X < Width; X++)
                 {
-                    SourcePixel = this.GetPixel(X, Y);
-                    Result.SetPixel(X, Y, Result.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B));
+                    SourcePixel = this.Operator.GetPixel(this, X, Y);
+                    Result.Operator.SetPixel(Result, X, Y, Result.Operator.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B));
                 }
             }
 
@@ -394,7 +394,7 @@ namespace MenthaAssembly
                         if (y == 0)
                         {
                             // center of image, no rotation needed
-                            Result.SetPixel(i, j, this.GetPixel(iCentreX, iCentreY));
+                            Result.Operator.SetPixel(Result, i, j, this.Operator.GetPixel(this, iCentreX, iCentreY));
                             continue;
                         }
                         fPolarAngle = (y < 0 ? 1.5 : 0.5) * Math.PI;
@@ -429,10 +429,10 @@ namespace MenthaAssembly
                     fDeltaX = fTrueX - iFloorX;
                     fDeltaY = fTrueY - iFloorY;
 
-                    Pixel clrTopLeft = this.GetPixel(iFloorX, iFloorY),
-                          clrTopRight = this.GetPixel(iCeilingX, iFloorY),
-                          clrBottomLeft = this.GetPixel(iFloorX, iCeilingY),
-                          clrBottomRight = this.GetPixel(iCeilingX, iCeilingY);
+                    Pixel clrTopLeft = this.Operator.GetPixel(this, iFloorX, iFloorY),
+                          clrTopRight = this.Operator.GetPixel(this, iCeilingX, iFloorY),
+                          clrBottomLeft = this.Operator.GetPixel(this, iFloorX, iCeilingY),
+                          clrBottomRight = this.Operator.GetPixel(this, iCeilingX, iCeilingY);
 
                     fTopAlpha = (1 - fDeltaX) * clrTopLeft.A + fDeltaX * clrTopRight.A;
                     fTopRed = (1 - fDeltaX) * clrTopLeft.R + fDeltaX * clrTopRight.R;
@@ -469,7 +469,7 @@ namespace MenthaAssembly
                     if (iAlpha > 255)
                         iAlpha = 255;
 
-                    Result.SetPixel(i, j, ToPixel((byte)iAlpha,
+                    Result.Operator.SetPixel(Result, i, j, this.Operator.ToPixel((byte)iAlpha,
                                                   (byte)iRed,
                                                   (byte)iGreen,
                                                   (byte)iBlue));
@@ -488,12 +488,6 @@ namespace MenthaAssembly
         where Pixel : unmanaged, IPixel
         where PixelIndexed : unmanaged, IPixelIndexed
     {
-
-        protected override IntPtr ScanA => throw new NotImplementedException();
-        protected override IntPtr ScanR => throw new NotImplementedException();
-        protected override IntPtr ScanG => throw new NotImplementedException();
-        protected override IntPtr ScanB => throw new NotImplementedException();
-
         public ImageContext(int Width, int Height) : base(Width, Height)
         {
         }
@@ -618,7 +612,7 @@ namespace MenthaAssembly
                 int SourceY = Y + j;
 
                 for (int i = 0; i < Width; i++)
-                    Result.SetPixel(i, j, this.GetPixel(X + i, SourceY));
+                    Result.Operator.SetPixel(Result, i, j, this.Operator.GetPixel(this, X + i, SourceY));
             });
 
             return Result;
@@ -653,7 +647,7 @@ namespace MenthaAssembly
             {
                 Pixel[] Pixels = new Pixel[KH];
                 for (int j = 0; j < KH; j++)
-                    Pixels[j] = this.GetPixel(X, Math.Min(Math.Max(Y + j - khh, 0), this.Height - 1));
+                    Pixels[j] = this.Operator.GetPixel(this, X, Math.Min(Math.Max(Y + j - khh, 0), this.Height - 1));
 
                 return Pixels;
             };
@@ -719,7 +713,7 @@ namespace MenthaAssembly
                     Pixels = new Pixel[KH];
                     for (int j = 0; j < KH; j++)
                     {
-                        Pixel Pixel = this.GetPixel(Math.Min(x + kwh, this.Width - 1), Math.Min(Math.Max(y + j - khh, 0), this.Height - 1));
+                        Pixel Pixel = this.Operator.GetPixel(this, Math.Min(x + kwh, this.Width - 1), Math.Min(Math.Max(y + j - khh, 0), this.Height - 1));
                         Pixels[j] = Pixel;
 
                         int k = Kernel[j, KXIndex];
@@ -734,7 +728,7 @@ namespace MenthaAssembly
 
                     PixelBlock.Enqueue(Pixels);
 
-                    Result.SetPixel(x, y, ToPixel((byte)Math.Min(Math.Max((A / KernelFactorSum) + KernelOffsetSum, 0), 255),
+                    Result.Operator.SetPixel(Result, x, y, this.Operator.ToPixel((byte)Math.Min(Math.Max((A / KernelFactorSum) + KernelOffsetSum, 0), 255),
                                                   (byte)Math.Min(Math.Max((R / KernelFactorSum) + KernelOffsetSum, 0), 255),
                                                   (byte)Math.Min(Math.Max((G / KernelFactorSum) + KernelOffsetSum, 0), 255),
                                                   (byte)Math.Min(Math.Max((B / KernelFactorSum) + KernelOffsetSum, 0), 255)));
@@ -761,7 +755,7 @@ namespace MenthaAssembly
         {
             ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
 
-            this.BlockCopy(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride, CreateCopyPixelHandler<T>());
+            this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
 
             return Result;
         }
@@ -776,8 +770,8 @@ namespace MenthaAssembly
                 Pixel SourcePixel;
                 for (int X = 0; X < Width; X++)
                 {
-                    SourcePixel = this.GetPixel(X, Y);
-                    Result.SetPixel(X, Y, Result.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B));
+                    SourcePixel = this.Operator.GetPixel(this, X, Y);
+                    Result.Operator.SetPixel(Result, X, Y, Result.Operator.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B));
                 }
             }
 

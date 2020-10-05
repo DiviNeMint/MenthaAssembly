@@ -1,5 +1,4 @@
-﻿using MenthaAssembly.Network;
-using System.IO;
+﻿using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace MenthaAssembly.Network.Messages
@@ -17,9 +16,20 @@ namespace MenthaAssembly.Network.Messages
         {
             MemoryStream EncodeStream = new MemoryStream();
 
-            // Serialize
-            BinaryFormatter BF = new BinaryFormatter();
-            BF.Serialize(EncodeStream, Message.SerializeObject);
+            if (Message.SerializeObject is null)
+            {
+                // Null
+                EncodeStream.WriteByte(0);
+            }
+            else
+            {
+                EncodeStream.WriteByte(1);
+
+                // Serialize
+                BinaryFormatter BF = new BinaryFormatter();
+                BF.Serialize(EncodeStream, Message.SerializeObject);
+
+            }
 
             // Reset Position
             EncodeStream.Seek(0, SeekOrigin.Begin);
@@ -29,6 +39,10 @@ namespace MenthaAssembly.Network.Messages
 
         public static SendSerializeObjectRequest Decode(Stream Stream)
         {
+            // Check null
+            if (Stream.ReadByte() == 0)
+                return new SendSerializeObjectRequest(null);
+
             // Deserialize
             BinaryFormatter BF = new BinaryFormatter();
             object SerializeObject = BF.Deserialize(Stream);
