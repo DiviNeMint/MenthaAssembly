@@ -1,12 +1,10 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace MenthaAssembly.Network.Messages
 {
     public class SendSerializeObjectResponse : SuccessMessage
     {
-
         public object SerializeObject { get; }
 
         public SendSerializeObjectResponse(bool Success) : this(Success, null)
