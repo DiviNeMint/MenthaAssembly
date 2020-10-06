@@ -253,9 +253,15 @@ namespace MenthaAssembly.Network.Primitives
         {
             // Check Reply
             if (Response != null &&
-                ProtocolHandler.Encode(Response) is Stream MessageStream && // Encode Message
                 Token.Lock != null)
             {
+                Stream MessageStream = ProtocolHandler.Encode(Response);
+                if (MessageStream is null)
+                {
+                    Console.WriteLine($"ProtocolHandler not support {Response.GetType().Name}.");
+                    return;
+                }
+
                 Token.Lock.Wait();
 
                 Token.MessageEncodeStream = MessageStream;
