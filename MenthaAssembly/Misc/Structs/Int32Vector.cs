@@ -2,9 +2,9 @@
 {
     public struct Int32Vector
     {
-        public int X { get; }
+        public int X { set; get; }
 
-        public int Y { get; }
+        public int Y { set; get; }
 
         public int LengthSquare => X * X + Y * Y;
 
@@ -46,8 +46,9 @@
             => new Int32Vector(This.X / Factor, This.Y / Factor);
 
         // Int32Point
-        public static Int32Point operator +(Int32Point This, Int32Vector Vector)
+        public static Int32Point operator +(Int32Point This, Int32Vector Vector) 
             => new Int32Point(This.X + Vector.X, This.Y + Vector.Y);
+
         public static Int32Point operator -(Int32Point This, Int32Vector Vector)
             => new Int32Point(This.X - Vector.X, This.Y - Vector.Y);
 

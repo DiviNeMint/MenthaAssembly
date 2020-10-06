@@ -1,4 +1,4 @@
-﻿using MenthaAssembly.Utils;
+﻿using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
@@ -6,8 +6,12 @@ namespace MenthaAssembly.Network.Messages
 {
     public class SendSerializeObjectResponse : SuccessMessage
     {
+
         public object SerializeObject { get; }
 
+        public SendSerializeObjectResponse(bool Success) : this(Success, null)
+        {
+        }
         public SendSerializeObjectResponse(bool Success, object SerializeObject) : base(Success)
         {
             this.SerializeObject = SerializeObject;
@@ -15,22 +19,36 @@ namespace MenthaAssembly.Network.Messages
 
         public static Stream Encode(SendSerializeObjectResponse Message)
         {
-            MemoryStream EncodeStream = new MemoryStream();
+            Stream EncodeStream = SuccessMessage.Encode(Message);
 
-            // Serialize
-            BinaryFormatter BF = new BinaryFormatter();
-            BF.Serialize(EncodeStream, Message.SerializeObject);
+            if (Message.SerializeObject is null)
+            {
+                // Null
+                EncodeStream.WriteByte(0);
+            }
+            else
+            {
+                EncodeStream.WriteByte(1);
+
+                // Serialize
+                BinaryFormatter BF = new BinaryFormatter();
+                BF.Serialize(EncodeStream, Message.SerializeObject);
+
+            }
 
             // Reset Position
             EncodeStream.Seek(0, SeekOrigin.Begin);
 
-            return new ConcatStream(SuccessMessage.Encode(Message), EncodeStream);
+            return EncodeStream;
         }
-        
+
         public static new SendSerializeObjectResponse Decode(Stream Stream)
         {
-            //Success
             bool Success = SuccessMessage.Decode(Stream);
+
+            // Check null
+            if (Stream.ReadByte() == 0)
+                return new SendSerializeObjectResponse(Success, null);
 
             // Deserialize
             BinaryFormatter BF = new BinaryFormatter();

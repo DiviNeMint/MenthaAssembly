@@ -15,7 +15,7 @@ namespace MenthaAssembly.Network
         public static Stream Encode(SuccessMessage Message)
             => new MemoryStream(BitConverter.GetBytes(Message.Success));
 
-        protected static bool Decode(Stream Stream)
+        internal static bool Decode(Stream Stream)
         {
             // Decode Message
             byte[] Datas = new byte[sizeof(bool)];
