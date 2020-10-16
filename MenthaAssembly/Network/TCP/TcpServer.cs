@@ -126,46 +126,90 @@ namespace MenthaAssembly.Network
             }
         }
 
-        public async Task<IMessage> Send(IPEndPoint Client, IMessage Request)
-            => await Send(Client, Request, 5000);
-        public async Task<IMessage> Send(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
+        public async Task<IMessage> SendAsync(IPEndPoint Client, IMessage Request)
+            => await SendAsync(Client, Request, 5000);
+        public async Task<IMessage> SendAsync(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
         {
             if (TryGetToken(Client, out SocketToken Token))
-                return await base.Send(Token, Request, TimeoutMileseconds);
+                return await base.SendAsync(Token, Request, TimeoutMileseconds);
 
             return ErrorMessage.ClientNotFound;
         }
 
-        public async Task<T> Send<T>(IPEndPoint Client, IMessage Request)
+        public async Task<T> SendAsync<T>(IPEndPoint Client, IMessage Request)
             where T : IMessage
-            => await Send<T>(Client, Request, 3000);
-        public async Task<T> Send<T>(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
+            => await SendAsync<T>(Client, Request, 3000);
+        public async Task<T> SendAsync<T>(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
             where T : IMessage
         {
             if (TryGetToken(Client, out SocketToken Token))
             {
-                IMessage Response = await base.Send(Token, Request, TimeoutMileseconds);
+                IMessage Response = await base.SendAsync(Token, Request, TimeoutMileseconds);
                 if (ErrorMessage.Timeout.Equals(Response))
                     throw new TimeoutException();
 
                 if (ErrorMessage.NotSupport.Equals(Response))
                     throw new NotSupportedException();
 
-                return (T)await base.Send(Token, Request, TimeoutMileseconds);
+                return (T)await base.SendAsync(Token, Request, TimeoutMileseconds);
             }
 
             throw new ClientNotFoundException();
         }
 
-        public async Task<Dictionary<IPEndPoint, IMessage>> Send(IMessage Request)
-            => await Send(Clients.ToArray(), Request, 3000);
-        public async Task<Dictionary<IPEndPoint, IMessage>> Send(IEnumerable<IPEndPoint> Clients, IMessage Request)
-            => await Send(Clients, Request, 3000);
-        public async Task<Dictionary<IPEndPoint, IMessage>> Send(IEnumerable<IPEndPoint> Clients, IMessage Request, int TimeoutMileseconds)
+        public async Task<Dictionary<IPEndPoint, IMessage>> SendAsync(IMessage Request)
+            => await SendAsync(Clients.ToArray(), Request, 3000);
+        public async Task<Dictionary<IPEndPoint, IMessage>> SendAsync(IEnumerable<IPEndPoint> Clients, IMessage Request)
+            => await SendAsync(Clients, Request, 3000);
+        public async Task<Dictionary<IPEndPoint, IMessage>> SendAsync(IEnumerable<IPEndPoint> Clients, IMessage Request, int TimeoutMileseconds)
         {
-            Dictionary<IPEndPoint, Task<IMessage>> Result = Clients.ToDictionary(i => i, i => Send(i, Request, TimeoutMileseconds));
+            Dictionary<IPEndPoint, Task<IMessage>> Result = Clients.ToDictionary(i => i, i => SendAsync(i, Request, TimeoutMileseconds));
 
             await Task.WhenAll(Result.Values);
+
+            return Result.ToDictionary(i => i.Key, i => Result[i.Key].Result);
+        }
+
+        public IMessage Send(IPEndPoint Client, IMessage Request)
+            => Send(Client, Request, 5000);
+        public IMessage Send(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
+        {
+            if (TryGetToken(Client, out SocketToken Token))
+                return base.Send(Token, Request, TimeoutMileseconds);
+
+            return ErrorMessage.ClientNotFound;
+        }
+
+        public T Send<T>(IPEndPoint Client, IMessage Request)
+            where T : IMessage
+            => Send<T>(Client, Request, 3000);
+        public T Send<T>(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
+            where T : IMessage
+        {
+            if (TryGetToken(Client, out SocketToken Token))
+            {
+                IMessage Response = base.Send(Token, Request, TimeoutMileseconds);
+                if (ErrorMessage.Timeout.Equals(Response))
+                    throw new TimeoutException();
+
+                if (ErrorMessage.NotSupport.Equals(Response))
+                    throw new NotSupportedException();
+
+                return (T)base.Send(Token, Request, TimeoutMileseconds);
+            }
+
+            throw new ClientNotFoundException();
+        }
+
+        public Dictionary<IPEndPoint, IMessage> Send(IMessage Request)
+            => Send(Clients.ToArray(), Request, 3000);
+        public Dictionary<IPEndPoint, IMessage> Send(IEnumerable<IPEndPoint> Clients, IMessage Request)
+            => Send(Clients, Request, 3000);
+        public Dictionary<IPEndPoint, IMessage> Send(IEnumerable<IPEndPoint> Clients, IMessage Request, int TimeoutMileseconds)
+        {
+            Dictionary<IPEndPoint, Task<IMessage>> Result = Clients.ToDictionary(i => i, i => SendAsync(i, Request, TimeoutMileseconds));
+
+            Task.WhenAll(Result.Values).Wait();
 
             return Result.ToDictionary(i => i.Key, i => Result[i.Key].Result);
         }

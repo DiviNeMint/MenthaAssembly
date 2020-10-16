@@ -103,7 +103,7 @@ namespace MenthaAssembly.Network.Primitives
         }
 
         private async Task Ping(IEnumerable<SocketToken> Clients, IMessage Request) 
-            => await Task.WhenAll(Clients.Select(i => Server.Reply(i, Request, Interval)));
+            => await Task.WhenAll(Clients.Select(i => Server.ReplyAsync(i, Request, Interval)));
 
     }
 }

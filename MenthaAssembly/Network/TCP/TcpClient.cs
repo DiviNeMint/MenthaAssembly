@@ -44,18 +44,39 @@ namespace MenthaAssembly.Network
                 OnReceiveProcess(e);
         }
 
-        public async Task<IMessage> Send(IMessage Request)
-           => await Send(Request, 5000);
-        public async Task<IMessage> Send(IMessage Request, int TimeoutMileseconds)
-           => await base.Send(ServerToken, Request, TimeoutMileseconds);
+        public async Task<IMessage> SendAsync(IMessage Request)
+           => await SendAsync(Request, 5000);
+        public async Task<IMessage> SendAsync(IMessage Request, int TimeoutMileseconds)
+           => await base.SendAsync(ServerToken, Request, TimeoutMileseconds);
 
-        public async Task<T> Send<T>(IMessage Request)
+        public async Task<T> SendAsync<T>(IMessage Request)
             where T : IMessage
-           => await Send<T>(Request, 3000);
-        public async Task<T> Send<T>(IMessage Request, int TimeoutMileseconds)
+           => await SendAsync<T>(Request, 3000);
+        public async Task<T> SendAsync<T>(IMessage Request, int TimeoutMileseconds)
             where T : IMessage
         {
-            IMessage Response = await base.Send(ServerToken, Request, TimeoutMileseconds);
+            IMessage Response = await base.SendAsync(ServerToken, Request, TimeoutMileseconds);
+            if (ErrorMessage.Timeout.Equals(Response))
+                throw new TimeoutException();
+
+            if (ErrorMessage.NotSupport.Equals(Response))
+                throw new NotSupportedException();
+
+            return (T)Response;
+        }
+
+        public IMessage Send(IMessage Request)
+            => Send(Request, 5000);
+        public IMessage Send(IMessage Request, int TimeoutMileseconds)
+           => base.Send(ServerToken, Request, TimeoutMileseconds);
+
+        public T Send<T>(IMessage Request)
+            where T : IMessage
+           => Send<T>(Request, 3000);
+        public T Send<T>(IMessage Request, int TimeoutMileseconds)
+            where T : IMessage
+        {
+            IMessage Response = base.Send(ServerToken, Request, TimeoutMileseconds);
             if (ErrorMessage.Timeout.Equals(Response))
                 throw new TimeoutException();
 

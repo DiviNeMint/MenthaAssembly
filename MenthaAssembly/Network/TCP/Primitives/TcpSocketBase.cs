@@ -60,7 +60,73 @@ namespace MenthaAssembly.Network.Primitives
         private byte[] DequeueBuffer()
             => BufferPool.TryDequeue(out byte[] Buffer) ? Buffer : new byte[BufferSize];
 
-        internal protected async Task<IMessage> Send(SocketToken Token, IMessage Request, int TimeoutMileseconds)
+        internal protected IMessage Send(SocketToken Token, IMessage Request, int TimeoutMileseconds)
+        {
+            TaskCompletionSource<IMessage> TaskToken = new TaskCompletionSource<IMessage>();
+            Token.ResponseTaskSource = TaskToken;
+
+            // Timeout
+            CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
+            CancelToken.Token.Register(() => TaskToken.TrySetResult(ErrorMessage.Timeout), false);
+            Token.ResponseCancelToken = CancelToken;
+
+            Token.Lock.Wait(CancelToken.Token);
+            if (!CancelToken.IsCancellationRequested)
+            {
+                // Encode Message
+                Stream MessageStream = ProtocolHandler.Encode(Request);
+                Token.MessageEncodeStream = MessageStream;
+
+                if (MessageStream is null)
+                {
+                    TaskToken.TrySetResult(ErrorMessage.NotSupport);
+                    Token.Lock.Release();
+                }
+                else
+                {
+                    // Set SendDatas
+                    SocketAsyncEventArgs e = Dequeue();
+                    e.UserToken = Token;
+                    MessageStream.Read(e.Buffer, 0, e.Count);
+
+                    if (!Token.Socket.SendAsync(e))
+                        OnSendProcess(e);
+                }
+            }
+
+            TaskToken.Task.Wait();
+
+            return TaskToken.Task.Result;
+        }
+        internal protected void Reply(SocketToken Token, IMessage Request, int TimeoutMileseconds)
+        {
+            // Timeout
+            CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
+
+            Token.Lock.Wait(CancelToken.Token);
+            if (!CancelToken.IsCancellationRequested)
+            {
+                // Encode Message
+                Stream MessageStream = ProtocolHandler.Encode(Request);
+                Token.MessageEncodeStream = MessageStream;
+
+                if (MessageStream is null)
+                {
+                    Token.Lock.Release();
+                    return;
+                }
+
+                // Set SendDatas
+                SocketAsyncEventArgs e = Dequeue();
+                e.UserToken = Token;
+                MessageStream.Read(e.Buffer, 0, e.Count);
+
+                if (!Token.Socket.SendAsync(e))
+                    OnSendProcess(e);
+            }
+        }
+
+        internal protected async Task<IMessage> SendAsync(SocketToken Token, IMessage Request, int TimeoutMileseconds)
         {
             TaskCompletionSource<IMessage> TaskToken = new TaskCompletionSource<IMessage>();
             Token.ResponseTaskSource = TaskToken;
@@ -96,7 +162,7 @@ namespace MenthaAssembly.Network.Primitives
 
             return await TaskToken.Task;
         }
-        internal protected async Task Reply(SocketToken Token, IMessage Request, int TimeoutMileseconds)
+        internal protected async Task ReplyAsync(SocketToken Token, IMessage Request, int TimeoutMileseconds)
         {
             // Timeout
             CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
