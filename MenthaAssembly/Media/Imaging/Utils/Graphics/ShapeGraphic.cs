@@ -11,17 +11,17 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// Draws a polyline anti-aliased. Add the first point also at the end of the array if the line should be closed.
         /// </summary>
         /// <param name="bmp">The WriteableBitmap.</param>
-        /// <param name="points">The points of the polyline in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        /// <param name="Points">The points of the polyline in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
         /// <param name="color">The color for the line.</param>
-        public void DrawPolyline(int[] points, Pixel color)
+        public void DrawPolyline(int[] Points, Pixel color)
         {
-            int x1 = points[0];
-            int y1 = points[1];
+            int x1 = Points[0];
+            int y1 = Points[1];
 
-            for (int i = 2; i < points.Length; i += 2)
+            for (int i = 2; i < Points.Length; i += 2)
             {
-                int x2 = points[i];
-                int y2 = points[i + 1];
+                int x2 = Points[i];
+                int y2 = Points[i + 1];
 
                 DrawLine(x1, y1, x2, y2, color);
                 x1 = x2;
@@ -281,10 +281,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 lx = Cx - x;
 
                 // Clip
-                if (rx < 0) rx = 0;
-                if (rx >= Width) rx = Width - 1;
-                if (lx < 0) lx = 0;
-                if (lx >= Width) lx = Width - 1;
+                if (rx < 0)
+                    rx = 0;
+                if (rx >= Width)
+                    rx = Width - 1;
+                if (lx < 0)
+                    lx = 0;
+                if (lx >= Width)
+                    lx = Width - 1;
 
                 for (int i = lx; i <= rx; i++)
                 {
@@ -341,10 +345,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 lx = Cx - x;
 
                 // Clip
-                if (rx < 0) rx = 0;
-                if (rx >= Width) rx = Width - 1;
-                if (lx < 0) lx = 0;
-                if (lx >= Width) lx = Width - 1;
+                if (rx < 0)
+                    rx = 0;
+                if (rx >= Width)
+                    rx = Width - 1;
+                if (lx < 0)
+                    lx = 0;
+                if (lx >= Width)
+                    lx = Width - 1;
 
                 // Draw line
                 for (int i = lx; i <= rx; i++)
@@ -362,10 +370,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                     y--;
                     uy = Cy + y; // Upper half
                     ly = Cy - y; // Lower half
-                    if (uy < 0) uy = 0; // Clip
-                    if (uy >= Height) uy = Height - 1; // ...
-                    if (ly < 0) ly = 0;
-                    if (ly >= Height) ly = Height - 1;
+                    if (uy < 0)
+                        uy = 0; // Clip
+                    if (uy >= Height)
+                        uy = Height - 1; // ...
+                    if (ly < 0)
+                        ly = 0;
+                    if (ly >= Height)
+                        ly = Height - 1;
                     yStopping -= xrSqTwo;
                     err += yChg;
                     yChg += xrSqTwo;
@@ -374,6 +386,103 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         }
 
         #endregion
+
+
+        /// <summary>
+        /// Draws a filled polygon with or without alpha blending (default = false). 
+        /// Add the first point also at the end of the array if the line should be closed.
+        /// </summary>
+        /// <param name="Points">The points of the polygon in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        /// <param name="Color">The color for the line.</param>
+        public void FillPolygon(int[] Points, Pixel Color)
+        {
+            int pn = Points.Length,
+                pnh = Points.Length >> 1;
+
+            int[] intersectionsX = new int[pnh];
+
+            // Find y min and max (slightly faster than scanning from 0 to height)
+            int yMin = Height;
+            int yMax = 0;
+            for (int i = 1; i < pn; i += 2)
+            {
+                int py = Points[i];
+                if (py < yMin)
+                    yMin = py;
+                if (py > yMax)
+                    yMax = py;
+            }
+            if (yMin < 0)
+                yMin = 0;
+            if (yMax >= Height)
+                yMax = Height - 1;
+
+            // Scan line from min to max
+            for (int y = yMin; y <= yMax; y++)
+            {
+                // Initial point x, y
+                float vxi = Points[0],
+                      vyi = Points[1];
+
+                // Find all intersections
+                // Based on http://alienryderflex.com/polygon_fill/
+                int intersectionCount = 0;
+                for (int i = 2; i < pn; i += 2)
+                {
+                    // Next point x, y
+                    float vxj = Points[i],
+                          vyj = Points[i + 1];
+
+                    // Is the scanline between the two points
+                    if (vyi < y && vyj >= y ||
+                        vyj < y && vyi >= y)
+                    {
+                        // Compute the intersection of the scanline with the edge (line between two points)
+                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) / (vyj - vyi) * (vxj - vxi));
+                    }
+                    vxi = vxj;
+                    vyi = vyj;
+                }
+
+                // Sort the intersections from left to right using Insertion sort 
+                // It's faster than Array.Sort for this small data set
+                int t, j;
+                for (int i = 1; i < intersectionCount; i++)
+                {
+                    t = intersectionsX[i];
+                    j = i;
+                    while (j > 0 && intersectionsX[j - 1] > t)
+                    {
+                        intersectionsX[j] = intersectionsX[j - 1];
+                        j -= 1;
+                    }
+                    intersectionsX[j] = t;
+                }
+
+                // Fill the pixels between the intersections
+                for (int i = 0; i < intersectionCount - 1; i += 2)
+                {
+                    int x0 = intersectionsX[i],
+                        x1 = intersectionsX[i + 1];
+
+                    // Check boundary
+                    if (x1 > 0 && x0 < Width)
+                    {
+                        if (x0 < 0)
+                            x0 = 0;
+
+                        if (x1 >= Width)
+                            x1 = Width - 1;
+
+                        // Fill the pixels
+                        Operator.ScanLineOverlay(this, x0, y, x1 - x0 + 1, Color);
+                    }
+                }
+            }
+        }
+
+        public void DrawContour(ImageContour Contour, Pixel Color)
+            => this.Operator.ContourOverlay(this, Contour, Color);
 
     }
 

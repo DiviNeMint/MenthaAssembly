@@ -936,10 +936,5 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             this.Operator.ContourOverlay(this, Contour, this.Operator.ToPixel(PenColor.A, PenColor.R, PenColor.G, PenColor.B));
         }
 
-        public void DrawContour(ImageContour Contour, Pixel Color)
-        {
-            this.Operator.ContourOverlay(this, Contour, Color);
-        }
-
     }
 }

@@ -93,5 +93,40 @@ namespace System
             return DefaultName;
         }
 
+        public static int ToInt32Fast(this string This)
+        {
+            int Result = 0;
+
+            for (int i = 0; i < This.Length; i++)
+                Result = Result * 10 + (This[i] - '0');
+
+            return Result;
+        }
+
+        public static double ToDoubleFast(this string This)
+        {
+            double Integer = 0d;
+
+            int i = 0;
+            char c;
+            
+            // Integer
+            for (; i < This.Length; i++)
+            {
+                c = This[i];
+                if (c == '.')
+                    break;
+                
+                Integer = Integer * 10d + (c - '0');
+            }
+
+            // Digital
+            double Digital = 0d;
+            for (int j = This.Length - 1; j > i; j--)
+                Digital = Digital * 0.1d + (This[i] - '0');
+
+            return Integer + Digital * 0.1d;
+        }
+
     }
 }
