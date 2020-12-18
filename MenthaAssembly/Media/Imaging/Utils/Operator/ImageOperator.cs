@@ -159,28 +159,34 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 {
                     Pixel* pTempPixels = (Pixel*)pPixels;
                     int CurrentX = 0;
-                    for (int i = 0; i < Data.Count;)
+                    for (int i = 0; i < Data.Count; i++)
                     {
-                        pTempPixels += Data[i] - CurrentX;
-                        for (int j = Data[i++]; j <= Data[i]; j++)
+                        int Sx = Data[i++],
+                            Ex = Data[i];
+
+                        pTempPixels += Sx - CurrentX;
+                        for (int j = Sx; j <= Ex; j++)
                             *pTempPixels++ = Color;
 
-                        CurrentX = Data[i++] + 1;
+                        CurrentX = Ex + 1;
                     }
                 }) :
                 () =>
                 {
                     byte* pTempPixels = pPixels;
                     int CurrentX = 0;
-                    for (int i = 0; i < Data.Count;)
+                    for (int i = 0; i < Data.Count; i++)
                     {
-                        pTempPixels += ((Data[i] - CurrentX) * Destination.BitsPerPixel) >> 3;
-                        for (int j = Data[i++]; j <= Data[i]; j++)
+                        int Sx = Data[i++],
+                            Ex = Data[i];
+
+                        pTempPixels += ((Sx - CurrentX) * Destination.BitsPerPixel) >> 3;
+                        for (int j = Sx; j <= Ex; j++)
                         {
                             PixelOperator.Overlay(ref pTempPixels, Color.A, Color.R, Color.G, Color.B);
                             pTempPixels++;
                         }
-                        CurrentX = Data[i++] + 1;
+                        CurrentX = Ex + 1;
                     }
                 };
 

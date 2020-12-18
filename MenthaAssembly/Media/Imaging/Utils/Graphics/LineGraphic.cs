@@ -1,6 +1,7 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging.Primitives
 {
@@ -355,6 +356,273 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             #endregion
         }
+        public void DrawLine(Int32Point P0, Int32Point P1, ImageContour Contour, Pixel Fill)
+            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, Fill);
+        public void DrawLine(int X0, int Y0, int X1, int Y1, ImageContour Contour, Pixel Fill)
+        {
+            if (Fill.A == 0)
+                return;
+
+            if (X1 < X0)
+            {
+                MathHelper.Swap(ref X0, ref X1);
+                MathHelper.Swap(ref Y0, ref Y1);
+            }
+            int DeltaX = X1 - X0,
+                DeltaY = Y1 - Y0,
+                AbsDeltaY = Math.Abs(DeltaY);
+
+            Dictionary<int, int> LeftBound = new Dictionary<int, int>(),
+                                 RightBound = new Dictionary<int, int>();
+            #region Pen Bound
+            int MaxX = this.Width - 1,
+                PW = Contour.Bound.Width,
+                PH = Contour.Bound.Height,
+                PCx = PW >> 1,
+                PCy = PH >> 1,
+                DUx = 0,
+                DUy = 0,
+                DLx = 0,
+                DLy = 0,
+                UpperDistance = 0,
+                LowerDistance = 0;
+
+            foreach (KeyValuePair<int, ContourData> Item in Contour)
+            {
+                int j = Item.Key;
+                ContourData Data = Item.Value;
+
+                // Found Left Bound
+                for (int i = 0; i < Data.Count; i++)
+                {
+                    int Tx = Data[i] - PCx,
+                        Ty = Data[j] - PCy;
+
+                    int Predict = DeltaX * Ty - DeltaY * Tx;
+                    int Distance = Math.Abs(Predict);
+
+                    if (Predict > 0)    // UpperLine
+                    {
+                        if (UpperDistance < Distance)
+                        {
+                            UpperDistance = Distance;
+                            DUx = Tx;
+                            DUy = Ty;
+                        }
+                    }
+                    else                // LowerLine
+                    {
+                        if (LowerDistance < Distance)
+                        {
+                            LowerDistance = Distance;
+                            DLx = Tx;
+                            DLy = Ty;
+                        }
+                    }
+
+                    // StartPoint
+                    int Rx = Math.Min(Math.Max(Tx + X0, 0), MaxX),
+                        Ry = Ty + Y0;
+                    if (-1 < Ry && Ry < this.Height)
+                    {
+                        if (LeftBound.TryGetValue(Ry, out int LastRx))
+                        {
+                            if (LastRx > Rx)
+                                LeftBound[Ry] = Rx;
+                        }
+                        else
+                        {
+                            LeftBound[Ry] = Rx;
+                        }
+                    }
+
+                    // EndPoint
+                    Rx = Math.Min(Math.Max(Tx + X1, 0), MaxX);
+                    Ry = Ty + Y1;
+                    if (-1 < Ry && Ry < this.Height)
+                    {
+                        if (LeftBound.TryGetValue(Ry, out int LastRx))
+                        {
+                            if (LastRx > Rx)
+                                LeftBound[Ry] = Rx;
+                        }
+                        else
+                        {
+                            LeftBound[Ry] = Rx;
+                        }
+                    }
+                    break;
+                }
+
+                // Found Right Bound
+                for (int i = PW - 1; i >= 0; i--)
+                {
+                    int Tx = i - PCx,
+                        Ty = j - PCy;
+
+                    int Predict = DeltaX * Ty - DeltaY * Tx;
+                    int Distance = Math.Abs(Predict);
+
+                    if (Predict > 0)    // UpperLine
+                    {
+                        if (UpperDistance < Distance)
+                        {
+                            UpperDistance = Distance;
+                            DUx = Tx;
+                            DUy = Ty;
+                        }
+                    }
+                    else                // LowerLine
+                    {
+                        if (LowerDistance < Distance)
+                        {
+                            LowerDistance = Distance;
+                            DLx = Tx;
+                            DLy = Ty;
+                        }
+                    }
+
+                    // StartPoint
+                    int Rx = Math.Min(Math.Max(Tx + X0, 0), MaxX),
+                        Ry = Ty + Y0;
+
+                    if (-1 < Ry && Ry < this.Height)
+                    {
+                        if (RightBound.TryGetValue(Ry, out int LastRx))
+                        {
+                            if (LastRx < Rx)
+                                RightBound[Ry] = Rx;
+                        }
+                        else
+                        {
+                            RightBound[Ry] = Rx;
+                        }
+                    }
+                    // EndPoint
+                    Rx = Math.Min(Math.Max(Tx + X1, 0), MaxX);
+                    Ry = Ty + Y1;
+
+                    if (-1 < Ry && Ry < this.Height)
+                    {
+                        if (RightBound.TryGetValue(Ry, out int LastRx))
+                        {
+                            if (LastRx < Rx)
+                                RightBound[Ry] = Rx;
+                        }
+                        else
+                        {
+                            RightBound[Ry] = Rx;
+                        }
+                    }
+                    break;
+                }
+            }
+
+            #endregion
+            #region Line Body Bound
+            int Ux = X0 + DUx,
+                Uy = Y0 + DUy,
+                Lx = X0 + DLx,
+                Ly = Y0 + DLy,
+                RTx, RTy;
+
+            GraphicDeltaHandler FoundLineBodyBound = DeltaX * DeltaY < 0 ?
+                new GraphicDeltaHandler(
+                    (Dx, Dy) =>
+                    {
+                        // Right
+                        RTx = Math.Min(Math.Max(Ux + Dx, 0), MaxX);
+                        RTy = Uy + Dy;
+                        if (-1 < RTy && RTy < this.Height)
+                        {
+                            if (RightBound.TryGetValue(RTy, out int LastRx))
+                            {
+                                if (LastRx < RTx)
+                                    RightBound[RTy] = RTx;
+                            }
+                            else
+                            {
+                                RightBound[RTy] = RTx;
+                            }
+                        }
+
+                        // Left
+                        RTx = Math.Min(Math.Max(Lx + Dx, 0), MaxX);
+                        RTy = Ly + Dy;
+                        if (-1 < RTy && RTy < this.Height)
+                        {
+                            if (LeftBound.TryGetValue(RTy, out int LastRx))
+                            {
+                                if (LastRx > RTx)
+                                    LeftBound[RTy] = RTx;
+                            }
+                            else
+                            {
+                                LeftBound[RTy] = RTx;
+                            }
+                        }
+                    }) :
+                    (Dx, Dy) =>
+                    {
+                        // Left
+                        RTx = Math.Min(Math.Max(Ux + Dx, 0), MaxX);
+                        RTy = Uy + Dy;
+                        if (-1 < RTy && RTy < this.Height)
+                        {
+                            if (LeftBound.TryGetValue(RTy, out int LastRx))
+                            {
+                                if (LastRx > RTx)
+                                    LeftBound[RTy] = RTx;
+                            }
+                            else
+                            {
+                                LeftBound[RTy] = RTx;
+                            }
+                        }
+                        // Right
+                        RTx = Math.Min(Math.Max(Lx + Dx, 0), MaxX);
+                        RTy = Ly + Dy;
+                        if (-1 < RTy && RTy < this.Height)
+                        {
+                            if (RightBound.TryGetValue(RTy, out int LastRx))
+                            {
+                                if (LastRx < RTx)
+                                    RightBound[RTy] = RTx;
+                            }
+                            else
+                            {
+                                RightBound[RTy] = RTx;
+                            }
+                        }
+                    };
+
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, FoundLineBodyBound);
+
+            #endregion
+            #region Fill
+            foreach (KeyValuePair<int, int> Data in RightBound)
+            {
+                int Y = Data.Key,
+                    TRx = Data.Value;
+                if (LeftBound.TryGetValue(Y, out int TLx))
+                {
+                    LeftBound.Remove(Y);
+                    this.Operator.ScanLineOverlay(this, TLx, Y, TRx - TLx + 1, Fill);
+                }
+                else
+                {
+                    this.Operator.SetPixel(this, TRx, Y, Fill);
+                }
+            }
+            RightBound.Clear();
+
+            foreach (KeyValuePair<int, int> Data in LeftBound)
+                this.Operator.SetPixel(this, Data.Value, Data.Key, Fill);
+
+            LeftBound.Clear();
+
+            #endregion
+        }
         public void DrawLineWithStamp(int X0, int Y0, int X1, int Y1, IImageContext Stamp)
         {
             int X = X0 - (Stamp.Width >> 1),
@@ -366,6 +634,29 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, Math.Abs(DeltaX), Math.Abs(DeltaY), (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Stamp));
         }
+
+        /// <summary>
+        /// Draws a polyline anti-aliased. Add the first point also at the end of the array if the line should be closed.
+        /// </summary>
+        /// <param name="bmp">The WriteableBitmap.</param>
+        /// <param name="Points">The points of the polyline in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        /// <param name="color">The color for the line.</param>
+        public void DrawPolyline(int[] Points, Pixel color)
+        {
+            int x1 = Points[0];
+            int y1 = Points[1];
+
+            for (int i = 2; i < Points.Length; i += 2)
+            {
+                int x2 = Points[i];
+                int y2 = Points[i + 1];
+
+                DrawLine(x1, y1, x2, y2, color);
+                x1 = x2;
+                y1 = y2;
+            }
+        }
+
 
         public ImageContour CreateLineContour(int X0, int Y0, int X1, int Y1, IImageContext Pen)
         {
@@ -928,17 +1219,80 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
         public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
         {
-            ImageContour PenContour = ImageContour.Parse(Pen, out IPixel PenColor);
-
-            ImageContour Contour = new ImageContour();
-            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise, (Dx, Dy) => Contour.Union(PenContour.Offset(Cx + Dx, Cy + Dy)));
-
-            this.Operator.ContourOverlay(this, Contour, this.Operator.ToPixel(PenColor.A, PenColor.R, PenColor.G, PenColor.B));
+            ImageContour Contour = ImageContour.Parse(Pen, out IPixel Fill, false);
+            DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Contour, this.Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
         }
-
-        public void DrawContour(ImageContour Contour, Pixel Color)
+        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, StrokeColor);
+        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
         {
-            this.Operator.ContourOverlay(this, Contour, Color);
+            ImageContour ArcContour = new ImageContour(true);
+            ImageContour Stroke;
+
+            int PCx = Contour.Bound.Width >> 1,
+                PCy = Contour.Bound.Height >> 1;
+            if (Contour.IsObservable)
+            {
+                Stroke = ImageContour.Offset(Contour, Cx - PCx, Cy - PCy, false);
+            }
+            else
+            {
+                Stroke = Contour;
+                Stroke.Offset(Cx - PCx, Cy - PCy);
+            }
+
+            int LastDx = 0,
+                LastDy = 0;
+            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
+                (Dx, Dy) =>
+                {
+                    if (Dx == -269 && Dy == 296)
+                    {
+                        if (ArcContour.Datas.FirstOrNull(i => i.Value.Count == 3) is KeyValuePair<int, ContourData> Value2)
+                        {
+
+                        }
+                    }
+
+                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                    ArcContour.Union(Stroke);
+
+                    if (ArcContour.Datas.FirstOrNull(i => i.Value.Count == 3) is KeyValuePair<int,ContourData> Value)
+                    {
+
+                    }
+
+                    //byte[] Data = new byte[500 * 500 * 4];
+                    //for (int i = 0; i < Data.Length; i++)
+                    //    Data[i] = 255;
+
+                    //ImageContext<BGRA> Image = new ImageContext<BGRA>(100, 100, Data);
+
+                    //BGRA Color = new BGRA(0, 0, 255, 255);
+                    //ImageContour Stroke = ImageContour.CreateFillEllipse(5, 5, 5, 5);
+                    //Image.DrawArc(10, 10, 90, 90, 90, 10, 80, 80, false, Stroke, Color);
+                    ////Image.DrawArc(50, 50, 450, 450, 450, 50, 400, 400, false, Stroke, Color);
+                    //ImageViewer.SourceContext = Image;
+
+
+                    //if (ArcContour.Bound.Top < 40)
+                    //{
+
+                    //}
+
+                    LastDx = Dx;
+                    LastDy = Dy;
+                });
+
+            this.Operator.ContourOverlay(this, ArcContour, StrokeColor);
+        }
+        public void DrawArc2(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
+        {
+            ImageContour ArcContour = new ImageContour(false);
+            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
+                (Dx, Dy) => ArcContour.Union(ImageContour.Offset(Contour, Cx + Dx, Cy + Dy)));
+
+            this.Operator.ContourOverlay(this, ArcContour, StrokeColor);
         }
 
     }

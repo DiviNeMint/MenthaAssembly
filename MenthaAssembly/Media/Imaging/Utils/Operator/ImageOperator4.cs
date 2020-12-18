@@ -195,15 +195,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
                       pTempPixelB = pPixelB;
 
                 int CurrentX = 0;
-                for (int i = 0; i < Data.Count;)
+                for (int i = 0; i < Data.Count; i++)
                 {
-                    Offset = ((Data[i] - CurrentX) * Destination.BitsPerPixel) >> 3;
+                    int Sx = Data[i++],
+                        Ex = Data[i];
+
+                    Offset = ((Sx - CurrentX) * Destination.BitsPerPixel) >> 3;
                     pTempPixelA += Offset;
                     pTempPixelR += Offset;
                     pTempPixelG += Offset;
                     pTempPixelB += Offset;
 
-                    for (int j = Data[i++]; j <= Data[i]; j++)
+                    for (int j = Sx; j <= Ex; j++)
                     {
                         PixelOperator.Overlay(ref pTempPixelA, ref pTempPixelR, ref pTempPixelG, ref pTempPixelB, Color.A, Color.R, Color.G, Color.B);
                         pTempPixelA++;
@@ -211,7 +214,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         pTempPixelG++;
                         pTempPixelB++;
                     }
-                    CurrentX = Data[i++] + 1;
+                    CurrentX = Ex + 1;
                 }
             };
 

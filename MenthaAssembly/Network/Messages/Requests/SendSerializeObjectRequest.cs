@@ -1,10 +1,19 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace MenthaAssembly.Network.Messages
 {
-    public class SendSerializeObjectRequest : IMessage
+    public class SendSerializeObjectRequest : IIdentityMessage
     {
+        public int UID { private set; get; }
+
+        int IIdentityMessage.UID
+        {
+            set => this.UID = value;
+            get => this.UID;
+        }
+
         public object SerializeObject { get; }
 
         public SendSerializeObjectRequest(object SerializeObject)
@@ -16,6 +25,10 @@ namespace MenthaAssembly.Network.Messages
         {
             MemoryStream EncodeStream = new MemoryStream();
 
+            // UID
+            EncodeStream.Write(BitConverter.GetBytes(Message.UID), 0, sizeof(int));
+
+            // SerializeObject
             if (Message.SerializeObject is null)
             {
                 // Null
@@ -28,7 +41,6 @@ namespace MenthaAssembly.Network.Messages
                 // Serialize
                 BinaryFormatter BF = new BinaryFormatter();
                 BF.Serialize(EncodeStream, Message.SerializeObject);
-
             }
 
             // Reset Position
@@ -39,15 +51,21 @@ namespace MenthaAssembly.Network.Messages
 
         public static SendSerializeObjectRequest Decode(Stream Stream)
         {
+            // UID
+            byte[] Buffer = new byte[sizeof(int)];
+            Stream.Read(Buffer, 0, Buffer.Length);
+
+            int UID = BitConverter.ToInt32(Buffer, 0);
+
             // Check null
             if (Stream.ReadByte() == 0)
-                return new SendSerializeObjectRequest(null);
+                return new SendSerializeObjectRequest(null) { UID = UID };
 
             // Deserialize
             BinaryFormatter BF = new BinaryFormatter();
             object SerializeObject = BF.Deserialize(Stream);
 
-            return new SendSerializeObjectRequest(SerializeObject);
+            return new SendSerializeObjectRequest(SerializeObject) { UID = UID };
         }
 
     }

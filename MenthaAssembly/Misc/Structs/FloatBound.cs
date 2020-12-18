@@ -97,6 +97,14 @@ namespace MenthaAssembly
             Bottom += Y;
         }
 
+        public void Scale(float Scale)
+            => this.Scale(Scale, Scale);
+        public void Scale(float XScale, float YScale)
+        {
+            Right = Left + Width * XScale;
+            Bottom = Top + Height * YScale;
+        }
+
         public bool Contains(FloatPoint Point)
             => Contains(Point.X, Point.Y);
         public bool Contains(float X, float Y)
@@ -110,6 +118,14 @@ namespace MenthaAssembly
 
         public override string ToString()
             => $"{{ Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom} }}";
+
+        public static FloatBound Offset(FloatBound Bound, float X, float Y)
+            => new FloatBound(Bound.Left + X, Bound.Top + Y, Bound.Right + X, Bound.Bottom + Y);
+
+        public static FloatBound Scale(FloatBound Bound, float Scale)
+            => FloatBound.Scale(Bound, Scale, Scale);
+        public static FloatBound Scale(FloatBound Bound, float XScale, float YScale)
+            => new FloatBound(Bound.Left, Bound.Top, Bound.Left + Bound.Width * XScale, Bound.Top + Bound.Height * YScale);
 
     }
 }

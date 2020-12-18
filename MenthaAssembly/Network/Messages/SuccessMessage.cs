@@ -3,8 +3,16 @@ using System.IO;
 
 namespace MenthaAssembly.Network
 {
-    public class SuccessMessage : IMessage
+    public class SuccessMessage : IIdentityMessage
     {
+        public int UID { protected set; get; }
+
+        int IIdentityMessage.UID
+        {
+            set => this.UID = value;
+            get => this.UID;
+        }
+
         public bool Success { get; }
 
         public SuccessMessage(bool Success)
@@ -13,15 +21,34 @@ namespace MenthaAssembly.Network
         }
 
         public static Stream Encode(SuccessMessage Message)
-            => new MemoryStream(BitConverter.GetBytes(Message.Success));
-
-        internal static bool Decode(Stream Stream)
         {
-            // Decode Message
-            byte[] Datas = new byte[sizeof(bool)];
-            Stream.Read(Datas, 0, Datas.Length);
+            MemoryStream EncodeStream = new MemoryStream();
 
-            return BitConverter.ToBoolean(Datas, 0);
+            // UID
+            EncodeStream.Write(BitConverter.GetBytes(Message.UID), 0, sizeof(int));
+
+            // Data
+            EncodeStream.Write(BitConverter.GetBytes(Message.Success), 0, sizeof(bool));
+
+            // Reset Position
+            EncodeStream.Seek(0, SeekOrigin.Begin);
+
+            return EncodeStream;
+        }
+
+        internal static SuccessMessage Decode(Stream Stream)
+        {
+            // UID
+            byte[] Buffer = new byte[sizeof(int)];
+            Stream.Read(Buffer, 0, Buffer.Length);
+
+            int UID = BitConverter.ToInt32(Buffer, 0);
+
+            // Decode Message
+            Buffer = new byte[sizeof(bool)];
+            Stream.Read(Buffer, 0, Buffer.Length);
+
+            return new SuccessMessage(BitConverter.ToBoolean(Buffer, 0)) { UID = UID };
         }
 
     }

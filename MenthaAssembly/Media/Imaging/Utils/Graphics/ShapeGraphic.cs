@@ -7,28 +7,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         where Pixel : unmanaged, IPixel
         where Struct : unmanaged, IPixelBase
     {
-        /// <summary>
-        /// Draws a polyline anti-aliased. Add the first point also at the end of the array if the line should be closed.
-        /// </summary>
-        /// <param name="bmp">The WriteableBitmap.</param>
-        /// <param name="points">The points of the polyline in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
-        /// <param name="color">The color for the line.</param>
-        public void DrawPolyline(int[] points, Pixel color)
-        {
-            int x1 = points[0];
-            int y1 = points[1];
-
-            for (int i = 2; i < points.Length; i += 2)
-            {
-                int x2 = points[i];
-                int y2 = points[i + 1];
-
-                DrawLine(x1, y1, x2, y2, color);
-                x1 = x2;
-                y1 = y2;
-            }
-        }
-
         ///// <summary>
         ///// Draws a polyline anti-aliased. Add the first point also at the end of the array if the line should be closed.
         ///// </summary>
@@ -154,12 +132,26 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="Pen">The pen with transparent background for the line.</param>
         public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen)
         {
-            ImageContour PenContour = ImageContour.Parse(Pen, out IPixel PenColor);
+            ImageContour Contour = ImageContour.Parse(Pen, out IPixel Fill, false);
+            DrawEllipse(Cx, Cy, Rx, Ry, Contour, this.Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+        }
+        /// <summary>
+        /// A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf 
+        /// Uses a different parameter representation than DrawEllipse().
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
+        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="StrokeColor">The color for the line.</param>
+        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, Pixel StrokeColor)
+        {
+            ImageContour EllipseContour = new ImageContour(false);
 
-            ImageContour Contour = new ImageContour();
-            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => Contour.Union(PenContour.Offset(Cx + Dx, Cy + Dy)));
+            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => EllipseContour.Union(ImageContour.Offset(Contour, Cx + Dx, Cy + Dy, false)));
 
-            this.Operator.ContourOverlay(this, Contour, this.Operator.ToPixel(PenColor.A, PenColor.R, PenColor.G, PenColor.B));
+            this.Operator.ContourOverlay(this, EllipseContour, StrokeColor);
         }
 
         /// <summary>
@@ -194,7 +186,23 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             DrawEllipse(X + Rx, Y + Ry, Rx, Ry, Pen);
         }
+        /// <summary>
+        /// A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf 
+        /// x2 has to be greater than x1 and y2 has to be less than y1.
+        /// </summary>
+        /// <param name="X">The x-coordinate of the bounding rectangle's left side.</param>
+        /// <param name="Y">The y-coordinate of the bounding rectangle's top side.</param>
+        /// <param name="Width">The width of the bounding rectangle.</param>
+        /// <param name="Height">The height of the bounding rectangle.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="StrokeColor">The color for the line.</param>
+        public void DrawEllipseRect(int X, int Y, int Width, int Height, ImageContour Contour, Pixel StrokeColor)
+        {
+            int Rx = Width >> 1,
+                Ry = Height >> 1;
 
+            DrawEllipse(X + Rx, Y + Ry, Rx, Ry, Contour, StrokeColor);
+        }
 
         /// <summary>
         /// A Fast Bresenham Type Algorithm For Drawing filled ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf 
@@ -210,6 +218,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             // Calc center and radius
             int Rx = (X2 - X1) >> 1,
                 Ry = (Y2 - Y1) >> 1;
+
             FillEllipseCentered(X1 + Rx, Y1 + Ry, Rx, Ry, Color);
         }
 
@@ -250,11 +259,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             int xStopping = yrSqTwo * Rx;
             int yStopping = 0;
 
-            int sa = Color.A,
-                sr = Color.R,
-                sg = Color.G,
-                sb = Color.B;
-
             // Draw first set of points counter clockwise where tangent line slope > -1.
             while (xStopping >= yStopping)
             {
@@ -281,10 +285,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 lx = Cx - x;
 
                 // Clip
-                if (rx < 0) rx = 0;
-                if (rx >= Width) rx = Width - 1;
-                if (lx < 0) lx = 0;
-                if (lx >= Width) lx = Width - 1;
+                if (rx < 0)
+                    rx = 0;
+                if (rx >= Width)
+                    rx = Width - 1;
+                if (lx < 0)
+                    lx = 0;
+                if (lx >= Width)
+                    lx = Width - 1;
 
                 for (int i = lx; i <= rx; i++)
                 {
@@ -341,10 +349,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 lx = Cx - x;
 
                 // Clip
-                if (rx < 0) rx = 0;
-                if (rx >= Width) rx = Width - 1;
-                if (lx < 0) lx = 0;
-                if (lx >= Width) lx = Width - 1;
+                if (rx < 0)
+                    rx = 0;
+                if (rx >= Width)
+                    rx = Width - 1;
+                if (lx < 0)
+                    lx = 0;
+                if (lx >= Width)
+                    lx = Width - 1;
 
                 // Draw line
                 for (int i = lx; i <= rx; i++)
@@ -362,10 +374,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                     y--;
                     uy = Cy + y; // Upper half
                     ly = Cy - y; // Lower half
-                    if (uy < 0) uy = 0; // Clip
-                    if (uy >= Height) uy = Height - 1; // ...
-                    if (ly < 0) ly = 0;
-                    if (ly >= Height) ly = Height - 1;
+                    if (uy < 0)
+                        uy = 0; // Clip
+                    if (uy >= Height)
+                        uy = Height - 1; // ...
+                    if (ly < 0)
+                        ly = 0;
+                    if (ly >= Height)
+                        ly = Height - 1;
                     yStopping -= xrSqTwo;
                     err += yChg;
                     yChg += xrSqTwo;
@@ -374,6 +390,103 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         }
 
         #endregion
+
+
+        /// <summary>
+        /// Draws a filled polygon with or without alpha blending (default = false). 
+        /// Add the first point also at the end of the array if the line should be closed.
+        /// </summary>
+        /// <param name="Points">The points of the polygon in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        /// <param name="Color">The color for the line.</param>
+        public void FillPolygon(int[] Points, Pixel Color)
+        {
+            int pn = Points.Length,
+                pnh = Points.Length >> 1;
+
+            int[] intersectionsX = new int[pnh];
+
+            // Find y min and max (slightly faster than scanning from 0 to height)
+            int yMin = Height;
+            int yMax = 0;
+            for (int i = 1; i < pn; i += 2)
+            {
+                int py = Points[i];
+                if (py < yMin)
+                    yMin = py;
+                if (py > yMax)
+                    yMax = py;
+            }
+            if (yMin < 0)
+                yMin = 0;
+            if (yMax >= Height)
+                yMax = Height - 1;
+
+            // Scan line from min to max
+            for (int y = yMin; y <= yMax; y++)
+            {
+                // Initial point x, y
+                float vxi = Points[0],
+                      vyi = Points[1];
+
+                // Find all intersections
+                // Based on http://alienryderflex.com/polygon_fill/
+                int intersectionCount = 0;
+                for (int i = 2; i < pn; i += 2)
+                {
+                    // Next point x, y
+                    float vxj = Points[i],
+                          vyj = Points[i + 1];
+
+                    // Is the scanline between the two points
+                    if (vyi < y && vyj >= y ||
+                        vyj < y && vyi >= y)
+                    {
+                        // Compute the intersection of the scanline with the edge (line between two points)
+                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) / (vyj - vyi) * (vxj - vxi));
+                    }
+                    vxi = vxj;
+                    vyi = vyj;
+                }
+
+                // Sort the intersections from left to right using Insertion sort 
+                // It's faster than Array.Sort for this small data set
+                int t, j;
+                for (int i = 1; i < intersectionCount; i++)
+                {
+                    t = intersectionsX[i];
+                    j = i;
+                    while (j > 0 && intersectionsX[j - 1] > t)
+                    {
+                        intersectionsX[j] = intersectionsX[j - 1];
+                        j -= 1;
+                    }
+                    intersectionsX[j] = t;
+                }
+
+                // Fill the pixels between the intersections
+                for (int i = 0; i < intersectionCount - 1; i += 2)
+                {
+                    int x0 = intersectionsX[i],
+                        x1 = intersectionsX[i + 1];
+
+                    // Check boundary
+                    if (x1 > 0 && x0 < Width)
+                    {
+                        if (x0 < 0)
+                            x0 = 0;
+
+                        if (x1 >= Width)
+                            x1 = Width - 1;
+
+                        // Fill the pixels
+                        Operator.ScanLineOverlay(this, x0, y, x1 - x0 + 1, Color);
+                    }
+                }
+            }
+        }
+
+        public void FillContour(ImageContour Contour, Pixel Fill)
+            => this.Operator.ContourOverlay(this, Contour, Fill);
 
     }
 
