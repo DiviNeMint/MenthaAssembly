@@ -123,7 +123,7 @@ namespace System
             // Digital
             double Digital = 0d;
             for (int j = This.Length - 1; j > i; j--)
-                Digital = Digital * 0.1d + (This[i] - '0');
+                Digital = Digital * 0.1d + (This[j] - '0');
 
             return Integer + Digital * 0.1d;
         }

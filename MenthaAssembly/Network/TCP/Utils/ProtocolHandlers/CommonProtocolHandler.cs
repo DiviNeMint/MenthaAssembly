@@ -11,30 +11,30 @@ namespace MenthaAssembly.Network.Utils
         public Stream Encode(IMessage Message)
             => Message switch
             {
-                PingRequest PingRequest => new ConcatStream(new byte[] { 0 }, PingRequest.Encode(PingRequest)),
-                PingResponse PingResponse => new ConcatStream(new byte[] { 1 }, PingResponse.Encode(PingResponse)),
-                SendMessageRequest SendMessageRequest => new ConcatStream(new byte[] { 2 }, SendMessageRequest.Encode(SendMessageRequest)),
-                SendMessageResponse SendMessageResponse => new ConcatStream(new byte[] { 3 }, SendMessageResponse.Encode(SendMessageResponse)),
-                GetTimeRequest _ => new MemoryStream(new byte[] { 4 }),
-                GetTimeResponse GetTimeResponse => new ConcatStream(new byte[] { 5 }, GetTimeResponse.Encode(GetTimeResponse)),
-                SendSerializeObjectRequest SendSerializeObjectRequest => new ConcatStream(new byte[] { 6 }, SendSerializeObjectRequest.Encode(SendSerializeObjectRequest)),
-                SendSerializeObjectResponse SendSerializeObjectResponse => new ConcatStream(new byte[] { 7 }, SendSerializeObjectResponse.Encode(SendSerializeObjectResponse)),
-                SuccessMessage SuccessMessage => new ConcatStream(new byte[] { 8 }, SuccessMessage.Encode(SuccessMessage)),
+                PingRequest PingRequest => new ConcatStream(new byte[] { 1 }, PingRequest.Encode(PingRequest)),
+                PingResponse PingResponse => new ConcatStream(new byte[] { 2 }, PingResponse.Encode(PingResponse)),
+                SendMessageRequest SendMessageRequest => new ConcatStream(new byte[] { 3 }, SendMessageRequest.Encode(SendMessageRequest)),
+                SendMessageResponse SendMessageResponse => new ConcatStream(new byte[] { 4 }, SendMessageResponse.Encode(SendMessageResponse)),
+                GetTimeRequest GetTimeRequest => new ConcatStream(new byte[] { 5 }, GetTimeRequest.Encode(GetTimeRequest)),
+                GetTimeResponse GetTimeResponse => new ConcatStream(new byte[] { 6 }, GetTimeResponse.Encode(GetTimeResponse)),
+                SendSerializeObjectRequest SendSerializeObjectRequest => new ConcatStream(new byte[] { 7 }, SendSerializeObjectRequest.Encode(SendSerializeObjectRequest)),
+                SendSerializeObjectResponse SendSerializeObjectResponse => new ConcatStream(new byte[] { 8 }, SendSerializeObjectResponse.Encode(SendSerializeObjectResponse)),
+                SuccessMessage SuccessMessage => new ConcatStream(new byte[] { 9 }, SuccessMessage.Encode(SuccessMessage)),
                 _ => null
             };
 
         public IMessage Decode(Stream Stream)
             => (Stream.ReadByte()) switch
             {
-                0 => PingRequest.Decode(Stream),
-                1 => PingResponse.Decode(Stream),
-                2 => SendMessageRequest.Decode(Stream),
-                3 => SendMessageResponse.Decode(Stream),
-                4 => new GetTimeRequest(),
-                5 => GetTimeResponse.Decode(Stream),
-                6 => SendSerializeObjectRequest.Decode(Stream),
-                7 => SendSerializeObjectResponse.Decode(Stream),
-                8 => new SuccessMessage(SuccessMessage.Decode(Stream)),
+                1 => PingRequest.Decode(Stream),
+                2 => PingResponse.Decode(Stream),
+                3 => SendMessageRequest.Decode(Stream),
+                4 => SendMessageResponse.Decode(Stream),
+                5 => GetTimeRequest.Decode(Stream),
+                6 => GetTimeResponse.Decode(Stream),
+                7 => SendSerializeObjectRequest.Decode(Stream),
+                8 => SendSerializeObjectResponse.Decode(Stream),
+                9 => SuccessMessage.Decode(Stream),
                 _ => null
             };
 

@@ -60,6 +60,7 @@ namespace MenthaAssembly.Network.Primitives
         private byte[] DequeueBuffer()
             => BufferPool.TryDequeue(out byte[] Buffer) ? Buffer : new byte[BufferSize];
 
+
         internal protected IMessage Send(SocketToken Token, IMessage Request, int TimeoutMileseconds)
         {
             TaskCompletionSource<IMessage> TaskToken = new TaskCompletionSource<IMessage>();
@@ -73,6 +74,12 @@ namespace MenthaAssembly.Network.Primitives
             Token.Lock.Wait(CancelToken.Token);
             if (!CancelToken.IsCancellationRequested)
             {
+                if (Request is IIdentityMessage IdentityMessage)
+                {
+                    Token.LastRequsetUID += 2;
+                    IdentityMessage.UID = Token.LastRequsetUID;
+                }
+
                 // Encode Message
                 Stream MessageStream = ProtocolHandler.Encode(Request);
                 Token.MessageEncodeStream = MessageStream;
@@ -139,6 +146,12 @@ namespace MenthaAssembly.Network.Primitives
             await Token.Lock.WaitAsync(CancelToken.Token);
             if (!CancelToken.IsCancellationRequested)
             {
+                if (Request is IIdentityMessage IdentityMessage)
+                {
+                    Token.LastRequsetUID += 2;
+                    IdentityMessage.UID = Token.LastRequsetUID;
+                }
+
                 // Encode Message
                 Stream MessageStream = ProtocolHandler.Encode(Request);
                 Token.MessageEncodeStream = MessageStream;
@@ -255,41 +268,59 @@ namespace MenthaAssembly.Network.Primitives
                     // Reset Auto Ping Counter.
                     Token.PingCounter = 0;
 
-                    Token.Lock.Wait();
-
-                    // Decode Message
-                    ConcatStream s = new ConcatStream(e.Buffer, 0, e.BytesTransferred, new NetworkStream(Token.Socket));
-                    IMessage ReceiveMessage = ProtocolHandler.Decode(s);
-                    s.Dispose();
-
-                    if (Token.ResponseTaskSource != null)
+                    try
                     {
-                        try
-                        {
-                            // Set Response
-                            Token.ResponseTaskSource.TrySetResult(ReceiveMessage);
-                        }
-                        finally
-                        {
-                            Token.ResponseTaskSource = null;
+                        Token.Lock.Wait();
 
-                            // Release CancelToken
-                            Token.ResponseCancelToken.Dispose();
-                            Token.ResponseCancelToken = null;
+                        // Decode Message
+                        ConcatStream s = new ConcatStream(e.Buffer, 0, e.BytesTransferred, new NetworkStream(Token.Socket));
+                        IMessage ReceiveMessage = ProtocolHandler.Decode(s);
+                        s.Dispose();
+
+                        bool IsResponse = true;
+                        int ReceiveUID = -1;
+
+                        if (ReceiveMessage is IIdentityMessage IdentityMessage)
+                        {
+                            IsResponse = Token.LastRequsetUID == IdentityMessage.UID;
+                            ReceiveUID = IdentityMessage.UID;
+                        }
+
+                        if (IsResponse &&
+                            Token.ResponseTaskSource != null)
+                        {
+                            try
+                            {
+                                // Set Response
+                                Token.ResponseTaskSource.TrySetResult(ReceiveMessage);
+                            }
+                            finally
+                            {
+                                Token.ResponseTaskSource = null;
+
+                                // Release CancelToken
+                                Token.ResponseCancelToken.Dispose();
+                                Token.ResponseCancelToken = null;
+                            }
+                        }
+                        else
+                        {
+                            if (MessageHandler.HandleMessage(Token.Address, ReceiveMessage) is IMessage Response)
+                            {
+                                if (this.ReplyAction is null)
+                                    this.ReplyAction = OnReplyProcess;
+
+                                if (Response is IIdentityMessage IdentityResponse)
+                                    IdentityResponse.UID = ReceiveUID;
+
+                                ReplyAction.BeginInvoke(Token, Response, (ar) => ReplyAction.EndInvoke(ar), null);
+                            }
                         }
                     }
-                    else
+                    finally
                     {
-                        if (MessageHandler.HandleMessage(Token.Address, ReceiveMessage) is IMessage Response)
-                        {
-                            if (this.ReplyAction is null)
-                                this.ReplyAction = OnReplyProcess;
-
-                            ReplyAction.BeginInvoke(Token, Response, (ar) => ReplyAction.EndInvoke(ar), null);
-                        }
+                        Token.Lock.Release();
                     }
-
-                    Token.Lock.Release();
 
                     // Loop Receive
                     if (!Token.Socket.ReceiveAsync(e))
@@ -357,6 +388,13 @@ namespace MenthaAssembly.Network.Primitives
 
             public Stream MessageEncodeStream { set; get; }
 
+            /// <summary>
+            /// Client : odd
+            /// <para/>
+            /// Server : even
+            /// </summary>
+            public int LastRequsetUID { set; get; }
+
             public TaskCompletionSource<IMessage> ResponseTaskSource { set; get; }
 
             public CancellationTokenSource ResponseCancelToken { set; get; }
@@ -376,7 +414,7 @@ namespace MenthaAssembly.Network.Primitives
             {
                 if (IsDisposed)
                     return;
-                
+
                 try
                 {
                     // Dispose Socket.

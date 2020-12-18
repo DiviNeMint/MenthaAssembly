@@ -4,16 +4,25 @@ using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public class ContourData : IEnumerable<int>
+    public class ContourData : IEnumerable<int>, ICloneable
     {
-        internal readonly List<int> Datas = new List<int>();
+        internal event EventHandler DatasChanged;
+        internal readonly List<int> Datas;
 
         public ContourData()
         {
+            Datas = new List<int>();
         }
         public ContourData(int Left, int Right)
         {
-            Union(Left, Right);
+            if (Right < Left)
+                MathHelper.Swap(ref Left, ref Right);
+
+            Datas = new List<int> { Left, Right };
+        }
+        private ContourData(IEnumerable<int> Datas)
+        {
+            this.Datas = new List<int>(Datas);
         }
 
         public int Count => Datas.Count;
@@ -30,12 +39,16 @@ namespace MenthaAssembly.Media.Imaging
             {
                 Datas.Add(Left);
                 Datas.Add(Left);
+                OnDatasChanged();
                 return;
             }
             else if (Datas.Count == 2)
             {
                 if (Left < Datas[0])
+                {
                     Datas[0] = Left;
+                    OnDatasChanged();
+                }
 
                 return;
             }
@@ -47,25 +60,33 @@ namespace MenthaAssembly.Media.Imaging
                 {
                     Datas.Add(Left);
                     Datas.Add(Left);
+                    OnDatasChanged();
                 }
             }
             else if (Index < 0)
             {
                 if (Left < this.Datas[0])
+                {
                     this.Datas[0] = Left;
+                    OnDatasChanged();
+                }
             }
             else
             {
                 if (Equal)
                 {
                     this.Datas.RemoveRange(Index, 2);
+                    OnDatasChanged();
                     return;
                 }
 
                 // Nearest Left
                 Index++;
                 if (Left < this.Datas[Index])
+                {
                     this.Datas[Index] = Left;
+                    OnDatasChanged();
+                }
             }
         }
         public void AddRight(int Right)
@@ -74,12 +95,16 @@ namespace MenthaAssembly.Media.Imaging
             {
                 Datas.Add(Right);
                 Datas.Add(Right);
+                    OnDatasChanged();
                 return;
             }
             else if (Datas.Count == 2)
             {
                 if (Datas[1] < Right)
+                {
                     Datas[1] = Right;
+                    OnDatasChanged();
+                }
 
                 return;
             }
@@ -91,6 +116,7 @@ namespace MenthaAssembly.Media.Imaging
                 {
                     Datas.Insert(0, Right);
                     Datas.Insert(0, Right);
+                    OnDatasChanged();
                 }
                 return;
             }
@@ -99,7 +125,10 @@ namespace MenthaAssembly.Media.Imaging
             if (Index < 0)
             {
                 if (this.Datas[LastIndexOfDatas] < Right)
+                {
                     this.Datas[LastIndexOfDatas] = Right;
+                    OnDatasChanged();
+                }
             }
             else
             {
@@ -107,12 +136,16 @@ namespace MenthaAssembly.Media.Imaging
                 if (Equal)
                 {
                     this.Datas.RemoveRange(Index, 2);
+                    OnDatasChanged();
                     return;
                 }
 
                 // Nearest Right
                 if (this.Datas[Index] < Right)
+                {
                     this.Datas[Index] = Right;
+                    OnDatasChanged();
+                }
             }
         }
 
@@ -121,11 +154,17 @@ namespace MenthaAssembly.Media.Imaging
             if (Datas.Count == 0)
             {
                 Datas.AddRange(Info.Datas);
+                OnDatasChanged();
                 return;
             }
 
+            bool IsChanged = false;
             for (int i = 0; i < Info.Datas.Count;)
-                this.HandleUnion(Info.Datas[i++], Info.Datas[i++]);
+                if (this.HandleUnion(Info.Datas[i++], Info.Datas[i++]))
+                    IsChanged = true;
+
+            if (IsChanged)
+                OnDatasChanged();
         }
         public void Union(int Left, int Right)
         {
@@ -136,10 +175,18 @@ namespace MenthaAssembly.Media.Imaging
             {
                 Datas.Add(Left);
                 Datas.Add(Right);
+                OnDatasChanged();
                 return;
             }
 
-            this.HandleUnion(Left, Right);
+            if (this.HandleUnion(Left, Right))
+                OnDatasChanged();
+        }
+        public static ContourData Union(ContourData Data, int Left, int Right)
+        {
+            ContourData Result = new ContourData(Data.Datas);
+            Result.HandleUnion(Left, Right);
+            return Result;
         }
 
         public void Difference(ContourData Info)
@@ -147,8 +194,13 @@ namespace MenthaAssembly.Media.Imaging
             if (Datas.Count == 0)
                 return;
 
+            bool IsChanged = false;
             for (int i = 0; i < Info.Datas.Count;)
-                this.HandleDifference(Info.Datas[i++], Info.Datas[i++]);
+                if (this.HandleDifference(Info.Datas[i++], Info.Datas[i++]))
+                    IsChanged = true;
+
+            if (IsChanged)
+                OnDatasChanged();
         }
         public void Difference(int Left, int Right)
         {
@@ -158,16 +210,31 @@ namespace MenthaAssembly.Media.Imaging
             if (Right < Left)
                 MathHelper.Swap(ref Left, ref Right);
 
-            this.HandleDifference(Left, Right);
+            if (this.HandleDifference(Left, Right))
+                OnDatasChanged();
+        }
+        public static ContourData Difference(ContourData Data, int Left, int Right)
+        {
+            ContourData Result = new ContourData(Data.Datas);
+            Result.HandleDifference(Left, Right);
+            return Result;
         }
 
-        public ContourData Offset(int X)
+        public void Offset(int X)
         {
-            ContourData Offsetted = new ContourData();
-            foreach (int Data in Datas)
-                Offsetted.Datas.Add(Data + X);
+            for (int i = 0; i < Datas.Count; i++)
+                Datas[i] += X;
 
-            return Offsetted;
+            if (X != 0)
+                OnDatasChanged();
+        }
+        public static ContourData Offset(ContourData Data, int X)
+        {
+            ContourData Result = new ContourData();
+            foreach (int Value in Data.Datas)
+                Result.Datas.Add(Value + X);
+
+            return Result;
         }
 
         public IEnumerator<int> GetEnumerator()
@@ -175,8 +242,15 @@ namespace MenthaAssembly.Media.Imaging
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
-        private void HandleUnion(int Left, int Right)
+        public ContourData Clone()
+            => new ContourData(this.Datas);
+        object ICloneable.Clone()
+            => this.Clone();
+
+        private bool HandleUnion(int Left, int Right)
         {
+            bool IsChanged = false;
+
             int LastIndexOfDatas = this.Datas.Count - 1,
                 LIndex = RightIndexWithLessThanOrEqual(Left, out bool LEqual);
             if (LIndex < 0)
@@ -187,11 +261,13 @@ namespace MenthaAssembly.Media.Imaging
                     if (REqual)
                     {
                         this.Datas[0] = Left;
+                        IsChanged = true;
                     }
                     else
                     {
                         this.Datas.Insert(0, Left);
                         this.Datas.Insert(1, Right);
+                        IsChanged = true;
                     }
                 }
                 else if (RIndex < 0)
@@ -202,11 +278,15 @@ namespace MenthaAssembly.Media.Imaging
                     this.Datas.Clear();
                     this.Datas.Add(Left);
                     this.Datas.Add(Right);
+                    IsChanged = true;
                 }
                 else
                 {
                     if (Left < this.Datas[0])
+                    {
                         this.Datas[0] = Left;
+                        IsChanged = true;
+                    }
 
                     if (!REqual)
                     {
@@ -214,13 +294,19 @@ namespace MenthaAssembly.Media.Imaging
                         RIndex--;
                         int NearestRight = this.Datas[RIndex];
                         if (NearestRight < Right)
+                        {
                             this.Datas[RIndex] = Right;
+                            IsChanged = true;
+                        }
 
                         RIndex--;
                     }
 
                     for (int i = RIndex; i > 0; i--)
                         this.Datas.RemoveAt(i);
+
+                    if (!IsChanged)
+                        IsChanged = RIndex > 0;
                 }
             }
             else if (LIndex == LastIndexOfDatas)
@@ -228,11 +314,13 @@ namespace MenthaAssembly.Media.Imaging
                 if (LEqual)
                 {
                     this.Datas[LastIndexOfDatas] = Right;
+                    IsChanged = true;
                 }
                 else
                 {
                     this.Datas.Add(Left);
                     this.Datas.Add(Right);
+                    IsChanged = true;
                 }
             }
             else
@@ -248,14 +336,15 @@ namespace MenthaAssembly.Media.Imaging
                         {
                             this.Datas.Insert(LIndex, Right);
                             this.Datas.Insert(LIndex, Left);
-                            return;
+                            return true;
                         }
 
                         this.Datas[LIndex] = Left;
 
                         if (Right == NearestLeft)
-                            return;
+                            return true;
 
+                        IsChanged = true;
                     }
                 }
 
@@ -266,7 +355,10 @@ namespace MenthaAssembly.Media.Imaging
                     int NearRight = this.Datas[RIndex];
 
                     if (NearRight < Right)
+                    {
                         this.Datas[RIndex] = Right;
+                        IsChanged = true;
+                    }
 
                     RIndex--;
                 }
@@ -278,7 +370,10 @@ namespace MenthaAssembly.Media.Imaging
                         RIndex--;
                         int NearRight = this.Datas[RIndex];
                         if (NearRight < Right)
+                        {
                             this.Datas[RIndex] = Right;
+                            IsChanged = true;
+                        }
 
                         RIndex--;
                     }
@@ -286,9 +381,14 @@ namespace MenthaAssembly.Media.Imaging
 
                 for (int i = RIndex; i > LIndex; i--)
                     this.Datas.RemoveAt(i);
+
+                if (!IsChanged)
+                    IsChanged = RIndex > LIndex;
             }
+
+            return IsChanged;
         }
-        private void HandleDifference(int Left, int Right)
+        private bool HandleDifference(int Left, int Right)
         {
             int MinIndex = 0;
             for (; MinIndex < Datas.Count; MinIndex++)
@@ -303,27 +403,32 @@ namespace MenthaAssembly.Media.Imaging
             if (MinIndex == MaxIndex)
             {
                 if ((MinIndex & 0x01) == 0)
-                    return;
+                    return false;
 
                 Datas.Insert(MaxIndex, Right);
                 Datas.Insert(MaxIndex, Left);
-                return;
+                return true;
             }
 
+            bool IsChanged = false;
             if ((MaxIndex & 0x01) == 1)
             {
                 MaxIndex--;
                 Datas[MaxIndex] = Right;
+                IsChanged = true;
             }
 
             if ((MinIndex & 0x01) == 1)
             {
                 Datas[MinIndex] = Left;
                 MinIndex++;
+                IsChanged = true;
             }
 
             for (int i = MaxIndex - 1; i >= MinIndex; i--)
                 Datas.RemoveAt(i);
+
+            return IsChanged || MaxIndex >= MinIndex + 1;
         }
 
         private int LeftIndexWithMoreThanOrEqual(int Right, out bool Equal)
@@ -372,6 +477,9 @@ namespace MenthaAssembly.Media.Imaging
             Equal = false;
             return -1;
         }
+
+        protected void OnDatasChanged()
+            => DatasChanged?.Invoke(this, EventArgs.Empty);
 
     }
 }

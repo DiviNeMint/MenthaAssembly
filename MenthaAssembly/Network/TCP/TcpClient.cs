@@ -38,7 +38,7 @@ namespace MenthaAssembly.Network
 
             // Start Receive Server's Message
             SocketAsyncEventArgs e = Dequeue();
-            ServerToken = new SocketToken(Server, e);
+            ServerToken = new SocketToken(Server, e) { LastRequsetUID = -1 };
 
             if (!Server.ReceiveAsync(e))
                 OnReceiveProcess(e);
