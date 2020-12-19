@@ -132,7 +132,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="Pen">The pen with transparent background for the line.</param>
         public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen)
         {
-            ImageContour Contour = ImageContour.Parse(Pen, out IPixel Fill, false);
+            ImageContour Contour = ImageContour.Parse(Pen, out IPixel Fill);
             DrawEllipse(Cx, Cy, Rx, Ry, Contour, this.Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
         }
         /// <summary>
@@ -147,9 +147,9 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="StrokeColor">The color for the line.</param>
         public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, Pixel StrokeColor)
         {
-            ImageContour EllipseContour = new ImageContour(false);
+            ImageContour EllipseContour = new ImageContour();
 
-            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => EllipseContour.Union(ImageContour.Offset(Contour, Cx + Dx, Cy + Dy, false)));
+            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => EllipseContour.Union(ImageContour.Offset(Contour, Cx + Dx, Cy + Dy)));
 
             this.Operator.ContourOverlay(this, EllipseContour, StrokeColor);
         }

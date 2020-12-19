@@ -5,12 +5,13 @@ namespace MenthaAssembly.Network.Messages
 {
     public class PingRequest : IIdentityMessage
     {
-        public int UID { private set; get; }
+        internal int _UID;
+        public int UID => _UID;
 
         int IIdentityMessage.UID
         {
-            set => this.UID = value;
-            get => this.UID;
+            set => _UID = value;
+            get => _UID;
         }
 
         public DateTime SendTime { get; }
@@ -51,7 +52,7 @@ namespace MenthaAssembly.Network.Messages
             Buffer = new byte[sizeof(long)];
             Stream.Read(Buffer, 0, Buffer.Length);
 
-            return new PingRequest(DateTime.FromBinary(BitConverter.ToInt64(Buffer, 0))) { UID = UID };
+            return new PingRequest(DateTime.FromBinary(BitConverter.ToInt64(Buffer, 0))) { _UID = UID };
         }
 
     }

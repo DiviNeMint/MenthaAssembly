@@ -16,7 +16,7 @@ namespace MenthaAssembly.Network.Messages
         }
         private SendSerializeObjectResponse(SuccessMessage Message, object SerializeObject) : this(Message.Success, SerializeObject)
         {
-            this.UID = Message.UID;
+            this._UID = Message.UID;
         }
 
         public static Stream Encode(SendSerializeObjectResponse Message)

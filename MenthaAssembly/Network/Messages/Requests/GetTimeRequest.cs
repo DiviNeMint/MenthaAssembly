@@ -5,12 +5,13 @@ namespace MenthaAssembly.Network.Messages
 {
     public class GetTimeRequest : IIdentityMessage
     {
-        public int UID { private set; get; }
+        internal int _UID;
+        public int UID => _UID;
 
         int IIdentityMessage.UID
         {
-            set => this.UID = value;
-            get => this.UID;
+            set => _UID = value;
+            get => _UID;
         }
 
         public static Stream Encode(GetTimeRequest Message) 
@@ -23,7 +24,7 @@ namespace MenthaAssembly.Network.Messages
             Stream.Read(Buffer, 0, Buffer.Length);
             int UID = BitConverter.ToInt32(Buffer, 0);
 
-            return new GetTimeRequest() { UID = UID };
+            return new GetTimeRequest() { _UID = UID };
         }
 
     }

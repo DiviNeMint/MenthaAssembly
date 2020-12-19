@@ -6,12 +6,13 @@ namespace MenthaAssembly.Network.Messages
 {
     public class SendMessageRequest : IIdentityMessage
     {
-        public int UID { private set; get; }
+        internal int _UID;
+        public int UID => _UID;
 
         int IIdentityMessage.UID
         {
-            set => this.UID = value;
-            get => this.UID;
+            set => _UID = value;
+            get => _UID;
         }
 
         public string Message { get; }
@@ -66,7 +67,7 @@ namespace MenthaAssembly.Network.Messages
                 Message = Encoding.Default.GetString(Buffer);
             }
 
-            return new SendMessageRequest(Message) { UID = UID };
+            return new SendMessageRequest(Message) { _UID = UID };
         }
 
     }

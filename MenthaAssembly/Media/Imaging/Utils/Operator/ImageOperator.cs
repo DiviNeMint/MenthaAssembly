@@ -145,9 +145,25 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (!Enumerator.MoveNext())
                 return;
 
+            int MaxX = Destination.Width - 1,
+                MaxY = Destination.Height - 1;
             KeyValuePair<int, ContourData> Current = Enumerator.Current;
 
             long Y = Current.Key;
+            if (MaxY < Y)
+                return;
+
+            while (Y < 0)
+            {
+                if (!Enumerator.MoveNext())
+                    return;
+
+                Current = Enumerator.Current;
+                Y = Current.Key;
+
+                if (MaxY < Y)
+                    return;
+            }
 
             long Offset = Destination.Stride * Y;
             byte* pPixels = (byte*)Destination.Scan0 + Offset;
@@ -161,8 +177,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     int CurrentX = 0;
                     for (int i = 0; i < Data.Count; i++)
                     {
-                        int Sx = Data[i++],
-                            Ex = Data[i];
+                        int Sx = Math.Max(Data[i++], 0),
+                            Ex = Math.Min(Data[i], MaxX);
+
+                        if (MaxX < Sx)
+                            return;
 
                         pTempPixels += Sx - CurrentX;
                         for (int j = Sx; j <= Ex; j++)
@@ -177,8 +196,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     int CurrentX = 0;
                     for (int i = 0; i < Data.Count; i++)
                     {
-                        int Sx = Data[i++],
-                            Ex = Data[i];
+                        int Sx = Math.Max(Data[i++], 0),
+                            Ex = Math.Min(Data[i], MaxX);
+
+                        if (MaxX < Sx)
+                            return;
 
                         pTempPixels += ((Sx - CurrentX) * Destination.BitsPerPixel) >> 3;
                         for (int j = Sx; j <= Ex; j++)
@@ -194,6 +216,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             while (Enumerator.MoveNext())
             {
                 Current = Enumerator.Current;
+
+                if (MaxY < Current.Key)
+                    return;
+
                 pPixels += Destination.Stride * (Current.Key - Y);
                 Y = Current.Key;
                 Data = Current.Value;

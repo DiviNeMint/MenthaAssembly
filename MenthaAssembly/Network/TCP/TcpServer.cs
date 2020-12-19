@@ -102,26 +102,19 @@ namespace MenthaAssembly.Network
             else if (e.AcceptSocket != null)
                 e.AcceptSocket = null;
 
+            if (IsDisposing)
+                return;
+
             try
             {
                 if (!Listener.AcceptAsync(e))
                     this.OnAcceptProcess(e);
             }
-            // When Dispose, It will trigger NullReferenceException Or ObjectDisposedException.
-            catch (NullReferenceException NullReferEx)
-            {
-                Debug.WriteLine(IsDisposed ?
-                    $"[Info]When {this.GetType().Name} is disposed, It will trigger NullReferenceException." :
-                    $"[Error]{this.GetType().Name}.{nameof(Listen)} {NullReferEx.Message}");
-            }
-            catch (ObjectDisposedException ObjDisposedEx)
-            {
-                Debug.WriteLine(IsDisposed ?
-                    $"[Info]When {this.GetType().Name} is disposed, It will trigger NullReferenceException." :
-                    $"[Error]{this.GetType().Name}.{nameof(Listen)} {ObjDisposedEx.Message}");
-            }
             catch (Exception Ex)
             {
+                if (IsDisposing)
+                    return;
+
                 Debug.WriteLine($"[Error]{this.GetType().Name}.{nameof(Listen)} {Ex.Message}");
             }
         }
@@ -159,6 +152,8 @@ namespace MenthaAssembly.Network
 
         public async Task<Dictionary<IPEndPoint, IMessage>> SendAsync(IMessage Request)
             => await SendAsync(Clients.ToArray(), Request, 3000);
+        public async Task<Dictionary<IPEndPoint, IMessage>> SendAsync(IMessage Request, int TimeoutMileseconds)
+            => await SendAsync(Clients.ToArray(), Request, TimeoutMileseconds);
         public async Task<Dictionary<IPEndPoint, IMessage>> SendAsync(IEnumerable<IPEndPoint> Clients, IMessage Request)
             => await SendAsync(Clients, Request, 3000);
         public async Task<Dictionary<IPEndPoint, IMessage>> SendAsync(IEnumerable<IPEndPoint> Clients, IMessage Request, int TimeoutMileseconds)
@@ -203,6 +198,8 @@ namespace MenthaAssembly.Network
 
         public Dictionary<IPEndPoint, IMessage> Send(IMessage Request)
             => Send(Clients.ToArray(), Request, 3000);
+        public Dictionary<IPEndPoint, IMessage> Send(IMessage Request, int TimeoutMileseconds)
+            => Send(Clients.ToArray(), Request, TimeoutMileseconds);
         public Dictionary<IPEndPoint, IMessage> Send(IEnumerable<IPEndPoint> Clients, IMessage Request)
             => Send(Clients, Request, 3000);
         public Dictionary<IPEndPoint, IMessage> Send(IEnumerable<IPEndPoint> Clients, IMessage Request, int TimeoutMileseconds)
@@ -296,10 +293,13 @@ namespace MenthaAssembly.Network
             ClientTokens.Remove(Token);
         }
 
+        private bool IsDisposing = false;
         public override void Dispose()
         {
             if (IsDisposed)
                 return;
+
+            IsDisposing = true;
 
             try
             {
@@ -321,6 +321,7 @@ namespace MenthaAssembly.Network
             }
             finally
             {
+                IsDisposing = false;
                 IsDisposed = true;
             }
         }

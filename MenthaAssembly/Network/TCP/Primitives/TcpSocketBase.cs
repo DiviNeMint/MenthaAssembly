@@ -1,4 +1,5 @@
-﻿using MenthaAssembly.Utils;
+﻿using MenthaAssembly.Network.Utils;
+using MenthaAssembly.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
@@ -256,7 +257,7 @@ namespace MenthaAssembly.Network.Primitives
             Enqueue(ref e);
         }
 
-        private Action<SocketToken, IMessage> ReplyAction;
+        private Action<SocketToken, IMessage> ReplyHandler;
         protected virtual void OnReceiveProcess(SocketAsyncEventArgs e)
         {
             if (e.UserToken is SocketToken Token)
@@ -268,59 +269,25 @@ namespace MenthaAssembly.Network.Primitives
                     // Reset Auto Ping Counter.
                     Token.PingCounter = 0;
 
+                    IMessage ReceiveMessage;
                     try
                     {
                         Token.Lock.Wait();
 
                         // Decode Message
                         ConcatStream s = new ConcatStream(e.Buffer, 0, e.BytesTransferred, new NetworkStream(Token.Socket));
-                        IMessage ReceiveMessage = ProtocolHandler.Decode(s);
+                        ReceiveMessage = ProtocolHandler.Decode(s);
                         s.Dispose();
-
-                        bool IsResponse = true;
-                        int ReceiveUID = -1;
-
-                        if (ReceiveMessage is IIdentityMessage IdentityMessage)
-                        {
-                            IsResponse = Token.LastRequsetUID == IdentityMessage.UID;
-                            ReceiveUID = IdentityMessage.UID;
-                        }
-
-                        if (IsResponse &&
-                            Token.ResponseTaskSource != null)
-                        {
-                            try
-                            {
-                                // Set Response
-                                Token.ResponseTaskSource.TrySetResult(ReceiveMessage);
-                            }
-                            finally
-                            {
-                                Token.ResponseTaskSource = null;
-
-                                // Release CancelToken
-                                Token.ResponseCancelToken.Dispose();
-                                Token.ResponseCancelToken = null;
-                            }
-                        }
-                        else
-                        {
-                            if (MessageHandler.HandleMessage(Token.Address, ReceiveMessage) is IMessage Response)
-                            {
-                                if (this.ReplyAction is null)
-                                    this.ReplyAction = OnReplyProcess;
-
-                                if (Response is IIdentityMessage IdentityResponse)
-                                    IdentityResponse.UID = ReceiveUID;
-
-                                ReplyAction.BeginInvoke(Token, Response, (ar) => ReplyAction.EndInvoke(ar), null);
-                            }
-                        }
                     }
                     finally
                     {
                         Token.Lock.Release();
                     }
+
+                    if (this.ReplyHandler is null)
+                        this.ReplyHandler = OnReplyProcess;
+
+                    ReplyHandler.BeginInvoke(Token, ReceiveMessage, (ar) => ReplyHandler.EndInvoke(ar), null);
 
                     // Loop Receive
                     if (!Token.Socket.ReceiveAsync(e))
@@ -337,28 +304,58 @@ namespace MenthaAssembly.Network.Primitives
             Enqueue(ref e);
         }
 
-        protected virtual void OnDisconnected(SocketToken Token)
+        private void OnReplyProcess(SocketToken Token, IMessage ReceiveMessage)
         {
-            if (!IsDisposed &&
-                !Token.IsDisposed)
-                Disconnected?.Invoke(this, Token.Address);
+            bool IsResponse = true;
+            int ReceiveUID = -1;
 
-            Token.Dispose();
-        }
-
-        private void OnReplyProcess(SocketToken Token, IMessage Response)
-        {
-            // Check Reply
-            if (Response != null &&
-                Token.Lock != null)
+            if (ReceiveMessage is IIdentityMessage IdentityMessage)
             {
+                IsResponse = Token.LastRequsetUID == IdentityMessage.UID;
+                ReceiveUID = IdentityMessage.UID;
+            }
+
+            if (IsResponse &&
+                Token.ResponseTaskSource != null)
+            {
+                try
+                {
+                    // Set Response
+                    Token.ResponseTaskSource.TrySetResult(ReceiveMessage);
+                }
+                finally
+                {
+                    Token.ResponseTaskSource = null;
+
+                    // Release CancelToken
+                    Token.ResponseCancelToken.Dispose();
+                    Token.ResponseCancelToken = null;
+                }
+            }
+            else
+            {
+                // Handle Received Message
+                IMessage Response = MessageHandler.HandleMessage(Token.Address, ReceiveMessage);
+
+                // Check Response
+                if (Response is null)
+                    Response = ErrorMessage.ReceivingNotSupport;
+
+                if (Response is IIdentityMessage IdentityResponse)
+                    IdentityResponse.UID = ReceiveUID;
+
                 Stream MessageStream = ProtocolHandler.Encode(Response);
                 if (MessageStream is null)
                 {
-                    Console.WriteLine($"ProtocolHandler not support {Response.GetType().Name}.");
-                    return;
+                    Console.WriteLine($"[Warn]{this.ProtocolHandler.GetType().Name} not support {Response.GetType().Name}.");
+
+                    ErrorMessage Error = ErrorMessage.ReceivingNotSupport;
+                    Error._UID = ReceiveUID;
+
+                    MessageStream = ErrorMessage.Encode(Error);
                 }
 
+                // Replay
                 Token.Lock.Wait();
 
                 Token.MessageEncodeStream = MessageStream;
@@ -371,6 +368,15 @@ namespace MenthaAssembly.Network.Primitives
                 if (!Token.Socket.SendAsync(e2))
                     OnSendProcess(e2);
             }
+        }
+
+        protected virtual void OnDisconnected(SocketToken Token)
+        {
+            if (!IsDisposed &&
+                !Token.IsDisposed)
+                Disconnected?.Invoke(this, Token.Address);
+
+            Token.Dispose();
         }
 
         protected bool IsDisposed = false;

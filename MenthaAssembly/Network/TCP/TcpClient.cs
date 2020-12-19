@@ -12,6 +12,9 @@ namespace MenthaAssembly.Network
     {
         protected SocketToken ServerToken;
 
+        public IPEndPoint Server
+            => ServerToken?.Address;
+
         public TcpClient(IMessageHandler MessageHandler) : this(CommonProtocolHandler.Instance, MessageHandler) { }
         public TcpClient(IProtocolHandler Protocol, IMessageHandler MessageHandler) : this(Protocol, MessageHandler, 8192) { }
         public TcpClient(IProtocolHandler Protocol, IMessageHandler MessageHandler, int BufferSize) : base(Protocol, MessageHandler, BufferSize) { }

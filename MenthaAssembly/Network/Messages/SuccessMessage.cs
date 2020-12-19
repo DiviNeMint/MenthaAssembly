@@ -5,12 +5,13 @@ namespace MenthaAssembly.Network
 {
     public class SuccessMessage : IIdentityMessage
     {
-        public int UID { protected set; get; }
+        internal int _UID;
+        public int UID => _UID;
 
         int IIdentityMessage.UID
         {
-            set => this.UID = value;
-            get => this.UID;
+            get => _UID;
+            set => _UID = value;
         }
 
         public bool Success { get; }
@@ -36,7 +37,7 @@ namespace MenthaAssembly.Network
             return EncodeStream;
         }
 
-        internal static SuccessMessage Decode(Stream Stream)
+        public static SuccessMessage Decode(Stream Stream)
         {
             // UID
             byte[] Buffer = new byte[sizeof(int)];
@@ -48,7 +49,7 @@ namespace MenthaAssembly.Network
             Buffer = new byte[sizeof(bool)];
             Stream.Read(Buffer, 0, Buffer.Length);
 
-            return new SuccessMessage(BitConverter.ToBoolean(Buffer, 0)) { UID = UID };
+            return new SuccessMessage(BitConverter.ToBoolean(Buffer, 0)) { _UID = UID };
         }
 
     }

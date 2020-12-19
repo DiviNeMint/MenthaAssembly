@@ -7,67 +7,52 @@ namespace MenthaAssembly.Media.Imaging
 {
     public class ImageContour : IEnumerable<KeyValuePair<int, ContourData>>
     {
-        internal readonly SortedList<int, ContourData> Datas;
+        internal readonly SortedList<int, ContourData> Datas = new SortedList<int, ContourData>();
 
         public int Count => Datas.Count;
 
-        internal readonly bool IsObservable;
-
-        private bool NeedUpdateBound = true;
-        private Int32Bound _Bound;
         public Int32Bound Bound
         {
             get
             {
-                if (NeedUpdateBound)
+                IEnumerator<KeyValuePair<int, ContourData>> Enumerator = Datas.GetEnumerator();
+                try
                 {
-                    IEnumerator<KeyValuePair<int, ContourData>> Enumerator = Datas.GetEnumerator();
-                    try
+                    if (Enumerator.MoveNext())
                     {
-                        if (Enumerator.MoveNext())
+                        int Key = Enumerator.Current.Key;
+                        ContourData Value = Enumerator.Current.Value;
+                        while (Value.Count == 0)
                         {
-                            int Key = Enumerator.Current.Key;
-                            ContourData Value = Enumerator.Current.Value;
-                            while (Value.Count == 0)
-                            {
-                                if (!Enumerator.MoveNext())
-                                {
-                                    _Bound = Int32Bound.Empty;
-                                    return _Bound;
-                                };
+                            if (!Enumerator.MoveNext())
+                                return Int32Bound.Empty;
 
-                                Key = Enumerator.Current.Key;
-                                Value = Enumerator.Current.Value;
-                            }
-
-                            int Left = Value[0],
-                                Top = Key,
-                                Right = Value[Value.Count - 1],
-                                Bottom = Key;
-
-                            while (Enumerator.MoveNext())
-                            {
-                                Value = Enumerator.Current.Value;
-                                Left = Math.Min(Left, Value[0]);
-                                Right = Math.Max(Right, Value[Value.Count - 1]);
-                                Bottom = Enumerator.Current.Key;
-                            }
-
-                            _Bound = new Int32Bound(Left, Top, Right, Bottom);
+                            Key = Enumerator.Current.Key;
+                            Value = Enumerator.Current.Value;
                         }
-                        else
+
+                        int Left = Value[0],
+                            Top = Key,
+                            Right = Value[Value.Count - 1],
+                            Bottom = Key;
+
+                        while (Enumerator.MoveNext())
                         {
-                            _Bound = Int32Bound.Empty;
+                            Value = Enumerator.Current.Value;
+                            Left = Math.Min(Left, Value[0]);
+                            Right = Math.Max(Right, Value[Value.Count - 1]);
+                            Bottom = Enumerator.Current.Key;
                         }
+
+                        return new Int32Bound(Left, Top, Right, Bottom);
                     }
-                    finally
-                    {
-                        Enumerator.Dispose();
-                        NeedUpdateBound = false;
-                    }
+
+                    return Int32Bound.Empty;
                 }
-
-                return _Bound;
+                finally
+                {
+                    Enumerator.Dispose();
+                }
             }
         }
 
@@ -80,37 +65,19 @@ namespace MenthaAssembly.Media.Imaging
 
                 Info = new ContourData();
 
-                if (IsObservable)
-                    Info.DatasChanged += OnDatasChanged;
-
                 Datas[Y] = Info;
                 return Info;
             }
             set
             {
-                if (Datas.TryGetValue(Y, out ContourData Data))
-                    Data.DatasChanged -= OnDatasChanged;
-
                 if (value is null)
                 {
                     Datas.Remove(Y);
                     return;
                 }
 
-                if (IsObservable)
-                    value.DatasChanged += OnDatasChanged;
-
                 Datas[Y] = value;
             }
-        }
-
-        public ImageContour() : this(true)
-        {
-        }
-        internal ImageContour(bool IsObservable)
-        {
-            this.IsObservable = IsObservable;
-            Datas = new SortedList<int, ContourData>();
         }
 
         public void Union(ImageContour Contour)
@@ -127,23 +94,40 @@ namespace MenthaAssembly.Media.Imaging
 
         public void Offset(int X, int Y)
         {
-            Dictionary<int, ContourData> Temp = new Dictionary<int, ContourData>(Datas);
-            Datas.Clear();
-
-            foreach (KeyValuePair<int, ContourData> Item in Temp)
+            IList<int> Keys = Datas.Keys;
+            if (Y < 0)
             {
-                ContourData Data = Item.Value;
-                Data.Offset(X);
-                Datas.Add(Item.Key + Y, Data);
-            }
+                for (int i = 0; i < Keys.Count; i++)
+                {
+                    int OldY = Keys[i];
+                    ContourData Data = Datas[OldY];
+                    Data.Offset(X);
 
-            NeedUpdateBound = X != 0 && Y != 0;
+                    Datas.RemoveAt(i);
+                    Datas.Add(OldY + Y, Data);
+                }
+            }
+            else if (Y == 0)
+            {
+                foreach (int Key in Keys)
+                    Datas[Key].Offset(X);
+            }
+            else
+            {
+                for (int i = Keys.Count - 1; i >= 0; i--)
+                {
+                    int OldY = Keys[i];
+                    ContourData Data = Datas[OldY];
+                    Data.Offset(X);
+
+                    Datas.RemoveAt(i);
+                    Datas.Add(OldY + Y, Data);
+                }
+            }
         }
         public static ImageContour Offset(ImageContour Source, int X, int Y)
-            => Offset(Source, X, Y, true);
-        internal static ImageContour Offset(ImageContour Source, int X, int Y, bool IsObservable)
         {
-            ImageContour Result = new ImageContour(IsObservable);
+            ImageContour Result = new ImageContour();
             foreach (KeyValuePair<int, ContourData> Data in Source.Datas)
                 Result[Data.Key + Y] = ContourData.Offset(Data.Value, X);
 
@@ -155,17 +139,11 @@ namespace MenthaAssembly.Media.Imaging
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
-        private void OnDatasChanged(object sender, EventArgs e)
-            => NeedUpdateBound = true;
-
-
         public static ImageContour Parse(IImageContext Stroke, out IPixel StrokeColor)
-            => Parse(Stroke, out StrokeColor, true);
-        internal static ImageContour Parse(IImageContext Stroke, out IPixel StrokeColor, bool IsObservable)
         {
             StrokeColor = default;
             bool FoundColor = false;
-            ImageContour Contour = new ImageContour(IsObservable);
+            ImageContour Contour = new ImageContour();
             for (int j = 0; j < Stroke.Height; j++)
             {
                 bool IsFoundLeft = false;

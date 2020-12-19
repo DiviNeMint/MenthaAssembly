@@ -6,12 +6,13 @@ namespace MenthaAssembly.Network.Messages
 {
     public class SendSerializeObjectRequest : IIdentityMessage
     {
-        public int UID { private set; get; }
+        internal int _UID;
+        public int UID => _UID;
 
         int IIdentityMessage.UID
         {
-            set => this.UID = value;
-            get => this.UID;
+            set => _UID = value;
+            get => _UID;
         }
 
         public object SerializeObject { get; }
@@ -59,13 +60,13 @@ namespace MenthaAssembly.Network.Messages
 
             // Check null
             if (Stream.ReadByte() == 0)
-                return new SendSerializeObjectRequest(null) { UID = UID };
+                return new SendSerializeObjectRequest(null) { _UID = UID };
 
             // Deserialize
             BinaryFormatter BF = new BinaryFormatter();
             object SerializeObject = BF.Deserialize(Stream);
 
-            return new SendSerializeObjectRequest(SerializeObject) { UID = UID };
+            return new SendSerializeObjectRequest(SerializeObject) { _UID = UID };
         }
 
     }

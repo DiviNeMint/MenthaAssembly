@@ -356,11 +356,11 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             #endregion
         }
-        public void DrawLine(Int32Point P0, Int32Point P1, ImageContour Contour, Pixel Fill)
-            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, Fill);
-        public void DrawLine(int X0, int Y0, int X1, int Y1, ImageContour Contour, Pixel Fill)
+        public void DrawLine(Int32Point P0, Int32Point P1, ImageContour Contour, Pixel StrokeColor)
+            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, StrokeColor);
+        public void DrawLine(int X0, int Y0, int X1, int Y1, ImageContour Contour, Pixel StrokeColor)
         {
-            if (Fill.A == 0)
+            if (StrokeColor.A == 0)
                 return;
 
             if (X1 < X0)
@@ -375,11 +375,10 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             Dictionary<int, int> LeftBound = new Dictionary<int, int>(),
                                  RightBound = new Dictionary<int, int>();
             #region Pen Bound
+            Int32Bound PenBound = Contour.Bound;
             int MaxX = this.Width - 1,
-                PW = Contour.Bound.Width,
-                PH = Contour.Bound.Height,
-                PCx = PW >> 1,
-                PCy = PH >> 1,
+                PCx = PenBound.Width >> 1,
+                PCy = PenBound.Height >> 1,
                 DUx = 0,
                 DUy = 0,
                 DLx = 0,
@@ -393,10 +392,9 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 ContourData Data = Item.Value;
 
                 // Found Left Bound
-                for (int i = 0; i < Data.Count; i++)
                 {
-                    int Tx = Data[i] - PCx,
-                        Ty = Data[j] - PCy;
+                    int Tx = Data[0] - PCx,
+                        Ty = j - PCy;
 
                     int Predict = DeltaX * Ty - DeltaY * Tx;
                     int Distance = Math.Abs(Predict);
@@ -451,13 +449,11 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                             LeftBound[Ry] = Rx;
                         }
                     }
-                    break;
                 }
 
                 // Found Right Bound
-                for (int i = PW - 1; i >= 0; i--)
                 {
-                    int Tx = i - PCx,
+                    int Tx = Data[Data.Count - 1] - PCx,
                         Ty = j - PCy;
 
                     int Predict = DeltaX * Ty - DeltaY * Tx;
@@ -514,7 +510,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                             RightBound[Ry] = Rx;
                         }
                     }
-                    break;
                 }
             }
 
@@ -607,17 +602,17 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 if (LeftBound.TryGetValue(Y, out int TLx))
                 {
                     LeftBound.Remove(Y);
-                    this.Operator.ScanLineOverlay(this, TLx, Y, TRx - TLx + 1, Fill);
+                    this.Operator.ScanLineOverlay(this, TLx, Y, TRx - TLx + 1, StrokeColor);
                 }
                 else
                 {
-                    this.Operator.SetPixel(this, TRx, Y, Fill);
+                    this.Operator.SetPixel(this, TRx, Y, StrokeColor);
                 }
             }
             RightBound.Clear();
 
             foreach (KeyValuePair<int, int> Data in LeftBound)
-                this.Operator.SetPixel(this, Data.Value, Data.Key, Fill);
+                this.Operator.SetPixel(this, Data.Value, Data.Key, StrokeColor);
 
             LeftBound.Clear();
 
@@ -1219,66 +1214,21 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
         public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
         {
-            ImageContour Contour = ImageContour.Parse(Pen, out IPixel Fill, false);
-            DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Contour, this.Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
-        }
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
-            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, StrokeColor);
-        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
-        {
-            ImageContour ArcContour = new ImageContour(true);
-            ImageContour Stroke;
+            ImageContour Stroke = ImageContour.Parse(Pen, out IPixel Fill);
+            Pixel StrokeColor = this.Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B);
 
-            int PCx = Contour.Bound.Width >> 1,
-                PCy = Contour.Bound.Height >> 1;
-            if (Contour.IsObservable)
-            {
-                Stroke = ImageContour.Offset(Contour, Cx - PCx, Cy - PCy, false);
-            }
-            else
-            {
-                Stroke = Contour;
-                Stroke.Offset(Cx - PCx, Cy - PCy);
-            }
+            ImageContour ArcContour = new ImageContour();
+
+            Int32Bound Bound = Stroke.Bound;
+            Stroke.Offset(Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
 
             int LastDx = 0,
                 LastDy = 0;
             GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
                 (Dx, Dy) =>
                 {
-                    if (Dx == -269 && Dy == 296)
-                    {
-                        if (ArcContour.Datas.FirstOrNull(i => i.Value.Count == 3) is KeyValuePair<int, ContourData> Value2)
-                        {
-
-                        }
-                    }
-
                     Stroke.Offset(Dx - LastDx, Dy - LastDy);
                     ArcContour.Union(Stroke);
-
-                    if (ArcContour.Datas.FirstOrNull(i => i.Value.Count == 3) is KeyValuePair<int,ContourData> Value)
-                    {
-
-                    }
-
-                    //byte[] Data = new byte[500 * 500 * 4];
-                    //for (int i = 0; i < Data.Length; i++)
-                    //    Data[i] = 255;
-
-                    //ImageContext<BGRA> Image = new ImageContext<BGRA>(100, 100, Data);
-
-                    //BGRA Color = new BGRA(0, 0, 255, 255);
-                    //ImageContour Stroke = ImageContour.CreateFillEllipse(5, 5, 5, 5);
-                    //Image.DrawArc(10, 10, 90, 90, 90, 10, 80, 80, false, Stroke, Color);
-                    ////Image.DrawArc(50, 50, 450, 450, 450, 50, 400, 400, false, Stroke, Color);
-                    //ImageViewer.SourceContext = Image;
-
-
-                    //if (ArcContour.Bound.Top < 40)
-                    //{
-
-                    //}
 
                     LastDx = Dx;
                     LastDy = Dy;
@@ -1286,11 +1236,26 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             this.Operator.ContourOverlay(this, ArcContour, StrokeColor);
         }
-        public void DrawArc2(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
+        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, StrokeColor);
+        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
         {
-            ImageContour ArcContour = new ImageContour(false);
+            ImageContour ArcContour = new ImageContour();
+
+            Int32Bound Bound = Contour.Bound;
+            ImageContour Stroke = ImageContour.Offset(Contour, Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
+
+            int LastDx = 0,
+                LastDy = 0;
             GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
-                (Dx, Dy) => ArcContour.Union(ImageContour.Offset(Contour, Cx + Dx, Cy + Dy)));
+                (Dx, Dy) =>
+                {
+                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                    ArcContour.Union(Stroke);
+
+                    LastDx = Dx;
+                    LastDy = Dy;
+                });
 
             this.Operator.ContourOverlay(this, ArcContour, StrokeColor);
         }
