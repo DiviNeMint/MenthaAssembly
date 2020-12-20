@@ -163,20 +163,23 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     {
                         if (DEy > 0)
                         {
-                            bool Temp = DEx > DSx;
+                            bool Temp = DSx < DEx || DEy < DSy;
                             if (!Temp)
+                            {
                                 MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
 
                             if (Clockwise == Temp)
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DSx || DEx <= Dx;
+                                Filter1 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
                                 Filter2 = (Dx, Dy) => true;
                                 Filter3 = (Dx, Dy) => true;
                                 Filter4 = (Dx, Dy) => true;
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => DSx <= Dx && Dx <= DEx;
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
                                 Filter2 = (Dx, Dy) => false;
                                 Filter3 = (Dx, Dy) => false;
                                 Filter4 = (Dx, Dy) => false;
@@ -186,17 +189,17 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         {
                             if (Clockwise)
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DSx;
+                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
                                 Filter2 = (Dx, Dy) => true;
                                 Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DEx;
+                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => DSx <= Dx;
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
                                 Filter2 = (Dx, Dy) => false;
                                 Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DEx <= Dx;
+                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
                             }
                         }
                     }
@@ -206,15 +209,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         {
                             if (Clockwise)
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DSx;
-                                Filter2 = (Dx, Dy) => DEx <= Dx;
+                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
                                 Filter3 = (Dx, Dy) => false;
                                 Filter4 = (Dx, Dy) => false;
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => DSx <= Dx;
-                                Filter2 = (Dx, Dy) => Dx <= DEx;
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
                                 Filter3 = (Dx, Dy) => true;
                                 Filter4 = (Dx, Dy) => true;
                             }
@@ -223,16 +226,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         {
                             if (Clockwise)
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DSx;
+                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
                                 Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DEx;
+                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
                                 Filter4 = (Dx, Dy) => false;
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => DSx <= Dx;
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
                                 Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => DEx <= Dx;
+                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
                                 Filter4 = (Dx, Dy) => false;
                             }
                         }
@@ -246,38 +249,41 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         {
                             if (Clockwise)
                             {
-                                Filter1 = (Dx, Dy) => DEx <= Dx;
+                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
                                 Filter2 = (Dx, Dy) => false;
                                 Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DSx <= Dx;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DEx;
+                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
                                 Filter2 = (Dx, Dy) => true;
                                 Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DSx;
+                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
                             }
                         }
                         else
                         {
-                            bool Temp = DEx > DSx;
+                            bool Temp = DSx < DEx || DSy < DEy;
                             if (!Temp)
+                            {
                                 MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
 
                             if (Clockwise == Temp)
                             {
                                 Filter1 = (Dx, Dy) => false;
                                 Filter2 = (Dx, Dy) => false;
                                 Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DSx <= Dx && Dx <= DEx;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
                             }
                             else
                             {
                                 Filter1 = (Dx, Dy) => true;
                                 Filter2 = (Dx, Dy) => true;
                                 Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DSx || DEx <= Dx;
+                                Filter4 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
                             }
                         }
                     }
@@ -288,16 +294,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             if (Clockwise)
                             {
                                 Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DEx <= Dx;
+                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
                                 Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DSx <= Dx;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
                             }
                             else
                             {
                                 Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DEx;
+                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
                                 Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DSx;
+                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
                             }
                         }
                         else
@@ -306,15 +312,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             {
                                 Filter1 = (Dx, Dy) => true;
                                 Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DEx;
-                                Filter4 = (Dx, Dy) => DSx <= Dx;
+                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
                             }
                             else
                             {
                                 Filter1 = (Dx, Dy) => false;
                                 Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DEx <= Dx;
-                                Filter4 = (Dx, Dy) => Dx <= DSx;
+                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
                             }
                         }
                     }
@@ -330,15 +336,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         {
                             if (Clockwise)
                             {
-                                Filter1 = (Dx, Dy) => DEx <= Dx;
-                                Filter2 = (Dx, Dy) => Dx <= DSx;
+                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
                                 Filter3 = (Dx, Dy) => true;
                                 Filter4 = (Dx, Dy) => true;
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DEx;
-                                Filter2 = (Dx, Dy) => DSx <= Dx;
+                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
                                 Filter3 = (Dx, Dy) => false;
                                 Filter4 = (Dx, Dy) => false;
                             }
@@ -348,16 +354,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             if (Clockwise)
                             {
                                 Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DSx;
+                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
                                 Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DEx;
+                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
                             }
                             else
                             {
                                 Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DSx <= Dx;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
                                 Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DEx <= Dx;
+                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
                             }
                         }
                     }
@@ -365,21 +371,24 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     {
                         if (DEy > 0)
                         {
-                            bool Temp = DEx > DSx;
+                            bool Temp = DSx < DEx || DSy < DEy;
                             if (!Temp)
+                            {
                                 MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
 
                             if (Clockwise == Temp)
                             {
                                 Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => Dx <= DSx || DEx <= Dx;
+                                Filter2 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
                                 Filter3 = (Dx, Dy) => true;
                                 Filter4 = (Dx, Dy) => true;
                             }
                             else
                             {
                                 Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => DSx <= Dx && Dx <= DEx;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
                                 Filter3 = (Dx, Dy) => false;
                                 Filter4 = (Dx, Dy) => false;
                             }
@@ -389,15 +398,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             if (Clockwise)
                             {
                                 Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DSx;
-                                Filter3 = (Dx, Dy) => Dx <= DEx;
+                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
                                 Filter4 = (Dx, Dy) => false;
                             }
                             else
                             {
                                 Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DSx <= Dx;
-                                Filter3 = (Dx, Dy) => DEx <= Dx;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
                                 Filter4 = (Dx, Dy) => true;
                             }
                         }
@@ -411,16 +420,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         {
                             if (Clockwise)
                             {
-                                Filter1 = (Dx, Dy) => DEx <= Dx;
+                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
                                 Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DSx <= Dx;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
                                 Filter4 = (Dx, Dy) => true;
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DEx;
+                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
                                 Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DSx;
+                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
                                 Filter4 = (Dx, Dy) => false;
                             }
                         }
@@ -430,15 +439,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             {
                                 Filter1 = (Dx, Dy) => false;
                                 Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DSx <= Dx;
-                                Filter4 = (Dx, Dy) => Dx <= DEx;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
                             }
                             else
                             {
                                 Filter1 = (Dx, Dy) => true;
                                 Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DSx;
-                                Filter4 = (Dx, Dy) => DEx <= Dx;
+                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
                             }
                         }
                     }
@@ -449,36 +458,39 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             if (Clockwise)
                             {
                                 Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DEx <= Dx;
-                                Filter3 = (Dx, Dy) => DSx <= Dx;
+                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
                                 Filter4 = (Dx, Dy) => true;
                             }
                             else
                             {
                                 Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DEx;
-                                Filter3 = (Dx, Dy) => Dx <= DSx;
+                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
                                 Filter4 = (Dx, Dy) => false;
                             }
                         }
                         else
                         {
-                            bool Temp = DEx > DSx;
+                            bool Temp = DSx < DEx || DEy < DSy;
                             if (!Temp)
+                            {
                                 MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
 
                             if (Clockwise == Temp)
                             {
                                 Filter1 = (Dx, Dy) => false;
                                 Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DSx <= Dx && Dx <= DEx;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
                                 Filter4 = (Dx, Dy) => false;
                             }
                             else
                             {
                                 Filter1 = (Dx, Dy) => true;
                                 Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DSx || DEx <= Dx;
+                                Filter3 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
                                 Filter4 = (Dx, Dy) => true;
                             }
                         }

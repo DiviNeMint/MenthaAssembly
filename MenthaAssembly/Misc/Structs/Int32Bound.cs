@@ -59,6 +59,17 @@ namespace MenthaAssembly
                 this = Empty;
             }
         }
+        public static Int32Bound Intersect(Int32Bound Bound1, Int32Bound Bound2)
+        {
+            if (Bound1.IntersectsWith(Bound2))
+                return new Int32Bound(Math.Max(Bound1.Left, Bound2.Left),
+                                      Math.Max(Math.Min(Bound1.Right, Bound2.Right), Bound1.Left),
+                                      Math.Max(Bound1.Top, Bound2.Top),
+                                      Math.Max(Math.Min(Bound1.Bottom, Bound2.Bottom), Bound1.Top));
+
+            return Empty;
+        }
+
         public bool IntersectsWith(Int32Bound Bound)
         {
             if (IsEmpty || Bound.IsEmpty)
@@ -86,6 +97,19 @@ namespace MenthaAssembly
             Top = Math.Min(Top, Bound.Top);
             Bottom = Math.Max(Bottom, Bound.Bottom);
         }
+        public static Int32Bound Union(Int32Bound Bound1, Int32Bound Bound2)
+        {
+            if (Bound1.IsEmpty)
+                return new Int32Bound(Bound2.Left, Bound2.Top, Bound2.Right, Bound2.Bottom);
+
+            if (Bound2.IsEmpty)
+                return new Int32Bound(Bound1.Left, Bound1.Top, Bound1.Right, Bound1.Bottom);
+
+            return new Int32Bound(Math.Min(Bound1.Left, Bound2.Left),
+                                  Math.Min(Bound1.Top, Bound2.Top),
+                                  Math.Max(Bound1.Right, Bound2.Right),
+                                  Math.Max(Bound1.Bottom, Bound2.Bottom));
+        }
 
         public void Offset(Int32Vector Vector)
             => Offset(Vector.X, Vector.Y);
@@ -96,6 +120,20 @@ namespace MenthaAssembly
             Top += Y;
             Bottom += Y;
         }
+        public static Int32Bound Offset(Int32Bound Bound, int X, int Y)
+            => new Int32Bound(Bound.Left + X, Bound.Top + Y, Bound.Right + X, Bound.Bottom + Y);
+
+        public void Scale(int Scale)
+            => this.Scale(Scale, Scale);
+        public void Scale(int XScale, int YScale)
+        {
+            Right = Left + Width * XScale;
+            Bottom = Top + Height * YScale;
+        }
+        public static Int32Bound Scale(Int32Bound Bound, int Scale)
+            => Int32Bound.Scale(Bound, Scale, Scale);
+        public static Int32Bound Scale(Int32Bound Bound, int XScale, int YScale)
+            => new Int32Bound(Bound.Left, Bound.Top, Bound.Left + Bound.Width * XScale, Bound.Top + Bound.Height * YScale);
 
         public bool Contains(Int32Point Point)
             => Contains(Point.X, Point.Y);

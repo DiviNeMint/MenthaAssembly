@@ -618,6 +618,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             #endregion
         }
+        public void DrawLineWithStamp(Int32Point P0, Int32Point P1, IImageContext Stamp)
+            => DrawLineWithStamp(P0.X, P0.Y, P1.X, P1.Y, Stamp);
         public void DrawLineWithStamp(int X0, int Y0, int X1, int Y1, IImageContext Stamp)
         {
             int X = X0 - (Stamp.Width >> 1),
@@ -626,194 +628,75 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             int DeltaX = X1 - X0,
                 DeltaY = Y1 - Y0;
 
-
             GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, Math.Abs(DeltaX), Math.Abs(DeltaY), (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Stamp));
         }
 
-        /// <summary>
-        /// Draws a polyline anti-aliased. Add the first point also at the end of the array if the line should be closed.
-        /// </summary>
-        /// <param name="bmp">The WriteableBitmap.</param>
-        /// <param name="Points">The points of the polyline in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
-        /// <param name="color">The color for the line.</param>
-        public void DrawPolyline(int[] Points, Pixel color)
+        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, Pixel Color)
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Color);
+        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, Pixel Color)
+            => GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy,
+                                                      Ex - Cx, Ey - Cy,
+                                                      Rx, Ry,
+                                                      Clockwise,
+                                                      (Dx, Dy) => this.Operator.SetPixel(this, Cx + Dx, Cy + Dy, Color));
+        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
+        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
         {
-            int x1 = Points[0];
-            int y1 = Points[1];
+            ImageContour Stroke = ImageContour.Parse(Pen, out IPixel Fill);
+            Pixel StrokeColor = this.Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B);
 
-            for (int i = 2; i < Points.Length; i += 2)
-            {
-                int x2 = Points[i];
-                int y2 = Points[i + 1];
+            ImageContour ArcContour = new ImageContour();
 
-                DrawLine(x1, y1, x2, y2, color);
-                x1 = x2;
-                y1 = y2;
-            }
+            Int32Bound Bound = Stroke.Bound;
+            Stroke.Offset(Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
+
+            int LastDx = 0,
+                LastDy = 0;
+            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
+                (Dx, Dy) =>
+                {
+                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                    ArcContour.Union(Stroke);
+
+                    LastDx = Dx;
+                    LastDy = Dy;
+                });
+
+            this.Operator.ContourOverlay(this, ArcContour, StrokeColor, 0, 0);
         }
-
-
-        public ImageContour CreateLineContour(int X0, int Y0, int X1, int Y1, IImageContext Pen)
+        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, StrokeColor);
+        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
         {
-            if (X1 < X0)
-            {
-                MathHelper.Swap(ref X0, ref X1);
-                MathHelper.Swap(ref Y0, ref Y1);
-            }
-            int DeltaX = X1 - X0,
-                DeltaY = Y1 - Y0,
-                AbsDeltaY = Math.Abs(DeltaY);
+            ImageContour ArcContour = new ImageContour();
 
-            Pixel? Color = null;
-            ImageContour Contour = new ImageContour();
+            Int32Bound Bound = Contour.Bound;
+            ImageContour Stroke = ImageContour.Offset(Contour, Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
 
-            #region Pen Bound
-            int MaxX = this.Width - 1,
-                PCx = Pen.Width >> 1,
-                PCy = Pen.Height >> 1,
-                DUx = 0,
-                DUy = 0,
-                DLx = 0,
-                DLy = 0,
-                UpperDistance = 0,
-                LowerDistance = 0;
-
-            for (int j = 0; j < Pen.Height; j++)
-            {
-                // Found Left Bound
-                for (int i = 0; i < Pen.Width; i++)
+            int LastDx = 0,
+                LastDy = 0;
+            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
+                (Dx, Dy) =>
                 {
-                    IPixel Pixel = Pen[i, j];
-                    if (Pixel.A > 0)
-                    {
-                        if (!Color.HasValue)
-                            Color = this.Operator.ToPixel(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                    ArcContour.Union(Stroke);
 
-                        int Tx = i - PCx,
-                            Ty = j - PCy;
+                    LastDx = Dx;
+                    LastDy = Dy;
+                });
 
-                        int Predict = DeltaX * Ty - DeltaY * Tx;
-                        int Distance = Math.Abs(Predict);
+            this.Operator.ContourOverlay(this, ArcContour, StrokeColor, 0, 0);
+        }
+        public void DrawArcWithStamp(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IImageContext Stamp)
+            => DrawArcWithStamp(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Stamp);
+        public void DrawArcWithStamp(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Stamp)
+        {
+            int X = Cx - (Stamp.Width >> 1),
+                Y = Cy - (Stamp.Height >> 1);
 
-                        if (Predict > 0)    // UpperLine
-                        {
-                            if (UpperDistance < Distance)
-                            {
-                                UpperDistance = Distance;
-                                DUx = Tx;
-                                DUy = Ty;
-                            }
-                        }
-                        else                // LowerLine
-                        {
-                            if (LowerDistance < Distance)
-                            {
-                                LowerDistance = Distance;
-                                DLx = Tx;
-                                DLy = Ty;
-                            }
-                        }
-
-                        // StartPoint
-                        int Ry = Ty + Y0;
-                        if (-1 < Ry && Ry < this.Height)
-                            Contour[Ry].AddLeft(Math.Min(Math.Max(Tx + X0, 0), MaxX));
-
-                        // EndPoint
-                        Ry = Ty + Y1;
-                        if (-1 < Ry && Ry < this.Height)
-                            Contour[Ry].AddLeft(Math.Min(Math.Max(Tx + X1, 0), MaxX));
-
-                        break;
-                    }
-                }
-
-                // Found Right Bound
-                for (int i = Pen.Width - 1; i >= 0; i--)
-                {
-                    byte Alpha = Pen[i, j].A;
-                    if (Alpha > 0)
-                    {
-                        int Tx = i - PCx,
-                            Ty = j - PCy;
-
-                        int Predict = DeltaX * Ty - DeltaY * Tx;
-                        int Distance = Math.Abs(Predict);
-
-                        if (Predict > 0)    // UpperLine
-                        {
-                            if (UpperDistance < Distance)
-                            {
-                                UpperDistance = Distance;
-                                DUx = Tx;
-                                DUy = Ty;
-                            }
-                        }
-                        else                // LowerLine
-                        {
-                            if (LowerDistance < Distance)
-                            {
-                                LowerDistance = Distance;
-                                DLx = Tx;
-                                DLy = Ty;
-                            }
-                        }
-
-                        // StartPoint
-                        int Ry = Ty + Y0;
-                        if (-1 < Ry && Ry < this.Height)
-                            Contour[Ry].AddRight(Math.Min(Math.Max(Tx + X0, 0), MaxX));
-
-                        // EndPoint
-                        Ry = Ty + Y1;
-                        if (-1 < Ry && Ry < this.Height)
-                            Contour[Ry].AddRight(Math.Min(Math.Max(Tx + X1, 0), MaxX));
-
-                        break;
-                    }
-                }
-            }
-
-            #endregion
-            #region Line Body Bound
-            int Ux = X0 + DUx,
-                Uy = Y0 + DUy,
-                Lx = X0 + DLx,
-                Ly = Y0 + DLy,
-                RTy;
-
-            GraphicDeltaHandler FoundLineBodyBound = DeltaX * DeltaY < 0 ?
-                new GraphicDeltaHandler(
-                    (Dx, Dy) =>
-                    {
-                        // Right
-                        RTy = Uy + Dy;
-                        if (-1 < RTy && RTy < this.Height)
-                            Contour[RTy].AddRight(Math.Min(Math.Max(Ux + Dx, 0), MaxX));
-
-                        // Left
-                        RTy = Ly + Dy;
-                        if (-1 < RTy && RTy < this.Height)
-                            Contour[RTy].AddLeft(Math.Min(Math.Max(Lx + Dx, 0), MaxX));
-                    }) :
-                    (Dx, Dy) =>
-                    {
-                        // Left
-                        RTy = Uy + Dy;
-                        if (-1 < RTy && RTy < this.Height)
-                            Contour[RTy].AddLeft(Math.Min(Math.Max(Ux + Dx, 0), MaxX));
-
-                        // Right
-                        RTy = Ly + Dy;
-                        if (-1 < RTy && RTy < this.Height)
-                            Contour[RTy].AddRight(Math.Min(Math.Max(Lx + Dx, 0), MaxX));
-                    };
-
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, FoundLineBodyBound);
-
-            #endregion
-
-            return Contour;
+            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
+                (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Stamp));
         }
 
         public void DrawStamp(int X, int Y, IImageContext Stamp)
@@ -1010,7 +893,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                                                    Tension,
                                                    DrawHandler);
         }
-
         /// <summary>
         /// Draws a Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -1101,7 +983,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                                                    tension,
                                                    DrawHandler);
         }
-
         /// <summary>
         /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -1200,64 +1081,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 x1 = x2;
                 y1 = y2;
             }
-        }
-
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, Pixel Color)
-            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Color);
-        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, Pixel Color)
-            => GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy,
-                                                      Ex - Cx, Ey - Cy,
-                                                      Rx, Ry,
-                                                      Clockwise,
-                                                      (Dx, Dy) => this.Operator.SetPixel(this, Cx + Dx, Cy + Dy, Color));
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
-            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
-        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
-        {
-            ImageContour Stroke = ImageContour.Parse(Pen, out IPixel Fill);
-            Pixel StrokeColor = this.Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B);
-
-            ImageContour ArcContour = new ImageContour();
-
-            Int32Bound Bound = Stroke.Bound;
-            Stroke.Offset(Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
-
-            int LastDx = 0,
-                LastDy = 0;
-            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
-                (Dx, Dy) =>
-                {
-                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
-                    ArcContour.Union(Stroke);
-
-                    LastDx = Dx;
-                    LastDy = Dy;
-                });
-
-            this.Operator.ContourOverlay(this, ArcContour, StrokeColor);
-        }
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
-            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, StrokeColor);
-        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel StrokeColor)
-        {
-            ImageContour ArcContour = new ImageContour();
-
-            Int32Bound Bound = Contour.Bound;
-            ImageContour Stroke = ImageContour.Offset(Contour, Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
-
-            int LastDx = 0,
-                LastDy = 0;
-            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
-                (Dx, Dy) =>
-                {
-                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
-                    ArcContour.Union(Stroke);
-
-                    LastDx = Dx;
-                    LastDy = Dy;
-                });
-
-            this.Operator.ContourOverlay(this, ArcContour, StrokeColor);
         }
 
     }

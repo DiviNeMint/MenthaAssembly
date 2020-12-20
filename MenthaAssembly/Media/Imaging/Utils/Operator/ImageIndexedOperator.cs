@@ -133,7 +133,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
         }
 
-        public void ContourOverlay(IImageContext Destination, ImageContour Contour, Pixel Color)
+        public void ContourOverlay(IImageContext Destination, ImageContour Contour, Pixel Color, int OffsetX, int OffsetY)
         {
         }
 

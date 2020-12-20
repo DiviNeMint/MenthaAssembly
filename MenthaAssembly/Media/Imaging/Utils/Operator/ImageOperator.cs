@@ -136,7 +136,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public void ContourOverlay(IImageContext Destination, ImageContour Contour, Pixel Color)
+        public void ContourOverlay(IImageContext Destination, ImageContour Contour, Pixel Color, int OffsetX, int OffsetY)
         {
             if (Color.A == 0)
                 return;
@@ -149,7 +149,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 MaxY = Destination.Height - 1;
             KeyValuePair<int, ContourData> Current = Enumerator.Current;
 
-            long Y = Current.Key;
+            long Y = Current.Key + OffsetY;
             if (MaxY < Y)
                 return;
 
@@ -159,7 +159,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     return;
 
                 Current = Enumerator.Current;
-                Y = Current.Key;
+                Y = Current.Key + OffsetY;
 
                 if (MaxY < Y)
                     return;
@@ -177,8 +177,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     int CurrentX = 0;
                     for (int i = 0; i < Data.Count; i++)
                     {
-                        int Sx = Math.Max(Data[i++], 0),
-                            Ex = Math.Min(Data[i], MaxX);
+                        int Sx = Math.Max(Data[i++] + OffsetX, 0),
+                            Ex = Math.Min(Data[i] + OffsetX, MaxX);
 
                         if (MaxX < Sx)
                             return;
@@ -196,8 +196,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     int CurrentX = 0;
                     for (int i = 0; i < Data.Count; i++)
                     {
-                        int Sx = Math.Max(Data[i++], 0),
-                            Ex = Math.Min(Data[i], MaxX);
+                        int Sx = Math.Max(Data[i++] + OffsetX, 0),
+                            Ex = Math.Min(Data[i] + OffsetX, MaxX);
 
                         if (MaxX < Sx)
                             return;
@@ -217,11 +217,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
             {
                 Current = Enumerator.Current;
 
-                if (MaxY < Current.Key)
+                long TempY = Current.Key + OffsetY;
+                if (MaxY < TempY)
                     return;
 
-                pPixels += Destination.Stride * (Current.Key - Y);
-                Y = Current.Key;
+                pPixels += Destination.Stride * (TempY - Y);
+                Y = TempY;
                 Data = Current.Value;
 
                 OverlayHandler();

@@ -7,33 +7,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         where Pixel : unmanaged, IPixel
         where Struct : unmanaged, IPixelBase
     {
-        ///// <summary>
-        ///// Draws a polyline anti-aliased. Add the first point also at the end of the array if the line should be closed.
-        ///// </summary>
-        ///// <param name="points">The points of the polyline in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
-        ///// <param name="color">The color for the line.</param>
-        //public void DrawPolylineAa(int[] points, Pixel color)
-        //{
-        //    using (var context = bmp.GetBitmapContext())
-        //    {
-        //        // Use refs for faster access (really important!) speeds up a lot!
-        //        var w = context.Width;
-        //        var h = context.Height;
-        //        int x1 = points[0];
-        //        int y1 = points[1];
-
-        //        for (int i = 2; i < points.Length; i += 2)
-        //        {
-        //            int x2 = points[i];
-        //            int y2 = points[i + 1];
-
-        //            DrawLineAa(context, w, h, x1, y1, x2, y2, color);
-        //            x1 = x2;
-        //            y1 = y2;
-        //        }
-        //    }
-        //}
-
         /// <summary>
         /// Draws a triangle.
         /// </summary>
@@ -132,8 +105,27 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="Pen">The pen with transparent background for the line.</param>
         public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen)
         {
-            ImageContour Contour = ImageContour.Parse(Pen, out IPixel Fill);
-            DrawEllipse(Cx, Cy, Rx, Ry, Contour, this.Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+            ImageContour Stroke = ImageContour.Parse(Pen, out IPixel Fill);
+
+            Pixel StrokeColor = this.Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B);
+            ImageContour EllipseContour = new ImageContour();
+
+            Int32Bound Bound = Stroke.Bound;
+            Stroke.Offset(Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
+
+            int LastDx = 0,
+                LastDy = 0;
+            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry,
+                (Dx, Dy) =>
+                {
+                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                    EllipseContour.Union(Stroke);
+
+                    LastDx = Dx;
+                    LastDy = Dy;
+                });
+
+            this.Operator.ContourOverlay(this, EllipseContour, StrokeColor, 0, 0);
         }
         /// <summary>
         /// A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf 
@@ -149,9 +141,38 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         {
             ImageContour EllipseContour = new ImageContour();
 
-            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => EllipseContour.Union(ImageContour.Offset(Contour, Cx + Dx, Cy + Dy)));
+            Int32Bound Bound = Contour.Bound;
+            ImageContour Stroke = ImageContour.Offset(Contour, Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
 
-            this.Operator.ContourOverlay(this, EllipseContour, StrokeColor);
+            int LastDx = 0,
+                LastDy = 0;
+            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry,
+                (Dx, Dy) =>
+                {
+                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                    EllipseContour.Union(Stroke);
+
+                    LastDx = Dx;
+                    LastDy = Dy;
+                });
+
+            this.Operator.ContourOverlay(this, EllipseContour, StrokeColor, 0, 0);
+        }
+        /// <summary>
+        /// A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf 
+        /// Uses a different parameter representation than DrawEllipse().
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
+        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Stamp">The Stamp with transparent background.</param>
+        public void DrawEllipseWithStamp(int Cx, int Cy, int Rx, int Ry, IImageContext Stamp)
+        {
+            int X = Cx - (Stamp.Width >> 1),
+                Y = Cy - (Stamp.Height >> 1);
+
+            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Stamp));
         }
 
         /// <summary>
@@ -202,6 +223,22 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 Ry = Height >> 1;
 
             DrawEllipse(X + Rx, Y + Ry, Rx, Ry, Contour, StrokeColor);
+        }
+        /// <summary>
+        /// A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf 
+        /// x2 has to be greater than x1 and y2 has to be less than y1.
+        /// </summary>
+        /// <param name="X">The x-coordinate of the bounding rectangle's left side.</param>
+        /// <param name="Y">The y-coordinate of the bounding rectangle's top side.</param>
+        /// <param name="Width">The width of the bounding rectangle.</param>
+        /// <param name="Height">The height of the bounding rectangle.</param>
+        /// <param name="Stamp">The Stamp with transparent background.</param>
+        public void DrawEllipseRectWithStamp(int X, int Y, int Width, int Height, IImageContext Stamp)
+        {
+            int Rx = Width >> 1,
+                Ry = Height >> 1;
+
+            DrawEllipseWithStamp(X + Rx, Y + Ry, Rx, Ry, Stamp);
         }
 
         /// <summary>
@@ -397,8 +434,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// Add the first point also at the end of the array if the line should be closed.
         /// </summary>
         /// <param name="Points">The points of the polygon in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
-        /// <param name="Color">The color for the line.</param>
-        public void FillPolygon(int[] Points, Pixel Color)
+        /// <param name="Fill">The color for the line.</param>
+        public void FillPolygon(int[] Points, Pixel Fill)
         {
             int pn = Points.Length,
                 pnh = Points.Length >> 1;
@@ -479,14 +516,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                             x1 = Width - 1;
 
                         // Fill the pixels
-                        Operator.ScanLineOverlay(this, x0, y, x1 - x0 + 1, Color);
+                        Operator.ScanLineOverlay(this, x0, y, x1 - x0 + 1, Fill);
                     }
                 }
             }
         }
 
-        public void FillContour(ImageContour Contour, Pixel Fill)
-            => this.Operator.ContourOverlay(this, Contour, Fill);
+        public void FillContour(ImageContour Contour, Pixel Fill, int OffsetX, int OffsetY)
+            => this.Operator.ContourOverlay(this, Contour, Fill, OffsetX, OffsetY);
 
     }
 

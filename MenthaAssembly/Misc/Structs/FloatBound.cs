@@ -28,7 +28,6 @@ namespace MenthaAssembly
             this.Right = Right;
             this.Bottom = Bottom;
         }
-
         public FloatBound(double Left, double Top, double Right, double Bottom)
         {
             this.Left = (float)Left;
@@ -36,7 +35,6 @@ namespace MenthaAssembly
             this.Right = (float)Right;
             this.Bottom = (float)Bottom;
         }
-
         //public FloatBound(FloatPoint Position, FloatSize Size)
         //{
         //    this.Left = Position.X;
@@ -59,6 +57,17 @@ namespace MenthaAssembly
                 this = Empty;
             }
         }
+        public static FloatBound Intersect(FloatBound Bound1, FloatBound Bound2)
+        {
+            if (Bound1.IntersectsWith(Bound2))
+                return new FloatBound(Math.Max(Bound1.Left, Bound2.Left),
+                                      Math.Max(Math.Min(Bound1.Right, Bound2.Right), Bound1.Left),
+                                      Math.Max(Bound1.Top, Bound2.Top),
+                                      Math.Max(Math.Min(Bound1.Bottom, Bound2.Bottom), Bound1.Top));
+
+            return Empty;
+        }
+
         public bool IntersectsWith(FloatBound Bound)
         {
             if (IsEmpty || Bound.IsEmpty)
@@ -86,6 +95,19 @@ namespace MenthaAssembly
             Top = Math.Min(Top, Bound.Top);
             Bottom = Math.Max(Bottom, Bound.Bottom);
         }
+        public static FloatBound Union(FloatBound Bound1, FloatBound Bound2)
+        {
+            if (Bound1.IsEmpty)
+                return new FloatBound(Bound2.Left, Bound2.Top, Bound2.Right, Bound2.Bottom);
+
+            if (Bound2.IsEmpty)
+                return new FloatBound(Bound1.Left, Bound1.Top, Bound1.Right, Bound1.Bottom);
+
+            return new FloatBound(Math.Min(Bound1.Left, Bound2.Left),
+                                  Math.Min(Bound1.Top, Bound2.Top),
+                                  Math.Max(Bound1.Right, Bound2.Right),
+                                  Math.Max(Bound1.Bottom, Bound2.Bottom));
+        }
 
         //public void Offset(FloatVector Vector)
         //    => Offset(Vector.X, Vector.Y);
@@ -96,6 +118,8 @@ namespace MenthaAssembly
             Top += Y;
             Bottom += Y;
         }
+        public static FloatBound Offset(FloatBound Bound, float X, float Y)
+            => new FloatBound(Bound.Left + X, Bound.Top + Y, Bound.Right + X, Bound.Bottom + Y);
 
         public void Scale(float Scale)
             => this.Scale(Scale, Scale);
@@ -104,6 +128,10 @@ namespace MenthaAssembly
             Right = Left + Width * XScale;
             Bottom = Top + Height * YScale;
         }
+        public static FloatBound Scale(FloatBound Bound, float Scale)
+            => FloatBound.Scale(Bound, Scale, Scale);
+        public static FloatBound Scale(FloatBound Bound, float XScale, float YScale)
+            => new FloatBound(Bound.Left, Bound.Top, Bound.Left + Bound.Width * XScale, Bound.Top + Bound.Height * YScale);
 
         public bool Contains(FloatPoint Point)
             => Contains(Point.X, Point.Y);
@@ -119,13 +147,7 @@ namespace MenthaAssembly
         public override string ToString()
             => $"{{ Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom} }}";
 
-        public static FloatBound Offset(FloatBound Bound, float X, float Y)
-            => new FloatBound(Bound.Left + X, Bound.Top + Y, Bound.Right + X, Bound.Bottom + Y);
 
-        public static FloatBound Scale(FloatBound Bound, float Scale)
-            => FloatBound.Scale(Bound, Scale, Scale);
-        public static FloatBound Scale(FloatBound Bound, float XScale, float YScale)
-            => new FloatBound(Bound.Left, Bound.Top, Bound.Left + Bound.Width * XScale, Bound.Top + Bound.Height * YScale);
 
     }
 }
