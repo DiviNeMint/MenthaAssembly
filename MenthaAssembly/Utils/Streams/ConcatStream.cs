@@ -60,10 +60,10 @@ namespace MenthaAssembly.Utils
         private bool IsBasePosition = true;
         public override int Read(byte[] Buffers, int Offset, int Count)
         {
+            int ReadLength;
             if (IsBasePosition)
             {
-                int IntPosition = (int)_Position,
-                    ReadLength;
+                int IntPosition = (int)_Position;
 
                 if (IsConcatStreams)
                 {
@@ -73,18 +73,23 @@ namespace MenthaAssembly.Utils
                 {
                     ReadLength = Math.Min(DatasLength - IntPosition, Count);
                     if (ReadLength > 0)
-                    {
                         Buffer.BlockCopy(Datas, IntPosition, Buffers, Offset, ReadLength);
-                        _Position += ReadLength;
-                    }
                 }
-                IsBasePosition = ReadLength > 0;
 
-                return ReadLength < Count ? ReadLength + MergedStream.Read(Buffers, Offset + ReadLength, Count - ReadLength) :
-                                            ReadLength;
+                if (ReadLength < Count)
+                {
+                    IsBasePosition = false;
+                    ReadLength += MergedStream.Read(Buffers, Offset + ReadLength, Count - ReadLength);
+                }
+
+                _Position += ReadLength;
+                return ReadLength;
             }
 
-            return MergedStream.Read(Buffers, Offset, Count);
+            ReadLength = MergedStream.Read(Buffers, Offset, Count);
+
+            _Position += ReadLength;
+            return ReadLength;
         }
 
         public override void Write(byte[] Buffers, int Offset, int Count)

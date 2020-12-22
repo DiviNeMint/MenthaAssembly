@@ -1,5 +1,4 @@
-﻿using MenthaAssembly.Network.Utils;
-using MenthaAssembly.Utils;
+﻿using MenthaAssembly.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
@@ -231,14 +230,18 @@ namespace MenthaAssembly.Network.Primitives
                     Stream EncodeStream = Token.MessageEncodeStream;
 
                     // Fill Datas
-                    while (EncodeStream.Read(e.Buffer, 0, e.Count) > 0)
+                    int Length = EncodeStream.Read(e.Buffer, 0, e.Count);
+                    if (Length > 0)
                     {
-                        // Loop Send
-                        if (!Token.Socket.SendAsync(e))
+                        Stream Stream = new NetworkStream(Token.Socket);
+                        do
                         {
-                            OnSendProcess(e);
-                            return;
+                            Stream.Write(e.Buffer, 0, Length);
+                            Length = EncodeStream.Read(e.Buffer, 0, e.Count);
                         }
+                        while (Length > 0);
+
+                        Stream.Dispose();
                     }
 
                     EncodeStream.Dispose();
@@ -284,10 +287,13 @@ namespace MenthaAssembly.Network.Primitives
                         Token.Lock.Release();
                     }
 
-                    if (this.ReplyHandler is null)
-                        this.ReplyHandler = OnReplyProcess;
+                    if (ReceiveMessage != null)
+                    {
+                        if (this.ReplyHandler is null)
+                            this.ReplyHandler = OnReplyProcess;
 
-                    ReplyHandler.BeginInvoke(Token, ReceiveMessage, (ar) => ReplyHandler.EndInvoke(ar), null);
+                        ReplyHandler.BeginInvoke(Token, ReceiveMessage, (ar) => ReplyHandler.EndInvoke(ar), null);
+                    }
 
                     // Loop Receive
                     if (!Token.Socket.ReceiveAsync(e))
@@ -328,7 +334,7 @@ namespace MenthaAssembly.Network.Primitives
                     Token.ResponseTaskSource = null;
 
                     // Release CancelToken
-                    Token.ResponseCancelToken.Dispose();
+                    Token.ResponseCancelToken?.Dispose();
                     Token.ResponseCancelToken = null;
                 }
             }
@@ -360,13 +366,14 @@ namespace MenthaAssembly.Network.Primitives
 
                 Token.MessageEncodeStream = MessageStream;
 
-                SocketAsyncEventArgs e2 = Dequeue();
-                e2.UserToken = Token;
-                // Set SendDatas
-                MessageStream.Read(e2.Buffer, 0, e2.Count);
+                SocketAsyncEventArgs e = Dequeue();
+                e.UserToken = Token;
 
-                if (!Token.Socket.SendAsync(e2))
-                    OnSendProcess(e2);
+                // Set SendDatas
+                MessageStream.Read(e.Buffer, 0, e.Count);
+
+                if (!Token.Socket.SendAsync(e))
+                    OnSendProcess(e);
             }
         }
 
