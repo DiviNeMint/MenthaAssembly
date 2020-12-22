@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace MenthaAssembly.Network.Messages
@@ -21,8 +22,15 @@ namespace MenthaAssembly.Network.Messages
 
         public static Stream Encode(SendSerializeObjectResponse Message)
         {
-            Stream EncodeStream = SuccessMessage.Encode(Message);
+            MemoryStream EncodeStream = new MemoryStream();
 
+            // UID
+            EncodeStream.Write(BitConverter.GetBytes(Message.UID), 0, sizeof(int));
+
+            // Success
+            EncodeStream.Write(BitConverter.GetBytes(Message.Success), 0, sizeof(bool));
+
+            // Datas
             if (Message.SerializeObject is null)
             {
                 // Null
