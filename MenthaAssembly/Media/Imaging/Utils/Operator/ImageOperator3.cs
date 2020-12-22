@@ -85,16 +85,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void ScanLineOverlay(IImageContext Source, int X, int Y, int Length, Pixel Color)
         {
-            if (Color.A == 0)
-                return;
-
             long Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
             byte* pPixelR = (byte*)Source.ScanR + Offset,
                   pPixelG = (byte*)Source.ScanG + Offset,
                   pPixelB = (byte*)Source.ScanB + Offset;
 
-            if (Color.A == 255)
-            {
+            if (Color.A == byte.MinValue || Color.A == byte.MaxValue)
+                {
                 for (int i = 0; i < Length; i++)
                 {
                     *pPixelR++ = Color.R;

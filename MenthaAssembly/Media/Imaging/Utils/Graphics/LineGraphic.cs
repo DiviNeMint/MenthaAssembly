@@ -360,9 +360,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, StrokeColor);
         public void DrawLine(int X0, int Y0, int X1, int Y1, ImageContour Contour, Pixel StrokeColor)
         {
-            if (StrokeColor.A == 0)
-                return;
-
             if (X1 < X0)
             {
                 MathHelper.Swap(ref X0, ref X1);

@@ -76,13 +76,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void ScanLineOverlay(IImageContext Destination, int X, int Y, int Length, Pixel Color)
         {
-            if (Color.A == 0)
-                return;
-
             long Offset = Destination.Stride * Y + (((long)X * Destination.BitsPerPixel) >> 3);
             byte* pPixels = (byte*)Destination.Scan0 + Offset;
 
-            if (Color.A == 255)
+            if (Color.A == byte.MinValue || Color.A == byte.MaxValue)
             {
                 Pixel* pPixel0 = (Pixel*)pPixels;
                 for (int i = 0; i < Length; i++)
@@ -138,9 +135,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void ContourOverlay(IImageContext Destination, ImageContour Contour, Pixel Color, int OffsetX, int OffsetY)
         {
-            if (Color.A == 0)
-                return;
-
             IEnumerator<KeyValuePair<int, ContourData>> Enumerator = Contour.GetEnumerator();
             if (!Enumerator.MoveNext())
                 return;
@@ -170,7 +164,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             ContourData Data = Current.Value;
 
-            Action OverlayHandler = Color.A == byte.MaxValue ?
+            Action OverlayHandler = Color.A == byte.MinValue || Color.A == byte.MaxValue ?
                 new Action(() =>
                 {
                     Pixel* pTempPixels = (Pixel*)pPixels;
