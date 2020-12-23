@@ -39,17 +39,13 @@ namespace MenthaAssembly.Network
 
         public static SuccessMessage Decode(Stream Stream)
         {
-            // UID
-            byte[] Buffer = new byte[sizeof(int)];
-            Stream.Read(Buffer, 0, Buffer.Length);
+            // Decode UID
+            int UID = Stream.Read<int>();
 
-            int UID = BitConverter.ToInt32(Buffer, 0);
+            // Decode Size
+            bool Success = Stream.Read<bool>();
 
-            // Decode Message
-            Buffer = new byte[sizeof(bool)];
-            Stream.Read(Buffer, 0, Buffer.Length);
-
-            return new SuccessMessage(BitConverter.ToBoolean(Buffer, 0)) { _UID = UID };
+            return new SuccessMessage(Success) { _UID = UID };
         }
 
     }

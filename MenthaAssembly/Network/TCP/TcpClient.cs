@@ -1,5 +1,4 @@
 ﻿using MenthaAssembly.Network.Primitives;
-using MenthaAssembly.Network.Utils;
 using System;
 using System.Diagnostics;
 using System.Net;
@@ -41,7 +40,8 @@ namespace MenthaAssembly.Network
 
             // Start Receive Server's Message
             SocketAsyncEventArgs e = Dequeue();
-            ServerToken = new SocketToken(Server, e) { LastRequsetUID = -1 };
+            ServerToken = new SocketToken(Server) { LastRequsetUID = -1 };
+            e.UserToken = ServerToken;
 
             if (!Server.ReceiveAsync(e))
                 OnReceiveProcess(e);

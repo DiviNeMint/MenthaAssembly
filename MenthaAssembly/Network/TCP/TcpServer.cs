@@ -1,5 +1,4 @@
 ﻿using MenthaAssembly.Network.Primitives;
-using MenthaAssembly.Network.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -38,7 +37,7 @@ namespace MenthaAssembly.Network
 
         public IConnectionValidator ConnectionValidator { get; }
 
-        public AutoPingHandler AutoPingHandler { get; }
+        public PingOperator PingOperator { get; }
 
         public TcpServer(IMessageHandler Handler) : this(null, Handler) { }
         public TcpServer(IMessageHandler Handler, bool EnableAutoPing) : this(Handler, null, EnableAutoPing) { }
@@ -53,7 +52,7 @@ namespace MenthaAssembly.Network
             this.ConnectionValidator = Validator;
 
             if (PingProvider != null)
-                AutoPingHandler = new AutoPingHandler(this, PingProvider);
+                PingOperator = new PingOperator(this, PingProvider);
         }
 
         protected Socket Listener;
@@ -237,7 +236,8 @@ namespace MenthaAssembly.Network
                 s.Connected)
             {
                 SocketAsyncEventArgs e2 = Dequeue();
-                SocketToken Token = new SocketToken(s, e2);
+                SocketToken Token = new SocketToken(s);
+                e2.UserToken = Token;
 
                 IPEndPoint ClientAddress = Token.Address;
                 if (ConnectionValidator is null)

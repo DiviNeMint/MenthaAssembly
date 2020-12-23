@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace MenthaAssembly.Network.Utils
+namespace MenthaAssembly.Network
 {
     public class MultiProtocolHandler : IProtocolHandler
     {

@@ -56,6 +56,14 @@ namespace System.Linq
             return -1;
         }
 
+        public static TSource? FirstOrNull<TSource>(this IEnumerable<TSource> Source)
+            where TSource : struct
+        {
+            foreach (TSource Item in Source)
+                return Item;
+
+            return null;
+        }
         public static TSource? FirstOrNull<TSource>(this IEnumerable<TSource> Source, Func<TSource, bool> Predicate)
             where TSource : struct
         {

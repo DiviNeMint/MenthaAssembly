@@ -8,7 +8,7 @@ using static MenthaAssembly.Network.Primitives.TcpSocketBase;
 
 namespace MenthaAssembly.Network.Primitives
 {
-    public class AutoPingHandler
+    public class PingOperator
     {
         private readonly TcpServer Server;
         private Timer Timer;
@@ -61,7 +61,7 @@ namespace MenthaAssembly.Network.Primitives
             }
         }
 
-        internal AutoPingHandler(TcpServer Server, IPingProvider PingProvider)
+        internal PingOperator(TcpServer Server, IPingProvider PingProvider)
         {
             this.Server = Server;
             Server.Connected += OnServerConnected;
