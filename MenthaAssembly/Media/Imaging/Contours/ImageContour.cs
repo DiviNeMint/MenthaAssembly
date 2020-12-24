@@ -80,6 +80,14 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
+        public void Clear()
+        {
+            foreach (ContourData Data in Datas.Values)
+                Data.Clear();
+
+            Datas.Clear();
+        }
+
         public void Union(ImageContour Contour)
         {
             foreach (KeyValuePair<int, ContourData> Pair in Contour.Datas)

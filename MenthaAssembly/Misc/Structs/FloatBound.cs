@@ -97,11 +97,11 @@ namespace MenthaAssembly
         }
         public static FloatBound Union(FloatBound Bound1, FloatBound Bound2)
         {
-            if (Bound1.IsEmpty)
-                return new FloatBound(Bound2.Left, Bound2.Top, Bound2.Right, Bound2.Bottom);
+            //if (Bound1.IsEmpty)
+            //    return new FloatBound(Bound2.Left, Bound2.Top, Bound2.Right, Bound2.Bottom);
 
-            if (Bound2.IsEmpty)
-                return new FloatBound(Bound1.Left, Bound1.Top, Bound1.Right, Bound1.Bottom);
+            //if (Bound2.IsEmpty)
+            //    return new FloatBound(Bound1.Left, Bound1.Top, Bound1.Right, Bound1.Bottom);
 
             return new FloatBound(Math.Min(Bound1.Left, Bound2.Left),
                                   Math.Min(Bound1.Top, Bound2.Top),

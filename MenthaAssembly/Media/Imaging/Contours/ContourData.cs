@@ -32,6 +32,9 @@ namespace MenthaAssembly.Media.Imaging
             internal set => Datas[Index] = value;
         }
 
+        public void Clear()
+            => Datas.Clear();
+
         public void AddLeft(int Left)
         {
             if (Datas.Count == 0)
