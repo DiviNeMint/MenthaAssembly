@@ -78,22 +78,49 @@ namespace MenthaAssembly
                    Bound.Top <= Bottom &&
                    Bound.Bottom >= Top;
         }
+        public bool IntersectsWith(float Left, float Top, float Right, float Bottom)
+        {
+            if (IsEmpty || Right - Left is 0 || Bottom - Top is 0)
+                return false;
+
+            return Left <= this.Right &&
+                   Right >= this.Left &&
+                   Top <= this.Bottom &&
+                   Bottom >= this.Top;
+        }
 
         public void Union(FloatBound Bound)
         {
-            if (IsEmpty)
-            {
-                this = Bound;
-                return;
-            }
+            //if (IsEmpty)
+            //{
+            //    this = Bound;
+            //    return;
+            //}
 
-            if (Bound.IsEmpty)
-                return;
+            //if (Bound.IsEmpty)
+            //    return;
 
             Left = Math.Min(Left, Bound.Left);
             Right = Math.Max(Right, Bound.Right);
             Top = Math.Min(Top, Bound.Top);
             Bottom = Math.Max(Bottom, Bound.Bottom);
+        }
+        public void Union(float Left, float Top, float Right, float Bottom)
+        {
+            //if (IsEmpty)
+            //{
+            //    this = new FloatBound(Left, Top, Right, Bottom);
+            //    return;
+            //}
+
+            //if (Right - Left is 0 || 
+            //    Bottom - Top is 0)
+            //    return;
+
+            this.Left = Math.Min(this.Left, Left);
+            this.Right = Math.Max(this.Right, Right);
+            this.Top = Math.Min(this.Top, Top);
+            this.Bottom = Math.Max(this.Bottom, Bottom);
         }
         public static FloatBound Union(FloatBound Bound1, FloatBound Bound2)
         {
