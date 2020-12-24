@@ -674,6 +674,5 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-
     }
 }
