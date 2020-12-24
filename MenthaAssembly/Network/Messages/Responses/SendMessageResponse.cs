@@ -48,23 +48,20 @@ namespace MenthaAssembly.Network.Messages
         }
 
         public static SendMessageResponse Decode(Stream Stream)
-        {
+        {            
             // Decode UID
-            byte[] Buffer = new byte[sizeof(int)];
-            Stream.Read(Buffer, 0, Buffer.Length);
-            int UID = BitConverter.ToInt32(Buffer, 0);
+            int UID = Stream.Read<int>();
 
             // Decode Size
-            Stream.Read(Buffer, 0, Buffer.Length);
-            int Size = BitConverter.ToInt32(Buffer, 0);
+            int Size = Stream.Read<int>();
 
             // Decode Message
             string Message = null;
             if (Size > 0)
             {
-                Buffer = new byte[Size];
-                Stream.Read(Buffer, 0, Size);
-                Message = Encoding.Default.GetString(Buffer);
+                byte[] Datas = new byte[Size];
+                Stream.ReadBuffer(Datas);
+                Message = Encoding.Default.GetString(Datas);
             }
 
             return new SendMessageResponse(Message) { _UID = UID };

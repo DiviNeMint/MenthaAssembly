@@ -1,6 +1,6 @@
 ﻿using MenthaAssembly.Network.Messages;
 
-namespace MenthaAssembly.Network.Utils
+namespace MenthaAssembly.Network
 {
     public class CommonPingProvider : IPingProvider
     {

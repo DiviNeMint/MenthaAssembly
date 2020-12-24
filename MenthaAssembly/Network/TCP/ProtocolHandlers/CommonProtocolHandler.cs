@@ -2,7 +2,7 @@
 using MenthaAssembly.Utils;
 using System.IO;
 
-namespace MenthaAssembly.Network.Utils
+namespace MenthaAssembly.Network
 {
     public class CommonProtocolHandler : IProtocolHandler
     {
@@ -20,6 +20,7 @@ namespace MenthaAssembly.Network.Utils
                 SendSerializeObjectRequest SendSerializeObjectRequest => new ConcatStream(new byte[] { 7 }, SendSerializeObjectRequest.Encode(SendSerializeObjectRequest)),
                 SendSerializeObjectResponse SendSerializeObjectResponse => new ConcatStream(new byte[] { 8 }, SendSerializeObjectResponse.Encode(SendSerializeObjectResponse)),
                 SuccessMessage SuccessMessage => new ConcatStream(new byte[] { 9 }, SuccessMessage.Encode(SuccessMessage)),
+                ErrorMessage SuccessMessage => new ConcatStream(new byte[] { byte.MaxValue }, ErrorMessage.Encode(SuccessMessage)),
                 _ => null
             };
 
@@ -35,6 +36,7 @@ namespace MenthaAssembly.Network.Utils
                 7 => SendSerializeObjectRequest.Decode(Stream),
                 8 => SendSerializeObjectResponse.Decode(Stream),
                 9 => SuccessMessage.Decode(Stream),
+                byte.MaxValue => ErrorMessage.Decode(Stream),
                 _ => null
             };
 

@@ -52,11 +52,8 @@ namespace MenthaAssembly.Network.Messages
 
         public static SendSerializeObjectRequest Decode(Stream Stream)
         {
-            // UID
-            byte[] Buffer = new byte[sizeof(int)];
-            Stream.Read(Buffer, 0, Buffer.Length);
-
-            int UID = BitConverter.ToInt32(Buffer, 0);
+            // Decode UID
+            int UID = Stream.Read<int>();
 
             // Check null
             if (Stream.ReadByte() == 0)

@@ -43,15 +43,12 @@ namespace MenthaAssembly.Network.Messages
         public static PingResponse Decode(Stream Stream)
         {
             // Decode UID
-            byte[] Buffer = new byte[sizeof(int)];
-            Stream.Read(Buffer, 0, Buffer.Length);
-            int UID = BitConverter.ToInt32(Buffer, 0);
+            int UID = Stream.Read<int>();
 
             // Decode SendTime
-            Buffer = new byte[sizeof(long)];
-            Stream.Read(Buffer, 0, Buffer.Length);
+            long SendTime = Stream.Read<long>();
 
-            return new PingResponse(DateTime.FromBinary(BitConverter.ToInt64(Buffer, 0))) { _UID = UID };
+            return new PingResponse(DateTime.FromBinary(SendTime)) { _UID = UID };
         }
 
     }
