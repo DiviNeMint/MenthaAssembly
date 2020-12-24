@@ -22,8 +22,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// Draw an line.
         /// </summary>
         /// <param name="X0">The x-coordinate of the start.</param>
-        /// <param name="Y0">The y-coordinate of the end.</param>
-        /// <param name="X1">The x-coordinate of the start.</param>
+        /// <param name="Y0">The y-coordinate of the start.</param>
+        /// <param name="X1">The x-coordinate of the end.</param>
         /// <param name="Y1">The y-coordinate of the end.</param>
         /// <param name="Color">The color for the line.</param>
         public void DrawLine(int X0, int Y0, int X1, int Y1, Pixel Color)
@@ -112,8 +112,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// Draw an line.
         /// </summary>
         /// <param name="X0">The x-coordinate of the start.</param>
-        /// <param name="Y0">The y-coordinate of the end.</param>
-        /// <param name="X1">The x-coordinate of the start.</param>
+        /// <param name="Y0">The y-coordinate of the start.</param>
+        /// <param name="X1">The x-coordinate of the end.</param>
         /// <param name="Y1">The y-coordinate of the end.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
         public void DrawLine(int X0, int Y0, int X1, int Y1, IImageContext Pen)
@@ -139,8 +139,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// Draw an line.
         /// </summary>
         /// <param name="X0">The x-coordinate of the start.</param>
-        /// <param name="Y0">The y-coordinate of the end.</param>
-        /// <param name="X1">The x-coordinate of the start.</param>
+        /// <param name="Y0">The y-coordinate of the start.</param>
+        /// <param name="X1">The x-coordinate of the end.</param>
         /// <param name="Y1">The y-coordinate of the end.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
@@ -381,16 +381,62 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         #endregion
 
         #region Arc
+        /// <summary>
+        /// Draw an Arc.
+        /// </summary>
+        /// <param name="Start">The coordinate of the start.</param>
+        /// <param name="End">The coordinate of the end.</param>
+        /// <param name="Center">The coordinate of the arc center point.</param>
+        /// <param name="Rx">The x-length of the radius.</param>
+        /// <param name="Ry">The y-length of the radius.</param>
+        /// <param name="Clockwise">The clockwise for the arc.</param>
+        /// <param name="Color">The color for the arc.</param>
         public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, Pixel Color)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Color);
+        /// <summary>
+        /// Draw an Arc.
+        /// </summary>
+        /// <param name="Sx">The x-coordinate of the start.</param>
+        /// <param name="Sy">The y-coordinate of the start.</param>
+        /// <param name="Ex">The x-coordinate of the end.</param>
+        /// <param name="Ey">The y-coordinate of the end.</param>
+        /// <param name="Cx">The x-coordinate of the arc center point.</param>
+        /// <param name="Cy">The y-coordinate of the arc center point.</param>
+        /// <param name="Rx">The x-length of the radius.</param>
+        /// <param name="Ry">The y-length of the radius.</param>
+        /// <param name="Clockwise">The clockwise for the arc.</param>
+        /// <param name="Color">The color for the arc.</param>
         public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, Pixel Color)
             => GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy,
                                                       Ex - Cx, Ey - Cy,
                                                       Rx, Ry,
                                                       Clockwise,
                                                       (Dx, Dy) => this.Operator.SetPixel(this, Cx + Dx, Cy + Dy, Color));
+        /// <summary>
+        /// Draw an Arc.
+        /// </summary>
+        /// <param name="Start">The coordinate of the start.</param>
+        /// <param name="End">The coordinate of the end.</param>
+        /// <param name="Center">The coordinate of the arc center point.</param>
+        /// <param name="Rx">The x-length of the radius.</param>
+        /// <param name="Ry">The y-length of the radius.</param>
+        /// <param name="Clockwise">The clockwise for the arc.</param>        
+        /// <param name="Pen">The pen with transparent background for the arc.</param>
         public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
+        /// <summary>
+        /// Draw an Arc.
+        /// </summary>
+        /// <param name="Sx">The x-coordinate of the start.</param>
+        /// <param name="Sy">The y-coordinate of the start.</param>
+        /// <param name="Ex">The x-coordinate of the end.</param>
+        /// <param name="Ey">The y-coordinate of the end.</param>
+        /// <param name="Cx">The x-coordinate of the arc center point.</param>
+        /// <param name="Cy">The y-coordinate of the arc center point.</param>
+        /// <param name="Rx">The x-length of the radius.</param>
+        /// <param name="Ry">The y-length of the radius.</param>
+        /// <param name="Clockwise">The clockwise for the arc.</param>
+        /// <param name="Pen">The pen with transparent background for the arc.</param>
         public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
         {
             int X = Cx - (Pen.Width >> 1),
@@ -399,8 +445,33 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
                 (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen));
         }
+        /// <summary>
+        /// Draw an Arc.
+        /// </summary>
+        /// <param name="Start">The coordinate of the start.</param>
+        /// <param name="End">The coordinate of the end.</param>
+        /// <param name="Center">The coordinate of the arc center point.</param>
+        /// <param name="Rx">The x-length of the radius.</param>
+        /// <param name="Ry">The y-length of the radius.</param>
+        /// <param name="Clockwise">The clockwise for the arc.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
         public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, Fill);
+        /// <summary>
+        /// Draw an Arc.
+        /// </summary>
+        /// <param name="Sx">The x-coordinate of the start.</param>
+        /// <param name="Sy">The y-coordinate of the start.</param>
+        /// <param name="Ex">The x-coordinate of the end.</param>
+        /// <param name="Ey">The y-coordinate of the end.</param>
+        /// <param name="Cx">The x-coordinate of the arc center point.</param>
+        /// <param name="Cy">The y-coordinate of the arc center point.</param>
+        /// <param name="Rx">The x-length of the radius.</param>
+        /// <param name="Ry">The y-length of the radius.</param>
+        /// <param name="Clockwise">The clockwise for the arc.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
         public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill)
         {
             ImageContour ArcContour = new ImageContour();
