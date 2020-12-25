@@ -8,11 +8,17 @@ namespace MenthaAssembly.Network
     {
         public static ErrorMessage Timeout => new ErrorMessage("Timeout.");
 
-        public static ErrorMessage ClientNotFound => new ErrorMessage("Client not found.");
-
         public static ErrorMessage NotSupport => new ErrorMessage("Not support.");
 
-        public static ErrorMessage ReceivingNotSupport => new ErrorMessage("The receiving side not support.");
+        public static ErrorMessage EncodeException => new ErrorMessage("Happen exception when encode request.");
+
+        public static ErrorMessage ReceivingNotSupport => new ErrorMessage("The receiving side not support this request.");
+
+        public static ErrorMessage ReceivingEncodeException => new ErrorMessage("The receiving side happen exception when encode response.");
+
+        public static ErrorMessage ReceivingHandleException => new ErrorMessage("The receiving side happen exception when handle request.");
+
+        public static ErrorMessage ClientNotFound => new ErrorMessage("Client not found.");
 
         public static ErrorMessage Disconnected => new ErrorMessage("Disconnected.");
 
