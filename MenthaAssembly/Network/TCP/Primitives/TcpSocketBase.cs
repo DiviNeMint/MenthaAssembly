@@ -1,6 +1,7 @@
 ﻿using MenthaAssembly.Utils;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -85,7 +86,26 @@ namespace MenthaAssembly.Network.Primitives
                     }
 
                     // Encode Message
-                    Stream MessageStream = ProtocolHandler.Encode(Request);
+                    Stream MessageStream;
+                    try
+                    {
+                        MessageStream = ProtocolHandler.Encode(Request);
+                    }
+                    catch
+                    {
+                        Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
+
+                        // Set Result
+                        TaskToken.TrySetResult(ErrorMessage.EncodeException);
+                        Token.ResponseTaskSource = null;
+
+                        // Release CancelToken
+                        Token.ResponseCancelToken?.Dispose();
+                        Token.ResponseCancelToken = null;
+
+                        TaskToken.Task.Wait();
+                        return TaskToken.Task.Result;
+                    }
 
                     byte[] Buffer = DequeueBuffer();
                     int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
@@ -96,32 +116,50 @@ namespace MenthaAssembly.Network.Primitives
 
                         // Set Result
                         TaskToken.TrySetResult(ErrorMessage.NotSupport);
+                        Token.ResponseTaskSource = null;
+
+                        // Release CancelToken
+                        Token.ResponseCancelToken?.Dispose();
+                        Token.ResponseCancelToken = null;
+
                         TaskToken.Task.Wait();
                         return TaskToken.Task.Result;
                     }
 
                     // Send Datas
-                    do
+                    try
                     {
-                        SocketAsyncEventArgs e = Dequeue(false);
-                        e.UserToken = Token;
-                        e.SetBuffer(Buffer, 0, Length);
+                        do
+                        {
+                            SocketAsyncEventArgs e = Dequeue(false);
+                            e.UserToken = Token;
+                            e.SetBuffer(Buffer, 0, Length);
 
-                        if (!Token.Socket.SendAsync(e))
-                            OnSendProcess(e);
+                            if (!Token.Socket.SendAsync(e))
+                                OnSendProcess(e);
 
-                        Buffer = DequeueBuffer();
-                        Length = MessageStream.Read(Buffer, 0, BufferSize);
-                    } while (Length > 0);
-                    MessageStream.Dispose();
+                            Buffer = DequeueBuffer();
+                            Length = MessageStream.Read(Buffer, 0, BufferSize);
 
-                    // Enqueue Last Empty Buffer
-                    BufferPool.Enqueue(Buffer);
+                        } while (Length > 0);
+                    }
+                    catch
+                    {
+                        // Disconnect
+                        Token.Dispose();
+                    }
+                    finally
+                    {
+                        MessageStream.Dispose();
+
+                        // Enqueue Last Empty Buffer
+                        BufferPool.Enqueue(Buffer);
+                    }
                 }
             }
             finally
             {
-                Token.Lock.Release();
+                Token.Lock?.Release();
             }
 
             TaskToken.Task.Wait();
@@ -138,7 +176,17 @@ namespace MenthaAssembly.Network.Primitives
                 if (!CancelToken.IsCancellationRequested)
                 {
                     // Encode Message
-                    Stream MessageStream = ProtocolHandler.Encode(Request);
+                    Stream MessageStream;
+                    try
+                    {
+                        MessageStream = ProtocolHandler.Encode(Request);
+                    }
+                    catch
+                    {
+                        Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
+                        CancelToken.Dispose();
+                        return;
+                    }
 
                     byte[] Buffer = DequeueBuffer();
                     int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
@@ -150,27 +198,39 @@ namespace MenthaAssembly.Network.Primitives
                     }
 
                     // Send Datas
-                    do
+                    try
                     {
-                        SocketAsyncEventArgs e = Dequeue(false);
-                        e.UserToken = Token;
-                        e.SetBuffer(Buffer, 0, Length);
+                        do
+                        {
+                            SocketAsyncEventArgs e = Dequeue(false);
+                            e.UserToken = Token;
+                            e.SetBuffer(Buffer, 0, Length);
 
-                        if (!Token.Socket.SendAsync(e))
-                            OnSendProcess(e);
+                            if (!Token.Socket.SendAsync(e))
+                                OnSendProcess(e);
 
-                        Buffer = DequeueBuffer();
-                        Length = MessageStream.Read(Buffer, 0, BufferSize);
-                    } while (Length > 0);
-                    MessageStream.Dispose();
+                            Buffer = DequeueBuffer();
+                            Length = MessageStream.Read(Buffer, 0, BufferSize);
 
-                    // Enqueue Last Empty Buffer
-                    BufferPool.Enqueue(Buffer);
+                        } while (Length > 0);
+                    }
+                    catch
+                    {
+                        // Disconnect
+                        Token.Dispose();
+                    }
+                    finally
+                    {
+                        MessageStream.Dispose();
+
+                        // Enqueue Last Empty Buffer
+                        BufferPool.Enqueue(Buffer);
+                    }
                 }
             }
             finally
             {
-                Token.Lock.Release();
+                Token.Lock?.Release();
             }
         }
 
@@ -196,7 +256,25 @@ namespace MenthaAssembly.Network.Primitives
                     }
 
                     // Encode Message
-                    Stream MessageStream = ProtocolHandler.Encode(Request);
+                    Stream MessageStream;
+                    try
+                    {
+                        MessageStream = ProtocolHandler.Encode(Request);
+                    }
+                    catch
+                    {
+                        Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
+
+                        // Set Result
+                        TaskToken.TrySetResult(ErrorMessage.EncodeException);
+                        Token.ResponseTaskSource = null;
+
+                        // Release CancelToken
+                        Token.ResponseCancelToken?.Dispose();
+                        Token.ResponseCancelToken = null;
+
+                        return await TaskToken.Task;
+                    }
 
                     byte[] Buffer = DequeueBuffer();
                     int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
@@ -207,31 +285,49 @@ namespace MenthaAssembly.Network.Primitives
 
                         // Set Result
                         TaskToken.TrySetResult(ErrorMessage.NotSupport);
+                        Token.ResponseTaskSource = null;
+
+                        // Release CancelToken
+                        Token.ResponseCancelToken?.Dispose();
+                        Token.ResponseCancelToken = null;
+
                         return await TaskToken.Task;
                     }
 
                     // Send Datas
-                    do
+                    try
                     {
-                        SocketAsyncEventArgs e = Dequeue(false);
-                        e.UserToken = Token;
-                        e.SetBuffer(Buffer, 0, Length);
+                        do
+                        {
+                            SocketAsyncEventArgs e = Dequeue(false);
+                            e.UserToken = Token;
+                            e.SetBuffer(Buffer, 0, Length);
 
-                        if (!Token.Socket.SendAsync(e))
-                            OnSendProcess(e);
+                            if (!Token.Socket.SendAsync(e))
+                                OnSendProcess(e);
 
-                        Buffer = DequeueBuffer();
-                        Length = MessageStream.Read(Buffer, 0, BufferSize);
-                    } while (Length > 0);
-                    MessageStream.Dispose();
+                            Buffer = DequeueBuffer();
+                            Length = MessageStream.Read(Buffer, 0, BufferSize);
 
-                    // Enqueue Last Empty Buffer
-                    BufferPool.Enqueue(Buffer);
+                        } while (Length > 0);
+                    }
+                    catch
+                    {
+                        // Disconnect
+                        Token.Dispose();
+                    }
+                    finally
+                    {
+                        MessageStream.Dispose();
+
+                        // Enqueue Last Empty Buffer
+                        BufferPool.Enqueue(Buffer);
+                    }
                 }
             }
             finally
             {
-                Token.Lock.Release();
+                Token.Lock?.Release();
             }
 
             return await TaskToken.Task;
@@ -247,7 +343,17 @@ namespace MenthaAssembly.Network.Primitives
                 if (!CancelToken.IsCancellationRequested)
                 {
                     // Encode Message
-                    Stream MessageStream = ProtocolHandler.Encode(Request);
+                    Stream MessageStream;
+                    try
+                    {
+                        MessageStream = ProtocolHandler.Encode(Request);
+                    }
+                    catch
+                    {
+                        Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
+                        CancelToken.Dispose();
+                        return;
+                    }
 
                     byte[] Buffer = DequeueBuffer();
                     int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
@@ -259,27 +365,39 @@ namespace MenthaAssembly.Network.Primitives
                     }
 
                     // Send Datas
-                    do
+                    try
                     {
-                        SocketAsyncEventArgs e = Dequeue(false);
-                        e.UserToken = Token;
-                        e.SetBuffer(Buffer, 0, Length);
+                        do
+                        {
+                            SocketAsyncEventArgs e = Dequeue(false);
+                            e.UserToken = Token;
+                            e.SetBuffer(Buffer, 0, Length);
 
-                        if (!Token.Socket.SendAsync(e))
-                            OnSendProcess(e);
+                            if (!Token.Socket.SendAsync(e))
+                                OnSendProcess(e);
 
-                        Buffer = DequeueBuffer();
-                        Length = MessageStream.Read(Buffer, 0, BufferSize);
-                    } while (Length > 0);
-                    MessageStream.Dispose();
+                            Buffer = DequeueBuffer();
+                            Length = MessageStream.Read(Buffer, 0, BufferSize);
 
-                    // Enqueue Last Empty Buffer
-                    BufferPool.Enqueue(Buffer);
+                        } while (Length > 0);
+                    }
+                    catch
+                    {
+                        // Disconnect
+                        Token.Dispose();
+                    }
+                    finally
+                    {
+                        MessageStream.Dispose();
+
+                        // Enqueue Last Empty Buffer
+                        BufferPool.Enqueue(Buffer);
+                    }
                 }
             }
             finally
             {
-                Token.Lock.Release();
+                Token.Lock?.Release();
             }
         }
 
@@ -340,9 +458,24 @@ namespace MenthaAssembly.Network.Primitives
                         ReceiveMessage = ProtocolHandler.Decode(s);
                         s.Dispose();
                     }
+                    catch (Exception Ex)
+                    {
+                        if (!(Ex is IOException IOEx &&
+                             IOEx.InnerException is ObjectDisposedException ODEx &&
+                             ODEx.ObjectName == typeof(Socket).FullName) &&
+                             !(Ex is SocketException))
+                            Debug.WriteLine($"[Error]Decode exception.");
+
+                        // Trigger Disconnected Event.
+                        OnDisconnected(Token);
+
+                        // Push Resource to pool.
+                        Enqueue(ref e);
+                        return;
+                    }
                     finally
                     {
-                        Token.Lock.Release();
+                        Token.Lock?.Release();
                     }
 
                     if (ReceiveMessage != null)
@@ -399,7 +532,15 @@ namespace MenthaAssembly.Network.Primitives
             else
             {
                 // Handle Received Message
-                IMessage Response = MessageHandler.HandleMessage(Token.Address, ReceiveMessage);
+                IMessage Response;
+                try
+                {
+                    Response = MessageHandler.HandleMessage(Token.Address, ReceiveMessage);
+                }
+                catch
+                {
+                    Response = ErrorMessage.ReceivingHandleException;
+                }
 
                 // Check Response
                 if (Response is null)
@@ -413,7 +554,17 @@ namespace MenthaAssembly.Network.Primitives
                     // Replay
                     Token.Lock.Wait();
 
-                    Stream MessageStream = ProtocolHandler.Encode(Response);
+                    Stream MessageStream;
+                    try
+                    {
+                        MessageStream = ProtocolHandler.Encode(Response);
+                    }
+                    catch
+                    {
+                        ErrorMessage Error = ErrorMessage.ReceivingEncodeException;
+                        Error._UID = ReceiveUID;
+                        MessageStream = ErrorMessage.Encode(Error);
+                    }
 
                     byte[] Buffer = DequeueBuffer();
                     int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
@@ -429,26 +580,37 @@ namespace MenthaAssembly.Network.Primitives
                     }
 
                     // Send Datas
-                    do
+                    try
                     {
-                        SocketAsyncEventArgs e = Dequeue(false);
-                        e.UserToken = Token;
-                        e.SetBuffer(Buffer, 0, Length);
+                        do
+                        {
+                            SocketAsyncEventArgs e = Dequeue(false);
+                            e.UserToken = Token;
+                            e.SetBuffer(Buffer, 0, Length);
 
-                        if (!Token.Socket.SendAsync(e))
-                            OnSendProcess(e);
+                            if (!Token.Socket.SendAsync(e))
+                                OnSendProcess(e);
 
-                        Buffer = DequeueBuffer();
-                        Length = MessageStream.Read(Buffer, 0, BufferSize);
-                    } while (Length > 0);
-                    MessageStream.Dispose();
+                            Buffer = DequeueBuffer();
+                            Length = MessageStream.Read(Buffer, 0, BufferSize);
+                        } while (Length > 0);
+                    }
+                    catch
+                    {
+                        // Disconnect
+                        Token.Dispose();
+                    }
+                    finally
+                    {
+                        MessageStream.Dispose();
 
-                    // Enqueue Last Empty Buffer
-                    BufferPool.Enqueue(Buffer);
+                        // Enqueue Last Empty Buffer
+                        BufferPool.Enqueue(Buffer);
+                    }
                 }
                 finally
                 {
-                    Token.Lock.Release();
+                    Token.Lock?.Release();
                 }
             }
         }
