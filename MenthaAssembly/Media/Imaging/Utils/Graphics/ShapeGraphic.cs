@@ -387,29 +387,170 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         }
 
         /// <summary>
-        /// Draws a filled polygon with or without alpha blending (default = false). 
-        /// Add the first point also at the end of the array if the line should be closed.
+        /// Draw a regular polygon.
         /// </summary>
-        /// <param name="Points">The points of the polygon in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void FillPolygon(int[] Points, Pixel Fill)
+        /// <param name="Center">The coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Color">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, Pixel Color, double StartAngle = 0d)
+            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Color, StartAngle);
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the polygon center.</param>
+        /// <param name="Cy">The y-coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Color">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, Pixel Color, double StartAngle = 0d)
         {
-            int pn = Points.Length,
-                pnh = Points.Length >> 1;
+            if (VertexNum < 3)
+                throw new ArgumentException($"VertexNum must more than or equal 3.");
 
-            int[] intersectionsX = new int[pnh];
+            double DeltaTheta = 360d / VertexNum,
+                   LastAngle = StartAngle;
+
+            int P0x = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                P0y = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta)),
+                LastPx = P0x,
+                LastPy = P0y;
+
+            for (int i = 1; i < VertexNum; i++)
+            {
+                LastAngle += DeltaTheta;
+                int Px = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                    Py = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta));
+
+                DrawLine(LastPx, LastPy, Px, Py, Color);
+
+                LastPx = Px;
+                LastPy = Py;
+            }
+
+            DrawLine(LastPx, LastPy, P0x, P0y, Color);
+        }
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Center">The coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Pen">The pen with transparent background for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, IImageContext Pen, double StartAngle = 0d)
+            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Pen, StartAngle);
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the polygon center.</param>
+        /// <param name="Cy">The y-coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Pen">The pen with transparent background for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IImageContext Pen, double StartAngle = 0d)
+        {
+            if (VertexNum < 3)
+                throw new ArgumentException($"VertexNum must more than or equal 3.");
+
+            double DeltaTheta = 360d / VertexNum,
+                   LastAngle = StartAngle;
+
+            int P0x = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                P0y = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta)),
+                LastPx = P0x,
+                LastPy = P0y;
+
+            for (int i = 1; i < VertexNum; i++)
+            {
+                LastAngle += DeltaTheta;
+                int Px = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                    Py = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta));
+
+                DrawLine(LastPx, LastPy, Px, Py, Pen);
+
+                LastPx = Px;
+                LastPy = Py;
+            }
+
+            DrawLine(LastPx, LastPy, P0x, P0y, Pen);
+        }
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Center">The coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, ImageContour Contour, Pixel Fill, double StartAngle = 0d)
+            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Contour, Fill, StartAngle);
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the polygon center.</param>
+        /// <param name="Cy">The y-coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, Pixel Fill, double StartAngle = 0d)
+        {
+            if (VertexNum < 3)
+                throw new ArgumentException($"VertexNum must more than or equal 3.");
+
+            double DeltaTheta = 360d / VertexNum,
+                   LastAngle = StartAngle;
+
+            int P0x = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                P0y = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta)),
+                LastPx = P0x,
+                LastPy = P0y;
+
+            for (int i = 1; i < VertexNum; i++)
+            {
+                LastAngle += DeltaTheta;
+                int Px = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                    Py = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta));
+
+                DrawLine(LastPx, LastPy, Px, Py, Contour, Fill);
+
+                LastPx = Px;
+                LastPy = Py;
+            }
+
+            DrawLine(LastPx, LastPy, P0x, P0y, Contour, Fill);
+        }
+
+        /// <summary>
+        /// Fill a polygon.
+        /// </summary>
+        /// <param name="Points">The points of the polygon.</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="OffsetX">The offset of x-coordinate.</param>
+        /// <param name="OffsetY">The offset of y-coordinate.</param>
+        public void FillPolygon(Int32Point[] Points, Pixel Fill, int OffsetX, int OffsetY)
+        {
+            int Length = Points.Length;
+            int[] intersectionsX = new int[Length];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
             int yMin = Height;
             int yMax = 0;
-            for (int i = 1; i < pn; i += 2)
+            for (int i = 1; i < Length; i++)
             {
-                int py = Points[i];
+                int py = Points[i].Y + OffsetY;
                 if (py < yMin)
                     yMin = py;
                 if (py > yMax)
                     yMax = py;
             }
+
             if (yMin < 0)
                 yMin = 0;
             if (yMax >= Height)
@@ -419,8 +560,104 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                float vxi = Points[0],
-                      vyi = Points[1];
+                Int32Point P0 = Points[0];
+                int vxi = P0.X + OffsetX,
+                    vyi = P0.Y + OffsetY;
+
+                // Find all intersections
+                // Based on http://alienryderflex.com/polygon_fill/
+                int intersectionCount = 0;
+                for (int i = 1; i < Length; i++)
+                {
+                    // Next point x, y
+                    Int32Point P1 = Points[i];
+                    int vxj = P1.X + OffsetX,
+                        vyj = P1.Y + OffsetY;
+
+                    // Is the scanline between the two points
+                    if (vyi < y && vyj >= y ||
+                        vyj < y && vyi >= y)
+                    {
+                        // Compute the intersection of the scanline with the edge (line between two points)
+                        intersectionsX[intersectionCount++] = vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi);
+                    }
+                    vxi = vxj;
+                    vyi = vyj;
+                }
+
+                // Sort the intersections from left to right using Insertion sort 
+                // It's faster than Array.Sort for this small data set
+                int t, j;
+                for (int i = 1; i < intersectionCount; i++)
+                {
+                    t = intersectionsX[i];
+                    j = i;
+                    while (j > 0 && intersectionsX[j - 1] > t)
+                    {
+                        intersectionsX[j] = intersectionsX[j - 1];
+                        j -= 1;
+                    }
+                    intersectionsX[j] = t;
+                }
+
+                // Fill the pixels between the intersections
+                for (int i = 0; i < intersectionCount - 1; i += 2)
+                {
+                    int x0 = intersectionsX[i],
+                        x1 = intersectionsX[i + 1];
+
+                    // Check boundary
+                    if (x1 > 0 && x0 < Width)
+                    {
+                        if (x0 < 0)
+                            x0 = 0;
+
+                        if (x1 >= Width)
+                            x1 = Width - 1;
+
+                        // Fill the pixels
+                        Operator.ScanLineOverlay(this, x0, y, x1 - x0 + 1, Fill);
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// Fill a polygon.
+        /// </summary>
+        /// <param name="PointDatas">The points of the polygon in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="OffsetX">The offset of x-coordinate.</param>
+        /// <param name="OffsetY">The offset of y-coordinate.</param>
+        public void FillPolygon(int[] PointDatas, Pixel Fill, int OffsetX, int OffsetY)
+        {
+            int pn = PointDatas.Length,
+                pnh = PointDatas.Length >> 1;
+
+            int[] intersectionsX = new int[pnh];
+
+            // Find y min and max (slightly faster than scanning from 0 to height)
+            int yMin = Height;
+            int yMax = 0;
+            for (int i = 1; i < pn; i += 2)
+            {
+                int py = PointDatas[i] + OffsetY;
+                if (py < yMin)
+                    yMin = py;
+                if (py > yMax)
+                    yMax = py;
+            }
+
+            if (yMin < 0)
+                yMin = 0;
+            if (yMax >= Height)
+                yMax = Height - 1;
+
+            // Scan line from min to max
+            for (int y = yMin; y <= yMax; y++)
+            {
+                // Initial point x, y
+                int vxi = PointDatas[0] + OffsetX,
+                      vyi = PointDatas[1] + OffsetY;
 
                 // Find all intersections
                 // Based on http://alienryderflex.com/polygon_fill/
@@ -428,15 +665,15 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 for (int i = 2; i < pn; i += 2)
                 {
                     // Next point x, y
-                    float vxj = Points[i],
-                          vyj = Points[i + 1];
+                    int vxj = PointDatas[i] + OffsetX,
+                        vyj = PointDatas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
                     if (vyi < y && vyj >= y ||
                         vyj < y && vyi >= y)
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
-                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) / (vyj - vyi) * (vxj - vxi));
+                        intersectionsX[intersectionCount++] = vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi);
                     }
                     vxi = vxj;
                     vyi = vyj;
@@ -482,6 +719,19 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         #endregion
 
         #region Other
+        /// <summary>
+        /// Draw a Stamp.
+        /// </summary>
+        /// <param name="Position">The coordinate of left-top in stamp.</param>
+        /// <param name="Stamp">The stamp to draw.</param>
+        public void DrawStamp(Int32Point Position, IImageContext Stamp)
+            => DrawStamp(Position.X, Position.Y, Stamp);
+        /// <summary>
+        /// Draw a Stamp.
+        /// </summary>
+        /// <param name="X">The x-coordinate of left-top in stamp.</param>
+        /// <param name="Y">The y-coordinate of left-top in stamp.</param>
+        /// <param name="Stamp">The stamp to draw.</param>
         public void DrawStamp(int X, int Y, IImageContext Stamp)
         {
             int Bx = X + Stamp.Width,
@@ -512,6 +762,13 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             Operator.BlockOverlay(this, X, Y, Stamp, OffsetX, OffsetY, Width, Height);
         }
 
+        /// <summary>
+        /// Fill a contour.
+        /// </summary>
+        /// <param name="Contour">The contour to draw.</param>
+        /// <param name="Fill">The fill color for the contour.</param>
+        /// <param name="OffsetX">The offset of x-coordinate.</param>
+        /// <param name="OffsetY">The offset of y-coordinate.</param>
         public void FillContour(ImageContour Contour, Pixel Fill, int OffsetX, int OffsetY)
             => this.Operator.ContourOverlay(this, Contour, Fill, OffsetX, OffsetY);
 

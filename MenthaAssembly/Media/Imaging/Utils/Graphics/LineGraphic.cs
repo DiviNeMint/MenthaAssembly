@@ -693,50 +693,50 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// The cardinal spline passes through each point in the collection.
         /// </summary>
         /// <param name="bmp">The WriteableBitmap.</param>
-        /// <param name="points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
-        /// <param name="tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
+        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
+        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="color">The color for the spline.</param>
-        public void DrawCurveClosed(int[] points, float tension, Pixel Color)
+        public void DrawCurveClosed(int[] Points, float Tension, Pixel Color)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
 
-            int pn = points.Length;
+            int pn = Points.Length;
 
             // First segment
-            GraphicAlgorithm.CalculateCurveSegment(points[pn - 2], points[pn - 1],
-                                                   points[0], points[1],
-                                                   points[2], points[3],
-                                                   points[4], points[5],
-                                                   tension,
+            GraphicAlgorithm.CalculateCurveSegment(Points[pn - 2], Points[pn - 1],
+                                                   Points[0], Points[1],
+                                                   Points[2], Points[3],
+                                                   Points[4], Points[5],
+                                                   Tension,
                                                    DrawHandler);
 
             // Middle segments
             int i;
             for (i = 2; i < pn - 4; i += 2)
-                GraphicAlgorithm.CalculateCurveSegment(points[i - 2],
-                                                       points[i - 1], points[i],
-                                                       points[i + 1], points[i + 2],
-                                                       points[i + 3], points[i + 4],
-                                                       points[i + 5],
-                                                       tension,
+                GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
+                                                       Points[i - 1], Points[i],
+                                                       Points[i + 1], Points[i + 2],
+                                                       Points[i + 3], Points[i + 4],
+                                                       Points[i + 5],
+                                                       Tension,
                                                        DrawHandler);
 
             // Last segment
-            GraphicAlgorithm.CalculateCurveSegment(points[i - 2],
-                                                   points[i - 1], points[i],
-                                                   points[i + 1], points[i + 2],
-                                                   points[i + 3], points[0],
-                                                   points[1],
-                                                   tension,
+            GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
+                                                   Points[i - 1], Points[i],
+                                                   Points[i + 1], Points[i + 2],
+                                                   Points[i + 3], Points[0],
+                                                   Points[1],
+                                                   Tension,
                                                    DrawHandler);
 
             // Last-to-First segment
-            GraphicAlgorithm.CalculateCurveSegment(points[i], points[i + 1],
-                                                   points[i + 2], points[i + 3],
-                                                   points[0], points[1],
-                                                   points[2], points[3],
-                                                   tension,
+            GraphicAlgorithm.CalculateCurveSegment(Points[i], Points[i + 1],
+                                                   Points[i + 2], Points[i + 3],
+                                                   Points[0], Points[1],
+                                                   Points[2], Points[3],
+                                                   Tension,
                                                    DrawHandler);
         }
         /// <summary>
