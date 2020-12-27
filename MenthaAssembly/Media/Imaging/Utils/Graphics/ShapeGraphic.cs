@@ -530,13 +530,13 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <summary>
         /// Fill a polygon.
         /// </summary>
-        /// <param name="Points">The points of the polygon.</param>
+        /// <param name="Vertices">The vertices of the polygon.</param>
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(Int32Point[] Points, Pixel Fill, int OffsetX, int OffsetY)
+        public void FillPolygon(Int32Point[] Vertices, Pixel Fill, int OffsetX, int OffsetY)
         {
-            int Length = Points.Length;
+            int Length = Vertices.Length;
             int[] intersectionsX = new int[Length];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
@@ -544,7 +544,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             int yMax = 0;
             for (int i = 1; i < Length; i++)
             {
-                int py = Points[i].Y + OffsetY;
+                int py = Vertices[i].Y + OffsetY;
                 if (py < yMin)
                     yMin = py;
                 if (py > yMax)
@@ -560,7 +560,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                Int32Point P0 = Points[0];
+                Int32Point P0 = Vertices[0];
                 int vxi = P0.X + OffsetX,
                     vyi = P0.Y + OffsetY;
 
@@ -570,7 +570,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 for (int i = 1; i < Length; i++)
                 {
                     // Next point x, y
-                    Int32Point P1 = Points[i];
+                    Int32Point P1 = Vertices[i];
                     int vxj = P1.X + OffsetX,
                         vyj = P1.Y + OffsetY;
 
@@ -624,14 +624,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <summary>
         /// Fill a polygon.
         /// </summary>
-        /// <param name="PointDatas">The points of the polygon in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        /// <param name="VerticeDatas">The vertices of the polygon in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(int[] PointDatas, Pixel Fill, int OffsetX, int OffsetY)
+        public void FillPolygon(int[] VerticeDatas, Pixel Fill, int OffsetX, int OffsetY)
         {
-            int pn = PointDatas.Length,
-                pnh = PointDatas.Length >> 1;
+            int pn = VerticeDatas.Length,
+                pnh = VerticeDatas.Length >> 1;
 
             int[] intersectionsX = new int[pnh];
 
@@ -640,7 +640,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             int yMax = 0;
             for (int i = 1; i < pn; i += 2)
             {
-                int py = PointDatas[i] + OffsetY;
+                int py = VerticeDatas[i] + OffsetY;
                 if (py < yMin)
                     yMin = py;
                 if (py > yMax)
@@ -656,8 +656,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                int vxi = PointDatas[0] + OffsetX,
-                      vyi = PointDatas[1] + OffsetY;
+                int vxi = VerticeDatas[0] + OffsetX,
+                      vyi = VerticeDatas[1] + OffsetY;
 
                 // Find all intersections
                 // Based on http://alienryderflex.com/polygon_fill/
@@ -665,8 +665,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 for (int i = 2; i < pn; i += 2)
                 {
                     // Next point x, y
-                    int vxj = PointDatas[i] + OffsetX,
-                        vyj = PointDatas[i + 1] + OffsetY;
+                    int vxj = VerticeDatas[i] + OffsetX,
+                        vyj = VerticeDatas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
                     if (vyi < y && vyj >= y ||
