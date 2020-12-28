@@ -531,13 +531,13 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <summary>
         /// Fill a polygon.
         /// </summary>
-        /// <param name="Points">The points of the polygon.</param>
+        /// <param name="Vertices">The points of the polygon.</param>
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IList<Int32Point> Points, Pixel Fill, int OffsetX, int OffsetY)
+        public void FillPolygon(IList<Int32Point> Vertices, Pixel Fill, int OffsetX, int OffsetY)
         {
-            int Length = Points.Count;
+            int Length = Vertices.Count;
             int[] intersectionsX = new int[Length];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
@@ -545,7 +545,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             int yMax = 0;
             for (int i = 1; i < Length; i++)
             {
-                int py = Points[i].Y + OffsetY;
+                int py = Vertices[i].Y + OffsetY;
                 if (py < yMin)
                     yMin = py;
                 if (py > yMax)
@@ -561,7 +561,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                Int32Point P0 = Points[0];
+                Int32Point P0 = Vertices[0];
                 int vxi = P0.X + OffsetX,
                     vyi = P0.Y + OffsetY;
 
@@ -571,7 +571,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 for (int i = 1; i < Length; i++)
                 {
                     // Next point x, y
-                    Int32Point P1 = Points[i];
+                    Int32Point P1 = Vertices[i];
                     int vxj = P1.X + OffsetX,
                         vyj = P1.Y + OffsetY;
 
