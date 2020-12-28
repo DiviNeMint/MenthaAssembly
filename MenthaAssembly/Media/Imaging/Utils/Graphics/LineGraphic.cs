@@ -618,7 +618,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurve(int[] Points, float Tension, Pixel Color)
+        public void DrawCurve(IList<int> Points, float Tension, Pixel Color)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
@@ -633,7 +633,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             // Middle segments
             int i;
-            for (i = 2; i < Points.Length - 4; i += 2)
+            for (i = 2; i < Points.Count - 4; i += 2)
                 GraphicAlgorithm.CalculateCurveSegment(Points[i - 2], Points[i - 1],
                                                        Points[i], Points[i + 1],
                                                        Points[i + 2], Points[i + 3],
@@ -656,7 +656,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurve(Int32Point[] Points, float Tension, Pixel Color)
+        public void DrawCurve(IList<Int32Point> Points, float Tension, Pixel Color)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
@@ -671,7 +671,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             // Middle segments
             int i;
-            for (i = 1; i < Points.Length - 2; i++)
+            for (i = 1; i < Points.Count - 2; i++)
                 GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
                                                        Points[i].X, Points[i].Y,
                                                        Points[i + 1].X, Points[i + 1].Y,
@@ -696,12 +696,12 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="color">The color for the spline.</param>
-        public void DrawCurveClosed(int[] Points, float Tension, Pixel Color)
+        public void DrawCurveClosed(IList<int> Points, float Tension, Pixel Color)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
 
-            int pn = Points.Length;
+            int pn = Points.Count;
 
             // First segment
             GraphicAlgorithm.CalculateCurveSegment(Points[pn - 2], Points[pn - 1],
@@ -746,12 +746,12 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurveClosed(Int32Point[] Points, float Tension, Pixel Color)
+        public void DrawCurveClosed(IList<Int32Point> Points, float Tension, Pixel Color)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
 
-            int pn = Points.Length;
+            int pn = Points.Count;
 
             // First segment
             GraphicAlgorithm.CalculateCurveSegment(Points[pn - 1].X, Points[pn - 1].Y,
@@ -818,7 +818,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// </summary>
         /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, cx1, cy1, cx2, cy2, x2, y2, cx3, cx4 ..., xn, yn).</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawBeziers(int[] Points, Pixel Color)
+        public void DrawBeziers(IList<int> Points, Pixel Color)
         {
             int x1 = Points[0],
                 y1 = Points[1],
@@ -827,7 +827,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
 
-            for (int i = 2; i + 5 < Points.Length; i += 6)
+            for (int i = 2; i + 5 < Points.Count; i += 6)
             {
                 x2 = Points[i + 4];
                 y2 = Points[i + 5];

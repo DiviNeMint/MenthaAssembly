@@ -552,7 +552,7 @@ namespace MenthaAssembly.Network.Primitives
                 try
                 {
                     // Replay
-                    Token.Lock.Wait();
+                    Token.Lock?.Wait();
 
                     Stream MessageStream;
                     try
