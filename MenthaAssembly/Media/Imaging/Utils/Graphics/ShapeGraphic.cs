@@ -156,8 +156,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// </summary>
         /// <param name="Cx">The x-coordinate of the ellipses center.</param>
         /// <param name="Cy">The y-coordinate of the ellipses center.</param>
-        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
-        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="LRx">The radius of the ellipse in x-direction.</param>
+        /// <param name="LRy">The radius of the ellipse in y-direction.</param>
         /// <param name="Fill">The color for the ellipses.</param>
         public void FillEllipse(int Cx, int Cy, int Rx, int Ry, Pixel Fill)
         {
@@ -172,26 +172,82 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 Cy + Ry < 0)
                 return;
 
-            // Init vars
-            int uy, ly, lx, rx;
-            int x = Rx;
-            int y = 0;
-            int xrSqTwo = (Rx * Rx) << 1;
-            int yrSqTwo = (Ry * Ry) << 1;
-            int xChg = Ry * Ry * (1 - (Rx << 1));
-            int yChg = Rx * Rx;
-            int err = 0;
-            int xStopping = yrSqTwo * Rx;
-            int yStopping = 0;
-
-            // Draw first set of points counter clockwise where tangent line slope > -1.
-            while (xStopping >= yStopping)
+            checked
             {
-                // Draw 4 quadrant points at once
+                // Init vars
+                int uy, ly, lx, rx,
+                    x = Rx,
+                    y = 0;
+                long LRx = Rx,
+                     LRy = Ry,
+                     xrSqTwo = (LRx * LRx) << 1,
+                     yrSqTwo = (LRy * LRy) << 1,
+                     xChg = LRy * LRy * (1 - (LRx << 1)),
+                     yChg = LRx * LRx,
+                     err = 0,
+                     xStopping = yrSqTwo * LRx,
+                     yStopping = 0;
+
+                // Draw first set of points counter clockwise where tangent line slope > -1.
+                while (xStopping >= yStopping)
+                {
+                    // Draw 4 quadrant points at once
+                    // Upper half
+                    uy = Cy + y;
+                    // Lower half
+                    ly = Cy - y - 1;
+
+                    // Clip
+                    if (uy < 0)
+                        uy = 0;
+
+                    if (uy >= Height)
+                        uy = Height - 1;
+
+                    if (ly < 0)
+                        ly = 0;
+
+                    if (ly >= Height)
+                        ly = Height - 1;
+
+                    rx = Cx + x;
+                    lx = Cx - x;
+
+                    // Clip
+                    if (rx < 0)
+                        rx = 0;
+                    if (rx >= Width)
+                        rx = Width - 1;
+                    if (lx < 0)
+                        lx = 0;
+                    if (lx >= Width)
+                        lx = Width - 1;
+
+                    int Length = rx - lx + 1;
+                    this.Operator.ScanLineOverlay(this, lx, uy, Length, Fill);
+                    this.Operator.ScanLineOverlay(this, lx, ly, Length, Fill);
+
+                    y++;
+                    yStopping += xrSqTwo;
+                    err += yChg;
+                    yChg += xrSqTwo;
+                    if ((xChg + (err << 1)) > 0)
+                    {
+                        x--;
+                        xStopping -= yrSqTwo;
+                        err += xChg;
+                        xChg += yrSqTwo;
+                    }
+                }
+
+                // ReInit vars
+                x = 0;
+                y = Ry;
+
                 // Upper half
                 uy = Cy + y;
                 // Lower half
-                ly = Cy - y - 1;
+                ly = Cy - y;
 
                 // Clip
                 if (uy < 0)
@@ -206,106 +262,55 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 if (ly >= Height)
                     ly = Height - 1;
 
-                rx = Cx + x;
-                lx = Cx - x;
+                xChg = LRy * LRy;
+                yChg = LRx * LRx * (1 - (LRy << 1));
+                err = 0;
+                xStopping = 0;
+                yStopping = xrSqTwo * LRy;
 
-                // Clip
-                if (rx < 0)
-                    rx = 0;
-                if (rx >= Width)
-                    rx = Width - 1;
-                if (lx < 0)
-                    lx = 0;
-                if (lx >= Width)
-                    lx = Width - 1;
-
-                int Length = rx - lx + 1;
-                this.Operator.ScanLineOverlay(this, lx, uy, Length, Fill);
-                this.Operator.ScanLineOverlay(this, lx, ly, Length, Fill);
-
-                y++;
-                yStopping += xrSqTwo;
-                err += yChg;
-                yChg += xrSqTwo;
-                if ((xChg + (err << 1)) > 0)
+                // Draw second set of points clockwise where tangent line slope < -1.
+                while (xStopping <= yStopping)
                 {
-                    x--;
-                    xStopping -= yrSqTwo;
+                    // Draw 4 quadrant points at once
+                    rx = Cx + x;
+                    lx = Cx - x;
+
+                    // Clip
+                    if (rx < 0)
+                        rx = 0;
+                    if (rx >= Width)
+                        rx = Width - 1;
+                    if (lx < 0)
+                        lx = 0;
+                    if (lx >= Width)
+                        lx = Width - 1;
+
+                    // Draw line
+                    int Length = rx - lx + 1;
+                    this.Operator.ScanLineOverlay(this, lx, uy, Length, Fill);
+                    this.Operator.ScanLineOverlay(this, lx, ly, Length, Fill);
+
+                    x++;
+                    xStopping += yrSqTwo;
                     err += xChg;
                     xChg += yrSqTwo;
-                }
-            }
-
-            // ReInit vars
-            x = 0;
-            y = Ry;
-
-            // Upper half
-            uy = Cy + y;
-            // Lower half
-            ly = Cy - y;
-
-            // Clip
-            if (uy < 0)
-                uy = 0;
-
-            if (uy >= Height)
-                uy = Height - 1;
-
-            if (ly < 0)
-                ly = 0;
-
-            if (ly >= Height)
-                ly = Height - 1;
-
-            xChg = Ry * Ry;
-            yChg = Rx * Rx * (1 - (Ry << 1));
-            err = 0;
-            xStopping = 0;
-            yStopping = xrSqTwo * Ry;
-
-            // Draw second set of points clockwise where tangent line slope < -1.
-            while (xStopping <= yStopping)
-            {
-                // Draw 4 quadrant points at once
-                rx = Cx + x;
-                lx = Cx - x;
-
-                // Clip
-                if (rx < 0)
-                    rx = 0;
-                if (rx >= Width)
-                    rx = Width - 1;
-                if (lx < 0)
-                    lx = 0;
-                if (lx >= Width)
-                    lx = Width - 1;
-
-                // Draw line
-                int Length = rx - lx + 1;
-                this.Operator.ScanLineOverlay(this, lx, uy, Length, Fill);
-                this.Operator.ScanLineOverlay(this, lx, ly, Length, Fill);
-
-                x++;
-                xStopping += yrSqTwo;
-                err += xChg;
-                xChg += yrSqTwo;
-                if ((yChg + (err << 1)) > 0)
-                {
-                    y--;
-                    uy = Cy + y; // Upper half
-                    ly = Cy - y; // Lower half
-                    if (uy < 0)
-                        uy = 0; // Clip
-                    if (uy >= Height)
-                        uy = Height - 1; // ...
-                    if (ly < 0)
-                        ly = 0;
-                    if (ly >= Height)
-                        ly = Height - 1;
-                    yStopping -= xrSqTwo;
-                    err += yChg;
-                    yChg += xrSqTwo;
+                    if ((yChg + (err << 1)) > 0)
+                    {
+                        y--;
+                        uy = Cy + y; // Upper half
+                        ly = Cy - y; // Lower half
+                        if (uy < 0)
+                            uy = 0; // Clip
+                        if (uy >= Height)
+                            uy = Height - 1; // ...
+                        if (ly < 0)
+                            ly = 0;
+                        if (ly >= Height)
+                            ly = Height - 1;
+                        yStopping -= xrSqTwo;
+                        err += yChg;
+                        yChg += xrSqTwo;
+                    }
                 }
             }
         }
@@ -629,10 +634,10 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(int[] VerticeDatas, Pixel Fill, int OffsetX, int OffsetY)
+        public void FillPolygon(IList<int> VerticeDatas, Pixel Fill, int OffsetX, int OffsetY)
         {
-            int pn = VerticeDatas.Length,
-                pnh = VerticeDatas.Length >> 1;
+            int pn = VerticeDatas.Count,
+                pnh = VerticeDatas.Count >> 1;
 
             int[] intersectionsX = new int[pnh];
 

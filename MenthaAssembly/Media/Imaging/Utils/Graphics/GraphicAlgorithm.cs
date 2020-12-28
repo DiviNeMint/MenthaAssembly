@@ -67,67 +67,72 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (Rx < 1 || Ry < 1)
                 return;
 
-            // Init vars
-            int x = Rx,
-                y = 0,
-                xrSqTwo = (Rx * Rx) << 1,
-                yrSqTwo = (Ry * Ry) << 1,
-                xChg = Ry * Ry * (1 - (Rx << 1)),
-                yChg = Rx * Rx,
-                err = 0,
-                xStopping = yrSqTwo * Rx,
-                yStopping = 0;
-
-            // Draw first set of points counter clockwise where tangent line slope > -1.
-            while (xStopping >= yStopping)
+            checked
             {
-                // Draw 4 quadrant points at once
-                Handler(x, y);      // Quadrant I  (Actually an octant)
-                Handler(-x, y);     // Quadrant II
-                Handler(-x, -y);    // Quadrant III
-                Handler(x, -y);     // Quadrant IV
+                // Init vars
+                int x = Rx,
+                    y = 0;
+                long LRx = Rx,
+                     LRy = Ry,
+                     xrSqTwo = (LRx * LRx) << 1,
+                     yrSqTwo = (LRy * LRy) << 1,
+                     xChg = LRy * LRy * (1 - (LRx << 1)),
+                     yChg = LRx * LRx,
+                     err = 0,
+                     xStopping = yrSqTwo * LRx,
+                     yStopping = 0;
 
-                y++;
-                yStopping += xrSqTwo;
-                err += yChg;
-                yChg += xrSqTwo;
-                if ((xChg + (err << 1)) > 0)
+                // Draw first set of points counter clockwise where tangent line slope > -1.
+                while (xStopping >= yStopping)
                 {
-                    x--;
-                    xStopping -= yrSqTwo;
-                    err += xChg;
-                    xChg += yrSqTwo;
-                }
-            }
+                    // Draw 4 quadrant points at once
+                    Handler(x, y);      // Quadrant I  (Actually an octant)
+                    Handler(-x, y);     // Quadrant II
+                    Handler(-x, -y);    // Quadrant III
+                    Handler(x, -y);     // Quadrant IV
 
-            // ReInit vars
-            x = 0;
-            y = Ry;
-            xChg = Ry * Ry;
-            yChg = Rx * Rx * (1 - (Ry << 1));
-            err = 0;
-            xStopping = 0;
-            yStopping = xrSqTwo * Ry;
-
-            // Draw second set of points clockwise where tangent line slope < -1.
-            while (xStopping <= yStopping)
-            {
-                // Draw 4 quadrant points at once
-                Handler(x, y);      // Quadrant I  (Actually an octant)
-                Handler(-x, y);     // Quadrant II
-                Handler(-x, -y);    // Quadrant III
-                Handler(x, -y);     // Quadrant IV
-
-                x++;
-                xStopping += yrSqTwo;
-                err += xChg;
-                xChg += yrSqTwo;
-                if ((yChg + (err << 1)) > 0)
-                {
-                    y--;
-                    yStopping -= xrSqTwo;
+                    y++;
+                    yStopping += xrSqTwo;
                     err += yChg;
                     yChg += xrSqTwo;
+                    if ((xChg + (err << 1)) > 0)
+                    {
+                        x--;
+                        xStopping -= yrSqTwo;
+                        err += xChg;
+                        xChg += yrSqTwo;
+                    }
+                }
+
+                // ReInit vars
+                x = 0;
+                y = Ry;
+                xChg = LRy * LRy;
+                yChg = LRx * LRx * (1 - (LRy << 1));
+                err = 0;
+                xStopping = 0;
+                yStopping = xrSqTwo * LRy;
+
+                // Draw second set of points clockwise where tangent line slope < -1.
+                while (xStopping <= yStopping)
+                {
+                    // Draw 4 quadrant points at once
+                    Handler(x, y);      // Quadrant I  (Actually an octant)
+                    Handler(-x, y);     // Quadrant II
+                    Handler(-x, -y);    // Quadrant III
+                    Handler(x, -y);     // Quadrant IV
+
+                    x++;
+                    xStopping += yrSqTwo;
+                    err += xChg;
+                    xChg += yrSqTwo;
+                    if ((yChg + (err << 1)) > 0)
+                    {
+                        y--;
+                        yStopping -= xrSqTwo;
+                        err += yChg;
+                        yChg += xrSqTwo;
+                    }
                 }
             }
         }
@@ -144,1706 +149,490 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 return;
             }
 
-            // Init vars
-            int x = Rx,
-                y = 0,
-                xrSqTwo = (Rx * Rx) << 1,
-                yrSqTwo = (Ry * Ry) << 1,
-                xChg = Ry * Ry * (1 - (Rx << 1)),
-                yChg = Rx * Rx,
-                err = 0,
-                xStopping = yrSqTwo * Rx,
-                yStopping = 0;
-
-            Func<int, int, bool> Filter1, Filter2, Filter3, Filter4;
-
-            if (DSx > 0)
+            checked
             {
-                if (DSy > 0)
-                {
-                    if (DEx > 0)
-                    {
-                        if (DEy > 0)
-                        {
-                            bool Temp = DSx < DEx || DEy < DSy;
-                            if (!Temp)
-                            {
-                                MathHelper.Swap(ref DEx, ref DSx);
-                                MathHelper.Swap(ref DEy, ref DSy);
-                            }
+                // Init vars
+                int x = Rx,
+                    y = 0;
+                long LRx = Rx,
+                     LRy = Ry,
+                     xrSqTwo = (LRx * LRx) << 1,
+                     yrSqTwo = (LRy * LRy) << 1,
+                     xChg = LRy * LRy * (1 - (LRx << 1)),
+                     yChg = LRx * LRx,
+                     err = 0,
+                     xStopping = yrSqTwo * LRx,
+                     yStopping = 0;
 
-                            if (Clockwise == Temp)
+                Func<int, int, bool> Filter1, Filter2, Filter3, Filter4;
+
+                if (DSx > 0)
+                {
+                    if (DSy > 0)
+                    {
+                        if (DEx > 0)
+                        {
+                            if (DEy > 0)
                             {
-                                Filter1 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => true;
+                                bool Temp = DSx < DEx || DEy < DSy;
+                                if (!Temp)
+                                {
+                                    MathHelper.Swap(ref DEx, ref DSx);
+                                    MathHelper.Swap(ref DEy, ref DSy);
+                                }
+
+                                if (Clockwise == Temp)
+                                {
+                                    Filter1 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
+                                    Filter2 = (Dx, Dy) => true;
+                                    Filter3 = (Dx, Dy) => true;
+                                    Filter4 = (Dx, Dy) => true;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
+                                    Filter2 = (Dx, Dy) => false;
+                                    Filter3 = (Dx, Dy) => false;
+                                    Filter4 = (Dx, Dy) => false;
+                                }
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => false;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                    Filter2 = (Dx, Dy) => true;
+                                    Filter3 = (Dx, Dy) => true;
+                                    Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                    Filter2 = (Dx, Dy) => false;
+                                    Filter3 = (Dx, Dy) => false;
+                                    Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                }
                             }
                         }
                         else
                         {
-                            if (Clockwise)
+                            if (DEy > 0)
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                    Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                    Filter3 = (Dx, Dy) => false;
+                                    Filter4 = (Dx, Dy) => false;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                    Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                    Filter3 = (Dx, Dy) => true;
+                                    Filter4 = (Dx, Dy) => true;
+                                }
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                    Filter2 = (Dx, Dy) => true;
+                                    Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                    Filter4 = (Dx, Dy) => false;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                    Filter2 = (Dx, Dy) => false;
+                                    Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                    Filter4 = (Dx, Dy) => true;
+                                }
                             }
                         }
                     }
                     else
                     {
-                        if (DEy > 0)
+                        if (DEx > 0)
                         {
-                            if (Clockwise)
+                            if (DEy > 0)
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => false;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                    Filter2 = (Dx, Dy) => false;
+                                    Filter3 = (Dx, Dy) => false;
+                                    Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                    Filter2 = (Dx, Dy) => true;
+                                    Filter3 = (Dx, Dy) => true;
+                                    Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                }
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => true;
+                                bool Temp = DSx < DEx || DSy < DEy;
+                                if (!Temp)
+                                {
+                                    MathHelper.Swap(ref DEx, ref DSx);
+                                    MathHelper.Swap(ref DEy, ref DSy);
+                                }
+
+                                if (Clockwise == Temp)
+                                {
+                                    Filter1 = (Dx, Dy) => false;
+                                    Filter2 = (Dx, Dy) => false;
+                                    Filter3 = (Dx, Dy) => false;
+                                    Filter4 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => true;
+                                    Filter2 = (Dx, Dy) => true;
+                                    Filter3 = (Dx, Dy) => true;
+                                    Filter4 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
+                                }
                             }
                         }
                         else
                         {
-                            if (Clockwise)
+                            if (DEy > 0)
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter4 = (Dx, Dy) => false;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => true;
+                                    Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                    Filter3 = (Dx, Dy) => false;
+                                    Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => false;
+                                    Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                    Filter3 = (Dx, Dy) => true;
+                                    Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                }
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter4 = (Dx, Dy) => true;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => true;
+                                    Filter2 = (Dx, Dy) => true;
+                                    Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                    Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => false;
+                                    Filter2 = (Dx, Dy) => false;
+                                    Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                    Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                }
                             }
                         }
                     }
                 }
                 else
                 {
-                    if (DEx > 0)
+                    if (DSy > 0)
                     {
-                        if (DEy > 0)
+                        if (DEx > 0)
                         {
-                            if (Clockwise)
+                            if (DEy > 0)
                             {
-                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                    Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                    Filter3 = (Dx, Dy) => true;
+                                    Filter4 = (Dx, Dy) => true;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                    Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                    Filter3 = (Dx, Dy) => false;
+                                    Filter4 = (Dx, Dy) => false;
+                                }
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => false;
+                                    Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                    Filter3 = (Dx, Dy) => true;
+                                    Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => true;
+                                    Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                    Filter3 = (Dx, Dy) => false;
+                                    Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                }
                             }
                         }
                         else
                         {
-                            bool Temp = DSx < DEx || DSy < DEy;
-                            if (!Temp)
+                            if (DEy > 0)
                             {
-                                MathHelper.Swap(ref DEx, ref DSx);
-                                MathHelper.Swap(ref DEy, ref DSy);
-                            }
+                                bool Temp = DSx < DEx || DSy < DEy;
+                                if (!Temp)
+                                {
+                                    MathHelper.Swap(ref DEx, ref DSx);
+                                    MathHelper.Swap(ref DEy, ref DSy);
+                                }
 
-                            if (Clockwise == Temp)
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
+                                if (Clockwise == Temp)
+                                {
+                                    Filter1 = (Dx, Dy) => true;
+                                    Filter2 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
+                                    Filter3 = (Dx, Dy) => true;
+                                    Filter4 = (Dx, Dy) => true;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => false;
+                                    Filter2 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
+                                    Filter3 = (Dx, Dy) => false;
+                                    Filter4 = (Dx, Dy) => false;
+                                }
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => false;
+                                    Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                    Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                    Filter4 = (Dx, Dy) => false;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => true;
+                                    Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                    Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                    Filter4 = (Dx, Dy) => true;
+                                }
                             }
                         }
                     }
                     else
                     {
-                        if (DEy > 0)
+                        if (DEx > 0)
                         {
-                            if (Clockwise)
+                            if (DEy > 0)
                             {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                    Filter2 = (Dx, Dy) => false;
+                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                    Filter4 = (Dx, Dy) => true;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                    Filter2 = (Dx, Dy) => true;
+                                    Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                    Filter4 = (Dx, Dy) => false;
+                                }
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => false;
+                                    Filter2 = (Dx, Dy) => false;
+                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                    Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => true;
+                                    Filter2 = (Dx, Dy) => true;
+                                    Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                    Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                }
                             }
                         }
                         else
                         {
-                            if (Clockwise)
+                            if (DEy > 0)
                             {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                if (Clockwise)
+                                {
+                                    Filter1 = (Dx, Dy) => true;
+                                    Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                    Filter4 = (Dx, Dy) => true;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => false;
+                                    Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                    Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                    Filter4 = (Dx, Dy) => false;
+                                }
                             }
                             else
                             {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                bool Temp = DSx < DEx || DEy < DSy;
+                                if (!Temp)
+                                {
+                                    MathHelper.Swap(ref DEx, ref DSx);
+                                    MathHelper.Swap(ref DEy, ref DSy);
+                                }
+
+                                if (Clockwise == Temp)
+                                {
+                                    Filter1 = (Dx, Dy) => false;
+                                    Filter2 = (Dx, Dy) => false;
+                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
+                                    Filter4 = (Dx, Dy) => false;
+                                }
+                                else
+                                {
+                                    Filter1 = (Dx, Dy) => true;
+                                    Filter2 = (Dx, Dy) => true;
+                                    Filter3 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
+                                    Filter4 = (Dx, Dy) => true;
+                                }
                             }
                         }
                     }
                 }
-            }
-            else
-            {
-                if (DSy > 0)
+
+                // Draw first set of points counter clockwise where tangent line slope > -1.
+                while (xStopping >= yStopping)
                 {
-                    if (DEx > 0)
-                    {
-                        if (DEy > 0)
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => true;
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => false;
-                            }
-                        }
-                        else
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (DEy > 0)
-                        {
-                            bool Temp = DSx < DEx || DSy < DEy;
-                            if (!Temp)
-                            {
-                                MathHelper.Swap(ref DEx, ref DSx);
-                                MathHelper.Swap(ref DEy, ref DSy);
-                            }
+                    // Draw 4 quadrant points at once
+                    if (Filter1(x, y))      // Quadrant I  (Actually an octant)
+                        Handler(x, y);
+                    if (Filter2(-x, y))     // Quadrant II
+                        Handler(-x, y);
+                    if (Filter3(-x, -y))    // Quadrant III
+                        Handler(-x, -y);
+                    if (Filter4(x, -y))     // Quadrant IV
+                        Handler(x, -y);
 
-                            if (Clockwise == Temp)
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => true;
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => false;
-                            }
-                        }
-                        else
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter4 = (Dx, Dy) => false;
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter4 = (Dx, Dy) => true;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    if (DEx > 0)
-                    {
-                        if (DEy > 0)
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter4 = (Dx, Dy) => true;
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter4 = (Dx, Dy) => false;
-                            }
-                        }
-                        else
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (DEy > 0)
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter4 = (Dx, Dy) => true;
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter4 = (Dx, Dy) => false;
-                            }
-                        }
-                        else
-                        {
-                            bool Temp = DSx < DEx || DEy < DSy;
-                            if (!Temp)
-                            {
-                                MathHelper.Swap(ref DEx, ref DSx);
-                                MathHelper.Swap(ref DEy, ref DSy);
-                            }
-
-                            if (Clockwise == Temp)
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
-                                Filter4 = (Dx, Dy) => false;
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
-                                Filter4 = (Dx, Dy) => true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Draw first set of points counter clockwise where tangent line slope > -1.
-            while (xStopping >= yStopping)
-            {
-                // Draw 4 quadrant points at once
-                if (Filter1(x, y))      // Quadrant I  (Actually an octant)
-                    Handler(x, y);
-                if (Filter2(-x, y))     // Quadrant II
-                    Handler(-x, y);
-                if (Filter3(-x, -y))    // Quadrant III
-                    Handler(-x, -y);
-                if (Filter4(x, -y))     // Quadrant IV
-                    Handler(x, -y);
-
-                y++;
-                yStopping += xrSqTwo;
-                err += yChg;
-                yChg += xrSqTwo;
-                if ((xChg + (err << 1)) > 0)
-                {
-                    x--;
-                    xStopping -= yrSqTwo;
-                    err += xChg;
-                    xChg += yrSqTwo;
-                }
-            }
-
-            // ReInit vars
-            x = 0;
-            y = Ry;
-            xChg = Ry * Ry;
-            yChg = Rx * Rx * (1 - (Ry << 1));
-            err = 0;
-            xStopping = 0;
-            yStopping = xrSqTwo * Ry;
-
-            // Draw second set of points clockwise where tangent line slope < -1.
-            while (xStopping <= yStopping)
-            {
-                // Draw 4 quadrant points at once
-                if (Filter1(x, y))      // Quadrant I  (Actually an octant)
-                    Handler(x, y);
-                if (Filter2(-x, y))     // Quadrant II
-                    Handler(-x, y);
-                if (Filter3(-x, -y))    // Quadrant III
-                    Handler(-x, -y);
-                if (Filter4(x, -y))     // Quadrant IV
-                    Handler(x, -y);
-
-                x++;
-                xStopping += yrSqTwo;
-                err += xChg;
-                xChg += yrSqTwo;
-                if ((yChg + (err << 1)) > 0)
-                {
-                    y--;
-                    yStopping -= xrSqTwo;
+                    y++;
+                    yStopping += xrSqTwo;
                     err += yChg;
                     yChg += xrSqTwo;
+                    if ((xChg + (err << 1)) > 0)
+                    {
+                        x--;
+                        xStopping -= yrSqTwo;
+                        err += xChg;
+                        xChg += yrSqTwo;
+                    }
+                }
+
+                // ReInit vars
+                x = 0;
+                y = Ry;
+                xChg = LRy * LRy;
+                yChg = LRx * LRx * (1 - (LRy << 1));
+                err = 0;
+                xStopping = 0;
+                yStopping = xrSqTwo * LRy;
+
+                // Draw second set of points clockwise where tangent line slope < -1.
+                while (xStopping <= yStopping)
+                {
+                    // Draw 4 quadrant points at once
+                    if (Filter1(x, y))      // Quadrant I  (Actually an octant)
+                        Handler(x, y);
+                    if (Filter2(-x, y))     // Quadrant II
+                        Handler(-x, y);
+                    if (Filter3(-x, -y))    // Quadrant III
+                        Handler(-x, -y);
+                    if (Filter4(x, -y))     // Quadrant IV
+                        Handler(x, -y);
+
+                    x++;
+                    xStopping += yrSqTwo;
+                    err += xChg;
+                    xChg += yrSqTwo;
+                    if ((yChg + (err << 1)) > 0)
+                    {
+                        y--;
+                        yStopping -= xrSqTwo;
+                        err += yChg;
+                        yChg += xrSqTwo;
+                    }
                 }
             }
         }
 
-        public static void CalculateBresenhamArcOrder(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, GraphicDeltaHandler Handler)
+        public static void CalculateArcFeaturePoints(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, GraphicDeltaHandler Handler)
         {
-            // Avoid endless loop
-            if (Rx < 1 || Ry < 1)
-                return;
+            double Sa = CalculateAngle(DSx, DSy),
+                   Ea = CalculateAngle(DEx, DEy);
 
-            if (DSx == DEx && DSy == DEy)
+            double TwoPI = 2 * Math.PI,
+                   SweepA = Clockwise ? Ea == Sa ? TwoPI :
+                                                   Ea < Sa ? TwoPI - (Sa - Ea) :
+                                                             Ea - Sa :
+                                        Ea == Sa ? TwoPI :
+                                                   Ea < Sa ? Sa - Ea :
+                                                             TwoPI - (Ea - Sa);
+            int pts = (int)Math.Ceiling(Math.Max(Rx, Ry) * SweepA);
+
+            if (pts < 2)
+                pts = 2;
+
+            if (pts > 400)
+                pts = 400;
+
+            double Delta = SweepA / pts;
+
+            if (!Clockwise)
+                Delta = -Delta;
+
+            double Theta = Sa;
+
+            for (int i = 0; i <= pts; i++)
             {
-                CalculateBresenhamEllipse(Rx, Ry, Handler);
-                return;
+                Handler((int)(Rx * Math.Cos(Theta)), (int)(Ry * Math.Sin(Theta)));
+                Theta += Delta;
             }
+        }
 
-            // Init vars
-            int x = Rx,
-                y = 0,
-                xrSqTwo = (Rx * Rx) << 1,
-                yrSqTwo = (Ry * Ry) << 1,
-                xChg = Ry * Ry * (1 - (Rx << 1)),
-                yChg = Rx * Rx,
-                err = 0,
-                xStopping = yrSqTwo * Rx,
-                yStopping = 0;
+        public static double CalculateAngle(int Px, int Py)
+        {
+            if (Px < 0 && Py == 0)
+                return Math.PI;
 
+            if (Px > 0 && Py == 0)
+                return 0d;
 
-            List<Int32Vector> Quadrant1 = new List<Int32Vector>(),
-                              Quadrant2 = new List<Int32Vector>(),
-                              Quadrant3 = new List<Int32Vector>(),
-                              Quadrant4 = new List<Int32Vector>();
+            if (Px == 0 && Py > 0)
+                return Math.PI * 0.5;
 
-            Func<int, int, bool> Filter1, Filter2, Filter3, Filter4;
-            Action ReturnAction;
+            if (Px == 0 && Py < 0)
+                return Math.PI * 1.5;
 
-            if (DSx > 0)
-            {
-                if (DSy > 0)
-                {
-                    if (DEx > 0)
-                    {
-                        if (DEy > 0)
-                        {
-                            if (DSx < DEx || DEy < DSy)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => true;
-                                    ReturnAction = () =>
-                                    {
-                                        IEnumerable<Int32Vector> OrderQuadrant1 = Quadrant1.OrderBy(i => i.Y)
-                                                                                           .ThenByDescending(i => i.X);
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in OrderQuadrant1.Where(i => i.X <= DSx))
-                                            Handler(Delta.X, Delta.Y);
+            if (Px < 0 && Py < 0)
+                return Math.Atan(Py / Px) + Math.PI;
 
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                                   .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
+            if (Px < 0 && Py > 0)
+                return Math.PI - Math.Atan(Py / (-Px));
 
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
+            if (Px > 0 && Py > 0)
+                return Math.Atan(Py / Px);
 
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
+            if (Px > 0 && Py < 0)
+                return 2 * Math.PI - Math.Atan(-Py / Px);
 
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in OrderQuadrant1.Where(i => DEx <= i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-                                    };
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => false;
-                                    ReturnAction = () =>
-                                    {
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-                                    };
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => false;
-                                    ReturnAction = () =>
-                                    {
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-                                    };
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => true;
-                                    ReturnAction = () =>
-                                    {
-                                        IEnumerable<Int32Vector> OrderQuadrant1 = Quadrant1.OrderByDescending(i => i.Y)
-                                                                                           .ThenBy(i => i.X);
-
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in OrderQuadrant1.Where(i => DSx <= i.X))
-                                            Handler(Delta.X, Delta.Y);
-
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
-
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
-
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
-
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in OrderQuadrant1.Where(i => i.X <= DEx))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-                                    };
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-                                };
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (DEy > 0)
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => false;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => true;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-                                };
-                            }
-                        }
-                        else
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter4 = (Dx, Dy) => false;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter4 = (Dx, Dy) => true;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-                                };
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    if (DEx > 0)
-                    {
-                        if (DEy > 0)
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-                                };
-                            }
-                        }
-                        else
-                        {
-                            if (DSx < DEx || DEy < DSy)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
-                                    ReturnAction = () =>
-                                    {
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
-                                    };
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
-                                    ReturnAction = () =>
-                                    {
-                                        IEnumerable<Int32Vector> OrderQuadrant4 = Quadrant4.OrderByDescending(i => i.Y)
-                                                                                           .ThenByDescending(i => i.X);
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in OrderQuadrant4.Where(i => i.X <= DSx))
-                                            Handler(Delta.X, Delta.Y);
-
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
-
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
-
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in OrderQuadrant4.Where(i => DEx <= i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
-                                    };
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
-                                    ReturnAction = () =>
-                                    {
-                                        IEnumerable<Int32Vector> OrderQuadrant4 = Quadrant4.OrderByDescending(i => i.Y)
-                                                                                           .ThenByDescending(i => i.X);
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in OrderQuadrant4.Where(i => i.X <= DSx))
-                                            Handler(Delta.X, Delta.Y);
-
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
-
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
-
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in OrderQuadrant4.Where(i => DEx <= i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
-                                    };
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
-                                    ReturnAction = () =>
-                                    {
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
-                                    };
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (DEy > 0)
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-                                };
-                            }
-                        }
-                        else
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-                                };
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (DSy > 0)
-                {
-                    if (DEx > 0)
-                    {
-                        if (DEy > 0)
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => true;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => false;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-                                };
-                            }
-                        }
-                        else
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                Filter3 = (Dx, Dy) => true;
-                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                Filter3 = (Dx, Dy) => false;
-                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-                                };
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (DEy > 0)
-                        {
-                            if (DSx < DEx || DEy < DSy)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => true;
-                                    ReturnAction = () =>
-                                    {
-                                        IEnumerable<Int32Vector> OrderQuadrant2 = Quadrant2.OrderByDescending(i => i.Y)
-                                                                                           .ThenByDescending(i => i.X);
-
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in OrderQuadrant2.Where(i => i.X <= DSx))
-                                            Handler(Delta.X, Delta.Y);
-
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
-
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
-
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in OrderQuadrant2.Where(i => DEx <= i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
-                                    };
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => false;
-                                    ReturnAction = () =>
-                                    {
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
-                                    };
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => false;
-                                    ReturnAction = () =>
-                                    {
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
-                                    };
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => true;
-                                    ReturnAction = () =>
-                                    {
-                                        IEnumerable<Int32Vector> OrderQuadrant2 = Quadrant2.OrderByDescending(i => i.Y)
-                                                                                           .ThenByDescending(i => i.X);
-
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in OrderQuadrant2.Where(i => i.X <= DSx))
-                                            Handler(Delta.X, Delta.Y);
-
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
-
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
-
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in OrderQuadrant2.Where(i => DEx <= i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
-                                    };
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter4 = (Dx, Dy) => false;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter4 = (Dx, Dy) => true;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-                                };
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    if (DEx > 0)
-                    {
-                        if (DEy > 0)
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter4 = (Dx, Dy) => true;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter4 = (Dx, Dy) => false;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-                                };
-                            }
-                        }
-                        else
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => false;
-                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => true;
-                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-                                };
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (DEy > 0)
-                        {
-                            if (Clockwise)
-                            {
-                                Filter1 = (Dx, Dy) => true;
-                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                Filter4 = (Dx, Dy) => true;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant IV
-                                    foreach (Int32Vector Delta in Quadrant4.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant4.Clear();
-
-                                    // Quadrant I
-                                    foreach (Int32Vector Delta in Quadrant1.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant1.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderByDescending(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-                                };
-                            }
-                            else
-                            {
-                                Filter1 = (Dx, Dy) => false;
-                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                Filter4 = (Dx, Dy) => false;
-                                ReturnAction = () =>
-                                {
-                                    // Quadrant III
-                                    foreach (Int32Vector Delta in Quadrant3.OrderBy(i => i.Y)
-                                                                           .ThenByDescending(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant3.Clear();
-
-                                    // Quadrant II
-                                    foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                           .ThenBy(i => i.X))
-                                        Handler(Delta.X, Delta.Y);
-                                    Quadrant2.Clear();
-                                };
-                            }
-                        }
-                        else
-                        {
-                            if (DSx < DEx || DEy < DSy)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
-                                    Filter4 = (Dx, Dy) => false;
-                                    ReturnAction = () =>
-                                    {
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
-                                    };
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
-                                    Filter4 = (Dx, Dy) => true;
-                                    ReturnAction = () =>
-                                    {
-                                        IEnumerable<Int32Vector> OrderQuadrant3 = Quadrant4.OrderBy(i => i.Y)
-                                                                                           .ThenByDescending(i => i.X);
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in OrderQuadrant3.Where(i => i.X <= DSx))
-                                            Handler(Delta.X, Delta.Y);
-
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
-
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
-
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in OrderQuadrant3.Where(i => DEx <= i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
-                                    };
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
-                                    Filter4 = (Dx, Dy) => true;
-                                    ReturnAction = () =>
-                                    {
-                                        IEnumerable<Int32Vector> OrderQuadrant3 = Quadrant4.OrderBy(i => i.Y)
-                                                                                           .ThenByDescending(i => i.X);
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in OrderQuadrant3.Where(i => i.X <= DSx))
-                                            Handler(Delta.X, Delta.Y);
-
-                                        // Quadrant II
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant2.Clear();
-
-                                        // Quadrant I
-                                        foreach (Int32Vector Delta in Quadrant2.OrderBy(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant1.Clear();
-
-                                        // Quadrant IV
-                                        foreach (Int32Vector Delta in Quadrant4.OrderByDescending(i => i.Y)
-                                                                               .ThenByDescending(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant4.Clear();
-
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in OrderQuadrant3.Where(i => DEx <= i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
-                                    };
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
-                                    Filter4 = (Dx, Dy) => false;
-                                    ReturnAction = () =>
-                                    {
-                                        // Quadrant III
-                                        foreach (Int32Vector Delta in Quadrant3.OrderByDescending(i => i.Y)
-                                                                               .ThenBy(i => i.X))
-                                            Handler(Delta.X, Delta.Y);
-                                        Quadrant3.Clear();
-                                    };
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Draw first set of points counter clockwise where tangent line slope > -1.
-            while (xStopping >= yStopping)
-            {
-                if (Filter1(x, y))      // Quadrant I  (Actually an octant)
-                    Quadrant1.Add(new Int32Vector(x, y));
-                if (Filter2(-x, y))     // Quadrant II
-                    Quadrant2.Add(new Int32Vector(-x, y));
-                if (Filter3(-x, -y))    // Quadrant III
-                    Quadrant3.Add(new Int32Vector(-x, -y));
-                if (Filter4(x, -y))     // Quadrant IV
-                    Quadrant4.Add(new Int32Vector(x, -y));
-
-                y++;
-                yStopping += xrSqTwo;
-                err += yChg;
-                yChg += xrSqTwo;
-                if ((xChg + (err << 1)) > 0)
-                {
-                    x--;
-                    xStopping -= yrSqTwo;
-                    err += xChg;
-                    xChg += yrSqTwo;
-                }
-            }
-
-            // ReInit vars
-            x = 0;
-            y = Ry;
-            xChg = Ry * Ry;
-            yChg = Rx * Rx * (1 - (Ry << 1));
-            err = 0;
-            xStopping = 0;
-            yStopping = xrSqTwo * Ry;
-
-            // Draw second set of points clockwise where tangent line slope < -1.
-            while (xStopping <= yStopping)
-            {
-                if (Filter1(x, y))      // Quadrant I  (Actually an octant)
-                    Quadrant1.Add(new Int32Vector(x, y));
-                if (Filter2(-x, y))     // Quadrant II
-                    Quadrant2.Add(new Int32Vector(-x, y));
-                if (Filter3(-x, -y))    // Quadrant III
-                    Quadrant3.Add(new Int32Vector(-x, -y));
-                if (Filter4(x, -y))     // Quadrant IV
-                    Quadrant4.Add(new Int32Vector(x, -y));
-
-                x++;
-                xStopping += yrSqTwo;
-                err += xChg;
-                xChg += yrSqTwo;
-                if ((yChg + (err << 1)) > 0)
-                {
-                    y--;
-                    yStopping -= xrSqTwo;
-                    err += yChg;
-                    yChg += xrSqTwo;
-                }
-            }
-
-            ReturnAction();
+            return -1;
         }
 
         /// <summary>
