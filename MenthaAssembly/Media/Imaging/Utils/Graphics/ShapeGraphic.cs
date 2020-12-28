@@ -1,5 +1,6 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
+using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging.Primitives
 {
@@ -534,9 +535,9 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(Int32Point[] Points, Pixel Fill, int OffsetX, int OffsetY)
+        public void FillPolygon(IList<Int32Point> Points, Pixel Fill, int OffsetX, int OffsetY)
         {
-            int Length = Points.Length;
+            int Length = Points.Count;
             int[] intersectionsX = new int[Length];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
