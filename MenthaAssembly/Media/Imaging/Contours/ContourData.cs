@@ -32,6 +32,12 @@ namespace MenthaAssembly.Media.Imaging
             internal set => Datas[Index] = value;
         }
 
+        public bool Contain(int X)
+        {
+            int Index = Datas.FindIndex(i => X < i);
+            return Index > 0 && (Index & 1) > 0;
+        }
+
         public void Clear()
             => Datas.Clear();
 

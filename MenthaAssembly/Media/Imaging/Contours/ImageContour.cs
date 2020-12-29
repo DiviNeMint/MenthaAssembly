@@ -80,6 +80,9 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
+        public bool Contain(int X, int Y) 
+            => Datas.TryGetValue(Y, out ContourData Data) && Data.Contain(X);
+
         public void Clear()
         {
             foreach (ContourData Data in Datas.Values)

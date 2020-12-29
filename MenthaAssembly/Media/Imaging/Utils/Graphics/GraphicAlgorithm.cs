@@ -601,7 +601,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             for (int i = 0; i <= pts; i++)
             {
-                Handler((int)(Rx * Math.Cos(Theta)), (int)(Ry * Math.Sin(Theta)));
+                Handler((int)Math.Ceiling(Rx * Math.Cos(Theta)), (int)Math.Ceiling(Ry * Math.Sin(Theta)));
                 Theta += Delta;
             }
         }

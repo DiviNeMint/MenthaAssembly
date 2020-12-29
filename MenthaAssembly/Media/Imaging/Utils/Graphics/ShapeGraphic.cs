@@ -1,6 +1,7 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging.Primitives
 {
@@ -567,8 +568,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             {
                 // Initial point x, y
                 Int32Point P0 = Vertices[0];
-                int vxi = P0.X + OffsetX,
-                    vyi = P0.Y + OffsetY;
+                float vxi = P0.X + OffsetX,
+                      vyi = P0.Y + OffsetY;
 
                 // Find all intersections
                 // Based on http://alienryderflex.com/polygon_fill/
@@ -577,15 +578,15 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 {
                     // Next point x, y
                     Int32Point P1 = Vertices[i];
-                    int vxj = P1.X + OffsetX,
-                        vyj = P1.Y + OffsetY;
+                    float vxj = P1.X + OffsetX,
+                          vyj = P1.Y + OffsetY;
 
                     // Is the scanline between the two points
                     if (vyi < y && vyj >= y ||
                         vyj < y && vyi >= y)
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
-                        intersectionsX[intersectionCount++] = vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi);
+                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
                     }
                     vxi = vxj;
                     vyi = vyj;
@@ -726,14 +727,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
         #region Other
         /// <summary>
-        /// Draw a Stamp.
+        /// Draw a stamp.
         /// </summary>
         /// <param name="Position">The coordinate of left-top in stamp.</param>
         /// <param name="Stamp">The stamp to draw.</param>
         public void DrawStamp(Int32Point Position, IImageContext Stamp)
             => DrawStamp(Position.X, Position.Y, Stamp);
         /// <summary>
-        /// Draw a Stamp.
+        /// Draw a stamp.
         /// </summary>
         /// <param name="X">The x-coordinate of left-top in stamp.</param>
         /// <param name="Y">The y-coordinate of left-top in stamp.</param>
@@ -777,6 +778,105 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         /// <param name="OffsetY">The offset of y-coordinate.</param>
         public void FillContour(ImageContour Contour, Pixel Fill, int OffsetX, int OffsetY)
             => this.Operator.ContourOverlay(this, Contour, Fill, OffsetX, OffsetY);
+
+        /// <summary>
+        /// Fill a region by <paramref name="BoundChecker"/>.
+        /// </summary>
+        /// <param name="SeedPoint">The coordinate of seed.</param>
+        /// <param name="Fill">The fill color for the region.</param>
+        /// <param name="BoundChecker">The checker of deciding bound.</param>
+        public void SeedFill(Int32Point SeedPoint, Pixel Fill, Func<int, int, bool> BoundChecker)
+            => SeedFill(SeedPoint.X, SeedPoint.Y, Fill, BoundChecker);
+        /// <summary>
+        /// Fill a region by <paramref name="BoundChecker"/>.
+        /// </summary>
+        /// <param name="SeedX">The x-coordinate of seed.</param>
+        /// <param name="SeedY">The y-coordinate of seed.</param>
+        /// <param name="Fill">The fill color for the region.</param>
+        /// <param name="BoundChecker">The checker of deciding bound.</param>
+        public void SeedFill(int SeedX, int SeedY, Pixel Fill, Func<int, int, bool> BoundChecker)
+        {
+            if (SeedX < 0 || Width <= SeedX ||
+                SeedY < 0 || Height <= SeedY)
+                return;
+
+            ImageContour Contour = new ImageContour();
+            Stack<int> StackX = new Stack<int>(),
+                       StackY = new Stack<int>();
+            StackX.Push(SeedX);
+            StackY.Push(SeedY);
+
+            int X, Y, SaveX, Rx, Lx;
+            while (StackX.Count > 0)
+            {
+                X = StackX.Pop();
+                Y = StackY.Pop();
+                SaveX = X;
+
+                // Find Right Bound
+                while (X < Width && !BoundChecker(X, Y))
+                    X++;
+
+                // Find Left Bound
+                Rx = X - 1;
+                X = SaveX - 1;
+                while (0 <= X && !BoundChecker(X, Y))
+                    X--;
+
+                Lx = X + 1;
+
+                // Log Region
+                Contour[Y].Union(Lx, Rx);
+
+                // Lower ScanLine's Seed
+                bool NeedFill = false;
+                X = Lx;
+                Y++;
+
+                if (0 <= Y && Y < Height &&
+                    !Contour.Contain(X, Y))
+                    for (; X <= Rx; X++)
+                    {
+                        while (X <= Rx && !BoundChecker(X, Y))
+                        {
+                            NeedFill = true;
+                            X++;
+                        }
+
+                        if (NeedFill)
+                        {
+                            StackX.Push(X - 1);
+                            StackY.Push(Y);
+                            NeedFill = false;
+                        }
+                    }
+
+                // Upper ScanLine's Seed
+                NeedFill = false;
+                X = Lx;
+                Y -= 2;
+                if (0 <= Y && Y < Height && 
+                    !Contour.Contain(X, Y))
+                    for (; X <= Rx; X++)
+                    {
+                        while (X <= Rx && !BoundChecker(X, Y))
+                        {
+                            NeedFill = true;
+                            X++;
+                        }
+
+                        if (NeedFill)
+                        {
+                            StackX.Push(X - 1);
+                            StackY.Push(Y);
+                            NeedFill = false;
+                        }
+                    }
+            }
+
+            FillContour(Contour, Fill, 0, 0);
+            Contour.Clear();
+        }
 
         #endregion
 
