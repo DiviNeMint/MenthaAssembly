@@ -1,7 +1,6 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging.Primitives
 {
@@ -855,7 +854,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 NeedFill = false;
                 X = Lx;
                 Y -= 2;
-                if (0 <= Y && Y < Height && 
+                if (0 <= Y && Y < Height &&
                     !Contour.Contain(X, Y))
                     for (; X <= Rx; X++)
                     {
