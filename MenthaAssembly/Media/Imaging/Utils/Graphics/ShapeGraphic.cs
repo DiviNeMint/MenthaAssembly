@@ -662,7 +662,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                int vxi = VerticeDatas[0] + OffsetX,
+                float vxi = VerticeDatas[0] + OffsetX,
                       vyi = VerticeDatas[1] + OffsetY;
 
                 // Find all intersections
@@ -671,15 +671,15 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 for (int i = 2; i < pn; i += 2)
                 {
                     // Next point x, y
-                    int vxj = VerticeDatas[i] + OffsetX,
-                        vyj = VerticeDatas[i + 1] + OffsetY;
+                    float vxj = VerticeDatas[i] + OffsetX,
+                          vyj = VerticeDatas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
                     if (vyi < y && vyj >= y ||
                         vyj < y && vyi >= y)
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
-                        intersectionsX[intersectionCount++] = vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi);
+                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
                     }
                     vxi = vxj;
                     vyi = vyj;

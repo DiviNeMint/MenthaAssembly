@@ -5,6 +5,7 @@ using System.Linq;
 namespace MenthaAssembly.Media.Imaging.Utils
 {
     public delegate void GraphicDeltaHandler(int DeltaX, int DeltaY);
+    public delegate void GraphicDoubleDeltaHandler(double DeltaX, double DeltaY);
     public delegate void GraphicPointsHandler(int X1, int Y1, int X2, int Y2);
 
     public static class GraphicAlgorithm
@@ -572,67 +573,85 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public static void CalculateArcFeaturePoints(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, GraphicDeltaHandler Handler)
+        public static void CalculateArcPolygonPoints(double DSx, double DSy, double DEx, double DEy, double Rx, double Ry, bool Clockwise, bool IgnoreEndPoint, GraphicDoubleDeltaHandler Handler)
         {
-            double Sa = CalculateAngle(DSx, DSy),
-                   Ea = CalculateAngle(DEx, DEy);
+            double Sa = Math.Atan2(DSy, DSx),
+                   TwoPI = 2 * Math.PI,
+                   Omega;
+            if (Sa < 0)
+                Sa += TwoPI;
 
-            double TwoPI = 2 * Math.PI,
-                   SweepA = Clockwise ? Ea == Sa ? TwoPI :
-                                                   Ea < Sa ? TwoPI - (Sa - Ea) :
-                                                             Ea - Sa :
-                                        Ea == Sa ? TwoPI :
-                                                   Ea < Sa ? Sa - Ea :
-                                                             TwoPI - (Ea - Sa);
-            int pts = (int)Math.Ceiling(Math.Max(Rx, Ry) * SweepA);
+            if (DSx == DEx && DSy == DEy)
+            {
+                Omega = Clockwise ? TwoPI : -TwoPI;
+            }
+            else
+            {
+                double Ea = Math.Atan2(DEy, DEx);
+                if (Ea < 0)
+                    Ea += TwoPI;
 
+                Omega = Clockwise == (Ea > Sa) ? Ea - Sa - TwoPI : Ea - Sa;
+            }
+
+            int pts = ((int)Math.Ceiling(Math.Max(Rx, Ry) * Omega)).Abs();
             if (pts < 2)
                 pts = 2;
 
             if (pts > 400)
                 pts = 400;
 
-            double Delta = SweepA / pts;
+            double Delta = Omega / pts,
+                   Theta = Sa;
 
-            if (!Clockwise)
-                Delta = -Delta;
+            for (int i = 0; i < pts; i++)
+            {
+                Handler(Rx * Math.Cos(Theta), Ry * Math.Sin(Theta));
+                Theta += Delta;
+            }
 
-            double Theta = Sa;
+            if (!IgnoreEndPoint)
+                Handler(Rx * Math.Cos(Theta), Ry * Math.Sin(Theta));
+        }
+        public static void CalculateArcPolygonPoints(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, bool IgnoreEndPoint, GraphicDeltaHandler Handler)
+        {
+            double Sa = Math.Atan2(DSy, DSx),
+                   TwoPI = 2 * Math.PI,
+                   Omega;
+            if (Sa < 0)
+                Sa += TwoPI;
 
-            for (int i = 0; i <= pts; i++)
+            if (DSx == DEx && DSy == DEy)
+            {
+                Omega = TwoPI;
+            }
+            else
+            {
+                double Ea = Math.Atan2(DEy, DEx);
+                if (Ea < 0)
+                    Ea += TwoPI;
+
+                Omega = Clockwise == (Ea > Sa) ? Ea - Sa - TwoPI : Ea - Sa;
+            }
+
+            int pts = ((int)Math.Ceiling(Math.Max(Rx, Ry) * Omega)).Abs();
+            if (pts < 2)
+                pts = 2;
+
+            if (pts > 400)
+                pts = 400;
+
+            double Delta = Omega / pts,
+                   Theta = Sa;
+
+            for (int i = 0; i < pts; i++)
             {
                 Handler((int)(Rx * Math.Cos(Theta)), (int)(Ry * Math.Sin(Theta)));
                 Theta += Delta;
             }
-        }
 
-        public static double CalculateAngle(int Px, int Py)
-        {
-            if (Px < 0 && Py == 0)
-                return Math.PI;
-
-            if (Px > 0 && Py == 0)
-                return 0d;
-
-            if (Px == 0 && Py > 0)
-                return Math.PI * 0.5;
-
-            if (Px == 0 && Py < 0)
-                return Math.PI * 1.5;
-
-            if (Px < 0 && Py < 0)
-                return Math.Atan(Py / Px) + Math.PI;
-
-            if (Px < 0 && Py > 0)
-                return Math.PI - Math.Atan(Py / (-Px));
-
-            if (Px > 0 && Py > 0)
-                return Math.Atan(Py / Px);
-
-            if (Px > 0 && Py < 0)
-                return 2 * Math.PI - Math.Atan(-Py / Px);
-
-            return -1;
+            if (!IgnoreEndPoint)
+                Handler((int)(Rx * Math.Cos(Theta)), (int)(Ry * Math.Sin(Theta)));
         }
 
         /// <summary>
@@ -754,12 +773,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                     new FloatBound(X1, Y0, X0, Y1)) :
                          (Y1 < Y0 ? new FloatBound(X0, Y1, X1, Y0) :
                                     new FloatBound(X0, Y0, X1, Y1));
-        public static FloatBound CalculateArcBound(float Sx, float Sy, float Ex, float Ey, float Cx, float Cy, bool Clockwise, out float Radius)
+        public static FloatBound CalculateArcBound(float Sx, float Sy, float Ex, float Ey, float Cx, float Cy, float Radius, bool Clockwise)
         {
-            double SCx = Sx - Cx,
-                   SCy = Sy - Cy;
-            Radius = (float)Math.Sqrt(SCx * SCx + SCy * SCy);
-
             if (Cx < Sx)
             {
                 if (Cy < Sy)
