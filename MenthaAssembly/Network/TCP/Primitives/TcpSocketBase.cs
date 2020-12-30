@@ -67,22 +67,22 @@ namespace MenthaAssembly.Network.Primitives
         internal protected IMessage Send(SocketToken Token, IMessage Request, int TimeoutMileseconds)
         {
             TaskCompletionSource<IMessage> TaskToken = new TaskCompletionSource<IMessage>();
-            Token.ResponseTaskSource = TaskToken;
 
             // Timeout
             CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
             CancelToken.Token.Register(() => TaskToken.TrySetResult(ErrorMessage.Timeout), false);
-            Token.ResponseCancelToken = CancelToken;
 
             try
             {
                 Token.Lock.Wait(CancelToken.Token);
                 if (!CancelToken.IsCancellationRequested)
                 {
+                    int UID = -1;
                     if (Request is IIdentityMessage IdentityMessage)
                     {
                         Token.LastRequsetUID += 2;
-                        IdentityMessage.UID = Token.LastRequsetUID;
+                        UID = Token.LastRequsetUID;
+                        IdentityMessage.UID = UID;
                     }
 
                     // Encode Message
@@ -97,14 +97,11 @@ namespace MenthaAssembly.Network.Primitives
 
                         // Set Result
                         TaskToken.TrySetResult(ErrorMessage.EncodeException);
-                        Token.ResponseTaskSource = null;
 
                         // Release CancelToken
-                        Token.ResponseCancelToken?.Dispose();
-                        Token.ResponseCancelToken = null;
+                        CancelToken.Dispose();
 
-                        TaskToken.Task.Wait();
-                        return TaskToken.Task.Result;
+                        return ErrorMessage.EncodeException;
                     }
 
                     byte[] Buffer = DequeueBuffer();
@@ -116,19 +113,27 @@ namespace MenthaAssembly.Network.Primitives
 
                         // Set Result
                         TaskToken.TrySetResult(ErrorMessage.NotSupport);
-                        Token.ResponseTaskSource = null;
 
                         // Release CancelToken
-                        Token.ResponseCancelToken?.Dispose();
-                        Token.ResponseCancelToken = null;
+                        CancelToken.Dispose();
 
-                        TaskToken.Task.Wait();
-                        return TaskToken.Task.Result;
+                        return ErrorMessage.NotSupport;
                     }
 
                     // Send Datas
                     try
                     {
+                        if (UID > -1)
+                        {
+                            Token.ResponseTaskSources.AddOrUpdate(UID, TaskToken, (k, v) => TaskToken);
+                            Token.ResponseCancelTokens.AddOrUpdate(UID, CancelToken, (k, v) => CancelToken);
+                        }
+                        else
+                        {
+                            Token.LastResponseTaskSource = TaskToken;
+                            Token.LastResponseCancelToken = CancelToken;
+                        }
+
                         do
                         {
                             SocketAsyncEventArgs e = Dequeue(false);
@@ -237,22 +242,22 @@ namespace MenthaAssembly.Network.Primitives
         internal protected async Task<IMessage> SendAsync(SocketToken Token, IMessage Request, int TimeoutMileseconds)
         {
             TaskCompletionSource<IMessage> TaskToken = new TaskCompletionSource<IMessage>();
-            Token.ResponseTaskSource = TaskToken;
 
             // Timeout
             CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
             CancelToken.Token.Register(() => TaskToken.TrySetResult(ErrorMessage.Timeout), false);
-            Token.ResponseCancelToken = CancelToken;
 
             try
             {
                 await Token.Lock.WaitAsync(CancelToken.Token);
                 if (!CancelToken.IsCancellationRequested)
                 {
+                    int UID = -1;
                     if (Request is IIdentityMessage IdentityMessage)
                     {
                         Token.LastRequsetUID += 2;
-                        IdentityMessage.UID = Token.LastRequsetUID;
+                        UID = Token.LastRequsetUID;
+                        IdentityMessage.UID = UID;
                     }
 
                     // Encode Message
@@ -267,11 +272,9 @@ namespace MenthaAssembly.Network.Primitives
 
                         // Set Result
                         TaskToken.TrySetResult(ErrorMessage.EncodeException);
-                        Token.ResponseTaskSource = null;
 
                         // Release CancelToken
-                        Token.ResponseCancelToken?.Dispose();
-                        Token.ResponseCancelToken = null;
+                        CancelToken.Dispose();
 
                         return await TaskToken.Task;
                     }
@@ -285,11 +288,9 @@ namespace MenthaAssembly.Network.Primitives
 
                         // Set Result
                         TaskToken.TrySetResult(ErrorMessage.NotSupport);
-                        Token.ResponseTaskSource = null;
 
                         // Release CancelToken
-                        Token.ResponseCancelToken?.Dispose();
-                        Token.ResponseCancelToken = null;
+                        CancelToken.Dispose();
 
                         return await TaskToken.Task;
                     }
@@ -297,6 +298,17 @@ namespace MenthaAssembly.Network.Primitives
                     // Send Datas
                     try
                     {
+                        if (UID > -1)
+                        {
+                            Token.ResponseTaskSources.AddOrUpdate(UID, TaskToken, (k, v) => TaskToken);
+                            Token.ResponseCancelTokens.AddOrUpdate(UID, CancelToken, (k, v) => CancelToken);
+                        }
+                        else
+                        {
+                            Token.LastResponseTaskSource = TaskToken;
+                            Token.LastResponseCancelToken = CancelToken;
+                        }
+
                         do
                         {
                             SocketAsyncEventArgs e = Dequeue(false);
@@ -503,30 +515,40 @@ namespace MenthaAssembly.Network.Primitives
 
         private void OnReplyProcess(SocketToken Token, IMessage ReceiveMessage)
         {
-            bool IsResponse = true;
             int ReceiveUID = -1;
 
             if (ReceiveMessage is IIdentityMessage IdentityMessage)
-            {
-                IsResponse = Token.LastRequsetUID == IdentityMessage.UID;
                 ReceiveUID = IdentityMessage.UID;
-            }
 
-            if (IsResponse &&
-                Token.ResponseTaskSource != null)
+            if (ReceiveUID > -1 &&
+                Token.ResponseTaskSources.TryRemove(ReceiveUID, out TaskCompletionSource<IMessage> ResponseTask))
             {
                 try
                 {
                     // Set Response
-                    Token.ResponseTaskSource.TrySetResult(ReceiveMessage);
+                    ResponseTask.TrySetResult(ReceiveMessage);
                 }
                 finally
                 {
-                    Token.ResponseTaskSource = null;
+                    // Release CancelToken
+                    if (Token.ResponseCancelTokens.TryRemove(ReceiveUID, out CancellationTokenSource CancelToken))
+                        CancelToken.Dispose();
+                }
+            }
+            else if (Token.LastResponseTaskSource != null)
+            {
+                try
+                {
+                    // Set Response
+                    Token.LastResponseTaskSource.TrySetResult(ReceiveMessage);
+                }
+                finally
+                {
+                    Token.LastResponseTaskSource = null;
 
                     // Release CancelToken
-                    Token.ResponseCancelToken?.Dispose();
-                    Token.ResponseCancelToken = null;
+                    Token.LastResponseCancelToken?.Dispose();
+                    Token.LastResponseCancelToken = null;
                 }
             }
             else
@@ -636,15 +658,18 @@ namespace MenthaAssembly.Network.Primitives
             public IPEndPoint Address { get; private set; }
 
             /// <summary>
-            /// Client : odd
-            /// <para/>
+            /// Client : odd,<para/>
             /// Server : even
             /// </summary>
             public int LastRequsetUID { set; get; }
 
-            public TaskCompletionSource<IMessage> ResponseTaskSource { set; get; }
+            public ConcurrentDictionary<int, TaskCompletionSource<IMessage>> ResponseTaskSources { get; }
 
-            public CancellationTokenSource ResponseCancelToken { set; get; }
+            public ConcurrentDictionary<int, CancellationTokenSource> ResponseCancelTokens { get; }
+
+            public TaskCompletionSource<IMessage> LastResponseTaskSource { set; get; }
+
+            public CancellationTokenSource LastResponseCancelToken { set; get; }
 
             public int PingCounter { set; get; }
 
@@ -652,6 +677,8 @@ namespace MenthaAssembly.Network.Primitives
             {
                 this.Socket = Socket;
                 this.Address = (IPEndPoint)Socket.RemoteEndPoint;
+                this.ResponseTaskSources = new ConcurrentDictionary<int, TaskCompletionSource<IMessage>>();
+                this.ResponseCancelTokens = new ConcurrentDictionary<int, CancellationTokenSource>();
             }
 
             internal bool IsDisposed = false;
@@ -667,11 +694,19 @@ namespace MenthaAssembly.Network.Primitives
                     Socket = null;
                     Address = null;
 
-                    // Dispose ResponseTask
-                    ResponseTaskSource?.TrySetResult(ErrorMessage.Disconnected);
-                    ResponseTaskSource = null;
-                    ResponseCancelToken?.Dispose();
-                    ResponseCancelToken = null;
+                    // Dispose Response Task
+                    foreach (TaskCompletionSource<IMessage> Task in ResponseTaskSources.Values)
+                        Task.TrySetResult(ErrorMessage.Disconnected);
+                    ResponseTaskSources.Clear();
+
+                    foreach (CancellationTokenSource Token in ResponseCancelTokens.Values)
+                        Token.Dispose();
+                    ResponseCancelTokens.Clear();
+
+                    LastResponseTaskSource?.TrySetResult(ErrorMessage.Disconnected);
+                    LastResponseTaskSource = null;
+                    LastResponseCancelToken?.Dispose();
+                    LastResponseCancelToken = null;
 
                     // Dispose Lock
                     Lock?.Dispose();
