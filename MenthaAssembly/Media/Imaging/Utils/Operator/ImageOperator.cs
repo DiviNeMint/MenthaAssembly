@@ -230,6 +230,113 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Source.BlockOverlayTo<Pixel>(OffsetX, OffsetY, Width, Height, pPixels, Destination.Stride);
         }
 
+        public ImageContour FindBound(IImageContext Source, int SeedX, int SeedY, ImagePredicate Predicate)
+        {
+            int Width = Source.Width,
+                Height = Source.Height;
+
+            if (SeedX < 0 || Width <= SeedX ||
+                SeedY < 0 || Height <= SeedY)
+                return null;
+
+            ImageContour Contour = new ImageContour();
+            Stack<int> StackX = new Stack<int>(),
+                       StackY = new Stack<int>();
+            StackX.Push(SeedX);
+            StackY.Push(SeedY);
+
+            int X, Y, SaveX, Rx, Lx;
+            long Offset;
+            Pixel* pSeed, pPixels;
+            while (StackX.Count > 0)
+            {
+                X = StackX.Pop();
+                Y = StackY.Pop();
+                SaveX = X;
+
+                Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+                pSeed = (Pixel*)((byte*)Source.Scan0 + Offset);
+                pPixels = pSeed;
+
+                // Find Right Bound
+                while (X < Width && !Predicate(X, Y, pPixels->A, pPixels->R, pPixels->G, pPixels->B))
+                {
+                    X++;
+                    pPixels++;
+                }
+
+                // Find Left Bound
+                Rx = X - 1;
+                X = SaveX - 1;
+
+                pPixels = pSeed - 1;
+                while (-1 < X && !Predicate(X, Y, pPixels->A, pPixels->R, pPixels->G, pPixels->B))
+                {
+                    X--;
+                    pPixels--;
+                }
+
+                Lx = X + 1;
+
+                // Log Region
+                Contour[Y].Union(Lx, Rx);
+
+                // Lower ScanLine's Seed
+                bool NeedFill = false;
+                X = Lx;
+                Y++;
+
+                Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+                pSeed = (Pixel*)((byte*)Source.Scan0 + Offset);
+                if (-1 < Y && Y < Height &&
+                    !Contour.Contain(X, Y))
+                    for (; X <= Rx; X++)
+                    {
+                        while (X <= Rx && !Predicate(X, Y, pSeed->A, pSeed->R, pSeed->G, pSeed->B))
+                        {
+                            NeedFill = true;
+                            X++;
+                            pSeed++;
+                        }
+
+                        if (NeedFill)
+                        {
+                            StackX.Push(X - 1);
+                            StackY.Push(Y);
+                            NeedFill = false;
+                        }
+                    }
+
+                // Upper ScanLine's Seed
+                NeedFill = false;
+                X = Lx;
+                Y -= 2;
+
+                Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+                pSeed = (Pixel*)((byte*)Source.Scan0 + Offset);
+                if (0 <= Y && Y < Height &&
+                    !Contour.Contain(X, Y))
+                    for (; X <= Rx; X++)
+                    {
+                        while (X <= Rx && !Predicate(X, Y, pSeed->A, pSeed->R, pSeed->G, pSeed->B))
+                        {
+                            NeedFill = true;
+                            X++;
+                            pSeed++;
+                        }
+
+                        if (NeedFill)
+                        {
+                            StackX.Push(X - 1);
+                            StackY.Push(Y);
+                            NeedFill = false;
+                        }
+                    }
+            }
+
+            return Contour;
+        }
+
         private static readonly ConcurrentDictionary<string, IImageOperator> ImageOperators = new ConcurrentDictionary<string, IImageOperator>();
         public static IImageOperator<Pixel> GetOperator()
         {

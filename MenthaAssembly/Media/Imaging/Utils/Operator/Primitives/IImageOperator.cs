@@ -1,5 +1,7 @@
 ﻿namespace MenthaAssembly.Media.Imaging.Utils
 {
+    public delegate bool ImagePredicate(int X, int Y, byte A, byte R, byte G, byte B);
+
     internal interface IImageOperator
     {
     }
@@ -27,6 +29,8 @@
         public void ContourOverlay(IImageContext Destination, ImageContour Contour, Pixel Color, int OffsetX, int OffsetY);
 
         public void BlockOverlay(IImageContext Destination, int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height);
+
+        public ImageContour FindBound(IImageContext Source, int SeedX, int SeedY, ImagePredicate Predicate);
 
     }
 }

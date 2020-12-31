@@ -779,102 +779,27 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => this.Operator.ContourOverlay(this, Contour, Fill, OffsetX, OffsetY);
 
         /// <summary>
-        /// Fill a region by <paramref name="BoundChecker"/>.
+        /// Fill a region by <paramref name="Predicate"/>.
         /// </summary>
         /// <param name="SeedPoint">The coordinate of seed.</param>
         /// <param name="Fill">The fill color for the region.</param>
-        /// <param name="BoundChecker">The checker of deciding bound.</param>
-        public void SeedFill(Int32Point SeedPoint, Pixel Fill, Func<int, int, bool> BoundChecker)
-            => SeedFill(SeedPoint.X, SeedPoint.Y, Fill, BoundChecker);
+        /// <param name="Predicate">The decider of bound.</param>
+        public void SeedFill(Int32Point SeedPoint, Pixel Fill, ImagePredicate Predicate)
+            => SeedFill(SeedPoint.X, SeedPoint.Y, Fill, Predicate);
         /// <summary>
-        /// Fill a region by <paramref name="BoundChecker"/>.
+        /// Fill a region by <paramref name="Predicate"/>.
         /// </summary>
         /// <param name="SeedX">The x-coordinate of seed.</param>
         /// <param name="SeedY">The y-coordinate of seed.</param>
         /// <param name="Fill">The fill color for the region.</param>
-        /// <param name="BoundChecker">The checker of deciding bound.</param>
-        public void SeedFill(int SeedX, int SeedY, Pixel Fill, Func<int, int, bool> BoundChecker)
+        /// <param name="Predicate">The decider of bound.</param>
+        public void SeedFill(int SeedX, int SeedY, Pixel Fill, ImagePredicate Predicate)
         {
-            if (SeedX < 0 || Width <= SeedX ||
-                SeedY < 0 || Height <= SeedY)
-                return;
-
-            ImageContour Contour = new ImageContour();
-            Stack<int> StackX = new Stack<int>(),
-                       StackY = new Stack<int>();
-            StackX.Push(SeedX);
-            StackY.Push(SeedY);
-
-            int X, Y, SaveX, Rx, Lx;
-            while (StackX.Count > 0)
+            if (this.Operator.FindBound(this, SeedX, SeedY, Predicate) is ImageContour Contour)
             {
-                X = StackX.Pop();
-                Y = StackY.Pop();
-                SaveX = X;
-
-                // Find Right Bound
-                while (X < Width && !BoundChecker(X, Y))
-                    X++;
-
-                // Find Left Bound
-                Rx = X - 1;
-                X = SaveX - 1;
-                while (0 <= X && !BoundChecker(X, Y))
-                    X--;
-
-                Lx = X + 1;
-
-                // Log Region
-                Contour[Y].Union(Lx, Rx);
-
-                // Lower ScanLine's Seed
-                bool NeedFill = false;
-                X = Lx;
-                Y++;
-
-                if (0 <= Y && Y < Height &&
-                    !Contour.Contain(X, Y))
-                    for (; X <= Rx; X++)
-                    {
-                        while (X <= Rx && !BoundChecker(X, Y))
-                        {
-                            NeedFill = true;
-                            X++;
-                        }
-
-                        if (NeedFill)
-                        {
-                            StackX.Push(X - 1);
-                            StackY.Push(Y);
-                            NeedFill = false;
-                        }
-                    }
-
-                // Upper ScanLine's Seed
-                NeedFill = false;
-                X = Lx;
-                Y -= 2;
-                if (0 <= Y && Y < Height &&
-                    !Contour.Contain(X, Y))
-                    for (; X <= Rx; X++)
-                    {
-                        while (X <= Rx && !BoundChecker(X, Y))
-                        {
-                            NeedFill = true;
-                            X++;
-                        }
-
-                        if (NeedFill)
-                        {
-                            StackX.Push(X - 1);
-                            StackY.Push(Y);
-                            NeedFill = false;
-                        }
-                    }
+                FillContour(Contour, Fill, 0, 0);
+                Contour.Clear();
             }
-
-            FillContour(Contour, Fill, 0, 0);
-            Contour.Clear();
         }
 
         #endregion
