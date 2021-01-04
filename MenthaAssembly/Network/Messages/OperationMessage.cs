@@ -5,28 +5,14 @@ using System.Text;
 
 namespace MenthaAssembly.Network
 {
-    public class ErrorMessage : IIdentityMessage
+    public class OperationMessage : IIdentityMessage
     {
-        public static ErrorMessage Timeout => new ErrorMessage("Timeout.");
-
-        public static ErrorMessage NotSupport => new ErrorMessage("Not support.");
-
-        public static ErrorMessage EncodeException => new ErrorMessage("Happen exception when encode request.");
-
-        public static ErrorMessage ReceivingNotSupport => new ErrorMessage("The receiving side not support this request.");
-
-        public static ErrorMessage ReceivingEncodeException => new ErrorMessage("The receiving side happen exception when encode response.");
-
-        public static ErrorMessage ReceivingHandleException => new ErrorMessage("The receiving side happen exception when handle request.");
-
-        public static ErrorMessage ClientNotFound => new ErrorMessage("Client not found.");
-
-        public static ErrorMessage Disconnected => new ErrorMessage("Disconnected.");
+        public static OperationMessage DoNothing { get; } = new OperationMessage("Do nothing.");
 
         internal int _UID;
         public int UID => _UID;
-        
-        int IIdentityMessage.UID 
+
+        int IIdentityMessage.UID
         {
             get => _UID;
             set => _UID = value;
@@ -34,12 +20,12 @@ namespace MenthaAssembly.Network
 
         public string Message { get; }
 
-        public ErrorMessage(string Message)
+        public OperationMessage(string Message)
         {
             this.Message = Message;
         }
 
-        public static Stream Encode(ErrorMessage Message)
+        public static Stream Encode(OperationMessage Message)
         {
             MemoryStream EncodeStream = new MemoryStream();
 
@@ -64,7 +50,7 @@ namespace MenthaAssembly.Network
             return EncodeStream;
         }
 
-        public static ErrorMessage Decode(Stream Stream)
+        public static OperationMessage Decode(Stream Stream)
         {
             // Decode UID
             int UID = Stream.Read<int>();
@@ -81,14 +67,13 @@ namespace MenthaAssembly.Network
                 Message = Encoding.Default.GetString(Datas);
             }
 
-            return new ErrorMessage(Message) { _UID = UID };
+            return new OperationMessage(Message) { _UID = UID };
         }
 
-        public override int GetHashCode() 
+        public override int GetHashCode()
             => 460171812 + EqualityComparer<string>.Default.GetHashCode(Message);
 
         public override bool Equals(object obj)
-            => obj is ErrorMessage Item && this.Message.Equals(Item.Message);
-
+            => obj is OperationMessage Item && this.Message.Equals(Item.Message);
     }
 }

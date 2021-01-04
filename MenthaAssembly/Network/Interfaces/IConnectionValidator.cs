@@ -4,7 +4,7 @@ namespace MenthaAssembly.Network
 {
     public interface IConnectionValidator
     {
-        bool Validate(IPEndPoint Address);
+        bool Validate(TcpServer Server, IPEndPoint Address);
 
     }
 }
