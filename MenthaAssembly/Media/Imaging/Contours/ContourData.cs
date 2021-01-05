@@ -170,8 +170,9 @@ namespace MenthaAssembly.Media.Imaging
             if (Datas.Count == 0)
                 return;
 
+            int Index = 0;
             for (int i = 0; i < Info.Datas.Count;)
-                this.HandleDifference(Info.Datas[i++], Info.Datas[i++]);
+                this.HandleDifference(Info.Datas[i++], Info.Datas[i++], ref Index);
         }
         public void Difference(int Left, int Right)
         {
@@ -186,7 +187,13 @@ namespace MenthaAssembly.Media.Imaging
         public static ContourData Difference(ContourData Data, int Left, int Right)
         {
             ContourData Result = new ContourData(Data.Datas);
-            Result.HandleDifference(Left, Right);
+            Result.Difference(Left, Right);
+            return Result;
+        }
+        public static ContourData Difference(ContourData Data1, ContourData Data2)
+        {
+            ContourData Result = new ContourData(Data1.Datas);
+            Result.Difference(Data2);
             return Result;
         }
 
@@ -333,26 +340,123 @@ namespace MenthaAssembly.Media.Imaging
                     this.Datas.RemoveAt(i);
             }
         }
-        private void HandleDifference(int Left, int Right)
+        private void HandleUnion(int Left, int Right, ref int StartIndex)
         {
-            int MinIndex = 0;
-            for (; MinIndex < Datas.Count; MinIndex++)
-                if (Left < Datas[MinIndex])
+            int Index = -1,
+                Tx, Lx;
+
+            for (; StartIndex < Datas.Count; StartIndex++)
+            {
+                Tx = Datas[StartIndex];
+
+                if (Left < Tx)
                     break;
 
-            int MaxIndex = MinIndex;
+                Index = StartIndex;
+                Lx = Tx;
+            }
+
+            if (Index == -1)
+            {
+                Datas.Add(Left);
+                Datas.Add(Right);
+                StartIndex = Datas.Count;
+                return;
+            }
+
+
+
+
+
+
+            if ((StartIndex & 0x01) == 0)
+            {
+
+
+
+
+            }
+
+
+
+
+
+            //int MaxIndex = StartIndex;
+            //for (; MaxIndex < Datas.Count; MaxIndex++)
+            //    if (Right < Datas[MaxIndex])
+            //        break;
+
+
+
+
+
+        }
+
+
+        private void HandleDifference(int Left, int Right)
+        {
+            int Index = 0;
+            HandleDifference(Left, Right, ref Index);
+            //int MinIndex = 0;
+            //for (; MinIndex < Datas.Count; MinIndex++)
+            //    if (Left < Datas[MinIndex])
+            //        break;
+
+            //int MaxIndex = MinIndex;
+            //for (; MaxIndex < Datas.Count; MaxIndex++)
+            //    if (Right < Datas[MaxIndex])
+            //        break;
+
+            //if (MinIndex == MaxIndex)
+            //{
+            //    if ((MinIndex & 0x01) == 0)
+            //        return;
+
+            //    Datas.Insert(MaxIndex, Right);
+            //    Datas.Insert(MaxIndex, Left);
+            //    return;
+            //}
+
+            //if ((MaxIndex & 0x01) == 1)
+            //{
+            //    MaxIndex--;
+            //    Datas[MaxIndex] = Right;
+            //}
+
+            //if ((MinIndex & 0x01) == 1)
+            //{
+            //    Datas[MinIndex] = Left;
+            //    MinIndex++;
+            //}
+
+            //for (int i = MaxIndex - 1; i >= MinIndex; i--)
+            //    Datas.RemoveAt(i);
+        }
+        private void HandleDifference(int Left, int Right, ref int StartIndex)
+        {
+            for (; StartIndex < Datas.Count; StartIndex++)
+                if (Left <= Datas[StartIndex])
+                    break;
+
+            int MaxIndex = StartIndex;
             for (; MaxIndex < Datas.Count; MaxIndex++)
                 if (Right < Datas[MaxIndex])
                     break;
 
-            if (MinIndex == MaxIndex)
+            if (StartIndex == MaxIndex)
             {
-                if ((MinIndex & 0x01) == 0)
+                if ((StartIndex & 0x01) == 0)
                     return;
 
                 Datas.Insert(MaxIndex, Right);
                 Datas.Insert(MaxIndex, Left);
                 return;
+            }
+
+            if ((StartIndex & 0x01) == 1)
+            {
+                Datas[StartIndex] = Left;
+                StartIndex++;
             }
 
             if ((MaxIndex & 0x01) == 1)
@@ -361,13 +465,7 @@ namespace MenthaAssembly.Media.Imaging
                 Datas[MaxIndex] = Right;
             }
 
-            if ((MinIndex & 0x01) == 1)
-            {
-                Datas[MinIndex] = Left;
-                MinIndex++;
-            }
-
-            for (int i = MaxIndex - 1; i >= MinIndex; i--)
+            for (int i = MaxIndex - 1; i >= StartIndex; i--)
                 Datas.RemoveAt(i);
         }
 
@@ -416,6 +514,28 @@ namespace MenthaAssembly.Media.Imaging
 
             Equal = false;
             return -1;
+        }
+
+        public static ContourData operator +(ContourData This, ContourData Data)
+        {
+            This.Union(Data);
+            return This;
+        }
+        public static ContourData operator -(ContourData This, ContourData Data)
+        {
+            This.Difference(Data);
+            return This;
+        }
+
+        public static ContourData operator +(ContourData This, int OffsetX)
+        {
+            This.Offset(OffsetX);
+            return This;
+        }
+        public static ContourData operator -(ContourData This, int OffsetX)
+        {
+            This.Offset(-OffsetX);
+            return This;
         }
 
     }
