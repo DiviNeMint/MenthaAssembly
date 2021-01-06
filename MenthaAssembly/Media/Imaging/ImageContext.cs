@@ -78,7 +78,7 @@ namespace MenthaAssembly.Media.Imaging
                 ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
                 PixelOperator<T> Operator = PixelOperator<T>.GetOperator();
-                int DestStride = Result.Stride;
+                long DestStride = Result.Stride;
                 byte* Dest0 = (byte*)Result.Scan0;
                 Parallel.For(0, Height, (y) =>
                 {
@@ -95,7 +95,7 @@ namespace MenthaAssembly.Media.Imaging
 
                 PixelOperator<T> Operator = PixelOperator<T>.GetOperator();
 
-                int DestStride = Result.Stride;
+                long DestStride = Result.Stride;
                 byte* Dest0 = (byte*)Result.Scan0;
                 Parallel.For(0, Height, (y) =>
                 {
@@ -519,7 +519,7 @@ namespace MenthaAssembly.Media.Imaging
                 foreach (Pixel color in this.Palette)
                     Result.Palette.Add(color);
 
-                int dStride = Result.Stride;
+                long dStride = Result.Stride;
                 byte* sScan0 = (byte*)this.Scan0,
                       dScan0 = (byte*)Result.Scan0;
                 Parallel.For(0, this.Height, (y) =>
@@ -540,8 +540,8 @@ namespace MenthaAssembly.Media.Imaging
                 foreach (Pixel Color in this.Palette)
                     Result.Palette.Add(Color);
 
-                int dStride = Result.Stride,
-                    dXBit = Result.Width * Result.BitsPerPixel;
+                long dStride = Result.Stride;
+                int dXBit = Result.Width * Result.BitsPerPixel;
                 byte* sScan0 = (byte*)this.Scan0,
                       dScan0 = (byte*)Result.Scan0 + (dXBit >> 3);
                 Parallel.For(0, this.Height, (y) =>

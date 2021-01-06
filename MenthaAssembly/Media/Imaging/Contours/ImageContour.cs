@@ -427,14 +427,37 @@ namespace MenthaAssembly.Media.Imaging
                 }
 
                 // Add Datas
-                for (int i = 0; i < intersectionCount - 1; i += 2)
+                for (int i = 0; i < intersectionCount - 1;)
                 {
-                    Polygon[y].Datas.Add(intersectionsX[i]);
-                    Polygon[y].Datas.Add(intersectionsX[i + 1]);
+                    Polygon[y].Datas.Add(intersectionsX[i++]);
+                    Polygon[y].Datas.Add(intersectionsX[i++]);
                 }
             }
 
             return Polygon;
+        }
+
+
+        public static ImageContour operator +(ImageContour This, ImageContour Contour)
+        {
+            This.Union(Contour);
+            return This;
+        }
+        public static ImageContour operator -(ImageContour This, ImageContour Contour)
+        {
+            This.Difference(Contour);
+            return This;
+        }
+
+        public static ImageContour operator +(ImageContour This, Int32Vector Offset)
+        {
+            This.Offset(Offset.X, Offset.Y);
+            return This;
+        }
+        public static ImageContour operator -(ImageContour This, Int32Vector Offset)
+        {
+            This.Offset(-Offset.X, -Offset.Y);
+            return This;
         }
 
     }

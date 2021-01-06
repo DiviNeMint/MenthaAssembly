@@ -506,6 +506,8 @@ namespace MenthaAssembly.Media.Imaging
 
             for (int i = MaxIndex - 1; i >= MinIndex; i--)
                 Datas.RemoveAt(i);
+
+            StartIndex = MinIndex;
         }
 
         //private void HandleDifference(int Left, int Right)

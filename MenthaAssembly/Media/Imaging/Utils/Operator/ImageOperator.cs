@@ -31,7 +31,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void ScanLineCopy(IImageContext Source, int X, int Y, int Length, byte* pDest)
         {
-            long Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
             Pixel* pPixels = (Pixel*)((byte*)Source.Scan0 + Offset),
                    pPixelDest = (Pixel*)pDest;
             for (int i = 0; i < Length; i++)
@@ -39,7 +39,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public void ScanLineCopy<T>(IImageContext Source, int X, int Y, int Length, byte* pDest, PixelOperator<T> Operator) where T : unmanaged, IPixel
         {
-            long Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
             Pixel* pPixels = (Pixel*)((byte*)Source.Scan0 + Offset);
             for (int i = 0; i < Length; i++)
             {
@@ -50,7 +50,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public void ScanLineCopy3(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            int Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
+            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
             Pixel* pPixels = (Pixel*)((byte*)Source.Scan0 + Offset);
             for (int i = 0; i < Length; i++)
             {
@@ -62,7 +62,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public void ScanLineCopy4(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            int Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
+            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
             Pixel* pPixels = (Pixel*)((byte*)Source.Scan0 + Offset);
             for (int i = 0; i < Length; i++)
             {
@@ -76,7 +76,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void ScanLineOverlay(IImageContext Destination, int X, int Y, int Length, Pixel Color)
         {
-            long Offset = Destination.Stride * Y + (((long)X * Destination.BitsPerPixel) >> 3);
+            long Offset = Destination.Stride * Y + ((X * Destination.BitsPerPixel) >> 3);
             byte* pPixels = (byte*)Destination.Scan0 + Offset;
 
             if (Color.A == byte.MinValue || Color.A == byte.MaxValue)
@@ -96,7 +96,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public void ScanLineOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDest, PixelOperator<T> Operator) where T : unmanaged, IPixel
         {
-            long Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
             Pixel* pPixels = (Pixel*)((byte*)Source.Scan0 + Offset);
             for (int i = 0; i < Length; i++)
             {
@@ -107,7 +107,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public void ScanLineOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB, PixelOperator<T> Operator) where T : unmanaged, IPixel
         {
-            int Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
+            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
             Pixel* pPixels = (Pixel*)((byte*)Source.Scan0 + Offset);
             for (int i = 0; i < Length; i++)
             {
@@ -120,7 +120,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public void ScanLineOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB, PixelOperator<T> Operator) where T : unmanaged, IPixel
         {
-            int Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
+            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
             Pixel* pPixels = (Pixel*)((byte*)Source.Scan0 + Offset);
             for (int i = 0; i < Length; i++)
             {
@@ -254,7 +254,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Y = StackY.Pop();
                 SaveX = X;
 
-                Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+                Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
                 pSeed = (Pixel*)((byte*)Source.Scan0 + Offset);
                 pPixels = pSeed;
 
@@ -286,7 +286,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 X = Lx;
                 Y++;
 
-                Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+                Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
                 pSeed = (Pixel*)((byte*)Source.Scan0 + Offset);
                 if (-1 < Y && Y < Height &&
                     !Contour.Contain(X, Y))
@@ -312,7 +312,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 X = Lx;
                 Y -= 2;
 
-                Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+                Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
                 pSeed = (Pixel*)((byte*)Source.Scan0 + Offset);
                 if (0 <= Y && Y < Height &&
                     !Contour.Contain(X, Y))
