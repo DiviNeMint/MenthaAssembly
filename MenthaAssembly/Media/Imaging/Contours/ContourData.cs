@@ -141,8 +141,9 @@ namespace MenthaAssembly.Media.Imaging
                 return;
             }
 
+            int Index = 0;
             for (int i = 0; i < Info.Datas.Count;)
-                this.HandleUnion(Info.Datas[i++], Info.Datas[i++]);
+                this.HandleUnion(Info.Datas[i++], Info.Datas[i++], ref Index);
         }
         public void Union(int Left, int Right)
         {
@@ -156,12 +157,19 @@ namespace MenthaAssembly.Media.Imaging
                 return;
             }
 
-            this.HandleUnion(Left, Right);
+            int Index = 0;
+            this.HandleUnion(Left, Right, ref Index);
         }
         public static ContourData Union(ContourData Data, int Left, int Right)
         {
             ContourData Result = new ContourData(Data.Datas);
-            Result.HandleUnion(Left, Right);
+            Result.Union(Left, Right);
+            return Result;
+        }
+        public static ContourData Union(ContourData Data1, ContourData Data2)
+        {
+            ContourData Result = new ContourData(Data1.Datas);
+            Result.Union(Data2);
             return Result;
         }
 
@@ -182,7 +190,8 @@ namespace MenthaAssembly.Media.Imaging
             if (Right < Left)
                 MathHelper.Swap(ref Left, ref Right);
 
-            this.HandleDifference(Left, Right);
+            int Index = 0;
+            this.HandleDifference(Left, Right, ref Index);
         }
         public static ContourData Difference(ContourData Data, int Left, int Right)
         {
@@ -224,214 +233,318 @@ namespace MenthaAssembly.Media.Imaging
         object ICloneable.Clone()
             => this.Clone();
 
-        private void HandleUnion(int Left, int Right)
+        public override string ToString()
+            => $"{{{string.Join(", ", Datas)}}}";
+
+        //private void HandleUnion(int Left, int Right)
+        //{
+        //    int LastIndexOfDatas = this.Datas.Count - 1,
+        //        LIndex = RightIndexWithLessThanOrEqual(Left, out bool LEqual);
+        //    if (LIndex < 0)
+        //    {
+        //        int RIndex = LeftIndexWithMoreThanOrEqual(Right, out bool REqual);
+        //        if (RIndex == 0)
+        //        {
+        //            if (REqual)
+        //            {
+        //                this.Datas[0] = Left;
+        //            }
+        //            else
+        //            {
+        //                this.Datas.Insert(0, Left);
+        //                this.Datas.Insert(1, Right);
+        //            }
+        //        }
+        //        else if (RIndex < 0)
+        //        {
+        //            Left = Math.Min(Left, this.Datas[0]);
+        //            Right = Math.Max(Right, this.Datas[LastIndexOfDatas]);
+
+        //            this.Datas.Clear();
+        //            this.Datas.Add(Left);
+        //            this.Datas.Add(Right);
+        //        }
+        //        else
+        //        {
+        //            if (Left < this.Datas[0])
+        //                this.Datas[0] = Left;
+
+        //            if (!REqual)
+        //            {
+        //                // Nearest RIndex
+        //                RIndex--;
+        //                int NearestRight = this.Datas[RIndex];
+        //                if (NearestRight < Right)
+        //                    this.Datas[RIndex] = Right;
+
+        //                RIndex--;
+        //            }
+
+        //            for (int i = RIndex; i > 0; i--)
+        //                this.Datas.RemoveAt(i);
+        //        }
+        //    }
+        //    else if (LIndex == LastIndexOfDatas)
+        //    {
+        //        if (LEqual)
+        //        {
+        //            this.Datas[LastIndexOfDatas] = Right;
+        //        }
+        //        else
+        //        {
+        //            this.Datas.Add(Left);
+        //            this.Datas.Add(Right);
+        //        }
+        //    }
+        //    else
+        //    {
+        //        if (LEqual)
+        //        {
+        //            LIndex--;
+        //        }
+        //        else
+        //        {
+        //            // Nearest LIndex
+        //            LIndex++;
+        //            int NearestLeft = this.Datas[LIndex];
+        //            if (Left < NearestLeft)
+        //            {
+        //                if (Right < NearestLeft)
+        //                {
+        //                    this.Datas.Insert(LIndex, Right);
+        //                    this.Datas.Insert(LIndex, Left);
+        //                    return;
+        //                }
+
+        //                this.Datas[LIndex] = Left;
+
+        //                if (Right == NearestLeft)
+        //                    return;
+        //            }
+        //        }
+
+        //        int RIndex = LeftIndexWithMoreThanOrEqual(Right, LIndex, out bool REqual);
+        //        if (RIndex < 0)
+        //        {
+        //            RIndex = LastIndexOfDatas;
+        //            int NearRight = this.Datas[RIndex];
+
+        //            if (NearRight < Right)
+        //                this.Datas[RIndex] = Right;
+
+        //            RIndex--;
+        //        }
+        //        else
+        //        {
+        //            if (!REqual)
+        //            {
+        //                // Nearest RIndex
+        //                RIndex--;
+        //                int NearRight = this.Datas[RIndex];
+        //                if (NearRight < Right)
+        //                    this.Datas[RIndex] = Right;
+
+        //                RIndex--;
+        //            }
+        //        }
+
+        //        for (int i = RIndex; i > LIndex; i--)
+        //            this.Datas.RemoveAt(i);
+        //    }
+        //}
+        private void HandleUnion(int Left, int Right, ref int StartIndex)
         {
-            int LastIndexOfDatas = this.Datas.Count - 1,
-                LIndex = RightIndexWithLessThanOrEqual(Left, out bool LEqual);
-            if (LIndex < 0)
+            int MinIndex = StartIndex,
+                Tx, Lx = int.MinValue;
+            do
             {
-                int RIndex = LeftIndexWithMoreThanOrEqual(Right, out bool REqual);
-                if (RIndex == 0)
+                if (MinIndex >= Datas.Count)
                 {
-                    if (REqual)
+                    if (Lx++ == Left || Lx == Left)
                     {
-                        this.Datas[0] = Left;
+                        Datas[MinIndex - 1] = Right;
                     }
                     else
                     {
-                        this.Datas.Insert(0, Left);
-                        this.Datas.Insert(1, Right);
-                    }
-                }
-                else if (RIndex < 0)
-                {
-                    Left = Math.Min(Left, this.Datas[0]);
-                    Right = Math.Max(Right, this.Datas[LastIndexOfDatas]);
-
-                    this.Datas.Clear();
-                    this.Datas.Add(Left);
-                    this.Datas.Add(Right);
-                }
-                else
-                {
-                    if (Left < this.Datas[0])
-                        this.Datas[0] = Left;
-
-                    if (!REqual)
-                    {
-                        // Nearest RIndex
-                        RIndex--;
-                        int NearestRight = this.Datas[RIndex];
-                        if (NearestRight < Right)
-                            this.Datas[RIndex] = Right;
-
-                        RIndex--;
+                        Datas.Add(Left);
+                        Datas.Add(Right);
                     }
 
-                    for (int i = RIndex; i > 0; i--)
-                        this.Datas.RemoveAt(i);
-                }
-            }
-            else if (LIndex == LastIndexOfDatas)
-            {
-                if (LEqual)
-                {
-                    this.Datas[LastIndexOfDatas] = Right;
-                }
-                else
-                {
-                    this.Datas.Add(Left);
-                    this.Datas.Add(Right);
-                }
-            }
-            else
-            {
-                if (LEqual)
-                {
-                    LIndex--;
-                }
-                else
-                {
-                    // Nearest LIndex
-                    LIndex++;
-                    int NearestLeft = this.Datas[LIndex];
-                    if (Left < NearestLeft)
-                    {
-                        if (Right < NearestLeft)
-                        {
-                            this.Datas.Insert(LIndex, Right);
-                            this.Datas.Insert(LIndex, Left);
-                            return;
-                        }
-
-                        this.Datas[LIndex] = Left;
-
-                        if (Right == NearestLeft)
-                            return;
-                    }
+                    StartIndex = Datas.Count;
+                    return;
                 }
 
-                int RIndex = LeftIndexWithMoreThanOrEqual(Right, LIndex, out bool REqual);
-                if (RIndex < 0)
-                {
-                    RIndex = LastIndexOfDatas;
-                    int NearRight = this.Datas[RIndex];
-
-                    if (NearRight < Right)
-                        this.Datas[RIndex] = Right;
-
-                    RIndex--;
-                }
-                else
-                {
-                    if (!REqual)
-                    {
-                        // Nearest RIndex
-                        RIndex--;
-                        int NearRight = this.Datas[RIndex];
-                        if (NearRight < Right)
-                            this.Datas[RIndex] = Right;
-
-                        RIndex--;
-                    }
-                }
-
-                for (int i = RIndex; i > LIndex; i--)
-                    this.Datas.RemoveAt(i);
-            }
-        }
-        private void HandleUnion(int Left, int Right, ref int StartIndex)
-        {
-            int Index = -1,
-                Tx, Lx;
-
-            for (; StartIndex < Datas.Count; StartIndex++)
-            {
-                Tx = Datas[StartIndex];
+                Tx = Datas[MinIndex];
 
                 if (Left < Tx)
                     break;
 
-                Index = StartIndex;
                 Lx = Tx;
-            }
+                MinIndex++;
+            } while (true);
 
-            if (Index == -1)
+            int MaxIndex = MinIndex,
+                Rx;
+            if ((MinIndex & 0x01) == 1)
             {
-                Datas.Add(Left);
-                Datas.Add(Right);
-                StartIndex = Datas.Count;
-                return;
+                // O || O  O  O
+                do
+                {
+                    // O | O  O  O ||
+                    if (MaxIndex >= Datas.Count)
+                    {
+                        int LastIndex = Datas.Count - 1;
+                        Datas[LastIndex--] = Right;
+
+                        for (int i = LastIndex; i >= MinIndex; i--)
+                            Datas.RemoveAt(i);
+
+                        StartIndex = MinIndex;
+                        return;
+                    }
+
+                    Rx = Datas[MaxIndex];
+
+                    if (Right < Rx)
+                        break;
+
+                    MaxIndex++;
+                } while (true);
+
+                // O |  || O  O  O
+                if (MinIndex == MaxIndex)
+                {
+                    StartIndex = MaxIndex;
+                    return;
+                }
             }
-
-
-
-
-
-
-            if ((StartIndex & 0x01) == 0)
+            else
             {
+                if (Lx++ == Left || Lx == Left)
+                {
+                    // O  |O|  O  O  0  0
+                    MinIndex--;
 
+                    do
+                    {
+                        // O  O | O  O ||
+                        if (MaxIndex >= Datas.Count)
+                        {
+                            int LastIndex = Datas.Count - 1;
+                            Datas[LastIndex--] = Right;
 
+                            for (int i = LastIndex; i >= MinIndex; i--)
+                                Datas.RemoveAt(i);
 
+                            StartIndex = MinIndex;
+                            return;
+                        }
 
+                        Rx = Datas[MaxIndex];
+
+                        if (Right < Rx)
+                            break;
+
+                        MaxIndex++;
+                    } while (true);
+                }
+                else
+                {
+                    // O  O || O  O  0  0
+                    do
+                    {
+                        // O  O | O  O ||
+                        if (MaxIndex >= Datas.Count)
+                        {
+                            int LastIndex = Datas.Count - 1;
+                            Datas[LastIndex--] = Right;
+                            Datas[MinIndex++] = Left;
+
+                            for (int i = LastIndex; i >= MinIndex; i--)
+                                Datas.RemoveAt(i);
+
+                            StartIndex = MinIndex;
+                            return;
+                        }
+
+                        Rx = Datas[MaxIndex];
+
+                        if (Right < Rx)
+                            break;
+
+                        MaxIndex++;
+                    } while (true);
+
+                    if (MinIndex == MaxIndex)
+                    {
+                        if (Right + 1 == Rx)
+                        {
+                            // O  O |  |O|  O
+                            Datas[MinIndex] = Left;
+                        }
+                        else
+                        {
+                            // O  O |  || O  O
+                            Datas.Insert(MinIndex, Right);
+                            Datas.Insert(MinIndex, Left);
+                        }
+                        StartIndex = MinIndex + 1;
+                        return;
+                    }
+
+                    Datas[MinIndex++] = Left;
+                }
             }
 
+            if ((MaxIndex & 0x01) == 0)
+            {
+                if (Right + 1 == Rx)
+                    MaxIndex++;                 // O  O | O  O  |O|  O
+                else
+                    Datas[--MaxIndex] = Right;  // O  O | O  O || O  O
+            }
 
-
-
-
-            //int MaxIndex = StartIndex;
-            //for (; MaxIndex < Datas.Count; MaxIndex++)
-            //    if (Right < Datas[MaxIndex])
-            //        break;
-
-
-
-
-
+            for (int i = MaxIndex - 1; i >= MinIndex; i--)
+                Datas.RemoveAt(i);
         }
 
+        //private void HandleDifference(int Left, int Right)
+        //{
+        //    int MinIndex = 0;
+        //    for (; MinIndex < Datas.Count; MinIndex++)
+        //        if (Left < Datas[MinIndex])
+        //            break;
 
-        private void HandleDifference(int Left, int Right)
-        {
-            int Index = 0;
-            HandleDifference(Left, Right, ref Index);
-            //int MinIndex = 0;
-            //for (; MinIndex < Datas.Count; MinIndex++)
-            //    if (Left < Datas[MinIndex])
-            //        break;
+        //    int MaxIndex = MinIndex;
+        //    for (; MaxIndex < Datas.Count; MaxIndex++)
+        //        if (Right < Datas[MaxIndex])
+        //            break;
 
-            //int MaxIndex = MinIndex;
-            //for (; MaxIndex < Datas.Count; MaxIndex++)
-            //    if (Right < Datas[MaxIndex])
-            //        break;
+        //    if (MinIndex == MaxIndex)
+        //    {
+        //        if ((MinIndex & 0x01) == 0)
+        //            return;
 
-            //if (MinIndex == MaxIndex)
-            //{
-            //    if ((MinIndex & 0x01) == 0)
-            //        return;
+        //        Datas.Insert(MaxIndex, Right);
+        //        Datas.Insert(MaxIndex, Left);
+        //        return;
+        //    }
 
-            //    Datas.Insert(MaxIndex, Right);
-            //    Datas.Insert(MaxIndex, Left);
-            //    return;
-            //}
+        //    if ((MaxIndex & 0x01) == 1)
+        //    {
+        //        MaxIndex--;
+        //        Datas[MaxIndex] = Right;
+        //    }
 
-            //if ((MaxIndex & 0x01) == 1)
-            //{
-            //    MaxIndex--;
-            //    Datas[MaxIndex] = Right;
-            //}
+        //    if ((MinIndex & 0x01) == 1)
+        //    {
+        //        Datas[MinIndex] = Left;
+        //        MinIndex++;
+        //    }
 
-            //if ((MinIndex & 0x01) == 1)
-            //{
-            //    Datas[MinIndex] = Left;
-            //    MinIndex++;
-            //}
-
-            //for (int i = MaxIndex - 1; i >= MinIndex; i--)
-            //    Datas.RemoveAt(i);
-        }
+        //    for (int i = MaxIndex - 1; i >= MinIndex; i--)
+        //        Datas.RemoveAt(i);
+        //}
         private void HandleDifference(int Left, int Right, ref int StartIndex)
         {
             for (; StartIndex < Datas.Count; StartIndex++)
