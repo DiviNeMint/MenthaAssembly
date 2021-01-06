@@ -120,8 +120,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public void ScanLineOverlay(IImageContext Source, int X, int Y, int Length, Pixel Color)
+        public void ScanLineOverlay(IImageContext Destination, int X, int Y, int Length, Pixel Color)
         {
+
         }
         public void ScanLineOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDest, PixelOperator<T> Operator) where T : unmanaged, IPixel
         {
@@ -135,10 +136,180 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void ContourOverlay(IImageContext Destination, ImageContour Contour, Pixel Color, int OffsetX, int OffsetY)
         {
+
         }
 
         public void BlockOverlay(IImageContext Destination, int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height)
         {
+        }
+
+
+        public ImageContour FindBound(IImageContext Source, int SeedX, int SeedY, ImagePredicate Predicate)
+        {
+            int Width = Source.Width,
+                Height = Source.Height;
+
+            if (SeedX < 0 || Width <= SeedX ||
+                SeedY < 0 || Height <= SeedY)
+                return null;
+
+            ImageContour Contour = new ImageContour();
+            Stack<int> StackX = new Stack<int>(),
+                       StackY = new Stack<int>();
+            StackX.Push(SeedX);
+            StackY.Push(SeedY);
+
+            long XBits,
+                 Offset;
+            int X, Y, SaveX, XBitIndex, Rx, Lx;
+
+            Struct* pSeed, pStructs;
+            IPixelIndexed Indexed;
+            IPixel Pixel;
+            while (StackX.Count > 0)
+            {
+                X = StackX.Pop();
+                Y = StackY.Pop();
+                SaveX = X;
+
+                XBits = (long)X * Source.BitsPerPixel;
+                Offset = Source.Stride * Y + (XBits >> 3);
+
+                pSeed = (Struct*)((byte*)Source.Scan0 + Offset);
+                pStructs = pSeed;
+
+                Indexed = *pStructs as IPixelIndexed;
+                XBitIndex = (int)(XBits % Indexed.Length);
+                Pixel = Source.Palette[Indexed[XBitIndex]];
+                while (X < Width && !Predicate(X, Y, Pixel.A, Pixel.R, Pixel.G, Pixel.B))
+                {
+                    X++;
+                    XBitIndex++;
+
+                    if (XBitIndex >= Indexed.Length)
+                    {
+                        XBitIndex = 0;
+                        pStructs++;
+                        Indexed = *pStructs as IPixelIndexed;
+                    }
+
+                    Pixel = Source.Palette[Indexed[XBitIndex]];
+                }
+
+                // Find Left Bound
+                Rx = X - 1;
+                X = SaveX - 1;
+
+                pStructs = pSeed;
+                Indexed = *pStructs as IPixelIndexed;
+                XBitIndex = (int)(XBits % Indexed.Length) - 1;
+                if (XBitIndex < 0)
+                {
+                    XBitIndex = Indexed.Length - 1;
+                    pStructs--;
+                    Indexed = *pStructs as IPixelIndexed;
+                }
+                Pixel = Source.Palette[Indexed[XBitIndex]];
+
+                pStructs = pSeed - 1;
+                while (-1 < X && !Predicate(X, Y, Pixel.A, Pixel.R, Pixel.G, Pixel.B))
+                {
+                    X--;
+                    XBitIndex--;
+
+                    if (XBitIndex < 0)
+                    {
+                        XBitIndex = Indexed.Length - 1;
+                        pStructs--;
+                        Indexed = *pStructs as IPixelIndexed;
+                    }
+                    Pixel = Source.Palette[Indexed[XBitIndex]];
+                }
+
+                Lx = X + 1;
+
+                // Log Region
+                Contour[Y].Union(Lx, Rx);
+
+                // Lower ScanLine's Seed
+                bool NeedFill = false;
+                X = Lx;
+                Y++;
+
+                XBits = (long)X * Source.BitsPerPixel;
+                Offset = Source.Stride * Y + (XBits >> 3);
+
+                pSeed = (Struct*)((byte*)Source.Scan0 + Offset);
+
+                Indexed = *pSeed as IPixelIndexed;
+                XBitIndex = (int)(XBits % Indexed.Length);
+                Pixel = Source.Palette[Indexed[XBitIndex]];
+
+                if (-1 < Y && Y < Height &&
+                    !Contour.Contain(X, Y))
+                    for (; X <= Rx; X++)
+                    {
+                        while (X <= Rx && !Predicate(X, Y, Pixel.A, Pixel.R, Pixel.G, Pixel.B))
+                        {
+                            NeedFill = true;
+                            X++;
+                            XBitIndex++;
+
+                            if (XBitIndex >= Indexed.Length)
+                            {
+                                XBitIndex = 0;
+                                pSeed++;
+                                Indexed = *pSeed as IPixelIndexed;
+                            }
+
+                            Pixel = Source.Palette[Indexed[XBitIndex]];
+                        }
+
+                        if (NeedFill)
+                        {
+                            StackX.Push(X - 1);
+                            StackY.Push(Y);
+                            NeedFill = false;
+                        }
+                    }
+
+                // Upper ScanLine's Seed
+                NeedFill = false;
+                X = Lx;
+                Y -= 2;
+
+                Offset = Source.Stride * Y + (((long)X * Source.BitsPerPixel) >> 3);
+                pSeed = (Struct*)((byte*)Source.Scan0 + Offset);
+                if (0 <= Y && Y < Height &&
+                    !Contour.Contain(X, Y))
+                    for (; X <= Rx; X++)
+                    {
+                        while (X <= Rx && !Predicate(X, Y, Pixel.A, Pixel.R, Pixel.G, Pixel.B))
+                        {
+                            NeedFill = true;
+                            X++;
+                            XBitIndex++;
+
+                            if (XBitIndex >= Indexed.Length)
+                            {
+                                XBitIndex = 0;
+                                pSeed++;
+                                Indexed = *pSeed as IPixelIndexed;
+                            }
+
+                            Pixel = Source.Palette[Indexed[XBitIndex]];
+                        }
+
+                        if (NeedFill)
+                        {
+                            StackX.Push(X - 1);
+                            StackY.Push(Y);
+                            NeedFill = false;
+                        }
+                    }
+            }
+
+            return Contour;
         }
 
         private static readonly ConcurrentDictionary<string, IImageOperator> ImageOperators = new ConcurrentDictionary<string, IImageOperator>();

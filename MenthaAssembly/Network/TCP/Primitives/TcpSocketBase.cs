@@ -64,7 +64,7 @@ namespace MenthaAssembly.Network.Primitives
         private byte[] DequeueBuffer()
             => BufferPool.TryDequeue(out byte[] Buffer) ? Buffer : new byte[BufferSize];
 
-        internal protected IMessage Send(SocketToken Token, IMessage Request, int TimeoutMileseconds)
+        internal protected virtual IMessage Send(SocketToken Token, IMessage Request, int TimeoutMileseconds)
         {
             TaskCompletionSource<IMessage> TaskToken = new TaskCompletionSource<IMessage>();
 
@@ -72,174 +72,149 @@ namespace MenthaAssembly.Network.Primitives
             CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
             CancelToken.Token.Register(() => TaskToken.TrySetResult(ErrorMessage.Timeout), false);
 
+            // Lock Send
             try
             {
-                Token.Lock.Wait(CancelToken.Token);
-                if (!CancelToken.IsCancellationRequested)
+                Token.SendLock.Wait(CancelToken.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Release CancelToken
+                CancelToken.Dispose();
+
+                // Timeout
+                TaskToken.Task.Wait();
+                return TaskToken.Task.Result;
+            }
+
+            // Lock Pipe
+            do
+            {
+                try
                 {
-                    int UID = -1;
-                    if (Request is IIdentityMessage IdentityMessage)
+                    Token.PipeLock?.Wait(CancelToken.Token);
+                    if (Token.Socket?.Available == 0)
+                        break;
+
+                    Token.PipeLock?.Release();
+                    Thread.Sleep(10);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Release Send
+                    Token.SendLock?.Release();
+
+                    // Release CancelToken
+                    CancelToken.Dispose();
+
+                    // Timeout
+                    TaskToken.Task.Wait();
+                    return TaskToken.Task.Result;
+                }
+            } while (true);
+
+            try
+            {
+                // Check UID
+                int UID = -1;
+                if (Request is IIdentityMessage IdentityMessage)
+                {
+                    Token.LastRequsetUID += 2;
+                    UID = Token.LastRequsetUID;
+                    IdentityMessage.UID = UID;
+                }
+
+                // Encode Message
+                Stream MessageStream;
+                try
+                {
+                    MessageStream = ProtocolHandler.Encode(Request);
+                }
+                catch
+                {
+                    Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
+
+                    // Set Result
+                    TaskToken.TrySetResult(ErrorMessage.EncodeException);
+
+                    // Release CancelToken
+                    CancelToken.Dispose();
+
+                    TaskToken.Task.Wait();
+                    return TaskToken.Task.Result;
+                }
+
+                // Check Message's Context
+                byte[] Buffer = DequeueBuffer();
+                int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
+                if (Length == 0)
+                {
+                    MessageStream?.Dispose();
+
+                    // Enqueue Buffer
+                    BufferPool.Enqueue(Buffer);
+
+                    // Set Result
+                    TaskToken.TrySetResult(ErrorMessage.NotSupport);
+
+                    // Release CancelToken
+                    CancelToken.Dispose();
+
+                    TaskToken.Task.Wait();
+                    return TaskToken.Task.Result;
+                }
+
+                // Send Datas
+                try
+                {
+                    if (UID > -1)
                     {
-                        Token.LastRequsetUID += 2;
-                        UID = Token.LastRequsetUID;
-                        IdentityMessage.UID = UID;
+                        Token.ResponseTaskSources.AddOrUpdate(UID, TaskToken, (k, v) => TaskToken);
+                        Token.ResponseCancelTokens.AddOrUpdate(UID, CancelToken, (k, v) => CancelToken);
+                    }
+                    else
+                    {
+                        Token.LastResponseTaskSource = TaskToken;
+                        Token.LastResponseCancelToken = CancelToken;
                     }
 
-                    // Encode Message
-                    Stream MessageStream;
-                    try
+                    do
                     {
-                        MessageStream = ProtocolHandler.Encode(Request);
-                    }
-                    catch
-                    {
-                        Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
+                        SocketAsyncEventArgs e = Dequeue(false);
+                        e.UserToken = Token;
+                        e.SetBuffer(Buffer, 0, Length);
 
-                        // Set Result
-                        TaskToken.TrySetResult(ErrorMessage.EncodeException);
+                        if (!Token.Socket.SendAsync(e))
+                            OnSendProcess(e);
 
-                        // Release CancelToken
-                        CancelToken.Dispose();
+                        Buffer = DequeueBuffer();
+                        Length = MessageStream.Read(Buffer, 0, BufferSize);
 
-                        return ErrorMessage.EncodeException;
-                    }
+                    } while (Length > 0);
+                }
+                catch
+                {
+                    // Disconnect
+                    Token.Dispose();
+                }
+                finally
+                {
+                    MessageStream.Dispose();
 
-                    byte[] Buffer = DequeueBuffer();
-                    int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
-                    if (Length == 0)
-                    {
-                        // Enqueue Buffer
-                        BufferPool.Enqueue(Buffer);
-
-                        // Set Result
-                        TaskToken.TrySetResult(ErrorMessage.NotSupport);
-
-                        // Release CancelToken
-                        CancelToken.Dispose();
-
-                        return ErrorMessage.NotSupport;
-                    }
-
-                    // Send Datas
-                    try
-                    {
-                        if (UID > -1)
-                        {
-                            Token.ResponseTaskSources.AddOrUpdate(UID, TaskToken, (k, v) => TaskToken);
-                            Token.ResponseCancelTokens.AddOrUpdate(UID, CancelToken, (k, v) => CancelToken);
-                        }
-                        else
-                        {
-                            Token.LastResponseTaskSource = TaskToken;
-                            Token.LastResponseCancelToken = CancelToken;
-                        }
-
-                        do
-                        {
-                            SocketAsyncEventArgs e = Dequeue(false);
-                            e.UserToken = Token;
-                            e.SetBuffer(Buffer, 0, Length);
-
-                            if (!Token.Socket.SendAsync(e))
-                                OnSendProcess(e);
-
-                            Buffer = DequeueBuffer();
-                            Length = MessageStream.Read(Buffer, 0, BufferSize);
-
-                        } while (Length > 0);
-                    }
-                    catch
-                    {
-                        // Disconnect
-                        Token.Dispose();
-                    }
-                    finally
-                    {
-                        MessageStream.Dispose();
-
-                        // Enqueue Last Empty Buffer
-                        BufferPool.Enqueue(Buffer);
-                    }
+                    // Enqueue Last Empty Buffer
+                    BufferPool.Enqueue(Buffer);
                 }
             }
             finally
             {
-                Token.Lock?.Release();
+                Token.PipeLock?.Release();
+                Token.SendLock?.Release();
             }
 
             TaskToken.Task.Wait();
             return TaskToken.Task.Result;
         }
-        internal protected void Reply(SocketToken Token, IMessage Request, int TimeoutMileseconds)
-        {
-            // Timeout
-            CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
-
-            try
-            {
-                Token.Lock.Wait(CancelToken.Token);
-                if (!CancelToken.IsCancellationRequested)
-                {
-                    // Encode Message
-                    Stream MessageStream;
-                    try
-                    {
-                        MessageStream = ProtocolHandler.Encode(Request);
-                    }
-                    catch
-                    {
-                        Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
-                        CancelToken.Dispose();
-                        return;
-                    }
-
-                    byte[] Buffer = DequeueBuffer();
-                    int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
-                    if (Length == 0)
-                    {
-                        // Enqueue Buffer
-                        BufferPool.Enqueue(Buffer);
-                        return;
-                    }
-
-                    // Send Datas
-                    try
-                    {
-                        do
-                        {
-                            SocketAsyncEventArgs e = Dequeue(false);
-                            e.UserToken = Token;
-                            e.SetBuffer(Buffer, 0, Length);
-
-                            if (!Token.Socket.SendAsync(e))
-                                OnSendProcess(e);
-
-                            Buffer = DequeueBuffer();
-                            Length = MessageStream.Read(Buffer, 0, BufferSize);
-
-                        } while (Length > 0);
-                    }
-                    catch
-                    {
-                        // Disconnect
-                        Token.Dispose();
-                    }
-                    finally
-                    {
-                        MessageStream.Dispose();
-
-                        // Enqueue Last Empty Buffer
-                        BufferPool.Enqueue(Buffer);
-                    }
-                }
-            }
-            finally
-            {
-                Token.Lock?.Release();
-            }
-        }
-
-        internal protected async Task<IMessage> SendAsync(SocketToken Token, IMessage Request, int TimeoutMileseconds)
+        internal protected virtual async Task<IMessage> SendAsync(SocketToken Token, IMessage Request, int TimeoutMileseconds)
         {
             TaskCompletionSource<IMessage> TaskToken = new TaskCompletionSource<IMessage>();
 
@@ -247,169 +222,248 @@ namespace MenthaAssembly.Network.Primitives
             CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
             CancelToken.Token.Register(() => TaskToken.TrySetResult(ErrorMessage.Timeout), false);
 
+            // Lock Send
             try
             {
-                await Token.Lock.WaitAsync(CancelToken.Token);
-                if (!CancelToken.IsCancellationRequested)
+                await Token.SendLock.WaitAsync(CancelToken.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Release CancelToken
+                CancelToken.Dispose();
+
+                // Timeout
+                return await TaskToken.Task;
+            }
+
+            // Lock Pipe
+            do
+            {
+                try
                 {
-                    int UID = -1;
-                    if (Request is IIdentityMessage IdentityMessage)
+                    await Token.PipeLock?.WaitAsync(CancelToken.Token);
+                    if (Token.Socket?.Available == 0)
+                        break;
+
+                    Token.PipeLock?.Release();
+                    Thread.Sleep(10);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Release Send
+                    Token.SendLock?.Release();
+
+                    // Release CancelToken
+                    CancelToken.Dispose();
+
+                    // Timeout
+                    return await TaskToken.Task;
+                }
+            } while (true);
+
+            try
+            {
+                // Check UID
+                int UID = -1;
+                if (Request is IIdentityMessage IdentityMessage)
+                {
+                    Token.LastRequsetUID += 2;
+                    UID = Token.LastRequsetUID;
+                    IdentityMessage.UID = UID;
+                }
+
+                // Encode Message
+                Stream MessageStream;
+                try
+                {
+                    MessageStream = ProtocolHandler.Encode(Request);
+                }
+                catch
+                {
+                    Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
+
+                    // Set Result
+                    TaskToken.TrySetResult(ErrorMessage.EncodeException);
+
+                    // Release CancelToken
+                    CancelToken.Dispose();
+
+                    return await TaskToken.Task;
+                }
+
+                // Check Message's Context
+                byte[] Buffer = DequeueBuffer();
+                int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
+                if (Length == 0)
+                {
+                    MessageStream?.Dispose();
+
+                    // Enqueue Buffer
+                    BufferPool.Enqueue(Buffer);
+
+                    // Set Result
+                    TaskToken.TrySetResult(ErrorMessage.NotSupport);
+
+                    // Release CancelToken
+                    CancelToken.Dispose();
+
+                    return await TaskToken.Task;
+                }
+
+                // Send Datas
+                try
+                {
+                    if (UID > -1)
                     {
-                        Token.LastRequsetUID += 2;
-                        UID = Token.LastRequsetUID;
-                        IdentityMessage.UID = UID;
+                        Token.ResponseTaskSources.AddOrUpdate(UID, TaskToken, (k, v) => TaskToken);
+                        Token.ResponseCancelTokens.AddOrUpdate(UID, CancelToken, (k, v) => CancelToken);
+                    }
+                    else
+                    {
+                        Token.LastResponseTaskSource = TaskToken;
+                        Token.LastResponseCancelToken = CancelToken;
                     }
 
-                    // Encode Message
-                    Stream MessageStream;
-                    try
+                    do
                     {
-                        MessageStream = ProtocolHandler.Encode(Request);
-                    }
-                    catch
-                    {
-                        Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
+                        SocketAsyncEventArgs e = Dequeue(false);
+                        e.UserToken = Token;
+                        e.SetBuffer(Buffer, 0, Length);
 
-                        // Set Result
-                        TaskToken.TrySetResult(ErrorMessage.EncodeException);
+                        if (!Token.Socket.SendAsync(e))
+                            OnSendProcess(e);
 
-                        // Release CancelToken
-                        CancelToken.Dispose();
+                        Buffer = DequeueBuffer();
+                        Length = MessageStream.Read(Buffer, 0, BufferSize);
 
-                        return await TaskToken.Task;
-                    }
+                    } while (Length > 0);
+                }
+                catch
+                {
+                    // Disconnect
+                    Token.Dispose();
+                }
+                finally
+                {
+                    MessageStream.Dispose();
 
-                    byte[] Buffer = DequeueBuffer();
-                    int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
-                    if (Length == 0)
-                    {
-                        // Enqueue Buffer
-                        BufferPool.Enqueue(Buffer);
-
-                        // Set Result
-                        TaskToken.TrySetResult(ErrorMessage.NotSupport);
-
-                        // Release CancelToken
-                        CancelToken.Dispose();
-
-                        return await TaskToken.Task;
-                    }
-
-                    // Send Datas
-                    try
-                    {
-                        if (UID > -1)
-                        {
-                            Token.ResponseTaskSources.AddOrUpdate(UID, TaskToken, (k, v) => TaskToken);
-                            Token.ResponseCancelTokens.AddOrUpdate(UID, CancelToken, (k, v) => CancelToken);
-                        }
-                        else
-                        {
-                            Token.LastResponseTaskSource = TaskToken;
-                            Token.LastResponseCancelToken = CancelToken;
-                        }
-
-                        do
-                        {
-                            SocketAsyncEventArgs e = Dequeue(false);
-                            e.UserToken = Token;
-                            e.SetBuffer(Buffer, 0, Length);
-
-                            if (!Token.Socket.SendAsync(e))
-                                OnSendProcess(e);
-
-                            Buffer = DequeueBuffer();
-                            Length = MessageStream.Read(Buffer, 0, BufferSize);
-
-                        } while (Length > 0);
-                    }
-                    catch
-                    {
-                        // Disconnect
-                        Token.Dispose();
-                    }
-                    finally
-                    {
-                        MessageStream.Dispose();
-
-                        // Enqueue Last Empty Buffer
-                        BufferPool.Enqueue(Buffer);
-                    }
+                    // Enqueue Last Empty Buffer
+                    BufferPool.Enqueue(Buffer);
                 }
             }
             finally
             {
-                Token.Lock?.Release();
+                Token.PipeLock?.Release();
+                Token.SendLock?.Release();
             }
 
             return await TaskToken.Task;
         }
-        internal protected async Task ReplyAsync(SocketToken Token, IMessage Request, int TimeoutMileseconds)
+
+        internal protected virtual async Task PingAsync(SocketToken Token, IMessage Message, int TimeoutMileseconds)
         {
             // Timeout
             CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
 
+            // SendLock
             try
             {
-                await Token.Lock.WaitAsync(CancelToken.Token);
-                if (!CancelToken.IsCancellationRequested)
+                await Token.SendLock.WaitAsync(CancelToken.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Release CancelToken
+                CancelToken.Dispose();
+
+                Debug.WriteLine($"[Warn]Ping {Message.GetType().Name} Timeout.");
+                return;
+            }
+
+            // Lock Pipe
+            do
+            {
+                try
                 {
-                    // Encode Message
-                    Stream MessageStream;
-                    try
-                    {
-                        MessageStream = ProtocolHandler.Encode(Request);
-                    }
-                    catch
-                    {
-                        Debug.WriteLine($"[Error]Encoding {Request.GetType().Name} hanppen exception.");
-                        CancelToken.Dispose();
-                        return;
-                    }
+                    await Token.PipeLock?.WaitAsync(CancelToken.Token);
+                    if (Token.Socket?.Available == 0)
+                        break;
 
-                    byte[] Buffer = DequeueBuffer();
-                    int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
-                    if (Length == 0)
+                    Token.PipeLock?.Release();
+                    Thread.Sleep(10);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Release Send
+                    Token.SendLock?.Release();
+
+                    // Release CancelToken
+                    CancelToken.Dispose();
+
+                    Debug.WriteLine($"[Warn]Ping {Message.GetType().Name} Timeout.");
+                    return;
+                }
+            } while (true);
+
+            try
+            {
+                // Encode Message
+                Stream MessageStream;
+                try
+                {
+                    MessageStream = ProtocolHandler.Encode(Message);
+                }
+                catch
+                {
+                    Debug.WriteLine($"[Error]Encoding {Message.GetType().Name} hanppen exception.");
+                    CancelToken.Dispose();
+                    return;
+                }
+
+                byte[] Buffer = DequeueBuffer();
+                int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
+                if (Length == 0)
+                {
+                    Debug.WriteLine($"[Warn]{this.ProtocolHandler.GetType().Name} not support {Message.GetType().Name}.");
+
+                    // Enqueue Buffer
+                    BufferPool.Enqueue(Buffer);
+                    return;
+                }
+
+                // Send Datas
+                try
+                {
+                    do
                     {
-                        // Enqueue Buffer
-                        BufferPool.Enqueue(Buffer);
-                        return;
-                    }
+                        SocketAsyncEventArgs e = Dequeue(false);
+                        e.UserToken = Token;
+                        e.SetBuffer(Buffer, 0, Length);
 
-                    // Send Datas
-                    try
-                    {
-                        do
-                        {
-                            SocketAsyncEventArgs e = Dequeue(false);
-                            e.UserToken = Token;
-                            e.SetBuffer(Buffer, 0, Length);
+                        if (!Token.Socket.SendAsync(e))
+                            OnSendProcess(e);
 
-                            if (!Token.Socket.SendAsync(e))
-                                OnSendProcess(e);
+                        Buffer = DequeueBuffer();
+                        Length = MessageStream.Read(Buffer, 0, BufferSize);
 
-                            Buffer = DequeueBuffer();
-                            Length = MessageStream.Read(Buffer, 0, BufferSize);
+                    } while (Length > 0);
+                }
+                catch
+                {
+                    // Disconnect
+                    Token.Dispose();
+                }
+                finally
+                {
+                    MessageStream.Dispose();
 
-                        } while (Length > 0);
-                    }
-                    catch
-                    {
-                        // Disconnect
-                        Token.Dispose();
-                    }
-                    finally
-                    {
-                        MessageStream.Dispose();
-
-                        // Enqueue Last Empty Buffer
-                        BufferPool.Enqueue(Buffer);
-                    }
+                    // Enqueue Last Empty Buffer
+                    BufferPool.Enqueue(Buffer);
                 }
             }
             finally
             {
-                Token.Lock?.Release();
+                Token.PipeLock?.Release();
+                Token.SendLock?.Release();
             }
         }
 
@@ -463,7 +517,7 @@ namespace MenthaAssembly.Network.Primitives
                     IMessage ReceiveMessage;
                     try
                     {
-                        Token.Lock.Wait();
+                        Token.PipeLock.Wait();
 
                         // Decode Message
                         ConcatStream s = new ConcatStream(e.Buffer, 0, e.BytesTransferred, new NetworkStream(Token.Socket));
@@ -487,7 +541,7 @@ namespace MenthaAssembly.Network.Primitives
                     }
                     finally
                     {
-                        Token.Lock?.Release();
+                        Token.PipeLock?.Release();
                     }
 
                     if (ReceiveMessage != null)
@@ -513,7 +567,7 @@ namespace MenthaAssembly.Network.Primitives
             Enqueue(ref e);
         }
 
-        private void OnReplyProcess(SocketToken Token, IMessage ReceiveMessage)
+        protected virtual void OnReplyProcess(SocketToken Token, IMessage ReceiveMessage)
         {
             int ReceiveUID = -1;
 
@@ -564,76 +618,124 @@ namespace MenthaAssembly.Network.Primitives
                     Response = ErrorMessage.ReceivingHandleException;
                 }
 
-                // Check Response
-                if (Response is null)
-                    Response = ErrorMessage.ReceivingNotSupport;
+                if (!OperationMessage.DoNothing.Equals(Response))
+                    Reply(Token, ReceiveUID, Response, 10000);
+            }
+        }
+        protected virtual void Reply(SocketToken Token, int UID, IMessage Response, int TimeoutMileseconds)
+        {
+            // Check Response
+            if (Response is null)
+                Response = ErrorMessage.ReceivingNotSupport;
 
-                if (Response is IIdentityMessage IdentityResponse)
-                    IdentityResponse.UID = ReceiveUID;
+            if (Response is IIdentityMessage IdentityResponse)
+                IdentityResponse.UID = UID;
 
+            // Timeout
+            CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
+
+            // SendLock
+            try
+            {
+                Token.SendLock.Wait(CancelToken.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Release CancelToken
+                CancelToken.Dispose();
+
+                Debug.WriteLine($"[Warn]Reply [{UID}]{Response.GetType().Name} Timeout.");
+                return;
+            }
+
+            // Lock Pipe
+            do
+            {
                 try
                 {
-                    // Replay
-                    Token.Lock?.Wait();
+                    Token.PipeLock?.Wait(CancelToken.Token);
+                    if (Token.Socket?.Available == 0)
+                        break;
 
-                    Stream MessageStream;
-                    try
+                    Token.PipeLock?.Release();
+                    Thread.Sleep(10);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Release Send
+                    Token.SendLock?.Release();
+
+                    // Release CancelToken
+                    CancelToken.Dispose();
+
+                    Debug.WriteLine($"[Warn]Reply [{UID}]{Response.GetType().Name} Timeout.");
+                    return;
+                }
+            } while (true);
+
+            try
+            {
+                // Encode Message
+                Stream MessageStream;
+                try
+                {
+                    MessageStream = ProtocolHandler.Encode(Response);
+                }
+                catch
+                {
+                    ErrorMessage Error = ErrorMessage.ReceivingEncodeException;
+                    Error._UID = UID;
+                    MessageStream = ErrorMessage.Encode(Error);
+                }
+
+                // Check Message's Context
+                byte[] Buffer = DequeueBuffer();
+                int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
+                if (Length == 0)
+                {
+                    Debug.WriteLine($"[Warn]{this.ProtocolHandler.GetType().Name} not support {Response.GetType().Name}.");
+
+                    ErrorMessage Error = ErrorMessage.ReceivingNotSupport;
+                    Error._UID = UID;
+
+                    MessageStream = ErrorMessage.Encode(Error);
+                    Length = MessageStream.Read(Buffer, 0, BufferSize);
+                }
+
+                // Send Datas
+                try
+                {
+                    do
                     {
-                        MessageStream = ProtocolHandler.Encode(Response);
-                    }
-                    catch
-                    {
-                        ErrorMessage Error = ErrorMessage.ReceivingEncodeException;
-                        Error._UID = ReceiveUID;
-                        MessageStream = ErrorMessage.Encode(Error);
-                    }
+                        SocketAsyncEventArgs e = Dequeue(false);
+                        e.UserToken = Token;
+                        e.SetBuffer(Buffer, 0, Length);
 
-                    byte[] Buffer = DequeueBuffer();
-                    int Length = MessageStream?.Read(Buffer, 0, BufferSize) ?? 0;
-                    if (Length == 0)
-                    {
-                        Console.WriteLine($"[Warn]{this.ProtocolHandler.GetType().Name} not support {Response.GetType().Name}.");
+                        if (!Token.Socket.SendAsync(e))
+                            OnSendProcess(e);
 
-                        ErrorMessage Error = ErrorMessage.ReceivingNotSupport;
-                        Error._UID = ReceiveUID;
-
-                        MessageStream = ErrorMessage.Encode(Error);
+                        Buffer = DequeueBuffer();
                         Length = MessageStream.Read(Buffer, 0, BufferSize);
-                    }
 
-                    // Send Datas
-                    try
-                    {
-                        do
-                        {
-                            SocketAsyncEventArgs e = Dequeue(false);
-                            e.UserToken = Token;
-                            e.SetBuffer(Buffer, 0, Length);
-
-                            if (!Token.Socket.SendAsync(e))
-                                OnSendProcess(e);
-
-                            Buffer = DequeueBuffer();
-                            Length = MessageStream.Read(Buffer, 0, BufferSize);
-                        } while (Length > 0);
-                    }
-                    catch
-                    {
-                        // Disconnect
-                        Token.Dispose();
-                    }
-                    finally
-                    {
-                        MessageStream.Dispose();
-
-                        // Enqueue Last Empty Buffer
-                        BufferPool.Enqueue(Buffer);
-                    }
+                    } while (Length > 0);
+                }
+                catch
+                {
+                    // Disconnect
+                    Token.Dispose();
                 }
                 finally
                 {
-                    Token.Lock?.Release();
+                    MessageStream.Dispose();
+
+                    // Enqueue Last Empty Buffer
+                    BufferPool.Enqueue(Buffer);
                 }
+            }
+            finally
+            {
+                Token.PipeLock?.Release();
+                Token.SendLock?.Release();
             }
         }
 
@@ -651,7 +753,9 @@ namespace MenthaAssembly.Network.Primitives
 
         internal protected class SocketToken : IDisposable
         {
-            public SemaphoreSlim Lock { get; private set; } = new SemaphoreSlim(1);
+            public SemaphoreSlim SendLock { get; private set; } = new SemaphoreSlim(1);
+
+            public SemaphoreSlim PipeLock { get; private set; } = new SemaphoreSlim(1);
 
             public Socket Socket { get; internal set; }
 
@@ -709,8 +813,8 @@ namespace MenthaAssembly.Network.Primitives
                     LastResponseCancelToken = null;
 
                     // Dispose Lock
-                    Lock?.Dispose();
-                    Lock = null;
+                    PipeLock?.Dispose();
+                    PipeLock = null;
                 }
                 finally
                 {

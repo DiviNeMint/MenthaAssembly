@@ -13,7 +13,7 @@ namespace MenthaAssembly.Network.Primitives
         private readonly TcpServer Server;
         private Timer Timer;
 
-        public IPingProvider PingProvider { get; }
+        public IPingProvider PingProvider { set; get; }
 
         private int _Interval = 180000;
         /// <summary>
@@ -102,8 +102,8 @@ namespace MenthaAssembly.Network.Primitives
             }
         }
 
-        private async Task Ping(IEnumerable<SocketToken> Clients, IMessage Request) 
-            => await Task.WhenAll(Clients.Select(i => Server.ReplyAsync(i, Request, Interval)));
+        private async Task Ping(IEnumerable<SocketToken> Clients, IMessage Request)
+            => await Task.WhenAll(Clients.Select(i => Server.PingAsync(i, Request, Interval)));
 
     }
 }

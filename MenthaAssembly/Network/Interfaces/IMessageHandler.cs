@@ -10,7 +10,7 @@ namespace MenthaAssembly.Network
         /// <param name="Address"></param>
         /// <param name="Message"></param>
         /// <returns>
-        /// Return null when not reply message.
+        /// Return <see cref="OperationMessage.DoNothing"/> when not reply message.
         /// </returns>
         IMessage HandleMessage(IPEndPoint Address, IMessage Message);
 

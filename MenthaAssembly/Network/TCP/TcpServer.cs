@@ -35,7 +35,7 @@ namespace MenthaAssembly.Network
 
         public IPEndPoint IPEndPoint { protected set; get; }
 
-        public IConnectionValidator ConnectionValidator { get; }
+        public IConnectionValidator ConnectionValidator { set; get; }
 
         public PingOperator PingOperator { get; }
 
@@ -254,7 +254,7 @@ namespace MenthaAssembly.Network
                     if (!s.ReceiveAsync(e2))
                         OnReceiveProcess(e2);
 
-                    bool IsValidated = ConnectionValidator.Validate(ClientAddress);
+                    bool IsValidated = ConnectionValidator.Validate(this, ClientAddress);
 
                     PrepareClients.TryRemove(ClientAddress, out _);
 
