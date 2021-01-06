@@ -80,7 +80,7 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        public bool Contain(int X, int Y) 
+        public bool Contain(int X, int Y)
             => Datas.TryGetValue(Y, out ContourData Data) && Data.Contain(X);
 
         public void Clear()
@@ -213,6 +213,7 @@ namespace MenthaAssembly.Media.Imaging
 
             return Ellipse;
         }
+
         public static ImageContour CreateFillObround(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
             ImageContour Obround = new ImageContour();
@@ -228,37 +229,92 @@ namespace MenthaAssembly.Media.Imaging
                 TData[X <= TData[0] ? 0 : 1] = X;
             }
 
+            int Length;
+
             // Horizontal
             if (HalfHeight < HalfWidth)
             {
-                GraphicAlgorithm.CalculateBresenhamEllipse(HalfHeight, HalfHeight, (Dx, Dy) => AddData(Cx + Dx + (Dx > 0 ? HalfWidth : -HalfWidth), Cy + Dy));
+                Length = HalfWidth - HalfHeight;
+
+                GraphicAlgorithm.CalculateBresenhamEllipse(HalfHeight, HalfHeight, (Dx, Dy) => AddData(Cx + Dx + (Dx > 0 ? Length : -Length), Cy + Dy));
                 return Obround;
             }
 
+            Length = HalfHeight - HalfWidth;
+
             // Vertical
-            GraphicAlgorithm.CalculateBresenhamEllipse(HalfWidth, HalfWidth, (Dx, Dy) => AddData(Cx + Dx, Cy + Dy + (Dy > 0 ? HalfHeight : -HalfHeight)));
+            GraphicAlgorithm.CalculateBresenhamEllipse(HalfWidth, HalfWidth, (Dx, Dy) => AddData(Cx + Dx, Cy + Dy + (Dy > 0 ? Length : -Length)));
 
             int Left = Cx - HalfWidth,
                 Right = Cx + HalfWidth;
-            for (int Y = Cy - HalfHeight; Y <= Cy + HalfHeight; Y++)
+            for (int Y = Cy - Length; Y <= Cy + Length; Y++)
                 Obround[Y].Union(Left, Right);
 
             return Obround;
         }
+
         public static ImageContour CreateFillRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
             ImageContour Rectangle = new ImageContour();
 
+            int Left = Cx - HalfWidth,
+                Right = Cx + HalfWidth;
+
             for (int i = 0; i < HalfHeight; i++)
             {
-                int Left = Cx - HalfWidth,
-                    Right = Cx + HalfWidth;
-                Rectangle[Cy - i].Union(Left, Right);
-                Rectangle[Cy + i].Union(Left, Right);
+                Rectangle[Cy - i] = new ContourData(Left, Right);
+                Rectangle[Cy + i] = new ContourData(Left, Right);
             }
 
             return Rectangle;
         }
+        public static ImageContour CreateFillRectangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4)
+        {
+            ImageContour Rectangle = new ImageContour();
+            void AddData(int X, int Y)
+            {
+                ContourData TData = Rectangle[Y];
+                if (TData.Count == 0)
+                {
+                    TData.AddLeft(X);
+                    return;
+                }
+
+                TData[X <= TData[0] ? 0 : 1] = X;
+            }
+
+            // (X1, Y1) => (X2, Y2)
+            int DeltaX = X2 - X1,
+                DeltaY = Y2 - Y1,
+                AbsDeltaX = Math.Abs(DeltaX),
+                AbsDeltaY = Math.Abs(DeltaY);
+
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+
+            // (X2, Y2) => (X3, Y3)
+            DeltaX = X3 - X2;
+            DeltaY = Y3 - Y2;
+            AbsDeltaX = Math.Abs(DeltaX);
+            AbsDeltaY = Math.Abs(DeltaY);
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+
+            // (X3, Y3) => (X4, Y4)
+            DeltaX = X4 - X3;
+            DeltaY = Y4 - Y3;
+            AbsDeltaX = Math.Abs(DeltaX);
+            AbsDeltaY = Math.Abs(DeltaY);
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+
+            // (X4, Y4) => (X1, Y1)
+            DeltaX = X1 - X4;
+            DeltaY = Y1 - Y4;
+            AbsDeltaX = Math.Abs(DeltaX);
+            AbsDeltaY = Math.Abs(DeltaY);
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+
+            return Rectangle;
+        }
+
         public static ImageContour CreateFillRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, double StartAngle = 0d)
         {
             if (VertexNum < 3)
@@ -277,20 +333,20 @@ namespace MenthaAssembly.Media.Imaging
                 TData[X <= TData[0] ? 0 : 1] = X;
             }
 
-            double DeltaTheta = 360d / VertexNum,
-                   LastAngle = StartAngle;
+            double DeltaTheta = (360d / VertexNum) * MathHelper.UnitTheta,
+                   LastTheta = StartAngle * MathHelper.UnitTheta;
 
-            int P0x = (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
-                P0y = (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta)),
+            int P0x = (int)Math.Ceiling(Radius * Math.Cos(LastTheta)),
+                P0y = (int)Math.Ceiling(Radius * Math.Sin(LastTheta)),
                 LastPx = P0x,
                 LastPy = P0y,
                 DLPx, DLPy;
 
             for (int i = 1; i < VertexNum; i++)
             {
-                LastAngle += DeltaTheta;
-                int Px = (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
-                    Py = (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta));
+                LastTheta += DeltaTheta;
+                int Px = (int)Math.Ceiling(Radius * Math.Cos(LastTheta)),
+                    Py = (int)Math.Ceiling(Radius * Math.Sin(LastTheta));
                 DLPx = Px - LastPx;
                 DLPy = Py - LastPy;
 
@@ -304,6 +360,79 @@ namespace MenthaAssembly.Media.Imaging
             DLPy = P0y - LastPy;
 
             GraphicAlgorithm.CalculateBresenhamLine(DLPx, DLPy, DLPx.Abs(), DLPy.Abs(), (Dx, Dy) => AddData(Cx + LastPx + Dx, Cy + LastPy + Dy));
+
+            return Polygon;
+        }
+
+        public static ImageContour CreateFillPolygon(IList<int> VerticeDatas, int OffsetX, int OffsetY)
+        {
+            ImageContour Polygon = new ImageContour();
+            int pn = VerticeDatas.Count,
+                pnh = VerticeDatas.Count >> 1;
+
+            int[] intersectionsX = new int[pnh];
+
+            // Find y min and max (slightly faster than scanning from 0 to height)
+            int yMin = int.MaxValue,
+                yMax = 0;
+            for (int i = 1; i < pn; i += 2)
+            {
+                int py = VerticeDatas[i] + OffsetY;
+                if (py < yMin)
+                    yMin = py;
+                if (py > yMax)
+                    yMax = py;
+            }
+
+            // Scan line from min to max
+            for (int y = yMin; y <= yMax; y++)
+            {
+                // Initial point x, y
+                float vxi = VerticeDatas[0] + OffsetX,
+                      vyi = VerticeDatas[1] + OffsetY;
+
+                // Find all intersections
+                // Based on http://alienryderflex.com/polygon_fill/
+                int intersectionCount = 0;
+                for (int i = 2; i < pn; i += 2)
+                {
+                    // Next point x, y
+                    float vxj = VerticeDatas[i] + OffsetX,
+                          vyj = VerticeDatas[i + 1] + OffsetY;
+
+                    // Is the scanline between the two points
+                    if (vyi < y && vyj >= y ||
+                        vyj < y && vyi >= y)
+                    {
+                        // Compute the intersection of the scanline with the edge (line between two points)
+                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
+                    }
+                    vxi = vxj;
+                    vyi = vyj;
+                }
+
+                // Sort the intersections from left to right using Insertion sort 
+                // It's faster than Array.Sort for this small data set
+                int t, j;
+                for (int i = 1; i < intersectionCount; i++)
+                {
+                    t = intersectionsX[i];
+                    j = i;
+                    while (j > 0 && intersectionsX[j - 1] > t)
+                    {
+                        intersectionsX[j] = intersectionsX[j - 1];
+                        j -= 1;
+                    }
+                    intersectionsX[j] = t;
+                }
+
+                // Add Datas
+                for (int i = 0; i < intersectionCount - 1; i += 2)
+                {
+                    Polygon[y].Datas.Add(intersectionsX[i]);
+                    Polygon[y].Datas.Add(intersectionsX[i + 1]);
+                }
+            }
 
             return Polygon;
         }

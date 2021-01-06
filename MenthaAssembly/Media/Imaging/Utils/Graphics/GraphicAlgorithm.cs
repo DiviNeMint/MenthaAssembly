@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
@@ -591,7 +589,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 if (Ea < 0)
                     Ea += TwoPI;
 
-                Omega = Clockwise == (Ea > Sa) ? Ea - Sa - TwoPI : Ea - Sa;
+                Omega = Clockwise ? (Ea > Sa ? Ea - Sa : Ea - Sa + TwoPI) :
+                                    (Ea > Sa ? Ea - Sa - TwoPI : Ea - Sa);
             }
 
             int pts = ((int)Math.Ceiling(Math.Max(Rx, Ry) * Omega)).Abs();
@@ -613,26 +612,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (!IgnoreEndPoint)
                 Handler(Rx * Math.Cos(Theta), Ry * Math.Sin(Theta));
         }
-        public static void CalculateArcPolygonPoints(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, bool IgnoreEndPoint, GraphicDeltaHandler Handler)
+        public static void CalculateArcPolygonPoints(double Sa, double Ea, double Rx, double Ry, bool Clockwise, bool IgnoreEndPoint, GraphicDoubleDeltaHandler Handler)
         {
-            double Sa = Math.Atan2(DSy, DSx),
-                   TwoPI = 2 * Math.PI,
-                   Omega;
-            if (Sa < 0)
-                Sa += TwoPI;
-
-            if (DSx == DEx && DSy == DEy)
-            {
-                Omega = TwoPI;
-            }
-            else
-            {
-                double Ea = Math.Atan2(DEy, DEx);
-                if (Ea < 0)
-                    Ea += TwoPI;
-
-                Omega = Clockwise == (Ea > Sa) ? Ea - Sa - TwoPI : Ea - Sa;
-            }
+            double Omega = Sa == Ea ? (Clockwise ? MathHelper.TwoPI : -MathHelper.TwoPI) :
+                                      (Clockwise ? (Ea > Sa ? Ea - Sa : Ea - Sa + MathHelper.TwoPI) :
+                                                   (Ea > Sa ? Ea - Sa - MathHelper.TwoPI : Ea - Sa));
 
             int pts = ((int)Math.Ceiling(Math.Max(Rx, Ry) * Omega)).Abs();
             if (pts < 2)
@@ -646,12 +630,24 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             for (int i = 0; i < pts; i++)
             {
-                Handler((int)(Rx * Math.Cos(Theta)), (int)(Ry * Math.Sin(Theta)));
+                Handler(Rx * Math.Cos(Theta), Ry * Math.Sin(Theta));
                 Theta += Delta;
             }
 
             if (!IgnoreEndPoint)
-                Handler((int)(Rx * Math.Cos(Theta)), (int)(Ry * Math.Sin(Theta)));
+                Handler(Rx * Math.Cos(Theta), Ry * Math.Sin(Theta));
+        }
+
+        public static void CalculateRegularPolygonVertices(double Radius, int VertexNum, double StartTheta, GraphicDoubleDeltaHandler Handler)
+        {
+            double DeltaTheta = 360d / VertexNum * MathHelper.UnitTheta,
+                   LastTheta = StartTheta;
+
+            for (int i = 0; i < VertexNum; i++)
+            {
+                LastTheta += DeltaTheta;
+                Handler(Radius * Math.Cos(LastTheta), Radius * Math.Sin(LastTheta));
+            }
         }
 
         /// <summary>
@@ -765,121 +761,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
                 // Prevent rounding gap
                 Handler(Tx1, Ty1, X3, Y3);
-            }
-        }
-
-        public static FloatBound CalculateLineBound(float X0, float Y0, float X1, float Y1)
-            => X1 < X0 ? (Y1 < Y0 ? new FloatBound(X1, Y1, X0, Y0) :
-                                    new FloatBound(X1, Y0, X0, Y1)) :
-                         (Y1 < Y0 ? new FloatBound(X0, Y1, X1, Y0) :
-                                    new FloatBound(X0, Y0, X1, Y1));
-        public static FloatBound CalculateArcBound(float Sx, float Sy, float Ex, float Ey, float Cx, float Cy, float Radius, bool Clockwise)
-        {
-            if (Cx < Sx)
-            {
-                if (Cy < Sy)
-                {
-                    if (Cx < Ex)
-                    {
-                        if (Cy < Ey)
-                        {
-                            bool Temp = Sx < Ex;
-                            return Clockwise == Temp ? new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Cy + Radius) :
-                                                       Temp ? new FloatBound(Sx, Ey, Ex, Sy) :
-                                                              new FloatBound(Ex, Sy, Sx, Ey);
-                        }
-                        else
-                        {
-                            return Clockwise ? new FloatBound(Cx - Radius, Cy - Radius, Sx < Ex ? Ex : Sx, Cy + Radius) :
-                                               new FloatBound(Sx < Ex ? Sx : Ex, Ey, Cx + Radius, Sy);
-                        }
-                    }
-                    else
-                    {
-                        return Cy < Ey ? (Clockwise ? new FloatBound(Ex, Sy < Ey ? Sy : Ey, Sx, Cy + Radius) :
-                                                      new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Sy < Ey ? Ey : Sy)) :
-                                         (Clockwise ? new FloatBound(Cx - Radius, Ey, Sx, Cy + Radius) :
-                                                      new FloatBound(Ex, Cy - Radius, Cx + Radius, Sy));
-                    }
-                }
-                else
-                {
-                    if (Cx < Ex)
-                    {
-                        if (Cy < Ey)
-                        {
-                            return Clockwise ? new FloatBound(Sx < Ex ? Sx : Ex, Sy, Cx + Radius, Ey) :
-                                               new FloatBound(Cx - Radius, Cy - Radius, Sx < Ex ? Ex : Sx, Cy + Radius);
-                        }
-                        else
-                        {
-                            bool Temp = Sx < Ex;
-                            return Clockwise == Temp ? (Temp ? new FloatBound(Sx, Sy, Ex, Ey) :
-                                                               new FloatBound(Ex, Ey, Sx, Sy)) :
-                                                       new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Cy + Radius);
-                        }
-                    }
-                    else
-                    {
-                        return Cy < Ey ? (Clockwise ? new FloatBound(Ex, Sy, Cx + Radius, Cy + Radius) :
-                                                      new FloatBound(Cx - Radius, Cy - Radius, Sx, Ey)) :
-                                         (Clockwise ? new FloatBound(Cx - Radius, Sy < Ey ? Sy : Ey, Cx + Radius, Cy + Radius) :
-                                                      new FloatBound(Ex, Cy - Radius, Sx, Sy < Ey ? Ey : Sy));
-                    }
-                }
-            }
-            else
-            {
-                if (Cy < Sy)
-                {
-                    if (Cx < Ex)
-                    {
-                        return Cy < Ey ? (Clockwise ? new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Sy < Ey ? Ey : Sy) :
-                                                      new FloatBound(Sx, Sy < Ey ? Sy : Ey, Ex, Cy + Radius)) :
-                                         (Clockwise ? new FloatBound(Cx - Radius, Cy - Radius, Ex, Sy) :
-                                                      new FloatBound(Sx, Ey, Cx + Radius, Cy + Radius));
-                    }
-                    else
-                    {
-                        if (Cy < Ey)
-                        {
-                            bool Temp = Sx < Ex;
-                            return Clockwise == Temp ? new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Cy + Radius) :
-                                                       Temp ? new FloatBound(Sx, Sy, Ex, Ey) :
-                                                              new FloatBound(Ex, Ey, Sx, Sy);
-                        }
-                        else
-                        {
-                            return Clockwise ? new FloatBound(Cx - Radius, Ey, Sx < Ex ? Ex : Sx, Sy) :
-                                               new FloatBound(Sx < Ex ? Sx : Ex, Cy - Radius, Cx + Radius, Cy + Radius);
-                        }
-                    }
-                }
-                else
-                {
-                    if (Cx < Ex)
-                    {
-                        return Cy < Ey ? (Clockwise ? new FloatBound(Sx, Cy - Radius, Cx + Radius, Ey) :
-                                                      new FloatBound(Cx - Radius, Sy, Ex, Cy + Radius)) :
-                                         (Clockwise ? new FloatBound(Sx, Cy - Radius, Ex, Sy < Ey ? Ey : Sy) :
-                                                      new FloatBound(Cx - Radius, Sy < Ey ? Sy : Ey, Cx + Radius, Cy + Radius));
-                    }
-                    else
-                    {
-                        if (Cy < Ey)
-                        {
-                            return Clockwise ? new FloatBound(Sx < Ex ? Sx : Ex, Cy - Radius, Cx + Radius, Cy + Radius) :
-                                               new FloatBound(Cx - Radius, Sy, Sx < Ex ? Ex : Sx, Ey);
-                        }
-                        else
-                        {
-                            bool Temp = Sx < Ex;
-                            return Clockwise == Temp ? (Temp ? new FloatBound(Sx, Ey, Ex, Sy) :
-                                                               new FloatBound(Ex, Sy, Sx, Ey)) :
-                                                       new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Cy + Radius);
-                        }
-                    }
-                }
             }
         }
 
