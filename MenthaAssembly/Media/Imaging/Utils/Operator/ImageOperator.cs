@@ -225,7 +225,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void BlockOverlay(IImageContext Destination, int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height)
         {
-            long Offset = Destination.Stride * Y + (((long)X * Destination.BitsPerPixel) >> 3);
+            long Offset = Destination.Stride * Y + ((X * Destination.BitsPerPixel) >> 3);
             byte* pPixels = (byte*)Destination.Scan0 + Offset;
             Source.BlockOverlayTo<Pixel>(OffsetX, OffsetY, Width, Height, pPixels, Destination.Stride);
         }

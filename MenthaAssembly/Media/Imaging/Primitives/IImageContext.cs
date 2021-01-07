@@ -9,7 +9,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public int Height { get; }
 
-        public int Stride { get; }
+        public long Stride { get; }
 
         public int BitsPerPixel { get; }
 
@@ -109,7 +109,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Height">The height of block.</param>
         /// <param name="Dest0">The destination buffer.</param>
         /// <param name="DestStride">The byte stride of <paramref name="Dest0"/>.</param>
-        public void BlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, int DestStride);
+        public void BlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride);
         /// <summary>
         /// Copies the specific block of pixels to a destination array where starting at a particular offset with a particular stride.
         /// </summary>
@@ -120,7 +120,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Dest0">The destination buffer.</param>
         /// <param name="DestOffset">The zero-based index in the <paramref name="Dest0"/> where copying should start.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, int DestStride);
+        public void BlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride);
         /// <summary>
         /// Copies the specific block of pixels to an unmanaged memory pointer.
         /// </summary>
@@ -139,7 +139,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Height">The height of block.</param>
         /// <param name="Dest0">The memory pointer to copy to.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy(int X, int Y, int Width, int Height, IntPtr Dest0, int DestStride);
+        public void BlockCopy(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride);
         /// <summary>
         /// Copies the specific block of pixels to an address in memory.
         /// </summary>
@@ -158,7 +158,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Height">The height of block.</param>
         /// <param name="Dest0">The target address to copy to.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy(int X, int Y, int Width, int Height, byte* Dest0, int DestStride);
+        public void BlockCopy(int X, int Y, int Width, int Height, byte* Dest0, long DestStride);
 
         /// <summary>
         /// Casts the specific block of pixels to <typeparamref name="T"/> and Copies to a destination array.
@@ -178,7 +178,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Height">The height of block.</param>
         /// <param name="Dest0">The destination buffer.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestStride) where T : unmanaged, IPixel;
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, long DestStride) where T : unmanaged, IPixel;
         /// <summary>
         /// Casts the specific block of pixels to <typeparamref name="T"/> and Copies to a destination array where starting at a particular offset with a particular stride.
         /// </summary>
@@ -189,7 +189,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Dest0">The destination buffer.</param>
         /// <param name="DestOffset">The zero-based index in the <paramref name="Dest0"/> where copying should start.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestOffset, int DestStride) where T : unmanaged, IPixel;
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestOffset, long DestStride) where T : unmanaged, IPixel;
         /// <summary>
         /// Casts the specific block of pixels to <typeparamref name="T"/> and Copies to an address in memory.
         /// </summary>
@@ -208,7 +208,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Height">The height of block.</param>
         /// <param name="Dest0">The target address to copy to.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, int DestStride) where T : unmanaged, IPixel;
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, long DestStride) where T : unmanaged, IPixel;
         /// <summary>
         /// Casts the specific block of pixels to <typeparamref name="T"/> and Copies to a destination array.
         /// </summary>
@@ -227,7 +227,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Height">The height of block.</param>
         /// <param name="Dest0">The destination buffer.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestStride) where T : unmanaged, IPixel;
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride) where T : unmanaged, IPixel;
         /// <summary>
         /// Casts the specific block of pixels to <typeparamref name="T"/> and Copies to a destination array where starting at a particular offset with a particular stride.
         /// </summary>
@@ -238,7 +238,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Dest0">The destination buffer.</param>
         /// <param name="DestOffset">The zero-based index in the <paramref name="Dest0"/> where copying should start.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, int DestStride) where T : unmanaged, IPixel;
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride) where T : unmanaged, IPixel;
         /// <summary>
         /// Casts the specific block of pixels to <typeparamref name="T"/> and Copies to an unmanaged memory pointer.
         /// </summary>
@@ -257,7 +257,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Height">The height of block.</param>
         /// <param name="Dest0">The memory pointer to copy to.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, int DestStride) where T : unmanaged, IPixel;
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride) where T : unmanaged, IPixel;
         /// <summary>
         /// Casts the specific block of pixels to <typeparamref name="T"/> and Copies to an address in memory.
         /// </summary>
@@ -276,7 +276,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Height">The height of block.</param>
         /// <param name="Dest0">The target address to copy to.</param>
         /// <param name="DestStride">The stride of bytes in <paramref name="Dest0"/>.</param>
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, int DestStride) where T : unmanaged, IPixel;
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride) where T : unmanaged, IPixel;
 
         /// <summary>
         /// Copies the specific block of pixels to the destination arrays of specifying channels.
@@ -300,7 +300,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="DestG">The destination buffer of G channel.</param>
         /// <param name="DestB">The destination buffer of B channel.</param>
         /// <param name="DestStride">The stride of bytes in destination arrays.</param>
-        public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestStride);
+        public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride);
         /// <summary>
         /// Copies the specific block of pixels to the destination arrays of specifying channels where starting at a particular offset with a particular stride.
         /// </summary>
@@ -313,7 +313,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="DestB">The destination buffer of B channel.</param>
         /// <param name="DestOffset">The zero-based index in destination arrays where copying should start.</param>
         /// <param name="DestStride">The stride of bytes in destination arrays.</param>
-        public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, int DestStride);
+        public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride);
         /// <summary>
         /// Copies the specific block of pixels to the unmanaged memory pointers of specifying channels.
         /// </summary>
@@ -336,7 +336,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="DestG">The memory pointer of G channel to copy to.</param>
         /// <param name="DestB">The memory pointer of B channel to copy to.</param>
         /// <param name="DestStride">The stride of bytes in the memory pointers.</param>
-        public void BlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB, int DestStride);
+        public void BlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB, long DestStride);
         /// <summary>
         /// Copies the specific block of pixels to the addresses in memory of specifying channels.
         /// </summary>
@@ -359,7 +359,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="DestG">The target address of G channel to copy to.</param>
         /// <param name="DestB">The target address of B channel to copy to.</param>
         /// <param name="DestStride">The stride of bytes in target addresses.</param>
-        public void BlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, int DestStride);
+        public void BlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride);
 
         /// <summary>
         /// Copies the specific block of pixels to the destination arrays of specifying channels.
@@ -385,7 +385,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="DestG">The destination buffer of G channel.</param>
         /// <param name="DestB">The destination buffer of B channel.</param>
         /// <param name="DestStride">The stride of bytes in destination arrays.</param>
-        public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestStride);
+        public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride);
         /// <summary>
         /// Copies the specific block of pixels to the destination arrays of specifying channels where starting at a particular offset with a particular stride.
         /// </summary>
@@ -399,7 +399,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="DestB">The destination buffer of B channel.</param>
         /// <param name="DestOffset">The zero-based index in destination arrays where copying should start.</param>
         /// <param name="DestStride">The stride of bytes in destination arrays.</param>
-        public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, int DestStride);
+        public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride);
         /// <summary>
         /// Copies the specific block of pixels to the unmanaged memory pointers of specifying channels.
         /// </summary>
@@ -424,7 +424,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="DestG">The memory pointer of G channel to copy to.</param>
         /// <param name="DestB">The memory pointer of B channel to copy to.</param>
         /// <param name="DestStride">The stride of bytes in the memory pointers.</param>
-        public void BlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB, int DestStride);
+        public void BlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB, long DestStride);
         /// <summary>
         /// Copies the specific block of pixels to the addresses in memory of specifying channels.
         /// </summary>
@@ -449,7 +449,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="DestG">The target address of G channel to copy to.</param>
         /// <param name="DestB">The target address of B channel to copy to.</param>
         /// <param name="DestStride">The stride of bytes in target addresses.</param>
-        public void BlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, int DestStride);
+        public void BlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride);
 
         #endregion
 
@@ -638,9 +638,9 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region BlockOverlayTo
-        internal void BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* Dest0, int DestStride) where T : unmanaged, IPixel;
-        internal void BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, int DestStride) where T : unmanaged, IPixel;
-        internal void BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, int DestStride) where T : unmanaged, IPixel;
+        internal void BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride) where T : unmanaged, IPixel;
+        internal void BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride) where T : unmanaged, IPixel;
+        internal void BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride) where T : unmanaged, IPixel;
 
         #endregion
 

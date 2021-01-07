@@ -1,4 +1,5 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
+using MenthaAssembly.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +16,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
         public int Height { get; }
 
-        public int Stride { get; }
+        public long Stride { get; }
 
         public int BitsPerPixel { get; }
 
@@ -91,8 +92,41 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             this.BitsPerPixel = default(Struct).BitsPerPixel;
         }
 
-        internal ImageContextBase(int Width, int Height) : this(Width, Height, new byte[Width * sizeof(Struct) * Height], null)
+        private readonly HGlobalIntPtr UnmanagedScan0;
+        internal ImageContextBase(int Width, int Height) : this()
         {
+            this.Width = Width;
+            this.Height = Height;
+
+            this.Stride = Width * sizeof(Struct);
+            this.Channels = 1;
+
+            this.Palette = new List<Pixel>();
+
+            long Size = this.Stride * Height;
+            if (Size > int.MaxValue)
+            {
+                UnmanagedScan0 = new HGlobalIntPtr(Size);
+                this._Scan0 = UnmanagedScan0.DangerousGetHandle();
+                GetScan0 = () => this._Scan0;
+            }
+            else
+            {
+                this.Data0 = new byte[this.Stride * Height];
+                GetScan0 = () =>
+                {
+                    fixed (byte* pScan0 = &this.Data0[0])
+                        return (IntPtr)pScan0;
+                };
+            }
+
+            GetScanA = () => throw new NotImplementedException();
+            GetScanR = () => throw new NotImplementedException();
+            GetScanG = () => throw new NotImplementedException();
+            GetScanB = () => throw new NotImplementedException();
+
+            this.Operator = default(Struct) is IPixelIndexed ? ImageIndexedOperator<Pixel, Struct>.GetOperator() :
+                                                               ImageOperator<Pixel>.GetOperator();
         }
 
         internal ImageContextBase(int Width, int Height, IntPtr Scan0, int Stride, IList<Pixel> Palette) : this()

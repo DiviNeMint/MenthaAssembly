@@ -15,23 +15,23 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             fixed (byte* pDest = &Dest0[0])
                 BlockCopy(X, Y, Width, Height, pDest, sizeof(Pixel) * Width);
         }
-        public void BlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, int DestStride)
+        public void BlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride)
         {
             fixed (byte* pDest = &Dest0[0])
                 BlockCopy(X, Y, Width, Height, pDest, DestStride);
         }
-        public void BlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, int DestStride)
+        public void BlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride)
         {
             fixed (byte* pDest = &Dest0[DestOffset])
                 BlockCopy(X, Y, Width, Height, pDest, DestStride);
         }
         public void BlockCopy(int X, int Y, int Width, int Height, IntPtr Dest0)
             => BlockCopy(X, Y, Width, Height, (byte*)Dest0, sizeof(Pixel) * Width);
-        public void BlockCopy(int X, int Y, int Width, int Height, IntPtr Dest0, int DestStride)
+        public void BlockCopy(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride)
             => BlockCopy(X, Y, Width, Height, (byte*)Dest0, DestStride);
         public void BlockCopy(int X, int Y, int Width, int Height, byte* Dest0)
             => BlockCopy(X, Y, Width, Height, Dest0, sizeof(Pixel) * Width);
-        public void BlockCopy(int X, int Y, int Width, int Height, byte* Dest0, int DestStride)
+        public void BlockCopy(int X, int Y, int Width, int Height, byte* Dest0, long DestStride)
             => Parallel.For(0, Height, (j) =>
             {
                 byte* Dest = Dest0 + DestStride * j;
@@ -44,13 +44,13 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             fixed (T* pDest = &Dest0[0])
                 BlockCopy<T>(X, Y, Width, Height, (byte*)pDest, Width * sizeof(T));
         }
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestStride)
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, long DestStride)
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[0])
                 BlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride);
         }
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestOffset, int DestStride)
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestOffset, long DestStride)
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[DestOffset])
@@ -61,7 +61,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         {
             BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
         }
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, int DestStride)
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, long DestStride)
             where T : unmanaged, IPixel
         {
             BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride);
@@ -72,13 +72,13 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             fixed (byte* pDest = &Dest0[0])
                 BlockCopy<T>(X, Y, Width, Height, pDest, Width * sizeof(T));
         }
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestStride)
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride)
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[0])
                 BlockCopy<T>(X, Y, Width, Height, pDest, DestStride);
         }
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, int DestStride)
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride)
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[DestOffset])
@@ -89,7 +89,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         {
             BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
         }
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, int DestStride)
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride)
             where T : unmanaged, IPixel
         {
             BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride);
@@ -99,7 +99,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         {
             BlockCopy<T>(X, Y, Width, Height, Dest0, Width * sizeof(Pixel));
         }
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, int DestStride)
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride)
             where T : unmanaged, IPixel
         {
             PixelOperator<T> PixelOperator = PixelOperator<T>.GetOperator();
@@ -118,14 +118,14 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                          pDestB = &DestB[0])
                 BlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, Width);
         }
-        public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestStride)
+        public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride)
         {
             fixed (byte* pDestR = &DestR[0],
                          pDestG = &DestG[0],
                          pDestB = &DestB[0])
                 BlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, DestStride);
         }
-        public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, int DestStride)
+        public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride)
         {
             fixed (byte* pDestR = &DestR[DestOffset],
                          pDestG = &DestG[DestOffset],
@@ -134,11 +134,11 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         }
         public void BlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB)
             => BlockCopy3(X, Y, Width, Height, (byte*)DestR, (byte*)DestG, (byte*)DestB, Width);
-        public void BlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB, int DestStride)
+        public void BlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB, long DestStride)
             => BlockCopy3(X, Y, Width, Height, (byte*)DestR, (byte*)DestG, (byte*)DestB, DestStride);
         public void BlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB)
             => BlockCopy3(X, Y, Width, Height, DestR, DestG, DestB, Width);
-        public void BlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, int DestStride)
+        public void BlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride)
             => Parallel.For(0, Height, (j) =>
             {
                 long Offset = (long)DestStride * j;
@@ -153,7 +153,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                          pDestB = &DestB[0])
                 BlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, Width);
         }
-        public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestStride)
+        public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride)
         {
             fixed (byte* pDestA = &DestA[0],
                          pDestR = &DestR[0],
@@ -161,7 +161,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                          pDestB = &DestB[0])
                 BlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, DestStride);
         }
-        public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, int DestStride)
+        public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride)
         {
             fixed (byte* pDestA = &DestA[DestOffset],
                          pDestR = &DestR[DestOffset],
@@ -171,11 +171,11 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         }
         public void BlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB)
             => BlockCopy4(X, Y, Width, Height, (byte*)DestA, (byte*)DestR, (byte*)DestG, (byte*)DestB, Width);
-        public void BlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB, int DestStride)
+        public void BlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB, long DestStride)
             => BlockCopy4(X, Y, Width, Height, (byte*)DestA, (byte*)DestR, (byte*)DestG, (byte*)DestB, DestStride);
         public void BlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB)
             => BlockCopy4(X, Y, Width, Height, DestA, DestR, DestG, DestB, Width);
-        public void BlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, int DestStride)
+        public void BlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride)
             => Parallel.For(0, Height, (j) =>
             {
                 long Offset = (long)DestStride * j;
@@ -283,7 +283,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         #endregion
 
         #region BlockOverlayTo
-        void IImageContext.BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* Dest0, int DestStride)
+        void IImageContext.BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride)
         {
             PixelOperator<T> PixelOperator = PixelOperator<T>.GetOperator();
             for (int j = 0; j < Height; j++)
@@ -292,7 +292,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 Dest0 += DestStride;
             }
         }
-        void IImageContext.BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, int DestStride)
+        void IImageContext.BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride)
         {
             PixelOperator<T> PixelOperator = PixelOperator<T>.GetOperator();
             for (int j = 0; j < Height; j++)
@@ -303,7 +303,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 DestB += DestStride;
             }
         }
-        void IImageContext.BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, int DestStride)
+        void IImageContext.BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride)
         {
             PixelOperator<T> PixelOperator = PixelOperator<T>.GetOperator();
             for (int j = 0; j < Height; j++)
