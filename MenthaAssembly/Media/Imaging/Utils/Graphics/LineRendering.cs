@@ -378,6 +378,18 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             }
         }
 
+        void IImageContext.DrawLine(Int32Point P0, Int32Point P1, IPixel Color)
+            => this.DrawLine(P0.X, P0.Y, P1.X, P1.Y, Operator.ToPixel(Color.A, Color.R, Color.G, Color.B));
+        void IImageContext.DrawLine(int X0, int Y0, int X1, int Y1, IPixel Color)
+            => this.DrawLine(X0, Y0, X1, Y1, Operator.ToPixel(Color.A, Color.R, Color.G, Color.B));
+        void IImageContext.DrawLine(Int32Point P0, Int32Point P1, IImageContext Pen)
+            => this.DrawLine(P0.X, P0.Y, P1.X, P1.Y, Pen);
+        void IImageContext.DrawLine(int X0, int Y0, int X1, int Y1, IImageContext Pen)
+            => this.DrawLine(X0, Y0, X1, Y1, Pen);
+        void IImageContext.DrawLine(Int32Point P0, Int32Point P1, ImageContour Contour, IPixel Fill)
+            => this.DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+        void IImageContext.DrawLine(int X0, int Y0, int X1, int Y1, ImageContour Contour, IPixel Fill)
+            => this.DrawLine(X0, Y0, X1, Y1, Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
         #endregion
 
         #region Arc
@@ -608,6 +620,18 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             this.Operator.ContourOverlay(this, ArcContour, Fill, 0, 0);
         }
 
+        void IImageContext.DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IPixel Color)
+            => this.DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Operator.ToPixel(Color.A, Color.R, Color.G, Color.B));
+        void IImageContext.DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IPixel Color)
+            => this.DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Operator.ToPixel(Color.A, Color.R, Color.G, Color.B));
+        void IImageContext.DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
+            => this.DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
+        void IImageContext.DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
+            => this.DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Pen);
+        void IImageContext.DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, IPixel Fill)
+            => this.DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+        void IImageContext.DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, IPixel Fill)
+            => this.DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
         #endregion
 
         #region Curve

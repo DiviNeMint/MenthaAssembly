@@ -1,6 +1,5 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
-using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging.Primitives
@@ -32,11 +31,13 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         public void BlockCopy(int X, int Y, int Width, int Height, byte* Dest0)
             => BlockCopy(X, Y, Width, Height, Dest0, sizeof(Pixel) * Width);
         public void BlockCopy(int X, int Y, int Width, int Height, byte* Dest0, long DestStride)
-            => Parallel.For(0, Height, (j) =>
+        {
+            for (int j = 0; j < Height; j++)
             {
                 byte* Dest = Dest0 + DestStride * j;
                 Operator.ScanLineCopy(this, X, Y + j, Width, Dest);
-            });
+            }
+        }
 
         public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0)
             where T : unmanaged, IPixel
@@ -103,12 +104,11 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             where T : unmanaged, IPixel
         {
             PixelOperator<T> PixelOperator = PixelOperator<T>.GetOperator();
-
-            Parallel.For(0, Height, (j) =>
+            for (int j = 0; j < Height; j++)
             {
                 byte* Dest = Dest0 + DestStride * j;
                 Operator.ScanLineCopy(this, X, Y + j, Width, Dest, PixelOperator);
-            });
+            }
         }
 
         public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB)
@@ -139,11 +139,13 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         public void BlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB)
             => BlockCopy3(X, Y, Width, Height, DestR, DestG, DestB, Width);
         public void BlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride)
-            => Parallel.For(0, Height, (j) =>
+        {
+            for (int j = 0; j < Height; j++)
             {
-                long Offset = (long)DestStride * j;
+                long Offset = DestStride * j;
                 Operator.ScanLineCopy3(this, X, Y + j, Width, DestR + Offset, DestG + Offset, DestB + Offset);
-            });
+            }
+        }
 
         public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB)
         {
@@ -176,9 +178,355 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         public void BlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB)
             => BlockCopy4(X, Y, Width, Height, DestA, DestR, DestG, DestB, Width);
         public void BlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride)
+        {
+            for (int j = 0; j < Height; j++)
+            {
+                long Offset = DestStride * j;
+                Operator.ScanLineCopy4(this, X, Y + j, Width, DestA + Offset, DestR + Offset, DestG + Offset, DestB + Offset);
+            }
+        }
+
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte[] Dest0)
+        {
+            fixed (byte* pDest = &Dest0[0])
+                ParallelBlockCopy(X, Y, Width, Height, pDest, sizeof(Pixel) * Width);
+        }
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride)
+        {
+            fixed (byte* pDest = &Dest0[0])
+                ParallelBlockCopy(X, Y, Width, Height, pDest, DestStride);
+        }
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride)
+        {
+            fixed (byte* pDest = &Dest0[DestOffset])
+                ParallelBlockCopy(X, Y, Width, Height, pDest, DestStride);
+        }
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, IntPtr Dest0)
+            => ParallelBlockCopy(X, Y, Width, Height, (byte*)Dest0, sizeof(Pixel) * Width);
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride)
+            => ParallelBlockCopy(X, Y, Width, Height, (byte*)Dest0, DestStride);
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte* Dest0)
+            => ParallelBlockCopy(X, Y, Width, Height, Dest0, sizeof(Pixel) * Width);
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte* Dest0, long DestStride)
             => Parallel.For(0, Height, (j) =>
             {
-                long Offset = (long)DestStride * j;
+                byte* Dest = Dest0 + DestStride * j;
+                Operator.ScanLineCopy(this, X, Y + j, Width, Dest);
+            });
+
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, ParallelOptions Options)
+        {
+            fixed (byte* pDest = &Dest0[0])
+                ParallelBlockCopy(X, Y, Width, Height, pDest, sizeof(Pixel) * Width, Options);
+        }
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride, ParallelOptions Options)
+        {
+            fixed (byte* pDest = &Dest0[0])
+                ParallelBlockCopy(X, Y, Width, Height, pDest, DestStride, Options);
+        }
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, IntPtr Dest0, ParallelOptions Options)
+            => ParallelBlockCopy(X, Y, Width, Height, (byte*)Dest0, sizeof(Pixel) * Width, Options);
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride, ParallelOptions Options)
+            => ParallelBlockCopy(X, Y, Width, Height, (byte*)Dest0, DestStride, Options);
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride, ParallelOptions Options)
+        {
+            fixed (byte* pDest = &Dest0[DestOffset])
+                ParallelBlockCopy(X, Y, Width, Height, pDest, DestStride, Options);
+        }
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte* Dest0, ParallelOptions Options)
+            => ParallelBlockCopy(X, Y, Width, Height, Dest0, sizeof(Pixel) * Width, Options);
+        public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte* Dest0, long DestStride, ParallelOptions Options)
+            => Parallel.For(0, Height, Options, (j) =>
+             {
+                 byte* Dest = Dest0 + DestStride * j;
+                 Operator.ScanLineCopy(this, X, Y + j, Width, Dest);
+             });
+
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0)
+            where T : unmanaged, IPixel
+        {
+            fixed (T* pDest = &Dest0[0])
+                ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)pDest, Width * sizeof(T));
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, long DestStride)
+            where T : unmanaged, IPixel
+        {
+            fixed (T* pDest = &Dest0[0])
+                ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestOffset, long DestStride)
+            where T : unmanaged, IPixel
+        {
+            fixed (T* pDest = &Dest0[DestOffset])
+                ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, long DestStride)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0)
+            where T : unmanaged, IPixel
+        {
+            fixed (byte* pDest = &Dest0[0])
+                ParallelBlockCopy<T>(X, Y, Width, Height, pDest, Width * sizeof(T));
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride)
+            where T : unmanaged, IPixel
+        {
+            fixed (byte* pDest = &Dest0[0])
+                ParallelBlockCopy<T>(X, Y, Width, Height, pDest, DestStride);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride)
+            where T : unmanaged, IPixel
+        {
+            fixed (byte* pDest = &Dest0[DestOffset])
+                ParallelBlockCopy<T>(X, Y, Width, Height, pDest, DestStride);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, Dest0, Width * sizeof(Pixel));
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride)
+            where T : unmanaged, IPixel
+        {
+            PixelOperator<T> PixelOperator = PixelOperator<T>.GetOperator();
+
+            Parallel.For(0, Height, (j) =>
+            {
+                byte* Dest = Dest0 + DestStride * j;
+                Operator.ScanLineCopy(this, X, Y + j, Width, Dest, PixelOperator);
+            });
+        }
+
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            fixed (T* pDest = &Dest0[0])
+                ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)pDest, Width * sizeof(T), Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, long DestStride, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            fixed (T* pDest = &Dest0[0])
+                ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride, Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestOffset, long DestStride, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            fixed (T* pDest = &Dest0[DestOffset])
+                ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride, Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T), Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, long DestStride, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride, Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            fixed (byte* pDest = &Dest0[0])
+                ParallelBlockCopy<T>(X, Y, Width, Height, pDest, Width * sizeof(T), Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            fixed (byte* pDest = &Dest0[0])
+                ParallelBlockCopy<T>(X, Y, Width, Height, pDest, DestStride, Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            fixed (byte* pDest = &Dest0[DestOffset])
+                ParallelBlockCopy<T>(X, Y, Width, Height, pDest, DestStride, Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T), Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride, Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ParallelBlockCopy<T>(X, Y, Width, Height, Dest0, Width * sizeof(Pixel), Options);
+        }
+        public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            PixelOperator<T> PixelOperator = PixelOperator<T>.GetOperator();
+
+            Parallel.For(0, Height, Options, (j) =>
+            {
+                byte* Dest = Dest0 + DestStride * j;
+                Operator.ScanLineCopy(this, X, Y + j, Width, Dest, PixelOperator);
+            });
+        }
+
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB)
+        {
+            fixed (byte* pDestR = &DestR[0],
+                         pDestG = &DestG[0],
+                         pDestB = &DestB[0])
+                ParallelBlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, Width);
+        }
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride)
+        {
+            fixed (byte* pDestR = &DestR[0],
+                         pDestG = &DestG[0],
+                         pDestB = &DestB[0])
+                ParallelBlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, DestStride);
+        }
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride)
+        {
+            fixed (byte* pDestR = &DestR[DestOffset],
+                         pDestG = &DestG[DestOffset],
+                         pDestB = &DestB[DestOffset])
+                ParallelBlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, DestStride);
+        }
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB)
+            => ParallelBlockCopy3(X, Y, Width, Height, (byte*)DestR, (byte*)DestG, (byte*)DestB, Width);
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB, long DestStride)
+            => ParallelBlockCopy3(X, Y, Width, Height, (byte*)DestR, (byte*)DestG, (byte*)DestB, DestStride);
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB)
+            => ParallelBlockCopy3(X, Y, Width, Height, DestR, DestG, DestB, Width);
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride)
+            => Parallel.For(0, Height, (j) =>
+            {
+                long Offset = DestStride * j;
+                Operator.ScanLineCopy3(this, X, Y + j, Width, DestR + Offset, DestG + Offset, DestB + Offset);
+            });
+
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, ParallelOptions Options)
+        {
+            fixed (byte* pDestR = &DestR[0],
+                         pDestG = &DestG[0],
+                         pDestB = &DestB[0])
+                ParallelBlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, Width, Options);
+        }
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride, ParallelOptions Options)
+        {
+            fixed (byte* pDestR = &DestR[0],
+                         pDestG = &DestG[0],
+                         pDestB = &DestB[0])
+                ParallelBlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, DestStride, Options);
+        }
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride, ParallelOptions Options)
+        {
+            fixed (byte* pDestR = &DestR[DestOffset],
+                         pDestG = &DestG[DestOffset],
+                         pDestB = &DestB[DestOffset])
+                ParallelBlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, DestStride, Options);
+        }
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB, ParallelOptions Options)
+            => ParallelBlockCopy3(X, Y, Width, Height, (byte*)DestR, (byte*)DestG, (byte*)DestB, Width, Options);
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB, long DestStride, ParallelOptions Options)
+            => ParallelBlockCopy3(X, Y, Width, Height, (byte*)DestR, (byte*)DestG, (byte*)DestB, DestStride, Options);
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, ParallelOptions Options)
+            => ParallelBlockCopy3(X, Y, Width, Height, DestR, DestG, DestB, Width, Options);
+        public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride, ParallelOptions Options)
+            => Parallel.For(0, Height, Options, (j) =>
+            {
+                long Offset = DestStride * j;
+                Operator.ScanLineCopy3(this, X, Y + j, Width, DestR + Offset, DestG + Offset, DestB + Offset);
+            });
+
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB)
+        {
+            fixed (byte* pDestA = &DestA[0],
+                         pDestR = &DestR[0],
+                         pDestG = &DestG[0],
+                         pDestB = &DestB[0])
+                ParallelBlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, Width);
+        }
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride)
+        {
+            fixed (byte* pDestA = &DestA[0],
+                         pDestR = &DestR[0],
+                         pDestG = &DestG[0],
+                         pDestB = &DestB[0])
+                ParallelBlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, DestStride);
+        }
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride)
+        {
+            fixed (byte* pDestA = &DestA[DestOffset],
+                         pDestR = &DestR[DestOffset],
+                         pDestG = &DestG[DestOffset],
+                         pDestB = &DestB[DestOffset])
+                ParallelBlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, DestStride);
+        }
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB)
+            => ParallelBlockCopy4(X, Y, Width, Height, (byte*)DestA, (byte*)DestR, (byte*)DestG, (byte*)DestB, Width);
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB, long DestStride)
+            => ParallelBlockCopy4(X, Y, Width, Height, (byte*)DestA, (byte*)DestR, (byte*)DestG, (byte*)DestB, DestStride);
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB)
+            => ParallelBlockCopy4(X, Y, Width, Height, DestA, DestR, DestG, DestB, Width);
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride)
+            => Parallel.For(0, Height, (j) =>
+            {
+                long Offset = DestStride * j;
+                Operator.ScanLineCopy4(this, X, Y + j, Width, DestA + Offset, DestR + Offset, DestG + Offset, DestB + Offset);
+            });
+
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, ParallelOptions Options)
+        {
+            fixed (byte* pDestA = &DestA[0],
+                         pDestR = &DestR[0],
+                         pDestG = &DestG[0],
+                         pDestB = &DestB[0])
+                ParallelBlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, Width, Options);
+        }
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride, ParallelOptions Options)
+        {
+            fixed (byte* pDestA = &DestA[0],
+                         pDestR = &DestR[0],
+                         pDestG = &DestG[0],
+                         pDestB = &DestB[0])
+                ParallelBlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, DestStride, Options);
+        }
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride, ParallelOptions Options)
+        {
+            fixed (byte* pDestA = &DestA[DestOffset],
+                         pDestR = &DestR[DestOffset],
+                         pDestG = &DestG[DestOffset],
+                         pDestB = &DestB[DestOffset])
+                ParallelBlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, DestStride, Options);
+        }
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB, ParallelOptions Options)
+            => ParallelBlockCopy4(X, Y, Width, Height, (byte*)DestA, (byte*)DestR, (byte*)DestG, (byte*)DestB, Width, Options);
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB, long DestStride, ParallelOptions Options)
+            => ParallelBlockCopy4(X, Y, Width, Height, (byte*)DestA, (byte*)DestR, (byte*)DestG, (byte*)DestB, DestStride, Options);
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, ParallelOptions Options)
+            => ParallelBlockCopy4(X, Y, Width, Height, DestA, DestR, DestG, DestB, Width, Options);
+        public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride, ParallelOptions Options)
+            => Parallel.For(0, Height, Options, (j) =>
+            {
+                long Offset = DestStride * j;
                 Operator.ScanLineCopy4(this, X, Y + j, Width, DestA + Offset, DestR + Offset, DestG + Offset, DestB + Offset);
             });
 

@@ -59,6 +59,7 @@ namespace MenthaAssembly.Media.Imaging
         {
         }
 
+        #region Flip
         /// <summary>
         /// Create a new flipped ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
         /// </summary>
@@ -118,6 +119,9 @@ namespace MenthaAssembly.Media.Imaging
         protected override IImageContext FlipHandler(FlipMode Mode)
             => this.Flip(Mode);
 
+        #endregion
+
+        #region Crop
         /// <summary>
         /// Creates a new cropped ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
         /// </summary>
@@ -157,6 +161,89 @@ namespace MenthaAssembly.Media.Imaging
         protected override IImageContext CropHandler(int X, int Y, int Width, int Height)
             => this.Crop<Pixel>(X, Y, Width, Height);
 
+        /// <summary>
+        /// Creates a new cropped ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
+        /// </summary>
+        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
+        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
+        public ImageContext<Pixel> ParallelCrop(int X, int Y, int Width, int Height)
+            => this.ParallelCrop<Pixel>(X, Y, Width, Height);
+        /// <summary>
+        /// Creates a new cropped ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
+        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
+        public unsafe ImageContext<T> ParallelCrop<T>(int X, int Y, int Width, int Height)
+            where T : unmanaged, IPixel
+        {
+            // If the rectangle is completely out of the bitmap
+            if (X > this.Width || Y > this.Height)
+                return new ImageContext<T>(0, 0);
+
+            // Clamp to boundaries
+            X = Math.Max(X, 0);
+            Y = Math.Max(Y, 0);
+            Width = Math.Max(Math.Min(Width, this.Width - X), 0);
+            Height = Math.Max(Math.Min(Height, this.Height - Y), 0);
+
+            // Create Result
+            ImageContext<T> Result = new ImageContext<T>(Width, Height);
+
+            this.ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride);
+
+            return Result;
+        }
+        protected override IImageContext ParallelCropHandler(int X, int Y, int Width, int Height)
+            => this.ParallelCrop<Pixel>(X, Y, Width, Height);
+
+        /// <summary>
+        /// Creates a new cropped ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
+        /// </summary>
+        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
+        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.</param>
+        public ImageContext<Pixel> ParallelCrop(int X, int Y, int Width, int Height, ParallelOptions Options)
+            => this.ParallelCrop<Pixel>(X, Y, Width, Height, Options);
+        /// <summary>
+        /// Creates a new cropped ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
+        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.</param>
+        public unsafe ImageContext<T> ParallelCrop<T>(int X, int Y, int Width, int Height, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            // If the rectangle is completely out of the bitmap
+            if (X > this.Width || Y > this.Height)
+                return new ImageContext<T>(0, 0);
+
+            // Clamp to boundaries
+            X = Math.Max(X, 0);
+            Y = Math.Max(Y, 0);
+            Width = Math.Max(Math.Min(Width, this.Width - X), 0);
+            Height = Math.Max(Math.Min(Height, this.Height - Y), 0);
+
+            // Create Result
+            ImageContext<T> Result = new ImageContext<T>(Width, Height);
+
+            this.ParallelBlockCopy<T>(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride, Options);
+
+            return Result;
+        }
+        protected override IImageContext ParallelCropHandler(int X, int Y, int Width, int Height, ParallelOptions Options)
+            => this.ParallelCrop<Pixel>(X, Y, Width, Height, Options);
+
+        #endregion
+
+        #region Convolute
         /// <summary>
         /// Creates a new filtered ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
         /// </summary>
@@ -285,10 +372,13 @@ namespace MenthaAssembly.Media.Imaging
         protected override IImageContext ConvoluteHandler(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
             => this.Convolute(Kernel, KernelFactorSum, KernelOffsetSum);
 
-        protected override IImageContext CastHandler<T>()
-            => this.Cast<T>();
-        protected override IImageContext CastHandler<T, U>()
-            => this.Cast<T, U>();
+        #endregion
+
+        #region Cast
+        /// <summary>
+        /// Creates a new casted ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
         public unsafe ImageContext<T> Cast<T>()
             where T : unmanaged, IPixel
         {
@@ -298,6 +388,14 @@ namespace MenthaAssembly.Media.Imaging
 
             return Result;
         }
+        protected override IImageContext CastHandler<T>()
+            => this.Cast<T>();
+
+        /// <summary>
+        /// Creates a new casted Indexed ImageContext&lt;<typeparamref name="T"/>, <typeparamref name="U"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="U"></typeparam>
         public ImageContext<T, U> Cast<T, U>()
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
@@ -316,6 +414,91 @@ namespace MenthaAssembly.Media.Imaging
 
             return Result;
         }
+        protected override IImageContext CastHandler<T, U>()
+            => this.Cast<T, U>();
+
+        /// <summary>
+        /// Creates a new casted ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        public unsafe ImageContext<T> ParallelCast<T>()
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
+            this.ParallelBlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
+            return Result;
+        }
+        protected override IImageContext ParallelCastHandler<T>()
+            => this.ParallelCast<T>();
+
+        /// <summary>
+        /// Creates a new casted ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Options">An object that configures the behavior of this operation.</param>
+        public unsafe ImageContext<T> ParallelCast<T>(ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
+            this.ParallelBlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride, Options);
+            return Result;
+        }
+        protected override IImageContext ParallelCastHandler<T>(ParallelOptions Options)
+            => this.ParallelCast<T>(Options);
+
+        /// <summary>
+        /// Creates a new casted Indexed ImageContext&lt;<typeparamref name="T"/>, <typeparamref name="U"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="U"></typeparam>
+        public ImageContext<T, U> ParallelCast<T, U>()
+            where T : unmanaged, IPixel
+            where U : unmanaged, IPixelIndexed
+        {
+            ImageContext<T, U> Result = new ImageContext<T, U>(this.Width, this.Height);
+            Parallel.For(0, Height, Y =>
+            {
+                Pixel SourcePixel;
+                for (int X = 0; X < Width; X++)
+                {
+                    SourcePixel = this.Operator.GetPixel(this, X, Y);
+                    Result.Operator.SetPixel(Result, X, Y, Result.Operator.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B));
+                }
+            });
+
+            return Result;
+        }
+        protected override IImageContext ParallelCastHandler<T, U>()
+            => this.ParallelCast<T, U>();
+
+        /// <summary>
+        /// Creates a new casted Indexed ImageContext&lt;<typeparamref name="T"/>, <typeparamref name="U"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="U"></typeparam>
+        /// <param name="Options">An object that configures the behavior of this operation.</param>
+        public ImageContext<T, U> ParallelCast<T, U>(ParallelOptions Options)
+            where T : unmanaged, IPixel
+            where U : unmanaged, IPixelIndexed
+        {
+            ImageContext<T, U> Result = new ImageContext<T, U>(this.Width, this.Height);
+            Parallel.For(0, Height, Options, Y =>
+            {
+                Pixel SourcePixel;
+                for (int X = 0; X < Width; X++)
+                {
+                    SourcePixel = this.Operator.GetPixel(this, X, Y);
+                    Result.Operator.SetPixel(Result, X, Y, Result.Operator.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B));
+                }
+            });
+
+            return Result;
+        }
+        protected override IImageContext ParallelCastHandler<T, U>(ParallelOptions Options)
+            => this.ParallelCast<T, U>(Options);
+
+        #endregion
+
 
         /// <summary>
         /// Rotates the bitmap in any degree returns a new rotated ImageContext&lt;<typeparamref name="Pixel"/>&gt;.
@@ -506,6 +689,7 @@ namespace MenthaAssembly.Media.Imaging
         {
         }
 
+        #region Flip
         /// <summary>
         /// Create a new flipped ImageContext&lt;<typeparamref name="Pixel"/>, <typeparamref name="PixelIndexed"/>&gt;.
         /// </summary>
@@ -585,6 +769,9 @@ namespace MenthaAssembly.Media.Imaging
         protected override IImageContext FlipHandler(FlipMode Mode)
             => this.Flip(Mode);
 
+        #endregion
+
+        #region Crop
         /// <summary>
         /// Creates a new cropped ImageContext&lt;<typeparamref name="Pixel"/>, <typeparamref name="PixelIndexed"/>&gt;.
         /// </summary>
@@ -593,6 +780,40 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Width">The width of the rectangle that defines the crop region.</param>
         /// <param name="Height">The height of the rectangle that defines the crop region.</param>
         public unsafe ImageContext<Pixel, PixelIndexed> Crop(int X, int Y, int Width, int Height)
+        {
+            // If the rectangle is completely out of the bitmap
+            if (X > this.Width || Y > this.Height)
+                return new ImageContext<Pixel, PixelIndexed>(0, 0);
+
+            // Clamp to boundaries
+            X = Math.Max(X, 0);
+            Y = Math.Max(Y, 0);
+            Width = Math.Max(Math.Min(Width, this.Width - X), 0);
+            Height = Math.Max(Math.Min(Height, this.Height - Y), 0);
+
+            // Create Result
+            ImageContext<Pixel, PixelIndexed> Result = new ImageContext<Pixel, PixelIndexed>(Width, Height);
+
+            for (int j = 0; j < Height; j++)
+            {
+                int SourceY = Y + j;
+                for (int i = 0; i < Width; i++)
+                    Result.Operator.SetPixel(Result, i, j, this.Operator.GetPixel(this, X + i, SourceY));
+            }
+
+            return Result;
+        }
+        protected override IImageContext CropHandler(int X, int Y, int Width, int Height)
+            => this.Crop(X, Y, Width, Height);
+
+        /// <summary>
+        /// Creates a new cropped ImageContext&lt;<typeparamref name="Pixel"/>, <typeparamref name="PixelIndexed"/>&gt;.
+        /// </summary>
+        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
+        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
+        public unsafe ImageContext<Pixel, PixelIndexed> ParallelCrop(int X, int Y, int Width, int Height)
         {
             // If the rectangle is completely out of the bitmap
             if (X > this.Width || Y > this.Height)
@@ -617,9 +838,48 @@ namespace MenthaAssembly.Media.Imaging
 
             return Result;
         }
-        protected override IImageContext CropHandler(int X, int Y, int Width, int Height)
-            => this.Crop(X, Y, Width, Height);
+        protected override IImageContext ParallelCropHandler(int X, int Y, int Width, int Height)
+            => this.ParallelCrop(X, Y, Width, Height);
 
+        /// <summary>
+        /// Creates a new cropped ImageContext&lt;<typeparamref name="Pixel"/>, <typeparamref name="PixelIndexed"/>&gt;.
+        /// </summary>
+        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
+        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
+        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.</param>
+        public unsafe ImageContext<Pixel, PixelIndexed> ParallelCrop(int X, int Y, int Width, int Height, ParallelOptions Options)
+        {
+            // If the rectangle is completely out of the bitmap
+            if (X > this.Width || Y > this.Height)
+                return new ImageContext<Pixel, PixelIndexed>(0, 0);
+
+            // Clamp to boundaries
+            X = Math.Max(X, 0);
+            Y = Math.Max(Y, 0);
+            Width = Math.Max(Math.Min(Width, this.Width - X), 0);
+            Height = Math.Max(Math.Min(Height, this.Height - Y), 0);
+
+            // Create Result
+            ImageContext<Pixel, PixelIndexed> Result = new ImageContext<Pixel, PixelIndexed>(Width, Height);
+
+            Parallel.For(0, Height, Options, j =>
+            {
+                int SourceY = Y + j;
+
+                for (int i = 0; i < Width; i++)
+                    Result.Operator.SetPixel(Result, i, j, this.Operator.GetPixel(this, X + i, SourceY));
+            });
+
+            return Result;
+        }
+        protected override IImageContext ParallelCropHandler(int X, int Y, int Width, int Height, ParallelOptions Options)
+            => this.ParallelCrop(X, Y, Width, Height, Options);
+
+        #endregion
+
+        #region Convolute
         /// <summary>
         /// Creates a new filtered ImageContext&lt;<typeparamref name="Pixel"/>, <typeparamref name="PixelIndexed"/>&gt;.
         /// </summary>
@@ -746,10 +1006,13 @@ namespace MenthaAssembly.Media.Imaging
         protected override IImageContext ConvoluteHandler(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
             => this.Convolute(Kernel, KernelFactorSum, KernelOffsetSum);
 
-        protected override IImageContext CastHandler<T>()
-            => this.Cast<T>();
-        protected override IImageContext CastHandler<T, U>()
-            => this.Cast<T, U>();
+        #endregion
+
+        #region Cast
+        /// <summary>
+        /// Creates a new casted ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
         public unsafe ImageContext<T> Cast<T>()
             where T : unmanaged, IPixel
         {
@@ -759,6 +1022,14 @@ namespace MenthaAssembly.Media.Imaging
 
             return Result;
         }
+        protected override IImageContext CastHandler<T>()
+            => this.Cast<T>();
+
+        /// <summary>
+        /// Creates a new casted Indexed ImageContext&lt;<typeparamref name="T"/>, <typeparamref name="U"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="U"></typeparam>
         public unsafe ImageContext<T, U> Cast<T, U>()
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
@@ -777,6 +1048,91 @@ namespace MenthaAssembly.Media.Imaging
 
             return Result;
         }
+        protected override IImageContext CastHandler<T, U>()
+            => this.Cast<T, U>();
+
+        /// <summary>
+        /// Creates a new casted ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        public unsafe ImageContext<T> ParallelCast<T>()
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
+            this.ParallelBlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
+            return Result;
+        }
+        protected override IImageContext ParallelCastHandler<T>()
+            => this.ParallelCast<T>();
+
+        /// <summary>
+        /// Creates a new casted ImageContext&lt;<typeparamref name="T"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Options">An object that configures the behavior of this operation.</param>
+        public unsafe ImageContext<T> ParallelCast<T>(ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
+            this.ParallelBlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride, Options);
+            return Result;
+        }
+        protected override IImageContext ParallelCastHandler<T>(ParallelOptions Options)
+            => this.ParallelCast<T>(Options);
+
+        /// <summary>
+        /// Creates a new casted Indexed ImageContext&lt;<typeparamref name="T"/>, <typeparamref name="U"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="U"></typeparam>
+        public unsafe ImageContext<T, U> ParallelCast<T, U>()
+            where T : unmanaged, IPixel
+            where U : unmanaged, IPixelIndexed
+        {
+            ImageContext<T, U> Result = new ImageContext<T, U>(this.Width, this.Height);
+            Parallel.For(0, Height, Y =>
+            {
+                Pixel SourcePixel;
+                for (int X = 0; X < Width; X++)
+                {
+                    SourcePixel = this.Operator.GetPixel(this, X, Y);
+                    Result.Operator.SetPixel(Result, X, Y, Result.Operator.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B));
+                }
+            });
+
+            return Result;
+            /// <param name="Options">An object that configures the behavior of this operation.</param>
+        }
+        protected override IImageContext ParallelCastHandler<T, U>()
+            => this.ParallelCast<T, U>();
+
+        /// <summary>
+        /// Creates a new casted Indexed ImageContext&lt;<typeparamref name="T"/>, <typeparamref name="U"/>&gt;.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="U"></typeparam>
+        /// <param name="Options">An object that configures the behavior of this operation.</param>
+        public unsafe ImageContext<T, U> ParallelCast<T, U>(ParallelOptions Options)
+            where T : unmanaged, IPixel
+            where U : unmanaged, IPixelIndexed
+        {
+            ImageContext<T, U> Result = new ImageContext<T, U>(this.Width, this.Height);
+            Parallel.For(0, Height, Options, Y =>
+            {
+                Pixel SourcePixel;
+                for (int X = 0; X < Width; X++)
+                {
+                    SourcePixel = this.Operator.GetPixel(this, X, Y);
+                    Result.Operator.SetPixel(Result, X, Y, Result.Operator.ToPixel(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B));
+                }
+            });
+
+            return Result;
+        }
+        protected override IImageContext ParallelCastHandler<T, U>(ParallelOptions Options)
+            => this.ParallelCast<T, U>(Options);
+
+        #endregion
 
         protected override IImageContext CloneHandler()
             => this.Clone();

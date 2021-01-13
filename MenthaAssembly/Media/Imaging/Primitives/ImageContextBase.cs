@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging.Primitives
 {
-    public unsafe abstract partial class ImageContextBase<Pixel, Struct> : IImageContext
+    public abstract unsafe partial class ImageContextBase<Pixel, Struct> : IImageContext
         where Pixel : unmanaged, IPixel
         where Struct : unmanaged, IPixelBase
     {
@@ -275,37 +275,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             this.Operator = ImageOperator4<Pixel>.GetOperator();
         }
-
-        protected abstract IImageContext FlipHandler(FlipMode Mode);
-        IImageContext IImageContext.Flip(FlipMode Mode)
-            => FlipHandler(Mode);
-
-        protected abstract IImageContext CropHandler(int X, int Y, int Width, int Height);
-        IImageContext IImageContext.Crop(int X, int Y, int Width, int Height)
-            => CropHandler(X, Y, Width, Height);
-
-        protected abstract IImageContext ConvoluteHandler(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum);
-        IImageContext IImageContext.Convolute(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
-            => ConvoluteHandler(Kernel, KernelFactorSum, KernelOffsetSum);
-        IImageContext IImageContext.Convolute(ConvoluteKernel Kernel)
-            => ConvoluteHandler(Kernel.Datas, Kernel.FactorSum, Kernel.Offset);
-
-        protected abstract IImageContext CastHandler<T>()
-            where T : unmanaged, IPixel;
-        protected abstract IImageContext CastHandler<T, U>()
-            where T : unmanaged, IPixel
-            where U : unmanaged, IPixelIndexed;
-        IImageContext IImageContext.Cast<T>()
-            => CastHandler<T>();
-        IImageContext IImageContext.Cast<T, U>()
-            => CastHandler<T, U>();
-
-        protected abstract IImageContext CloneHandler();
-        object ICloneable.Clone()
-            => CloneHandler();
-
-        public IntPtr CreateHBitmap()
-            => Win32.Graphic.CreateBitmap(Width, Height, 1, BitsPerPixel, Scan0);
 
     }
 

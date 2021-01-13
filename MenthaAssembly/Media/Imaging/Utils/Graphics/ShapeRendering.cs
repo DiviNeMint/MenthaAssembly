@@ -315,6 +315,52 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             }
         }
 
+        void IImageContext.DrawEllipse(Int32Bound Bound, IPixel Color)
+        {
+            int Rx = Bound.Width >> 1,
+                Ry = Bound.Height >> 1;
+
+            this.DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Operator.ToPixel(Color.A, Color.R, Color.G, Color.B));
+        }
+        void IImageContext.DrawEllipse(Int32Point Center, int Rx, int Ry, IPixel Color)
+            => this.DrawEllipse(Center.X, Center.Y, Rx, Ry, Operator.ToPixel(Color.A, Color.R, Color.G, Color.B));
+        void IImageContext.DrawEllipse(int Cx, int Cy, int Rx, int Ry, IPixel Color)
+            => this.DrawEllipse(Cx, Cy, Rx, Ry, Operator.ToPixel(Color.A, Color.R, Color.G, Color.B));
+        void IImageContext.DrawEllipse(Int32Bound Bound, IImageContext Pen)
+        {
+            int Rx = Bound.Width >> 1,
+                Ry = Bound.Height >> 1;
+
+            this.DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Pen);
+        }
+        void IImageContext.DrawEllipse(Int32Point Center, int Rx, int Ry, IImageContext Pen)
+            => this.DrawEllipse(Center.X, Center.Y, Rx, Ry, Pen);
+        void IImageContext.DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen)
+            => this.DrawEllipse(Cx, Cy, Rx, Ry, Pen);
+        void IImageContext.DrawEllipse(Int32Bound Bound, ImageContour Contour, IPixel Fill)
+        {
+            int Rx = Bound.Width >> 1,
+                Ry = Bound.Height >> 1;
+
+            this.DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+        }
+        void IImageContext.DrawEllipse(Int32Point Center, int Rx, int Ry, ImageContour Contour, IPixel Fill)
+            => this.DrawEllipse(Center.X, Center.Y, Rx, Ry, Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+        void IImageContext.DrawEllipse(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, IPixel Fill)
+            => this.DrawEllipse(Cx, Cy, Rx, Ry, Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+
+        void IImageContext.FillEllipse(Int32Bound Bound, IPixel Fill)
+        {
+            int Rx = Bound.Width >> 1,
+                Ry = Bound.Height >> 1;
+
+            this.FillEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+        }
+        void IImageContext.FillEllipse(Int32Point Center, int Rx, int Ry, IPixel Fill)
+            => this.FillEllipse(Center.X, Center.Y, Rx, Ry, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+        void IImageContext.FillEllipse(int Cx, int Cy, int Rx, int Ry, IPixel Fill)
+            => this.FillEllipse(Cx, Cy, Rx, Ry, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B));
+
         #endregion
 
         #region Polygon
@@ -722,6 +768,25 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             }
         }
 
+
+        void IImageContext.DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, IPixel Color, double StartAngle)
+            => this.DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Operator.ToPixel(Color.A, Color.R, Color.G, Color.B), StartAngle);
+        void IImageContext.DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IPixel Color, double StartAngle)
+            => this.DrawRegularPolygon(Cx, Cy, Radius, VertexNum, Operator.ToPixel(Color.A, Color.R, Color.G, Color.B), StartAngle);
+        void IImageContext.DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, IImageContext Pen, double StartAngle)
+            => this.DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Pen, StartAngle);
+        void IImageContext.DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IImageContext Pen, double StartAngle)
+            => this.DrawRegularPolygon(Cx, Cy, Radius, VertexNum, Pen, StartAngle);
+        void IImageContext.DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle)
+            => this.DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B), StartAngle);
+        void IImageContext.DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle)
+            => this.DrawRegularPolygon(Cx, Cy, Radius, VertexNum, Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B), StartAngle);
+
+        void IImageContext.FillPolygon(IList<Int32Point> Vertices, IPixel Fill, int OffsetX, int OffsetY)
+            => this.FillPolygon(Vertices, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B),  OffsetX,  OffsetY);
+        void IImageContext.FillPolygon(IList<int> VerticeDatas, IPixel Fill, int OffsetX, int OffsetY)
+            => this.FillPolygon(VerticeDatas, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B),  OffsetX,  OffsetY);
+
         #endregion
 
         #region Other
@@ -801,6 +866,15 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                 Contour.Clear();
             }
         }
+
+
+        void IImageContext.DrawStamp(Int32Point Position, IImageContext Stamp)
+            => this.DrawStamp(Position.X, Position.Y, Stamp);
+        void IImageContext.DrawStamp(int X, int Y, IImageContext Stamp)
+            => this.DrawStamp(X, Y, Stamp);
+
+        void IImageContext.FillContour(ImageContour Contour, IPixel Fill, int OffsetX, int OffsetY)
+            => this.FillContour(Contour, Operator.ToPixel(Fill.A, Fill.R, Fill.G, Fill.B), OffsetX, OffsetY);
 
         #endregion
 
