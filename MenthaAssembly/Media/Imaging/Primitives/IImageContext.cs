@@ -276,6 +276,215 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        #endregion
+
+        #region Shape Rendering
+
+        #region Ellipse
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Bound">The bounding rectangle of ellipse.</param>
+        /// <param name="Color">The color for the line.</param>
+        public void DrawEllipse(Int32Bound Bound, IPixel Color);
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Center">The coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Color">The color for the line.</param>
+        public void DrawEllipse(Int32Point Center, int Rx, int Ry, IPixel Color);
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
+        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Color">The color for the line.</param>
+        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IPixel Color);
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Bound">The bounding rectangle of ellipse.</param>
+        /// <param name="Pen">The pen with transparent background for the line.</param>
+        public void DrawEllipse(Int32Bound Bound, IImageContext Pen);
+        /// <summary>        
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Center">The coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Pen">The pen with transparent background for the line.</param>
+        public void DrawEllipse(Int32Point Center, int Rx, int Ry, IImageContext Pen);
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
+        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Pen">The pen with transparent background for the line.</param>
+        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen);
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Bound">The bounding rectangle of ellipse.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawEllipse(Int32Bound Bound, ImageContour Contour, IPixel Fill);
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Center">The coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawEllipse(Int32Point Center, int Rx, int Ry, ImageContour Contour, IPixel Fill);
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
+        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, IPixel Fill);
+
+        /// <summary>
+        /// Fill an ellipse.
+        /// </summary>
+        /// <param name="Bound">The bounding rectangle of ellipse.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void FillEllipse(Int32Bound Bound, IPixel Fill);
+        /// <summary>
+        /// Fill an ellipse.
+        /// </summary>
+        /// <param name="Center">The coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Fill">The color for the ellipses.</param>
+        public void FillEllipse(Int32Point Center, int Rx, int Ry, IPixel Fill);
+        /// <summary>
+        /// Fill an ellipse.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
+        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
+        /// <param name="LRx">The radius of the ellipse in x-direction.</param>
+        /// <param name="LRy">The radius of the ellipse in y-direction.</param>
+        /// <param name="Fill">The color for the ellipses.</param>
+        public void FillEllipse(int Cx, int Cy, int Rx, int Ry, IPixel Fill);
+
+        #endregion
+
+        #region Polygon
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Center">The coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Color">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, IPixel Color, double StartAngle);
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the polygon center.</param>
+        /// <param name="Cy">The y-coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Color">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IPixel Color, double StartAngle);
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Center">The coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Pen">The pen with transparent background for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, IImageContext Pen, double StartAngle);
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the polygon center.</param>
+        /// <param name="Cy">The y-coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Pen">The pen with transparent background for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IImageContext Pen, double StartAngle);
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Center">The coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle);
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the polygon center.</param>
+        /// <param name="Cy">The y-coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle);
+
+        /// <summary>
+        /// Fill a polygon.
+        /// </summary>
+        /// <param name="Vertices">The vertices of the polygon.</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="OffsetX">The offset of x-coordinate.</param>
+        /// <param name="OffsetY">The offset of y-coordinate.</param>
+        public void FillPolygon(IList<Int32Point> Vertices, IPixel Fill, int OffsetX, int OffsetY);
+        /// <summary>
+        /// Fill a polygon.
+        /// </summary>
+        /// <param name="VerticeDatas">The vertices of the polygon in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="OffsetX">The offset of x-coordinate.</param>
+        /// <param name="OffsetY">The offset of y-coordinate.</param>
+        public void FillPolygon(IList<int> VerticeDatas, IPixel Fill, int OffsetX, int OffsetY);
+
+        #endregion
+
+        #region Other
+        /// <summary>
+        /// Draw a stamp.
+        /// </summary>
+        /// <param name="Position">The coordinate of left-top in stamp.</param>
+        /// <param name="Stamp">The stamp to draw.</param>
+        public void DrawStamp(Int32Point Position, IImageContext Stamp);
+        /// <summary>
+        /// Draw a stamp.
+        /// </summary>
+        /// <param name="X">The x-coordinate of left-top in stamp.</param>
+        /// <param name="Y">The y-coordinate of left-top in stamp.</param>
+        /// <param name="Stamp">The stamp to draw.</param>
+        public void DrawStamp(int X, int Y, IImageContext Stamp);
+
+        /// <summary>
+        /// Fill a contour.
+        /// </summary>
+        /// <param name="Contour">The contour to draw.</param>
+        /// <param name="Fill">The fill color for the contour.</param>
+        /// <param name="OffsetX">The offset of x-coordinate.</param>
+        /// <param name="OffsetY">The offset of y-coordinate.</param>
+        public void FillContour(ImageContour Contour, IPixel Fill, int OffsetX, int OffsetY);
+
+        #endregion
 
         #endregion
 
