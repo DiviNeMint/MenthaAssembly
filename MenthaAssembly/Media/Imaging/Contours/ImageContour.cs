@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -101,6 +102,43 @@ namespace MenthaAssembly.Media.Imaging
         {
             foreach (KeyValuePair<int, ContourData> Pair in Contour.Datas)
                 this[Pair.Key].Difference(Pair.Value);
+        }
+
+        public void Flip(FlipMode Mode)
+        {
+            Int32Bound Bound = this.Bound;
+            switch (Mode)
+            {
+                case FlipMode.Vertical:
+                    {
+                        KeyValuePair<int, ContourData>[] TempDatas = Datas.ToArray();
+                        Datas.Clear();
+
+                        int Delta = Bound.Top + Bound.Bottom;
+                        foreach (KeyValuePair<int, ContourData> Data in TempDatas)
+                            Datas.Add(Delta - Data.Key, Data.Value);
+
+                        break;
+                    }
+                case FlipMode.Horizontal:
+                    {
+                        int Delta = Bound.Left + Bound.Right;
+                        foreach (KeyValuePair<int, ContourData> Data in Datas)
+                        {
+                            int Count = Data.Value.Count,
+                                Length = Count >> 1;
+                            Count--;
+                            for (int i = 0; i < Length; i++)
+                            {
+                                int Temp = Delta - Data.Value[i];
+                                Data.Value[i] = Delta - Data.Value[Count - i];
+                                Data.Value[Count - i] = Temp;
+                            }
+                        }
+
+                        break;
+                    }
+            }
         }
 
         public void Offset(int X, int Y)
@@ -437,6 +475,162 @@ namespace MenthaAssembly.Media.Imaging
             return Polygon;
         }
 
+        public static ImageContour CreateLineContour(int X0, int Y0, int X1, int Y1, ImageContour Pen)
+        {
+            Int32Bound Bound = Pen.Bound;
+            if (Bound.IsEmpty)
+                return null;
+
+            if (X1 < X0)
+            {
+                MathHelper.Swap(ref X0, ref X1);
+                MathHelper.Swap(ref Y0, ref Y1);
+            }
+            int DeltaX = X1 - X0,
+                DeltaY = Y1 - Y0,
+                AbsDeltaY = Math.Abs(DeltaY);
+
+            bool IsHollow = false;
+            ImageContour LineContour = new ImageContour();
+
+            #region Pen Bound
+            int PCx = Bound.Width >> 1,
+                PCy = Bound.Height >> 1,
+                DUx = 0,
+                DUy = 0,
+                DLx = 0,
+                DLy = 0,
+                UpperDistance = 0,
+                LowerDistance = 0;
+
+            foreach (KeyValuePair<int, ContourData> Item in Pen)
+            {
+                int j = Item.Key;
+                ContourData Data = Item.Value;
+                if (Data.Count > 2)
+                {
+                    IsHollow = true;
+                    LineContour.Clear();
+                    break;
+                }
+
+                int Ty = j - PCy;
+                // Found Left Bound
+                {
+                    int Tx = Data[0] - PCx,
+                        Predict = DeltaX * Ty - DeltaY * Tx,
+                        Distance = Math.Abs(Predict);
+
+                    if (Predict > 0)    // UpperLine
+                    {
+                        if (UpperDistance < Distance)
+                        {
+                            UpperDistance = Distance;
+                            DUx = Tx;
+                            DUy = Ty;
+                        }
+                    }
+                    else                // LowerLine
+                    {
+                        if (LowerDistance < Distance)
+                        {
+                            LowerDistance = Distance;
+                            DLx = Tx;
+                            DLy = Ty;
+                        }
+                    }
+
+                    
+                    LineContour[Ty + Y0].AddLeft(Tx + X0);  // StartPoint
+                    LineContour[Ty + Y1].AddLeft(Tx + X1);  // EndPoint
+
+                }
+
+                // Found Right Bound
+                {
+                    int Tx = Data[Data.Count - 1] - PCx,
+                        Predict = DeltaX * Ty - DeltaY * Tx,
+                        Distance = Math.Abs(Predict);
+
+                    if (Predict > 0)    // UpperLine
+                    {
+                        if (UpperDistance < Distance)
+                        {
+                            UpperDistance = Distance;
+                            DUx = Tx;
+                            DUy = Ty;
+                        }
+                    }
+                    else                // LowerLine
+                    {
+                        if (LowerDistance < Distance)
+                        {
+                            LowerDistance = Distance;
+                            DLx = Tx;
+                            DLy = Ty;
+                        }
+                    }
+
+                    LineContour[Ty + Y0].AddRight(Tx + X0);  // StartPoint
+                    LineContour[Ty + Y1].AddRight(Tx + X1);  // EndPoint
+                }
+            }
+
+            #endregion
+
+            if (IsHollow)
+            {
+                #region Line Body Bound
+                ImageContour Stroke = ImageContour.Offset(Pen, X0 - PCx, Y0 - PCy);
+
+                int LastDx = 0,
+                    LastDy = 0;
+
+                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY,
+                    (Dx, Dy) =>
+                    {
+                        Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                        LineContour.Union(Stroke);
+
+                        LastDx = Dx;
+                        LastDy = Dy;
+                    });
+                #endregion
+            }
+            else
+            {
+                #region Line Body Bound
+                int Ux = X0 + DUx,
+                    Uy = Y0 + DUy,
+                    Lx = X0 + DLx,
+                    Ly = Y0 + DLy;
+
+                if (DeltaX == 0 && DeltaY < 0)
+                {
+                    MathHelper.Swap(ref Ux, ref Lx);
+                    MathHelper.Swap(ref Uy, ref Ly);
+                }
+
+                GraphicDeltaHandler FoundLineBodyBound = DeltaX * DeltaY < 0 ?
+                    new GraphicDeltaHandler(
+                        (Dx, Dy) =>
+                        {
+                            LineContour[Ly + Dy].AddLeft(Lx + Dx);
+                            LineContour[Uy + Dy].AddRight(Ux + Dx); 
+                        }) :
+                        (Dx, Dy) =>
+                        {
+                            LineContour[Uy + Dy].AddLeft(Ux + Dx);
+                            LineContour[Ly + Dy].AddRight(Lx + Dx);
+                        };
+
+                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, FoundLineBodyBound);
+
+                #endregion
+            }
+
+            return LineContour;
+        }
 
         public static ImageContour operator +(ImageContour This, ImageContour Contour)
         {

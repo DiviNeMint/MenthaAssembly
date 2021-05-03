@@ -16,10 +16,11 @@
 
         public Pixel ToPixel(byte A, byte R, byte G, byte B);
 
-        public unsafe void ScanLineCopy(IImageContext Source, int X, int Y, int Length, byte* pDest);
-        public unsafe void ScanLineCopy<T>(IImageContext Source, int X, int Y, int Length, byte* pDest, PixelOperator<T> Operator) where T : unmanaged, IPixel;
-        public unsafe void ScanLineCopy3(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB);
-        public unsafe void ScanLineCopy4(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB);
+        public void ScanLineOverride(IImageContext Destination, int X, int Y, int Length, Pixel Color);
+        public unsafe void ScanLineOverrideTo(IImageContext Source, int X, int Y, int Length, byte* pDest);
+        public unsafe void ScanLineOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDest, PixelOperator<T> Operator) where T : unmanaged, IPixel;
+        public unsafe void ScanLineOverrideTo(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB);
+        public unsafe void ScanLineOverrideTo(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB);
 
         public void ScanLineOverlay(IImageContext Destination, int X, int Y, int Length, Pixel Color);
         public unsafe void ScanLineOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDest, PixelOperator<T> Operator) where T : unmanaged, IPixel;

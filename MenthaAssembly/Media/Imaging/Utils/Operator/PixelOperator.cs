@@ -13,7 +13,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Type TPixel = typeof(Pixel);
             int PixelSkipLength = sizeof(Pixel) - 1;
 
-            #region OverrideHandler
             if (TPixel == typeof(BGRA))
             {
                 OverrideHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
@@ -22,6 +21,24 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     *Pixel++ = G;
                     *Pixel++ = R;
                     *Pixel = A;
+                };
+                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
+                {
+                    Pixel += PixelSkipLength;
+                    
+                    if (A == 0)
+                        return;
+
+                    int A1 = *Pixel,
+                        rA = 255 - A,
+                        Alpha = 65025 - rA * (255 - A1);
+
+                    *Pixel-- = (byte)(Alpha / 255);
+                    *Pixel-- = (byte)((R * A * 255 + *Pixel * A1 * rA) / Alpha);
+                    *Pixel-- = (byte)((G * A * 255 + *Pixel * A1 * rA) / Alpha);
+                    *Pixel = (byte)((B * A * 255 + *Pixel * A1 * rA) / Alpha);
+
+                    Pixel += PixelSkipLength;
                 };
             }
             else if (TPixel == typeof(RGBA))
@@ -33,6 +50,24 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     *Pixel++ = B;
                     *Pixel = A;
                 };
+                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
+                {
+                    Pixel += PixelSkipLength;
+
+                    if (A == 0)
+                        return;
+
+                    int A1 = *Pixel,
+                        rA = 255 - A,
+                        Alpha = 65025 - rA * (255 - A1);
+
+                    *Pixel-- = (byte)(Alpha / 255);
+                    *Pixel-- = (byte)((B * A * 255 + *Pixel * A1 * rA) / Alpha);
+                    *Pixel-- = (byte)((G * A * 255 + *Pixel * A1 * rA) / Alpha);
+                    *Pixel = (byte)((R * A * 255 + *Pixel * A1 * rA) / Alpha);
+
+                    Pixel += PixelSkipLength;
+                };
             }
             else if (TPixel == typeof(ARGB))
             {
@@ -42,6 +77,23 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     *Pixel++ = R;
                     *Pixel++ = G;
                     *Pixel = B;
+                };
+                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
+                {
+                    if (A == 0)
+                    {
+                        Pixel += PixelSkipLength;
+                        return;
+                    }
+
+                    int A1 = *Pixel,
+                        rA = 255 - A,
+                        Alpha = 65025 - rA * (255 - A1);
+
+                    *Pixel++ = (byte)(Alpha / 255);
+                    *Pixel++ = (byte)((R * A * 255 + *Pixel * A1 * rA) / Alpha);
+                    *Pixel++ = (byte)((G * A * 255 + *Pixel * A1 * rA) / Alpha);
+                    *Pixel = (byte)((B * A * 255 + *Pixel * A1 * rA) / Alpha);
                 };
             }
             else if (TPixel == typeof(ABGR))
@@ -53,6 +105,23 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     *Pixel++ = G;
                     *Pixel = R;
                 };
+                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
+                {
+                    if (A == 0)
+                    {
+                        Pixel += PixelSkipLength;
+                        return;
+                    }
+
+                    int A1 = *Pixel,
+                        rA = 255 - A,
+                        Alpha = 65025 - rA * (255 - A1);
+
+                    *Pixel++ = (byte)(Alpha / 255);
+                    *Pixel++ = (byte)((B * A * 255 + *Pixel * A1 * rA) / Alpha);
+                    *Pixel++ = (byte)((G * A * 255 + *Pixel * A1 * rA) / Alpha);
+                    *Pixel = (byte)((R * A * 255 + *Pixel * A1 * rA) / Alpha);
+                };
             }
             else if (TPixel == typeof(BGR))
             {
@@ -61,6 +130,20 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     *Pixel++ = B;
                     *Pixel++ = G;
                     *Pixel = R;
+                };
+                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
+                {
+                    if (A == 0)
+                    {
+                        Pixel += PixelSkipLength;
+                        return;
+                    }
+
+                    int rA = 255 - A;
+
+                    *Pixel++ = (byte)((B * A + *Pixel * rA) / 255);
+                    *Pixel++ = (byte)((G * A + *Pixel * rA) / 255);
+                    *Pixel = (byte)((R * A + *Pixel * rA) / 255);
                 };
             }
             else if (TPixel == typeof(RGB))
@@ -71,6 +154,20 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     *Pixel++ = G;
                     *Pixel = B;
                 };
+                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
+                {
+                    if (A == 0)
+                    {
+                        Pixel += PixelSkipLength;
+                        return;
+                    }
+
+                    int rA = 255 - A;
+
+                    *Pixel++ = (byte)((R * A + *Pixel * rA) / 255);
+                    *Pixel++ = (byte)((G * A + *Pixel * rA) / 255);
+                    *Pixel = (byte)((B * A + *Pixel * rA) / 255);
+                };
             }
             else if (TPixel == typeof(Gray8))
             {
@@ -78,6 +175,22 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     *Pixel = (byte)((R * 30 +
                                      G * 59 +
                                      B * 11 + 50) / 100);
+
+                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
+                {
+                    if (A == 0)
+                    {
+                        Pixel += PixelSkipLength;
+                        return;
+                    }
+
+                    int rA = 255 - A,
+                        Gray = *Pixel;
+
+                    *Pixel = (byte)(((R * A + Gray * rA) / 255 * 30 +
+                                     (G * A + Gray * rA) / 255 * 59 +
+                                     (B * A + Gray * rA) / 255 * 11 + 50) / 100);
+                };
             }
             else
             {
@@ -87,11 +200,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     *(Pixel*)Pixel = (Pixel)CopyHandler;
                     Pixel += PixelSkipLength;
                 };
-            }
-            #endregion
-            #region OverlayHandler
-            if (TPixel == typeof(BGRA))
-            {
                 OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
                 {
                     if (A == 0)
@@ -100,134 +208,20 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         return;
                     }
 
-                    //byte sb = *Pixel++,
-                    //     sg = *Pixel++,
-                    //     sr = *Pixel++,
-                    //     sa = *Pixel;
+                    Pixel Data = *(Pixel*)Pixel;
+                    int A1 = Data.A,
+                        rA = 255 - A,
+                        Alpha = 65025 - rA * (255 - A1);
 
-                    //if (sa == byte.MaxValue)
-                    //{
-                    //    *Pixel-- = A;
-                    //    *Pixel-- = R;
-                    //    *Pixel-- = G;
-                    //    *Pixel = B;
-                    //}
+                    dynamic Result = new BGRA((byte)((B * A * 255 + Data.B * A1 * rA) / Alpha),
+                                              (byte)((G * A * 255 + Data.G * A1 * rA) / Alpha), 
+                                              (byte)((R * A * 255 + Data.R * A1 * rA) / Alpha), 
+                                              (byte)(Alpha / 255));
 
-                    *Pixel++ = B;
-                    *Pixel++ = G;
-                    *Pixel++ = R;
-                    *Pixel = A;
-                };
-            }
-            else if (TPixel == typeof(RGBA))
-            {
-                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
-                {
-                    if (A == 0)
-                    {
-                        Pixel += PixelSkipLength;
-                        return;
-                    }
-
-                    *Pixel++ = R;
-                    *Pixel++ = G;
-                    *Pixel++ = B;
-                    *Pixel = A;
-                };
-            }
-            else if (TPixel == typeof(ARGB))
-            {
-                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
-                {
-                    if (A == 0)
-                    {
-                        Pixel += PixelSkipLength;
-                        return;
-                    }
-
-                    *Pixel++ = A;
-                    *Pixel++ = R;
-                    *Pixel++ = G;
-                    *Pixel = B;
-                };
-            }
-            else if (TPixel == typeof(ABGR))
-            {
-                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
-                {
-                    if (A == 0)
-                    {
-                        Pixel += PixelSkipLength;
-                        return;
-                    }
-
-                    *Pixel++ = A;
-                    *Pixel++ = B;
-                    *Pixel++ = G;
-                    *Pixel = R;
-                };
-            }
-            else if (TPixel == typeof(BGR))
-            {
-                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
-                {
-                    if (A == 0)
-                    {
-                        Pixel += PixelSkipLength;
-                        return;
-                    }
-
-                    *Pixel++ = B;
-                    *Pixel++ = G;
-                    *Pixel = R;
-                };
-            }
-            else if (TPixel == typeof(RGB))
-            {
-                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
-                {
-                    if (A == 0)
-                    {
-                        Pixel += PixelSkipLength;
-                        return;
-                    }
-
-                    *Pixel++ = R;
-                    *Pixel++ = G;
-                    *Pixel = B;
-                };
-            }
-            else if (TPixel == typeof(Gray8))
-            {
-                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
-                {
-                    if (A == 0)
-                    {
-                        Pixel += PixelSkipLength;
-                        return;
-                    }
-
-                    *Pixel = (byte)((R * 30 +
-                                     G * 59 +
-                                     B * 11 + 50) / 100);
-                };
-            }
-            else
-            {
-                OverlayHandler = (ref byte* Pixel, byte A, byte R, byte G, byte B) =>
-                {
-                    if (A == 0)
-                    {
-                        Pixel += PixelSkipLength;
-                        return;
-                    }
-
-                    dynamic OverlayHandler = new BGRA(B, G, R, A);
-                    *(Pixel*)Pixel = (Pixel)OverlayHandler;
+                    *(Pixel*)Pixel = (Pixel)Result;
                     Pixel += PixelSkipLength;
                 };
             }
-            #endregion
         }
 
         public Pixel ToPixel(byte A, byte R, byte G, byte B)
@@ -247,18 +241,23 @@ namespace MenthaAssembly.Media.Imaging.Utils
             => this.OverlayHandler(ref pPixel, A, R, G, B);
         public void Overlay(ref byte* pPixelA, ref byte* pPixelR, ref byte* pPixelG, ref byte* pPixelB, byte A, byte R, byte G, byte B)
         {
-            *pPixelA = A;
-            *pPixelR = R;
-            *pPixelG = G;
-            *pPixelB = B;
+            int A1 = *pPixelA,
+                rA = 255 - A,
+                Alpha = 65025 - rA * (255 - A1);
+
+            *pPixelA = (byte)(Alpha / 255);
+            *pPixelR = (byte)((R * A * 255 + *pPixelR * A1 * rA) / Alpha);
+            *pPixelG = (byte)((G * A * 255 + *pPixelG * A1 * rA) / Alpha);
+            *pPixelB = (byte)((B * A * 255 + *pPixelB * A1 * rA) / Alpha);
         }
         public void Overlay(ref byte* pPixelR, ref byte* pPixelG, ref byte* pPixelB, byte A, byte R, byte G, byte B)
         {
-            *pPixelR = R;
-            *pPixelG = G;
-            *pPixelB = B;
-        }
+            int rA = 255 - A;
 
+            *pPixelR = (byte)((R * A + *pPixelR * rA) / 255);
+            *pPixelG = (byte)((G * A + *pPixelG * rA) / 255);
+            *pPixelB = (byte)((B * A + *pPixelB * rA) / 255);
+        }
         private static readonly ConcurrentDictionary<Type, IPixelOperator> PixelOperators = new ConcurrentDictionary<Type, IPixelOperator>();
         public static PixelOperator<Pixel> GetOperator()
         {

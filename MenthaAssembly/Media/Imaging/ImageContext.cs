@@ -84,7 +84,7 @@ namespace MenthaAssembly.Media.Imaging
                 Parallel.For(0, Height, (y) =>
                 {
                     byte* Dest = Dest0 + DestStride * (Height - 1 - y);
-                    this.Operator.ScanLineCopy(this, 0, y, Width, Dest, Operator);
+                    this.Operator.ScanLineOverrideTo(this, 0, y, Width, Dest, Operator);
                 });
 
                 return Result;

@@ -35,7 +35,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             for (int j = 0; j < Height; j++)
             {
                 byte* Dest = Dest0 + DestStride * j;
-                Operator.ScanLineCopy(this, X, Y + j, Width, Dest);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, Dest);
             }
         }
 
@@ -107,7 +107,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             for (int j = 0; j < Height; j++)
             {
                 byte* Dest = Dest0 + DestStride * j;
-                Operator.ScanLineCopy(this, X, Y + j, Width, Dest, PixelOperator);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, Dest, PixelOperator);
             }
         }
 
@@ -143,7 +143,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             for (int j = 0; j < Height; j++)
             {
                 long Offset = DestStride * j;
-                Operator.ScanLineCopy3(this, X, Y + j, Width, DestR + Offset, DestG + Offset, DestB + Offset);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, DestR + Offset, DestG + Offset, DestB + Offset);
             }
         }
 
@@ -182,7 +182,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             for (int j = 0; j < Height; j++)
             {
                 long Offset = DestStride * j;
-                Operator.ScanLineCopy4(this, X, Y + j, Width, DestA + Offset, DestR + Offset, DestG + Offset, DestB + Offset);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, DestA + Offset, DestR + Offset, DestG + Offset, DestB + Offset);
             }
         }
 
@@ -211,7 +211,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => Parallel.For(0, Height, (j) =>
             {
                 byte* Dest = Dest0 + DestStride * j;
-                Operator.ScanLineCopy(this, X, Y + j, Width, Dest);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, Dest);
             });
 
         public void ParallelBlockCopy(int X, int Y, int Width, int Height, byte[] Dest0, ParallelOptions Options)
@@ -239,7 +239,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => Parallel.For(0, Height, Options, (j) =>
              {
                  byte* Dest = Dest0 + DestStride * j;
-                 Operator.ScanLineCopy(this, X, Y + j, Width, Dest);
+                 Operator.ScanLineOverrideTo(this, X, Y + j, Width, Dest);
              });
 
         public void ParallelBlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0)
@@ -311,7 +311,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             Parallel.For(0, Height, (j) =>
             {
                 byte* Dest = Dest0 + DestStride * j;
-                Operator.ScanLineCopy(this, X, Y + j, Width, Dest, PixelOperator);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, Dest, PixelOperator);
             });
         }
 
@@ -384,7 +384,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             Parallel.For(0, Height, Options, (j) =>
             {
                 byte* Dest = Dest0 + DestStride * j;
-                Operator.ScanLineCopy(this, X, Y + j, Width, Dest, PixelOperator);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, Dest, PixelOperator);
             });
         }
 
@@ -419,7 +419,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => Parallel.For(0, Height, (j) =>
             {
                 long Offset = DestStride * j;
-                Operator.ScanLineCopy3(this, X, Y + j, Width, DestR + Offset, DestG + Offset, DestB + Offset);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, DestR + Offset, DestG + Offset, DestB + Offset);
             });
 
         public void ParallelBlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, ParallelOptions Options)
@@ -453,7 +453,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => Parallel.For(0, Height, Options, (j) =>
             {
                 long Offset = DestStride * j;
-                Operator.ScanLineCopy3(this, X, Y + j, Width, DestR + Offset, DestG + Offset, DestB + Offset);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, DestR + Offset, DestG + Offset, DestB + Offset);
             });
 
         public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB)
@@ -490,7 +490,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => Parallel.For(0, Height, (j) =>
             {
                 long Offset = DestStride * j;
-                Operator.ScanLineCopy4(this, X, Y + j, Width, DestA + Offset, DestR + Offset, DestG + Offset, DestB + Offset);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, DestA + Offset, DestR + Offset, DestG + Offset, DestB + Offset);
             });
 
         public void ParallelBlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, ParallelOptions Options)
@@ -527,7 +527,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => Parallel.For(0, Height, Options, (j) =>
             {
                 long Offset = DestStride * j;
-                Operator.ScanLineCopy4(this, X, Y + j, Width, DestA + Offset, DestR + Offset, DestG + Offset, DestB + Offset);
+                Operator.ScanLineOverrideTo(this, X, Y + j, Width, DestA + Offset, DestR + Offset, DestG + Offset, DestB + Offset);
             });
 
         #endregion
@@ -546,7 +546,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         public void ScanLineCopy(int OffsetX, int Y, int Length, IntPtr Dest0)
             => ScanLineCopy(OffsetX, Y, Length, (byte*)Dest0);
         public void ScanLineCopy(int OffsetX, int Y, int Length, byte* Dest0)
-            => Operator.ScanLineCopy(this, OffsetX, Y, Length, Dest0);
+            => Operator.ScanLineOverrideTo(this, OffsetX, Y, Length, Dest0);
 
         public void ScanLineCopy<T>(int OffsetX, int Y, int Length, T* Dest0)
             where T : unmanaged, IPixel
@@ -585,7 +585,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         public void ScanLineCopy<T>(int OffsetX, int Y, int Length, byte* Dest0)
             where T : unmanaged, IPixel
         {
-            Operator.ScanLineCopy(this, OffsetX, Y, Length, Dest0, PixelOperator<T>.GetOperator());
+            Operator.ScanLineOverrideTo(this, OffsetX, Y, Length, Dest0, PixelOperator<T>.GetOperator());
         }
 
         public void ScanLineCopy3(int OffsetX, int Y, int Length, byte[] DestR, byte[] DestG, byte[] DestB)
@@ -605,7 +605,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         public void ScanLineCopy3(int OffsetX, int Y, int Length, IntPtr DestR, IntPtr DestG, IntPtr DestB)
             => ScanLineCopy3(OffsetX, Y, Length, (byte*)DestR, (byte*)DestG, (byte*)DestB);
         public void ScanLineCopy3(int OffsetX, int Y, int Length, byte* DestR, byte* DestG, byte* DestB)
-            => Operator.ScanLineCopy3(this, OffsetX, Y, Length, DestR, DestG, DestB);
+            => Operator.ScanLineOverrideTo(this, OffsetX, Y, Length, DestR, DestG, DestB);
 
         public void ScanLineCopy4(int OffsetX, int Y, int Length, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB)
         {
@@ -626,7 +626,7 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         public void ScanLineCopy4(int OffsetX, int Y, int Length, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB)
             => ScanLineCopy4(OffsetX, Y, Length, (byte*)DestA, (byte*)DestR, (byte*)DestG, (byte*)DestB);
         public void ScanLineCopy4(int OffsetX, int Y, int Length, byte* DestA, byte* DestR, byte* DestG, byte* DestB)
-            => Operator.ScanLineCopy4(this, OffsetX, Y, Length, DestA, DestR, DestG, DestB);
+            => Operator.ScanLineOverrideTo(this, OffsetX, Y, Length, DestA, DestR, DestG, DestB);
 
         #endregion
 
