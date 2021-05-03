@@ -65,13 +65,13 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         public void Clear(Pixel Color)
         {
             for (int j = 0; j < Height; j++)
-                Operator.ScanLineOverlay(this, 0, j, Width, Color);
+                Operator.ScanLineOverride(this, 0, j, Width, Color);
         }
         void IImageContext.Clear(IPixel Color)
             => this.Clear(Operator.ToPixel(Color.A, Color.R, Color.G, Color.B));
 
         public void ParallelClear(Pixel Color)
-            => Parallel.For(0, Height, j => Operator.ScanLineOverlay(this, 0, j, Width, Color));
+            => Parallel.For(0, Height, j => Operator.ScanLineOverride(this, 0, j, Width, Color));
         void IImageContext.ParallelClear(IPixel Color)
             => this.ParallelClear(Operator.ToPixel(Color.A, Color.R, Color.G, Color.B));
 

@@ -51,9 +51,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
             *sScan = (Struct)Indexed;
         }
 
-        public void ScanLineCopy(IImageContext Source, int X, int Y, int Length, byte* pDest)
-            => ScanLineCopy(Source, X, Y, Length, pDest, PixelOperator);
-        public void ScanLineCopy<T>(IImageContext Source, int X, int Y, int Length, byte* pDest, PixelOperator<T> Operator) where T : unmanaged, IPixel
+        public void ScanLineOverride(IImageContext Destination, int X, int Y, int Length, Pixel Color)
+        {
+
+        }
+        public void ScanLineOverrideTo(IImageContext Source, int X, int Y, int Length, byte* pDest)
+            => ScanLineOverrideTo(Source, X, Y, Length, pDest, PixelOperator);
+        public void ScanLineOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDest, PixelOperator<T> Operator) where T : unmanaged, IPixel
         {
             long XBits = (long)X * Source.BitsPerPixel,
                  Offset = Source.Stride * Y + (XBits >> 3);
@@ -74,7 +78,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 pStructs++;
             }
         }
-        public void ScanLineCopy3(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineOverrideTo(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
         {
             long XBits = (long)X * Source.BitsPerPixel,
                  Offset = Source.Stride * Y + (XBits >> 3);
@@ -96,7 +100,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 pStructs++;
             }
         }
-        public void ScanLineCopy4(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineOverrideTo(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
             long XBits = (long)X * Source.BitsPerPixel,
                  Offset = Source.Stride * Y + (XBits >> 3);
