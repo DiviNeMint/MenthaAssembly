@@ -93,14 +93,17 @@ namespace System
             return DefaultName;
         }
 
+        /// <summary>
+        /// Convert string to Int32<para/>
+        /// It don't check whether all chars is number.
+        /// </summary>
         public static int ToInt32Fast(this string This)
         {
-            int Result = 0;
-
+            int r = 0;
             for (int i = 0; i < This.Length; i++)
-                Result = Result * 10 + (This[i] - '0');
+                r = r * 10 + (This[i] - '0');
 
-            return Result;
+            return r;
         }
 
         public static double ToDoubleFast(this string This)

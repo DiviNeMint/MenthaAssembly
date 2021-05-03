@@ -23,7 +23,7 @@ namespace MenthaAssembly
             => Math.Tan(Angle * UnitTheta);
 
         public static void MinAndMax<T>(out T Min, out T Max, params T[] Source)
-            where T : IComparable<T> 
+            where T : IComparable<T>
             => Source.MinAndMax(out Min, out Max);
         public static void MinAndMax<T>(this IEnumerable<T> Source, out T Min, out T Max)
             where T : IComparable<T>

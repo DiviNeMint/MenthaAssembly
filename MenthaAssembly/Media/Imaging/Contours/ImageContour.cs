@@ -150,7 +150,7 @@ namespace MenthaAssembly.Media.Imaging
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
-        public static ImageContour Parse(IImageContext Stroke, out IPixel StrokeColor)
+        public static ImageContour ParsePenContour(IImageContext Stroke, out IPixel StrokeColor)
         {
             StrokeColor = default;
             bool FoundColor = false;
