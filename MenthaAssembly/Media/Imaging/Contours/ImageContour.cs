@@ -212,6 +212,47 @@ namespace MenthaAssembly.Media.Imaging
             return Result;
         }
 
+        //public static ImageContour Rotate(ImageContour Source, int Ox, int Oy, int Angle)
+        //{
+        //    ImageContour r = new ImageContour();
+
+        //    double Theta = Angle * MathHelper.UnitTheta;
+
+        //    double vsin = Math.Sin(Theta),
+        //           vcos = Math.Cos(Theta);
+
+        //    //int x, y, nx2, ny2; //平移後之點
+        //    //for (int ny = 0; ny < height; ++ny)
+        //    //{
+        //    //    for (int nx = 0; nx < width; ++nx)
+        //    //    {
+        //    //        // 平移 ox,oy
+        //    //        nx2 = nx - Ox;
+        //    //        ny2 = ny - Oy;
+
+        //    //        // 再旋轉, 平移(-ox,-oy)
+        //    //        x = (int)(nx2 * vcos + ny2 * vsin + 0.5 + Ox);
+        //    //        y = (int)(-nx2 * vsin + ny2 * vcos + 0.5 + Oy);
+
+        //    //        // 寫入
+        //    //        if (y >= 0 && y < height && x >= 0 && x < width)
+        //    //        {
+        //    //            nr[ny][nx] = r[y][x];
+        //    //            ng[ny][nx] = g[y][x];
+        //    //            nb[ny][nx] = b[y][x];
+        //    //        }
+        //    //        else
+        //    //        {
+        //    //            nr[ny][nx] = ng[ny][nx] = nb[ny][nx] = 0;
+        //    //        }
+        //    //    }
+        //    //}
+
+
+        //    return r;
+        //}
+
+
         public IEnumerator<KeyValuePair<int, ContourData>> GetEnumerator()
             => Datas.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator()
