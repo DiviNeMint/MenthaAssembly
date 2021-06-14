@@ -1,6 +1,8 @@
-﻿namespace MenthaAssembly
+﻿using System;
+
+namespace MenthaAssembly
 {
-    public struct Int32Size
+    public struct Int32Size : ICloneable
     {
         public static Int32Size Empty => new Int32Size();
 
@@ -25,6 +27,11 @@
 
         public static Int32Size operator /(Int32Size This, double Factor)
             => new Int32Size((int)(This.Width / Factor), (int)(This.Height / Factor));
+
+        public Int32Size Clone()
+            => new Int32Size(this.Width, this.Height);
+        object ICloneable.Clone()
+            => this.Clone();
 
         public override string ToString()
             => $@"{{ Width : {this.Width}, Height : {this.Height} }}";

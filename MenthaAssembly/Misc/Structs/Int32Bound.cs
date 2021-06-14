@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly
 {
-    public struct Int32Bound
+    public struct Int32Bound : ICloneable
     {
         public static Int32Bound Empty => new Int32Bound();
 
@@ -43,6 +43,42 @@ namespace MenthaAssembly
             this.Top = Position.Y;
             this.Right = Position.X + Size.Width;
             this.Bottom = Position.Y + Size.Height;
+        }
+
+
+        public void Rotate(double Theta)
+            => Rotate((Left + Right) * 0.5d, (Top + Bottom) * 0.5d, Theta);
+        public void Rotate(double Ox, double Oy, double Theta)
+        {
+            MathHelper.Rotate(Left, Top, Theta, Ox, Oy, out double NewLeft, out double NewTop);
+            MathHelper.Rotate(Right, Bottom, Theta, Ox, Oy, out double NewRight, out double NewBottom);
+
+            MathHelper.MinAndMax(out int Min, out int Max, (int)Math.Ceiling(NewLeft), (int)Math.Ceiling(NewRight));
+            this.Left = Min;
+            this.Right = Max;
+
+            MathHelper.MinAndMax(out Min, out Max, (int)Math.Ceiling(NewTop), (int)Math.Ceiling(NewBottom));
+            this.Top = Min;
+            this.Bottom = Max;
+        }
+        public static Int32Bound Rotate(Int32Bound Bound, double Theta)
+            => Int32Bound.Rotate(Bound, (Bound.Left + Bound.Right) >> 1, (Bound.Top + Bound.Bottom) >> 1, Theta);
+        public static Int32Bound Rotate(Int32Bound Bound, double Ox, double Oy, double Theta)
+        {
+            Int32Bound R = new Int32Bound();
+
+            MathHelper.Rotate(Bound.Left, Bound.Top, Theta, Ox, Oy, out double NewLeft, out double NewTop);
+            MathHelper.Rotate(Bound.Right, Bound.Bottom, Theta, Ox, Oy, out double NewRight, out double NewBottom);
+
+            MathHelper.MinAndMax(out int Min, out int Max, (int)Math.Ceiling(NewLeft), (int)Math.Ceiling(NewRight));
+            R.Left = Min;
+            R.Right = Max;
+
+            MathHelper.MinAndMax(out Min, out Max, (int)Math.Ceiling(NewTop), (int)Math.Ceiling(NewBottom));
+            R.Top = Min;
+            R.Bottom = Max;
+
+            return R;
         }
 
         public void Intersect(Int32Bound Bound)
@@ -145,6 +181,11 @@ namespace MenthaAssembly
             return Left < X && X < Right &&
                    Top < Y && Y < Bottom;
         }
+
+        public Int32Bound Clone()
+            => new Int32Bound(this.Left, this.Top, this.Right, this.Bottom);
+        object ICloneable.Clone()
+            => this.Clone();
 
         public override string ToString()
             => $"{{ Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom} }}";

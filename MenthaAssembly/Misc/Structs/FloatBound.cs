@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly
 {
-    public struct FloatBound
+    public struct FloatBound : ICloneable
     {
         public static FloatBound Empty => new FloatBound();
 
@@ -17,6 +17,8 @@ namespace MenthaAssembly
         public float Width => Right - Left;
 
         public float Height => Bottom - Top;
+
+        public FloatPoint Center => new FloatPoint((Left + Right) * 0.5f, (Top + Bottom) * 0.5f);
 
         public bool IsEmpty
             => Width is 0 || Height is 0;
@@ -42,6 +44,48 @@ namespace MenthaAssembly
         //    this.Right = Position.X + Size.Width;
         //    this.Bottom = Position.Y + Size.Height;
         //}
+
+        public void Rotate(double Theta)
+            => Rotate((Left + Right) * 0.5d, (Top + Bottom) * 0.5d, Theta);
+        public void Rotate(double Ox, double Oy, double Theta)
+        {
+            MathHelper.Rotate(Left, Top, Theta, Ox, Oy, out double X0, out double Y0);
+            MathHelper.Rotate(Left, Bottom, Theta, Ox, Oy, out double X1, out double Y1);
+            MathHelper.Rotate(Right, Top, Theta, Ox, Oy, out double X2, out double Y2);
+            MathHelper.Rotate(Right, Bottom, Theta, Ox, Oy, out double X3, out double Y3);
+
+            float Max, Min;
+            MathHelper.MinAndMax(out Min, out Max, (float)X0, (float)X1, (float)X2, (float)X3);
+            this.Left = Min;
+            this.Right = Max;
+
+            MathHelper.MinAndMax(out Min, out Max, (float)Y0, (float)Y1, (float)Y2, (float)Y3);
+            this.Top = Min;
+            this.Bottom = Max;
+        }
+        public static FloatBound Rotate(FloatBound Bound, double Theta)
+            => FloatBound.Rotate(Bound, (Bound.Left + Bound.Right) * 0.5d, (Bound.Top + Bound.Bottom) * 0.5d, Theta);
+        public static FloatBound Rotate(FloatBound Bound, double Ox, double Oy, double Theta)
+        {
+            FloatBound R = new FloatBound();
+
+            MathHelper.Rotate(Bound.Left, Bound.Top, Theta, Ox, Oy, out double X0, out double Y0);
+            MathHelper.Rotate(Bound.Left, Bound.Bottom, Theta, Ox, Oy, out double X1, out double Y1);
+            MathHelper.Rotate(Bound.Right, Bound.Top, Theta, Ox, Oy, out double X2, out double Y2);
+            MathHelper.Rotate(Bound.Right, Bound.Bottom, Theta, Ox, Oy, out double X3, out double Y3);
+
+            float Max, Min;
+            MathHelper.MinAndMax(out Min, out Max, (float)X0, (float)X1, (float)X2, (float)X3);
+            R.Left = Min;
+            R.Right = Max;
+
+            MathHelper.MinAndMax(out Min, out Max, (float)Y0, (float)Y1, (float)Y2, (float)Y3);
+
+            R.Top = Min;
+            R.Bottom = Max;
+
+            return R;
+        }
 
         public void Intersect(FloatBound Bound)
         {
@@ -171,10 +215,13 @@ namespace MenthaAssembly
                    Top < Y && Y < Bottom;
         }
 
+        public FloatBound Clone()
+            => new FloatBound(this.Left, this.Top, this.Right, this.Bottom);
+        object ICloneable.Clone()
+            => this.Clone();
+
         public override string ToString()
             => $"{{ Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom} }}";
-
-
 
     }
 }

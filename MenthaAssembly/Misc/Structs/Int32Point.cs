@@ -1,6 +1,8 @@
-﻿namespace MenthaAssembly
+﻿using System;
+
+namespace MenthaAssembly
 {
-    public struct Int32Point
+    public struct Int32Point : ICloneable
     {
         public int X { set; get; }
 
@@ -39,6 +41,11 @@
 
         public static Int32Vector operator -(Int32Point This, Int32Point Target)
             => new Int32Vector(This.X - Target.X, This.Y - Target.Y);
+
+        public Int32Point Clone()
+            => new Int32Point(this.X, this.Y);
+        object ICloneable.Clone()
+            => this.Clone();
 
         public override string ToString()
             => $@"{{ X : {this.X}, Y : {this.Y} }}";
