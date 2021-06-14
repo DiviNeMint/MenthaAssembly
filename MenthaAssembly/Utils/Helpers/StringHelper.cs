@@ -203,7 +203,6 @@ namespace System
                     break;
                 
                 Integer = Integer * 10d + (c - '0');
-                HandleInteger();
             }
 
             // Digital
@@ -211,53 +210,9 @@ namespace System
             for (int j = This.Length - 1; j > i; j--)
                 Digital = Digital * 0.1d + (This[i] - '0');
 
-            return IsNegative ? -Integer - Digital * 0.1d : Integer + Digital * 0.1d;
+            return Integer + Digital * 0.1d;
         }
-        /// <summary>
-        /// Convert string to Float<para/>
-        /// It don't check whether all chars is number.
-        /// </summary>
-        public static float ToFloatFast(this string This)
-        {
-            if (string.IsNullOrEmpty(This))
-                return default;
 
-            float Integer = 0f;
-
-            int i = 1;
-            char c = This[0];
-            bool IsNegative = '-'.Equals(c);
-
-            void HandleInteger()
-            {
-                for (; i < This.Length; i++)
-                {
-                    c = This[i];
-
-                    if ('.'.Equals(c))
-                        break;
-
-                    Integer = Integer * 10f + (c - '0');
-                }
-            }
-
-            if (IsNegative)
-            {
-                HandleInteger();
-            }
-            else if (!'.'.Equals(c))
-            {
-                Integer = Integer * 10f + (c - '0');
-                HandleInteger();
-            }
-
-            // Digital
-            float Digital = 0f;
-            for (int j = This.Length - 1; j > i; j--)
-                Digital = Digital * 0.1f + (This[i] - '0');
-
-            return IsNegative ? -Integer - Digital * 0.1f : Integer + Digital * 0.1f;
-        }
 
         /// <summary>
         /// Convert string to Float<para/>
