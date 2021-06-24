@@ -252,7 +252,6 @@ namespace MenthaAssembly.Media.Imaging
         //    return r;
         //}
 
-
         public IEnumerator<KeyValuePair<int, ContourData>> GetEnumerator()
             => Datas.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator()

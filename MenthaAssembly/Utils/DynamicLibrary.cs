@@ -20,8 +20,8 @@ namespace MenthaAssembly
 
         public string Path { get; }
 
-        private readonly IntPtr pLibrary;
-        private DynamicLibrary(string LibraryPath, IntPtr pLibrary)
+        private readonly LibraryIntPtr pLibrary;
+        private DynamicLibrary(string LibraryPath, LibraryIntPtr pLibrary)
         {
             this.Path = LibraryPath;
             this.pLibrary = pLibrary;
@@ -34,7 +34,10 @@ namespace MenthaAssembly
                 MethodBase is TDelegate Method)
                 return Method;
 
-            IntPtr pProc = GetProcAddress(pLibrary, FunctionName);
+            if (pLibrary.IsInvalid)
+                return null;
+
+            IntPtr pProc = GetProcAddress(pLibrary.DangerousGetHandle(), FunctionName);
 
             Method = Marshal.GetDelegateForFunctionPointer<TDelegate>(pProc);
             MethodInfos.AddOrUpdate(FunctionName, Method, (k, v) => Method);
@@ -48,10 +51,10 @@ namespace MenthaAssembly
             where TDelegate : Delegate
             => (TResult)GetMethod<TDelegate>(FunctionName).DynamicInvoke(Args);
 
-        ~DynamicLibrary()
-        {
-            FreeLibrary(pLibrary);
-        }
+        //~DynamicLibrary()
+        //{
+        //    FreeLibrary(pLibrary);
+        //}
 
         public static DynamicLibrary Load(string Path)
         {
@@ -62,7 +65,7 @@ namespace MenthaAssembly
             if (pLibrary == IntPtr.Zero)
                 throw new ApplicationException($"There was an error during dll loading : {Path}, ErrorCode : {Marshal.GetLastWin32Error()}");
 
-            return new DynamicLibrary(Path, pLibrary);
+            return new DynamicLibrary(Path, new LibraryIntPtr(pLibrary));
         }
         public static bool TryLoad(string Path, out DynamicLibrary DynamicLibrary)
         {
@@ -79,8 +82,26 @@ namespace MenthaAssembly
                 return false;
             }
 
-            DynamicLibrary = new DynamicLibrary(Path, pLibrary);
+            DynamicLibrary = new DynamicLibrary(Path, new LibraryIntPtr(pLibrary));
             return true;
+        }
+
+        private class LibraryIntPtr : SafeHandle
+        {
+            private bool _IsInvalid = false;
+            public override bool IsInvalid => _IsInvalid;
+
+            public LibraryIntPtr(IntPtr Handle) : base(Handle, true)
+            {
+
+            }
+
+            protected override bool ReleaseHandle()
+            {
+                FreeLibrary(handle);
+                _IsInvalid = true;
+                return true;
+            }
         }
 
     }
