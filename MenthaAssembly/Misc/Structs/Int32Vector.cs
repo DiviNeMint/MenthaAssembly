@@ -1,6 +1,8 @@
-﻿namespace MenthaAssembly
+﻿using System;
+
+namespace MenthaAssembly
 {
-    public struct Int32Vector
+    public struct Int32Vector : ICloneable
     {
         public int X { set; get; }
 
@@ -8,7 +10,7 @@
 
         public int LengthSquare => X * X + Y * Y;
 
-        public bool IsZero => X is 0 && 
+        public bool IsZero => X is 0 &&
                               Y is 0;
 
         public Int32Vector(int X, int Y)
@@ -24,6 +26,10 @@
         public Int32Vector(Int32Point p1, Int32Point p2) : this(p2.X - p1.X, p2.Y - p2.Y)
         {
         }
+
+        public static int Dot(Int32Vector A, Int32Vector B)
+            => A.X * B.X + A.Y * B.Y;
+
 
         // Int32Vector
         public static Int32Vector operator +(Int32Vector This, Int32Vector Target)
@@ -46,11 +52,16 @@
             => new Int32Vector(This.X / Factor, This.Y / Factor);
 
         // Int32Point
-        public static Int32Point operator +(Int32Point This, Int32Vector Vector) 
+        public static Int32Point operator +(Int32Point This, Int32Vector Vector)
             => new Int32Point(This.X + Vector.X, This.Y + Vector.Y);
 
         public static Int32Point operator -(Int32Point This, Int32Vector Vector)
             => new Int32Point(This.X - Vector.X, This.Y - Vector.Y);
+
+        public Int32Vector Clone()
+            => new Int32Vector(this.X, this.Y);
+        object ICloneable.Clone()
+            => this.Clone();
 
         public override string ToString()
             => $@"{{ X : {this.X}, Y : {this.Y} }}";

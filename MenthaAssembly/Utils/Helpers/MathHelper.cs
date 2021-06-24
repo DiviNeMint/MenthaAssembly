@@ -60,8 +60,38 @@ namespace MenthaAssembly
         }
         public static void Rotate(double Px, double Py, double Theta, out double Qx, out double Qy)
         {
-            Qx = Px * Math.Cos(Theta) - Py * Math.Sin(Theta);
-            Qy = Px * Math.Sin(Theta) + Py * Math.Cos(Theta);
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            Qx = Px * Cos - Py * Sin;
+            Qy = Px * Sin + Py * Cos;
+        }
+
+        public static void RotateSize(double Width, double Height, double Theta, out double NewWidth, out double NewHeight)
+        {
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            //無條件進位
+            NewWidth = Math.Ceiling(Math.Abs(Width * Cos) + Math.Abs(Height * Sin) - 0.0001);
+            NewHeight = Math.Ceiling(Math.Abs(Width * Sin) + Math.Abs(Height * Cos) - 0.0001);
+
+            ////四捨五入
+            //NewWidth  = (int)(Math.Abs(Width * Cos) + Math.Abs(Height * Sin) + 0.5);
+            //NewHeight = (int)(Math.Abs(Width * Sin) + Math.Abs(Height * Cos) + 0.5);
+        }
+        public static void RotateSize(int Width, int Height, double Theta, out int NewWidth, out int NewHeight)
+        {
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            //無條件進位
+            NewWidth = (int)Math.Ceiling(Math.Abs(Width * Cos) + Math.Abs(Height * Sin) - 0.0001);
+            NewHeight = (int)Math.Ceiling(Math.Abs(Width * Sin) + Math.Abs(Height * Cos) - 0.0001);
+
+            ////四捨五入
+            //NewWidth  = (int)(Math.Abs(Width * Cos) + Math.Abs(Height * Sin) + 0.5);
+            //NewHeight = (int)(Math.Abs(Width * Sin) + Math.Abs(Height * Cos) + 0.5);
         }
 
         /// <summary>
@@ -103,15 +133,12 @@ namespace MenthaAssembly
                    Xqp = Px - Qx,
                    Yrq = Qy - Ry,
                    Ypr = Ry - Py,
-                   Yqp = Py - Qy,
-                   Dx, Dy;
+                   Yqp = Py - Qy;
 
             Cx = (Lp * Yrq + Lq * Ypr + Lr * Yqp) / (2 * (Px * Yrq + Qx * Ypr + Rx * Yqp));
             Cy = (Lp * Xrq + Lq * Xpr + Lr * Xqp) / (2 * (Py * Xrq + Qy * Xpr + Ry * Xqp));
 
-            Dx = Px - Cx;
-            Dy = Py - Cy;
-            Radius = Math.Sqrt(Dx * Dx + Dy * Dy);
+            Radius = Distance(Px, Py, Cx, Cy);
         }
 
         public static FloatBound CalculateLineBound(float X0, float Y0, float X1, float Y1)
@@ -228,7 +255,7 @@ namespace MenthaAssembly
                 }
             }
         }
-        public static FloatBound CalculatePolgonBound(IEnumerable<float> PointPairs)
+        public static FloatBound CalculatePolygonBound(IEnumerable<float> PointPairs)
         {
             IEnumerator<float> Enumerator = PointPairs.GetEnumerator();
             if (!Enumerator.MoveNext())
@@ -268,9 +295,9 @@ namespace MenthaAssembly
 
         public static double Distance(double Px, double Py, double Qx, double Qy)
         {
-            double DeltaX = Qx - Px,
-                   DeltaY = Qy - Py;
-            return Math.Sqrt(DeltaX * DeltaX + DeltaY * DeltaY);
+            double Dx = Qx - Px,
+                   Dy = Qy - Py;
+            return Math.Sqrt(Dx * Dx + Dy * Dy);
         }
 
         public static void CrossPoint(double LinePx1, double LinePy1, double LinePx2, double LinePy2, double OutsidePx, double OutsidePy, out double CrossPx, out double CrossPy)

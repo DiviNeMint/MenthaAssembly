@@ -102,6 +102,21 @@ namespace System
             if (string.IsNullOrEmpty(This))
                 return default;
 
+            char c = This[0];
+            bool IsNegative = c.Equals('-');
+            int r = IsNegative ? 0 : c - '0';
+
+            for (int i = 1; i < This.Length; i++)
+                r = r * 10 + (This[i] - '0');
+
+            return IsNegative ? -r : r;
+        }
+        /// <summary>
+        /// Convert string to Int32<para/>
+        /// It don't check whether all chars is number (including char '-').
+        /// </summary>
+        public static int ToPositiveInt32Fast(this string This)
+        {
             int r = 0;
 
             char c = This[0];
@@ -128,6 +143,7 @@ namespace System
 
             return r;
         }
+
         /// <summary>
         /// Convert string to Double<para/>
         /// It don't check whether all chars is number.
@@ -139,31 +155,54 @@ namespace System
 
             double Integer = 0d;
 
-            int i = 1;
-            char c = This[0];
-            bool IsNegative = '-'.Equals(c);
+            char c;
+            int i = 0;
 
-            void HandleInteger()
+            bool IsNegative = false;
+
+            // Integer
+            for (; i < This.Length; i++)
             {
-                for (; i < This.Length; i++)
+                c = This[i];
+
+                if (c.Equals('-'))
                 {
-                    c = This[i];
-
-                    if ('.'.Equals(c))
-                        break;
-
-                    Integer = Integer * 10d + (c - '0');
+                    IsNegative = true;
+                    continue;
                 }
+
+                if (c.Equals('.'))
+                    break;
+
+                Integer = Integer * 10d + (c - '0');
             }
 
-            if (IsNegative)
+            // Digital
+            double Digital = 0d;
+            for (int j = This.Length - 1; j > i; j--)
+                Digital = Digital * 0.1d + (This[j] - '0');
+
+            return IsNegative ? -Integer - Digital * 0.1d : Integer + Digital * 0.1d;
+        }
+        /// <summary>
+        /// Convert string to Double<para/>
+        /// It don't check whether all chars is number (including char '-').
+        /// </summary>
+        public static double ToPositiveDoubleFast(this string This)
+        {
+            double Integer = 0d;
+
+            int i = 0;
+            char c;
+            
+            // Integer
+            for (; i < This.Length; i++)
             {
-                HandleInteger();
-            }
-            else if (!'.'.Equals(c))
-            {
+                c = This[i];
+                if (c == '.')
+                    break;
+                
                 Integer = Integer * 10d + (c - '0');
-                HandleInteger();
             }
 
             // Digital
@@ -171,52 +210,74 @@ namespace System
             for (int j = This.Length - 1; j > i; j--)
                 Digital = Digital * 0.1d + (This[i] - '0');
 
-            return IsNegative ? -Integer - Digital * 0.1d : Integer + Digital * 0.1d;
+            return Integer + Digital * 0.1d;
         }
+
+
         /// <summary>
         /// Convert string to Float<para/>
         /// It don't check whether all chars is number.
         /// </summary>
         public static float ToFloatFast(this string This)
         {
-            if (string.IsNullOrEmpty(This))
-                return default;
-
             float Integer = 0f;
 
-            int i = 1;
-            char c = This[0];
-            bool IsNegative = '-'.Equals(c);
+            char c;
+            int i = 0;
 
-            void HandleInteger()
+            bool IsNegative = false;
+
+            // Integer
+            for (; i < This.Length; i++)
             {
-                for (; i < This.Length; i++)
+                c = This[i];
+
+                if (c.Equals('-'))
                 {
-                    c = This[i];
-
-                    if ('.'.Equals(c))
-                        break;
-
-                    Integer = Integer * 10f + (c - '0');
+                    IsNegative = true;
+                    continue;
                 }
-            }
 
-            if (IsNegative)
-            {
-                HandleInteger();
-            }
-            else if (!'.'.Equals(c))
-            {
+                if (c.Equals('.'))
+                    break;
+
                 Integer = Integer * 10f + (c - '0');
-                HandleInteger();
             }
 
             // Digital
             float Digital = 0f;
             for (int j = This.Length - 1; j > i; j--)
-                Digital = Digital * 0.1f + (This[i] - '0');
+                Digital = Digital * 0.1f + (This[j] - '0');
 
             return IsNegative ? -Integer - Digital * 0.1f : Integer + Digital * 0.1f;
+        }
+        /// <summary>
+        /// Convert string to Float<para/>
+        /// It don't check whether all chars is number (including char '-').
+        /// </summary>
+        public static float ToPositiveFloatFast(this string This)
+        {
+            float Integer = 0f;
+
+            int i = 0;
+            char c;
+
+            // Integer
+            for (; i < This.Length; i++)
+            {
+                c = This[i];
+                if (c == '.')
+                    break;
+
+                Integer = Integer * 10f + (c - '0');
+            }
+
+            // Digital
+            float Digital = 0f;
+            for (int j = This.Length - 1; j > i; j--)
+                Digital = Digital * 0.1f + (This[j] - '0');
+
+            return Integer + Digital * 0.1f;
         }
 
     }

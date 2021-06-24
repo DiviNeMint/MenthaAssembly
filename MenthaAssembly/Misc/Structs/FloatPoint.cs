@@ -1,6 +1,8 @@
-﻿namespace MenthaAssembly
+﻿using System;
+
+namespace MenthaAssembly
 {
-    public struct FloatPoint
+    public struct FloatPoint : ICloneable
     {
         public float X { set; get; }
 
@@ -20,6 +22,22 @@
         }
         public FloatPoint(double X, double Y) : this((float)X, (float)Y)
         {
+        }
+
+        public void Rotate(FloatPoint OriginalPoint, double Theta)
+            => Rotate(OriginalPoint.X, OriginalPoint.Y, Theta);
+        public void Rotate(float Ox, float Oy, double Theta)
+        {
+            MathHelper.Rotate(X, Y, Ox, Oy, Theta, out double Nx, out double Ny);
+            this.X = (float)Nx;
+            this.Y = (float)Ny;
+        }
+        public static FloatPoint Rotate(FloatPoint Point, FloatPoint OriginalPoint, double Theta)
+            => Rotate(Point, OriginalPoint.X, OriginalPoint.Y, Theta);
+        public static FloatPoint Rotate(FloatPoint Point, float Ox, float Oy, double Theta)
+        {
+            MathHelper.Rotate(Point.X, Point.Y, Ox, Oy, Theta, out double Nx, out double Ny);
+            return new FloatPoint(Nx, Ny);
         }
 
         //public static FloatPoint operator +(FloatPoint This, FloatPoint Target)
@@ -43,6 +61,11 @@
 
         //public static FloatVector operator -(FloatPoint This, FloatPoint Target)
         //    => new FloatVector(This.X - Target.X, This.Y - Target.Y);
+
+        public FloatPoint Clone()
+            => new FloatPoint(this.X, this.Y);
+        object ICloneable.Clone()
+            => this.Clone();
 
         public override string ToString()
             => $@"{{ X : {this.X}, Y : {this.Y} }}";

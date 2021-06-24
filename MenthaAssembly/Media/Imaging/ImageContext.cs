@@ -73,48 +73,70 @@ namespace MenthaAssembly.Media.Imaging
         public unsafe ImageContext<T> Flip<T>(FlipMode Mode)
             where T : unmanaged, IPixel
         {
-            if (Mode == FlipMode.Vertical)
+            switch (Mode)
             {
-                // Create Result
-                ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
-                PixelOperator<T> Operator = PixelOperator<T>.GetOperator();
-                long DestStride = Result.Stride;
-                byte* Dest0 = (byte*)Result.Scan0;
-                Parallel.For(0, Height, (y) =>
-                {
-                    byte* Dest = Dest0 + DestStride * (Height - 1 - y);
-                    this.Operator.ScanLineOverrideTo(this, 0, y, Width, Dest, Operator);
-                });
-
-                return Result;
-            }
-            else if (Mode == FlipMode.Horizontal)
-            {
-                // Create Result
-                ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
-                PixelOperator<T> Operator = PixelOperator<T>.GetOperator();
-
-                long DestStride = Result.Stride;
-                byte* Dest0 = (byte*)Result.Scan0;
-                Parallel.For(0, Height, (y) =>
-                {
-                    byte* Dest = Dest0 + DestStride * y;
-
-                    int SourceX = Width - 1;
-                    for (int x = 0; x < Width; x++)
+                case FlipMode.Vertical:
                     {
-                        Pixel Pixel = this.Operator.GetPixel(this, SourceX--, y);
-                        Operator.Override(ref Dest, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
-                        Dest++;
-                    }
-                });
+                        ImageContext<T> Result = new ImageContext<T>(Width, Height);
+                        PixelOperator<T> Operator = PixelOperator<T>.GetOperator();
+                        long DestStride = Result.Stride;
+                        byte* Dest0 = (byte*)Result.Scan0;
 
-                return Result;
+                        Parallel.For(0, Height, (y) =>
+                        {
+                            byte* Dest = Dest0 + DestStride * (Height - 1 - y);
+                            this.Operator.ScanLineOverrideTo(this, 0, y, Width, Dest, Operator);
+                        });
+
+                        return Result;
+                    }
+                case FlipMode.Horizontal:
+                    {
+                        ImageContext<T> Result = new ImageContext<T>(Width, Height);
+                        PixelOperator<T> Operator = PixelOperator<T>.GetOperator();
+                        long DestStride = Result.Stride;
+                        byte* Dest0 = (byte*)Result.Scan0;
+
+                        Parallel.For(0, Height, (y) =>
+                        {
+                            byte* Dest = Dest0 + DestStride * y;
+
+                            int SourceX = Width - 1;
+                            for (int x = 0; x < Width; x++)
+                            {
+                                Pixel Pixel = this.Operator.GetPixel(this, SourceX--, y);
+                                Operator.Override(ref Dest, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+                                Dest++;
+                            }
+                        });
+
+                        return Result;
+                    }
+                case FlipMode.Vertical | FlipMode.Horizontal:
+                    {
+                        ImageContext<T> Result = new ImageContext<T>(Width, Height);
+                        PixelOperator<T> Operator = PixelOperator<T>.GetOperator();
+                        long DestStride = Result.Stride;
+                        byte* Dest0 = (byte*)Result.Scan0;
+
+                        Parallel.For(0, Height, (y) =>
+                        {
+                            byte* Dest = Dest0 + DestStride * (Height - 1 - y);
+
+                            int SourceX = Width - 1;
+                            for (int x = 0; x < Width; x++)
+                            {
+                                Pixel Pixel = this.Operator.GetPixel(this, SourceX--, y);
+                                Operator.Override(ref Dest, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+                                Dest++;
+                            }
+                        });
+
+                        return Result;
+                    }
             }
 
-            return null;
+            return this.Cast<T>();
         }
         protected override IImageContext FlipHandler(FlipMode Mode)
             => this.Flip(Mode);

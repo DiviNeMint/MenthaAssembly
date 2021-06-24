@@ -106,38 +106,67 @@ namespace MenthaAssembly.Media.Imaging
 
         public void Flip(FlipMode Mode)
         {
-            Int32Bound Bound = this.Bound;
-            switch (Mode)
+            // Horizontal
+            if ((Mode & FlipMode.Horizontal) > 0)
             {
-                case FlipMode.Vertical:
+                Int32Bound Bound = this.Bound;
+                int Delta = Bound.Left + Bound.Right;
+                foreach (KeyValuePair<int, ContourData> Data in Datas)
+                {
+                    int Count = Data.Value.Count,
+                        Length = Count >> 1;
+                    Count--;
+                    for (int i = 0; i < Length; i++)
                     {
-                        KeyValuePair<int, ContourData>[] TempDatas = Datas.ToArray();
-                        Datas.Clear();
-
-                        int Delta = Bound.Top + Bound.Bottom;
-                        foreach (KeyValuePair<int, ContourData> Data in TempDatas)
-                            Datas.Add(Delta - Data.Key, Data.Value);
-
-                        break;
+                        int Temp = Delta - Data.Value[i];
+                        Data.Value[i] = Delta - Data.Value[Count - i];
+                        Data.Value[Count - i] = Temp;
                     }
-                case FlipMode.Horizontal:
+                }
+            }
+
+            // Vertical
+            if ((Mode & FlipMode.Vertical) > 0)
+            {
+                KeyValuePair<int, ContourData>[] TempDatas = Datas.ToArray();
+                Datas.Clear();
+
+                Int32Bound Bound = this.Bound;
+                int Delta = Bound.Top + Bound.Bottom;
+                foreach (KeyValuePair<int, ContourData> Data in TempDatas)
+                    Datas.Add(Delta - Data.Key, Data.Value);
+
+            }
+        }
+        public void Flip(int Center, FlipMode Mode)
+        {
+            // Horizontal
+            if ((Mode & FlipMode.Horizontal) > 0)
+            {
+                int Delta = Center << 1;
+                foreach (KeyValuePair<int, ContourData> Data in Datas)
+                {
+                    int Count = Data.Value.Count,
+                        Length = Count >> 1;
+                    Count--;
+                    for (int i = 0; i < Length; i++)
                     {
-                        int Delta = Bound.Left + Bound.Right;
-                        foreach (KeyValuePair<int, ContourData> Data in Datas)
-                        {
-                            int Count = Data.Value.Count,
-                                Length = Count >> 1;
-                            Count--;
-                            for (int i = 0; i < Length; i++)
-                            {
-                                int Temp = Delta - Data.Value[i];
-                                Data.Value[i] = Delta - Data.Value[Count - i];
-                                Data.Value[Count - i] = Temp;
-                            }
-                        }
-
-                        break;
+                        int Temp = Delta - Data.Value[i];
+                        Data.Value[i] = Delta - Data.Value[Count - i];
+                        Data.Value[Count - i] = Temp;
                     }
+                }
+            }
+
+            // Vertical
+            if ((Mode & FlipMode.Vertical) > 0)
+            {
+                KeyValuePair<int, ContourData>[] TempDatas = Datas.ToArray();
+                Datas.Clear();
+
+                int Delta = Center << 1;
+                foreach (KeyValuePair<int, ContourData> Data in TempDatas)
+                    Datas.Add(Delta - Data.Key, Data.Value);
             }
         }
 
@@ -331,6 +360,36 @@ namespace MenthaAssembly.Media.Imaging
             return Obround;
         }
 
+        public static ImageContour CreateFillDiamond(int Cx, int Cy, int HalfWidth, int HalfHeight)
+        {
+            ImageContour Diamond = new ImageContour();
+
+            int X = Cx - HalfWidth;
+            GraphicAlgorithm.CalculateBresenhamLine(HalfWidth, HalfHeight, HalfWidth, HalfHeight, (Dx, Dy) => Diamond[Cy + Dy].AddLeft(X + Dx));
+            GraphicAlgorithm.CalculateBresenhamLine(HalfWidth, -HalfHeight, HalfWidth, HalfHeight, (Dx, Dy) => Diamond[Cy + Dy].AddLeft(X + Dx));
+
+            X = Cx + HalfWidth;
+            GraphicAlgorithm.CalculateBresenhamLine(-HalfWidth, HalfHeight, HalfWidth, HalfHeight, (Dx, Dy) => Diamond[Cy + Dy][1] = X + Dx);
+            GraphicAlgorithm.CalculateBresenhamLine(-HalfWidth, -HalfHeight, HalfWidth, HalfHeight, (Dx, Dy) => Diamond[Cy + Dy][1] = X + Dx);
+
+            return Diamond;
+        }
+        public static ImageContour CreateFillDiamond(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta)
+        {
+            if (Theta == 0d)
+                return CreateFillDiamond(Cx, Cy, HalfWidth, HalfHeight);
+
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            int Dx1 = (int)Math.Round(-HalfHeight * Sin),
+                Dy1 = (int)Math.Round(HalfHeight * Cos),
+                Dx2 = (int)Math.Round(HalfWidth * Cos),
+                Dy2 = (int)Math.Round(HalfWidth * Sin);
+
+            return CreateFillRectangle(Cx + Dx1, Cy + Dy1, Cx + Dx2, Cy + Dy2, Cx - Dx1, Cy - Dy1, Cx - Dx2, Cy - Dy2);
+        }
+
         public static ImageContour CreateFillRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
             ImageContour Rectangle = new ImageContour();
@@ -345,6 +404,25 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             return Rectangle;
+        }
+        public static ImageContour CreateFillRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta)
+        {
+            if (Theta == 0d)
+                return CreateFillRectangle(Cx, Cy, HalfWidth, HalfHeight);
+
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta),
+                   XCos = HalfWidth * Cos,
+                   XSin = HalfWidth * Sin,
+                   YCos = HalfHeight * Cos,
+                   YSin = HalfHeight * Sin;
+
+            int Dx1 = (int)Math.Round(XCos - YSin),
+                Dy1 = (int)Math.Round(XSin + YCos),
+                Dx2 = (int)Math.Round(-XCos - YSin),
+                Dy2 = (int)Math.Round(-XSin + YCos);
+
+            return CreateFillRectangle(Cx + Dx1, Cy + Dy1, Cx + Dx2, Cy + Dy2, Cx - Dx1, Cy - Dy1, Cx - Dx2, Cy - Dy2);
         }
         public static ImageContour CreateFillRectangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4)
         {
@@ -374,26 +452,26 @@ namespace MenthaAssembly.Media.Imaging
             DeltaY = Y3 - Y2;
             AbsDeltaX = Math.Abs(DeltaX);
             AbsDeltaY = Math.Abs(DeltaY);
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X2 + Dx, Y2 + Dy));
 
             // (X3, Y3) => (X4, Y4)
             DeltaX = X4 - X3;
             DeltaY = Y4 - Y3;
             AbsDeltaX = Math.Abs(DeltaX);
             AbsDeltaY = Math.Abs(DeltaY);
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X3 + Dx, Y3 + Dy));
 
             // (X4, Y4) => (X1, Y1)
             DeltaX = X1 - X4;
             DeltaY = Y1 - Y4;
             AbsDeltaX = Math.Abs(DeltaX);
             AbsDeltaY = Math.Abs(DeltaY);
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X4 + Dx, Y4 + Dy));
 
             return Rectangle;
         }
 
-        public static ImageContour CreateFillRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, double StartAngle = 0d)
+        public static ImageContour CreateFillRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, double StartTheta = 0d)
         {
             if (VertexNum < 3)
                 throw new ArgumentException($"VertexNum must more than or equal 3.");
@@ -412,7 +490,7 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             double DeltaTheta = (360d / VertexNum) * MathHelper.UnitTheta,
-                   LastTheta = StartAngle * MathHelper.UnitTheta;
+                   LastTheta = StartTheta;
 
             int P0x = (int)Math.Ceiling(Radius * Math.Cos(LastTheta)),
                 P0y = (int)Math.Ceiling(Radius * Math.Sin(LastTheta)),

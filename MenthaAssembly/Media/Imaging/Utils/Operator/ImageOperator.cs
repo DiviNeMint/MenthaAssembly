@@ -183,6 +183,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         int Sx = Math.Max(Data[i++] + OffsetX, 0),
                             Ex = Math.Min(Data[i] + OffsetX, MaxX);
 
+                        if (Ex <= Sx)
+                            continue;
+
                         if (MaxX < Sx)
                             return;
 
@@ -201,6 +204,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     {
                         int Sx = Math.Max(Data[i++] + OffsetX, 0),
                             Ex = Math.Min(Data[i] + OffsetX, MaxX);
+
+                        if (Ex <= Sx)
+                            continue;
 
                         if (MaxX < Sx)
                             return;
