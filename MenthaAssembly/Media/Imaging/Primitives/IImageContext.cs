@@ -127,16 +127,6 @@ namespace MenthaAssembly.Media.Imaging
         public void Clear(IPixel Color);
         public void ParallelClear(IPixel Color);
 
-        /// <summary>
-        /// Creates a bitmap.<para/>
-        /// When you no longer need the bitmap, call the <see cref="Win32.Graphic.DeleteObject(IntPtr)"/> function to delete it.
-        /// </summary>
-        /// <returns>
-        /// If the function succeeds, the return value is a handle to a bitmap.<para/>
-        /// If the function fails, the return value is <see cref="IntPtr.Zero"/>.
-        /// </returns>
-        public IntPtr CreateHBitmap();
-
         #endregion
 
         #region Line Rendering

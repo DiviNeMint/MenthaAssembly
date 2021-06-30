@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging.Primitives
@@ -80,9 +78,6 @@ namespace MenthaAssembly.Media.Imaging.Primitives
         protected abstract IImageContext CloneHandler();
         object ICloneable.Clone()
             => CloneHandler();
-
-        public IntPtr CreateHBitmap()
-            => Win32.Graphic.CreateBitmap(Width, Height, 1, BitsPerPixel, Scan0);
 
     }
 }

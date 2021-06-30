@@ -1,18 +1,18 @@
-﻿using System;
+﻿using MenthaAssembly.Media.Imaging;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace MenthaAssembly.Win32
 {
-    public static class Graphic
+    public unsafe static class Graphic
     {
         #region Windows API
         /// <summary>
         /// Windows API : <see href="https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getdc">GetDC</see>
         /// <para/>
-        /// The GetDC function retrieves a handle to a device context (DC) for the client area of a specified window or for the entire screen. 
-        /// You can use the returned handle in subsequent GDI functions to draw in the DC. 
+        /// The GetDC function retrieves a handle to a device context (DC) for the client area of a specified window or for the entire screen.<para/>
+        /// You can use the returned handle in subsequent GDI functions to draw in the DC. <para/>
         /// The device context is an opaque data structure, whose values are used internally by GDI.
         /// </summary>
         [DllImport("user32.dll")]
@@ -39,6 +39,20 @@ namespace MenthaAssembly.Win32
         /// <remarks>An application must not delete a DC whose handle was obtained by calling the <c>GetDC</c> function. Instead, it must call the <c>ReleaseDC</c> function to free the DC.</remarks>
         [DllImport("gdi32.dll")]
         internal static extern bool DeleteDC(IntPtr hDC);
+
+        /// <summary>
+        /// Windows API : <see href="https://docs.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-getobject">GetObject</see><para/>
+        /// If the function succeeds, and lpvObject is a valid pointer, the return value is the number of bytes stored into the buffer.<para/>
+        /// If the function succeeds, and lpvObject is <see cref="IntPtr.Zero"/>, the return value is the number of bytes required to hold the information the function would store into the buffer.<para/>
+        /// If the function fails, the return value is zero.
+        /// </summary>
+        /// <param name="hObject">A handle to the graphics object of interest.<para/>
+        /// This can be a handle to one of the following: a logical bitmap, a brush, a font, a palette, a pen, or a device independent bitmap created by calling the CreateDIBSection function.</param>
+        /// <param name="cbBuffer">The number of bytes of information to be written to the buffer.</param>
+        /// <param name="lpvObject"></param>
+        /// <returns></returns>
+        [DllImport("gdi32.dll")]
+        internal static extern int GetObject(IntPtr hObject, int cbBuffer, IntPtr lpvObject);
 
         [DllImport("gdi32.dll")]
         internal static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
@@ -121,6 +135,238 @@ namespace MenthaAssembly.Win32
         internal static extern bool GetIconInfo(IntPtr hIcon, out IconInfo pIconInfo);
 
         #endregion
+
+        /// <summary>
+        /// Create a bitmap.<para/>
+        /// When you no longer need the bitmap, call the <see cref="DeleteObject(IntPtr)"/> function to delete it.
+        /// </summary>
+        /// <returns>
+        /// If the function succeeds, the return value is a handle to a bitmap.<para/>
+        /// If the function fails, the return value is <see cref="IntPtr.Zero"/>.
+        /// </returns>
+        public static IntPtr CreateHBitmap(this IImageContext This)
+            => CreateBitmap(This.Width, This.Height, 1, This.BitsPerPixel, This.Scan0);
+
+        public static bool TryDecodeHBitmap(IntPtr HBitmap, out IImageContext Bitmap)
+        {
+            Bitmap = null;
+            Bitmap Data = new Bitmap();
+            Bitmap* pData = &Data;
+
+            if (GetObject(HBitmap, sizeof(Bitmap), (IntPtr)pData) == 0)
+                return false;
+
+            if (Data.bmBits != IntPtr.Zero)
+            {
+                switch (Data.bmBitsPixel)
+                {
+                    // TODO:
+                    // GetPalette
+                    // https://stackoverflow.com/questions/46562369/winapi-gdi-how-to-use-getdibits-to-get-color-table-synthesized-for-a-bitmap
+                    case 1:
+                        {
+                            List<BGR> Palettes = new List<BGR>();
+                            int ColorStep = byte.MaxValue / ((1 << Data.bmBitsPixel) - 1);
+                            for (int i = 0; i < 256; i += ColorStep)
+                            {
+                                byte Value = (byte)i;
+                                Palettes.Add(new BGR(Value, Value, Value));
+                            }
+
+                            Bitmap = new ImageContext<BGR, Indexed1>(Data.bmWidth, Data.bmHeight, Data.bmBits, Data.bmWidthBytes, Palettes);
+                            return true;
+                        }
+                    case 4:
+                        {
+                            List<BGR> Palettes = new List<BGR>();
+                            int ColorStep = byte.MaxValue / ((1 << Data.bmBitsPixel) - 1);
+                            for (int i = 0; i < 256; i += ColorStep)
+                            {
+                                byte Value = (byte)i;
+                                Palettes.Add(new BGR(Value, Value, Value));
+                            }
+
+                            Bitmap = new ImageContext<BGR, Indexed4>(Data.bmWidth, Data.bmHeight, Data.bmBits, Data.bmWidthBytes, Palettes);
+                            return true;
+                        }
+                    case 8:
+                        {
+                            Bitmap = new ImageContext<Gray8>(Data.bmWidth, Data.bmHeight, Data.bmBits, Data.bmWidthBytes);
+                            return true;
+                        }
+                    case 24:
+                        {
+                            Bitmap = new ImageContext<BGR>(Data.bmWidth, Data.bmHeight, Data.bmBits, Data.bmWidthBytes);
+                            return true;
+                        }
+                    case 32:
+                        {
+                            Bitmap = new ImageContext<BGRA>(Data.bmWidth, Data.bmHeight, Data.bmBits, Data.bmWidthBytes);
+                            return true;
+                        }
+                }
+            }
+
+            IntPtr HDC = GetDC(IntPtr.Zero);
+            BitmapInfoHeader Header = new BitmapInfoHeader
+            {
+                biSize = sizeof(BitmapInfoHeader),
+                biWidth = Data.bmWidth,
+                biHeight = -Data.bmHeight,
+                biPlanes = 1,
+                biBitCount = Data.bmBitsPixel,
+                biCompression = BitmapCompressionMode.RGB,
+                biSizeImage = 0,
+                biXPelsPerMeter = 0,
+                biYPelsPerMeter = 0,
+                biClrUsed = 0,
+                biClrImportant = 0,
+            };
+            try
+            {
+                if (GetDIBits(HDC, HBitmap, 0, 0, null, &Header, DIBColorMode.RGB_Colors) == 0)
+                    return false;
+
+                byte[] Datas = new byte[Header.biSizeImage];
+                fixed (byte* pDatas = Datas)
+                {
+                    if (GetDIBits(HDC, HBitmap, 0, Header.biHeight, pDatas, &Header, DIBColorMode.RGB_Colors) == 0)
+                        return false;
+
+                    switch (Header.biBitCount)
+                    {
+                        // TODO:
+                        // GetPalette
+                        // https://stackoverflow.com/questions/46562369/winapi-gdi-how-to-use-getdibits-to-get-color-table-synthesized-for-a-bitmap
+                        case 1:
+                            {
+                                List<BGR> Palettes = new List<BGR>();
+                                int ColorStep = byte.MaxValue / ((1 << Data.bmBitsPixel) - 1);
+                                for (int i = 0; i < 256; i += ColorStep)
+                                {
+                                    byte Value = (byte)i;
+                                    Palettes.Add(new BGR(Value, Value, Value));
+                                }
+
+                                Bitmap = new ImageContext<BGR, Indexed1>(Header.biWidth, Header.biHeight.Abs(), Datas, Palettes);
+                                return true;
+                            }
+                        case 4:
+                            {
+                                List<BGR> Palettes = new List<BGR>();
+                                int ColorStep = byte.MaxValue / ((1 << Data.bmBitsPixel) - 1);
+                                for (int i = 0; i < 256; i += ColorStep)
+                                {
+                                    byte Value = (byte)i;
+                                    Palettes.Add(new BGR(Value, Value, Value));
+                                }
+                                Bitmap = new ImageContext<BGR, Indexed4>(Header.biWidth, Header.biHeight.Abs(), Datas, Palettes);
+                                return true;
+                            }
+                        case 8:
+                            {
+                                Bitmap = new ImageContext<Gray8>(Header.biWidth, Header.biHeight.Abs(), Datas);
+                                return true;
+                            }
+                        case 24:
+                            {
+                                Bitmap = new ImageContext<BGR>(Header.biWidth, Header.biHeight.Abs(), Datas);
+                                return true;
+                            }
+                        case 32:
+                            {
+                                Bitmap = new ImageContext<BGRA>(Header.biWidth, Header.biHeight.Abs(), Datas);
+                                return true;
+                            }
+                    }
+                }
+            }
+            finally
+            {
+                ReleaseDC(IntPtr.Zero, HDC);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Creates a bitmap.<para/>
+        /// When you no longer need the icon, call the <see cref="DestroyIcon(IntPtr)"/> function to delete it.
+        /// </summary>
+        /// <returns>
+        /// If the function succeeds, the return value is a handle to the icon or cursor that is created.<para/>
+        /// If the function fails, the return value is <see cref="IntPtr.Zero"/>.<para/>
+        /// To get extended error information, call <see cref="Marshal.GetLastWin32Error"/>.
+        /// </returns>
+        public static IntPtr CreateHIcon(IntPtr HBmpColor, IntPtr HBmpMask)
+        {
+            try
+            {
+                IconInfo Info = new IconInfo
+                {
+                    fIcon = true,
+                    hbmMask = HBmpMask,
+                    hbmColor = HBmpColor
+                };
+
+                return CreateIconIndirect(ref Info);
+            }
+            finally
+            {
+                DeleteObject(HBmpMask);
+                DeleteObject(HBmpColor);
+            }
+        }
+        /// <summary>
+        /// Creates a bitmap.<para/>
+        /// When you no longer need the icon, call the <see cref="DestroyIcon(IntPtr)"/> function to delete it.
+        /// </summary>
+        /// <returns>
+        /// If the function succeeds, the return value is a handle to the icon or cursor that is created.<para/>
+        /// If the function fails, the return value is <see cref="IntPtr.Zero"/>.<para/>
+        /// To get extended error information, call <see cref="Marshal.GetLastWin32Error"/>.
+        /// </returns>
+        public static IntPtr CreateHIcon(IntPtr HBmpColor, IntPtr HBmpMask, int xHotSpot, int yHotSpot)
+        {
+            try
+            {
+                IconInfo Info = new IconInfo
+                {
+                    fIcon = false,
+                    xHotspot = xHotSpot,
+                    yHotspot = yHotSpot,
+                    hbmMask = HBmpMask,
+                    hbmColor = HBmpColor
+                };
+
+                return CreateIconIndirect(ref Info);
+            }
+            finally
+            {
+                DeleteObject(HBmpMask);
+                DeleteObject(HBmpColor);
+            }
+        }
+
+        //public static bool TryDecodeHIcon(IntPtr HIcon, out ImageContext<BGRA> Icon)
+        //{
+        //    Icon = null;
+        //    GetIconInfo(HIcon, out IconInfo Info);
+
+        //    if (TryDecodeHBitmap(Info.hbmMask, out IImageContext Mask))
+        //    {
+        //        if (TryDecodeHBitmap(Info.hbmColor, out IImageContext Color))
+        //        {
+
+        //        }
+        //        else
+        //        {
+
+        //        }
+        //    }
+
+        //    return false;
+        //}
 
     }
 }
