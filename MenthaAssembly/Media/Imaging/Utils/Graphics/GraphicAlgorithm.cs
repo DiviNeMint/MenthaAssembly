@@ -60,7 +60,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         }
 
-        public static void CalculateBresenhamEllipse(int Rx, int Ry, GraphicDeltaHandler Handler)
+        public static void CalculateBresenhamEllipseQuadrantI(int Rx, int Ry, GraphicDeltaHandler Handler)
         {
             // Avoid endless loop
             if (Rx < 1 || Ry < 1)
@@ -84,11 +84,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 // Draw first set of points counter clockwise where tangent line slope > -1.
                 while (xStopping >= yStopping)
                 {
-                    // Draw 4 quadrant points at once
                     Handler(x, y);      // Quadrant I  (Actually an octant)
-                    Handler(-x, y);     // Quadrant II
-                    Handler(-x, -y);    // Quadrant III
-                    Handler(x, -y);     // Quadrant IV
 
                     y++;
                     yStopping += xrSqTwo;
@@ -115,11 +111,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 // Draw second set of points clockwise where tangent line slope < -1.
                 while (xStopping <= yStopping)
                 {
-                    // Draw 4 quadrant points at once
                     Handler(x, y);      // Quadrant I  (Actually an octant)
-                    Handler(-x, y);     // Quadrant II
-                    Handler(-x, -y);    // Quadrant III
-                    Handler(x, -y);     // Quadrant IV
 
                     x++;
                     xStopping += yrSqTwo;
@@ -135,6 +127,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
+        public static void CalculateBresenhamEllipse(int Rx, int Ry, GraphicDeltaHandler Handler)
+            => CalculateBresenhamEllipseQuadrantI(Rx, Ry, (Dx, Dy) =>
+            {
+                Handler(Dx, Dy);      // Quadrant I  (Actually an octant)
+                Handler(-Dx, Dy);     // Quadrant II
+                Handler(-Dx, -Dy);    // Quadrant III
+                Handler(Dx, -Dy);     // Quadrant IV
+            });
 
         public static void CalculateBresenhamArc(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, GraphicDeltaHandler Handler)
         {

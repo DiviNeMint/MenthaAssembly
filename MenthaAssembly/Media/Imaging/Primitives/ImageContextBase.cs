@@ -53,31 +53,31 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             set => this[X, Y] = this.Operator.ToPixel(value.A, value.R, value.G, value.B);
         }
 
-        private readonly byte[] Data0;
-        private readonly IntPtr _Scan0;
+        internal readonly byte[] Data0;
+        internal readonly IntPtr _Scan0;
         private readonly Func<IntPtr> GetScan0;
         public IntPtr Scan0 => GetScan0();
 
-        private readonly byte[] DataA;
-        private readonly IntPtr _ScanA;
+        internal readonly byte[] DataA;
+        internal readonly IntPtr _ScanA;
         private readonly Func<IntPtr> GetScanA;
         protected IntPtr ScanA => GetScanA();
         IntPtr IImageContext.ScanA => this.ScanA;
 
-        private readonly byte[] DataR;
-        private readonly IntPtr _ScanR;
+        internal readonly byte[] DataR;
+        internal readonly IntPtr _ScanR;
         private readonly Func<IntPtr> GetScanR;
         protected IntPtr ScanR => GetScanR();
         IntPtr IImageContext.ScanR => this.ScanR;
 
-        private readonly byte[] DataG;
-        private readonly IntPtr _ScanG;
+        internal readonly byte[] DataG;
+        internal readonly IntPtr _ScanG;
         private readonly Func<IntPtr> GetScanG;
         protected IntPtr ScanG => GetScanG();
         IntPtr IImageContext.ScanG => this.ScanG;
 
-        private readonly byte[] DataB;
-        private readonly IntPtr _ScanB;
+        internal readonly byte[] DataB;
+        internal readonly IntPtr _ScanB;
         private readonly Func<IntPtr> GetScanB;
         protected IntPtr ScanB => GetScanB();
         IntPtr IImageContext.ScanB => this.ScanB;

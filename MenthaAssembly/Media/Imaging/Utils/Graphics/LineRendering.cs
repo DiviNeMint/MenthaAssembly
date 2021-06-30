@@ -170,8 +170,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
                                  RightBound = new Dictionary<int, int>();
             #region Pen Bound
             int MaxX = this.Width - 1,
-                PCx = Bound.Width >> 1,
-                PCy = Bound.Height >> 1,
+                PCx = (Bound.Left + Bound.Right) >> 1,
+                PCy = (Bound.Top + Bound.Bottom) >> 1,
                 DUx = 0,
                 DUy = 0,
                 DLx = 0,
@@ -500,8 +500,8 @@ namespace MenthaAssembly.Media.Imaging.Primitives
 
             bool IsHollow = Contour.Any(i => i.Value.Count > 2);
             int MaxX = this.Width - 1,
-                PCx = Bound.Width >> 1,
-                PCy = Bound.Height >> 1,
+                PCx = (Bound.Left + Bound.Right) >> 1,
+                PCy = (Bound.Top + Bound.Bottom) >> 1,
                 DSx = Sx - Cx,
                 DSy = Sy - Cy,
                 DEx = Ex - Cx,

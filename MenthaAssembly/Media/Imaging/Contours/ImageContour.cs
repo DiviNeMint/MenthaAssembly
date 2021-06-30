@@ -472,7 +472,41 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         public static ImageContour CreateFillRoundedRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, int CornerRadius)
-            => CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, CornerRadius, CornerRadius, CornerRadius, CornerRadius);
+        {
+            ImageContour Contour = new ImageContour();
+            int CornerRx = Cx + HalfWidth - CornerRadius,
+                CornerLx = Cx - HalfWidth + CornerRadius,
+                CornerTy = Cy - HalfHeight + CornerRadius,
+                CornerBy = Cy + HalfHeight - CornerRadius;
+
+            int MinDx = CornerRadius - HalfWidth,
+                MinDy = CornerRadius - HalfHeight;
+            GraphicAlgorithm.CalculateBresenhamEllipseQuadrantI(CornerRadius, CornerRadius, (Dx, Dy) =>
+            {
+                if (Dy < MinDy || Dx < MinDx)
+                    return;
+
+                int TRx = CornerRx + Dx,
+                    TLx = CornerLx - Dx,
+                    TTy = CornerTy - Dy,
+                    TBy = CornerBy + Dy;
+
+                Contour[TTy].Union(TLx, TRx);
+                Contour[TBy] = Contour[TTy];
+            });
+
+            int Lx = Cx - HalfWidth,
+                Rx = Cx + HalfWidth;
+            for (int j = CornerTy + 1; j < CornerBy; j++)
+            {
+                Contour[j].Datas.Add(Lx);
+                Contour[j].Datas.Add(Rx);
+            }
+
+            return Contour;
+
+            //=> CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, CornerRadius, CornerRadius, CornerRadius, CornerRadius);
+        }
         public static ImageContour CreateFillRoundedRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, int CornerRadius1, int CornerRadius2, int CornerRadius3, int CornerRadius4)
         {
             ImageContour Rectangle = new ImageContour();
@@ -554,6 +588,100 @@ namespace MenthaAssembly.Media.Imaging
                         Rectangle.Datas[j].Datas.RemoveAt(1);
                 }
             }
+
+            return Rectangle;
+        }
+        public static ImageContour CreateFillRoundedRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta, int CornerRadius)
+        {
+            if (Theta == 0d)
+                return CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, CornerRadius);
+
+            return CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, Theta, CornerRadius, CornerRadius, CornerRadius, CornerRadius);
+        }
+        public static ImageContour CreateFillRoundedRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta, int CornerRadius1, int CornerRadius2, int CornerRadius3, int CornerRadius4)
+        {
+            if (Theta == 0d)
+                return CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, CornerRadius1, CornerRadius2, CornerRadius3, CornerRadius4);
+
+            ImageContour Rectangle = new ImageContour();
+
+            //int Left = Cx - HalfWidth,
+            //    Right = Cx + HalfWidth,
+            //    Top = Cy - HalfHeight,
+            //    Bottom = Cy + HalfHeight,
+            //    Y1, Y2, Y3, Y4;
+
+            ////GraphicAlgorithm.CalculateBresenhamEllipse
+
+            //ImageContour Corner = null;
+            //int LastRadius = -1;
+
+            //// Left & Top
+            //Y1 = Top + CornerRadius1;
+            //if (CornerRadius1 > 0)
+            //{
+            //    LastRadius = CornerRadius1;
+            //    Corner = CreateFillEllipse(0, 0, CornerRadius1, CornerRadius1);
+
+            //    Rectangle += ImageContour.Offset(Corner, Left + CornerRadius1, Y1);
+            //}
+
+            //// Right & Top
+            //Y2 = Top + CornerRadius2;
+            //if (CornerRadius2 > 0)
+            //{
+            //    if (CornerRadius2 != LastRadius)
+            //    {
+            //        Corner = CreateFillEllipse(0, 0, CornerRadius2, CornerRadius2);
+            //        LastRadius = CornerRadius2;
+            //    }
+            //    Rectangle += ImageContour.Offset(Corner, Right - CornerRadius2, Y2);
+            //}
+
+            //// Right & Bottom
+            //Y3 = Bottom - CornerRadius3;
+            //if (CornerRadius3 > 0)
+            //{
+            //    if (CornerRadius3 != LastRadius)
+            //    {
+            //        Corner = CreateFillEllipse(0, 0, CornerRadius3, CornerRadius3);
+            //        LastRadius = CornerRadius3;
+            //    }
+            //    Rectangle += ImageContour.Offset(Corner, Right - CornerRadius3, Y3);
+            //}
+
+            //// Left & Bottom
+            //Y4 = Bottom - CornerRadius4;
+            //if (CornerRadius4 > 0)
+            //{
+            //    if (CornerRadius4 != LastRadius)
+            //        Corner = CreateFillEllipse(0, 0, CornerRadius4, CornerRadius4);
+
+            //    Rectangle += ImageContour.Offset(Corner, Left + CornerRadius4, Y4);
+            //}
+
+            //for (int j = Y1; j <= Y4; j++)
+            //    Rectangle[j].AddLeft(Left);
+
+            //for (int j = Y2; j <= Y3; j++)
+            //    Rectangle[j].AddRight(Right);
+
+            //foreach (int j in Rectangle.Datas.Keys.ToArray())
+            //{
+            //    if (j < Top || Bottom < j)
+            //    {
+            //        Rectangle.Datas.Remove(j);
+            //        continue;
+            //    }
+
+            //    int Length = Rectangle.Datas[j].Count;
+            //    if (Length > 2)
+            //    {
+            //        Length--;
+            //        for (int i = 1; i < Length; i++)
+            //            Rectangle.Datas[j].Datas.RemoveAt(1);
+            //    }
+            //}
 
             return Rectangle;
         }

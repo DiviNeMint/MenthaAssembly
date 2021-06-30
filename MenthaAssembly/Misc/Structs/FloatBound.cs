@@ -49,10 +49,10 @@ namespace MenthaAssembly
             => Rotate((Left + Right) * 0.5d, (Top + Bottom) * 0.5d, Theta);
         public void Rotate(double Ox, double Oy, double Theta)
         {
-            MathHelper.Rotate(Left, Top, Theta, Ox, Oy, out double X0, out double Y0);
-            MathHelper.Rotate(Left, Bottom, Theta, Ox, Oy, out double X1, out double Y1);
-            MathHelper.Rotate(Right, Top, Theta, Ox, Oy, out double X2, out double Y2);
-            MathHelper.Rotate(Right, Bottom, Theta, Ox, Oy, out double X3, out double Y3);
+            MathHelper.Rotate(Left, Top, Ox, Oy, Theta, out double X0, out double Y0);
+            MathHelper.Rotate(Left, Bottom, Ox, Oy, Theta, out double X1, out double Y1);
+            MathHelper.Rotate(Right, Top, Ox, Oy, Theta, out double X2, out double Y2);
+            MathHelper.Rotate(Right, Bottom, Ox, Oy, Theta, out double X3, out double Y3);
 
             float Max, Min;
             MathHelper.MinAndMax(out Min, out Max, (float)X0, (float)X1, (float)X2, (float)X3);
@@ -69,10 +69,10 @@ namespace MenthaAssembly
         {
             FloatBound R = new FloatBound();
 
-            MathHelper.Rotate(Bound.Left, Bound.Top, Theta, Ox, Oy, out double X0, out double Y0);
-            MathHelper.Rotate(Bound.Left, Bound.Bottom, Theta, Ox, Oy, out double X1, out double Y1);
-            MathHelper.Rotate(Bound.Right, Bound.Top, Theta, Ox, Oy, out double X2, out double Y2);
-            MathHelper.Rotate(Bound.Right, Bound.Bottom, Theta, Ox, Oy, out double X3, out double Y3);
+            MathHelper.Rotate(Bound.Left, Bound.Top, Ox, Oy, Theta, out double X0, out double Y0);
+            MathHelper.Rotate(Bound.Left, Bound.Bottom, Ox, Oy, Theta, out double X1, out double Y1);
+            MathHelper.Rotate(Bound.Right, Bound.Top, Ox, Oy, Theta, out double X2, out double Y2);
+            MathHelper.Rotate(Bound.Right, Bound.Bottom, Ox, Oy, Theta, out double X3, out double Y3);
 
             float Max, Min;
             MathHelper.MinAndMax(out Min, out Max, (float)X0, (float)X1, (float)X2, (float)X3);
