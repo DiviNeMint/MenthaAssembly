@@ -118,7 +118,6 @@ namespace MenthaAssembly.Win32
         [DllImport("gdi32.dll")]
         internal static extern IntPtr CreateBitmap(int Width, int Height, int cPlanes, int cBitsPerPel, IntPtr lpvBits);
 
-
         #endregion
 
         #region Windows API (Icon)
