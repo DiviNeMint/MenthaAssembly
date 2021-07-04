@@ -89,38 +89,38 @@ namespace MenthaAssembly.Media.Imaging
         /// Creates a new casted IImageContext.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        public IImageContext Cast<T>() where T : unmanaged, IPixel;
+        public ImageContext<T> Cast<T>() where T : unmanaged, IPixel;
         /// <summary>
         /// Creates a new casted IImageContext.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        public IImageContext ParallelCast<T>() where T : unmanaged, IPixel;
+        public ImageContext<T> ParallelCast<T>() where T : unmanaged, IPixel;
         /// <summary>
         /// Creates a new casted IImageContext.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="Options">An object that configures the behavior of this operation.</param>
-        public IImageContext ParallelCast<T>(ParallelOptions Options) where T : unmanaged, IPixel;
+        public ImageContext<T> ParallelCast<T>(ParallelOptions Options) where T : unmanaged, IPixel;
 
         /// <summary>
         /// Creates a new casted Indexed IImageContext.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <typeparam name="U"></typeparam>
-        public IImageContext Cast<T, U>() where T : unmanaged, IPixel  where U : unmanaged, IPixelIndexed;
+        public ImageContext<T, U> Cast<T, U>() where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
         /// <summary>
         /// Creates a new casted Indexed IImageContext.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <typeparam name="U"></typeparam>
-        public IImageContext ParallelCast<T, U>() where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
+        public ImageContext<T, U> ParallelCast<T, U>() where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
         /// <summary>
         /// Creates a new casted Indexed IImageContext.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <typeparam name="U"></typeparam>
         /// <param name="Options">An object that configures the behavior of this operation.</param>
-        public IImageContext ParallelCast<T, U>(ParallelOptions Options) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
+        public ImageContext<T, U> ParallelCast<T, U>(ParallelOptions Options) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
 
         #endregion
 

@@ -20,4 +20,5 @@ namespace MenthaAssembly.Win32
         public uint biClrUsed;
         public uint biClrImportant;
     }
+
 }

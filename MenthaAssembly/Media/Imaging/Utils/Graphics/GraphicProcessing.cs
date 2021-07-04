@@ -33,29 +33,17 @@ namespace MenthaAssembly.Media.Imaging.Primitives
             => ConvoluteHandler(Kernel.Datas, Kernel.FactorSum, Kernel.Offset);
 
         #region Cast
-        protected abstract IImageContext CastHandler<T>() where T : unmanaged, IPixel;
-        IImageContext IImageContext.Cast<T>()
-            => CastHandler<T>();
+        public abstract ImageContext<T> Cast<T>() where T : unmanaged, IPixel;
 
-        protected abstract IImageContext CastHandler<T, U>() where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
-        IImageContext IImageContext.Cast<T, U>()
-            => CastHandler<T, U>();
+        public abstract ImageContext<T, U> Cast<T, U>() where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
 
-        protected abstract IImageContext ParallelCastHandler<T>() where T : unmanaged, IPixel;
-        IImageContext IImageContext.ParallelCast<T>()
-            => ParallelCastHandler<T>();
+        public abstract ImageContext<T> ParallelCast<T>() where T : unmanaged, IPixel;
 
-        protected abstract IImageContext ParallelCastHandler<T>(ParallelOptions Options) where T : unmanaged, IPixel;
-        IImageContext IImageContext.ParallelCast<T>(ParallelOptions Options)
-            => ParallelCastHandler<T>(Options);
+        public abstract ImageContext<T> ParallelCast<T>(ParallelOptions Options) where T : unmanaged, IPixel;
 
-        protected abstract IImageContext ParallelCastHandler<T, U>() where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
-        IImageContext IImageContext.ParallelCast<T, U>()
-            => ParallelCastHandler<T, U>();
+        public abstract ImageContext<T, U> ParallelCast<T, U>() where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
 
-        protected abstract IImageContext ParallelCastHandler<T, U>(ParallelOptions Options) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
-        IImageContext IImageContext.ParallelCast<T, U>(ParallelOptions Options)
-            => ParallelCastHandler<T, U>(Options);
+        public abstract ImageContext<T, U> ParallelCast<T, U>(ParallelOptions Options) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
 
         #endregion
 

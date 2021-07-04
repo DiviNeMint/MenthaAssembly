@@ -15,10 +15,10 @@ namespace MenthaAssembly.Win32
         /// You can use the returned handle in subsequent GDI functions to draw in the DC. <para/>
         /// The device context is an opaque data structure, whose values are used internally by GDI.
         /// </summary>
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern IntPtr GetDC(IntPtr Hwnd);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern IntPtr GetDCEx(IntPtr Hwnd, IntPtr hrgnClip, DeviceContextFlags flags);
 
         /// <summary>
@@ -27,17 +27,17 @@ namespace MenthaAssembly.Win32
         /// The GetWindowDC function retrieves the device context (DC) for the entire window, including title bar, menus, and scroll bars. 
         /// A window device context permits painting anywhere in a window, because the origin of the device context is the upper-left corner of the window instead of the client area.
         /// </summary>
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern IntPtr GetWindowDC(IntPtr Hwnd);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern IntPtr ReleaseDC(IntPtr Hwnd, IntPtr hDC);
 
         /// <summary>Deletes the specified device context (DC).</summary>
         /// <param name="hDC">A handle to the device context.</param>
         /// <returns><para>If the function succeeds, the return value is nonzero.</para><para>If the function fails, the return value is zero.</para></returns>
         /// <remarks>An application must not delete a DC whose handle was obtained by calling the <c>GetDC</c> function. Instead, it must call the <c>ReleaseDC</c> function to free the DC.</remarks>
-        [DllImport("gdi32.dll")]
+        [DllImport("Gdi32.dll")]
         internal static extern bool DeleteDC(IntPtr hDC);
 
         /// <summary>
@@ -51,13 +51,13 @@ namespace MenthaAssembly.Win32
         /// <param name="cbBuffer">The number of bytes of information to be written to the buffer.</param>
         /// <param name="lpvObject"></param>
         /// <returns></returns>
-        [DllImport("gdi32.dll")]
+        [DllImport("Gdi32.dll")]
         internal static extern int GetObject(IntPtr hObject, int cbBuffer, IntPtr lpvObject);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("Gdi32.dll")]
         internal static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("Gdi32.dll")]
         internal static extern bool DeleteObject(IntPtr hObject);
 
         /// <summary>
@@ -72,10 +72,10 @@ namespace MenthaAssembly.Win32
         /// <para/>
         /// If the function fails, the return value is <see cref="IntPtr.Zero"/>.
         /// </returns>
-        [DllImport("gdi32.dll", SetLastError = true)]
+        [DllImport("Gdi32.dll", SetLastError = true)]
         internal static extern IntPtr CreateCompatibleDC(IntPtr hDC);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("Gdi32.dll")]
         internal static extern IntPtr CreateCompatibleBitmap(IntPtr hDC, int Width, int Height);
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace MenthaAssembly.Win32
         /// <param name="nXSrc">The leftmost x-coordinate of the source rectangle (in pixels).</param>
         /// <param name="nYSrc">The topmost y-coordinate of the source rectangle (in pixels).</param>
         /// <param name="dwRop">A raster-operation code.</param>
-        [DllImport("gdi32.dll")]
+        [DllImport("Gdi32.dll")]
         internal static extern bool BitBlt(IntPtr hDCDest, int nXDest, int nYDest, int nWidth, int nHeight, IntPtr hDCSrc, int nXSrc, int nYSrc, TernaryRasterOperations dwRop);
 
         #endregion
@@ -106,31 +106,34 @@ namespace MenthaAssembly.Win32
         /// <param name="uStartScan">The first scan line to retrieve.</param>
         /// <param name="cScanLines">The number of scan lines to retrieve.</param>
         /// <param name="lpvBits">A pointer to a buffer to receive the bitmap data. If this parameter is <see cref="IntPtr.Zero"/>, the function passes the dimensions and format of the bitmap to the <see cref="BITMAPINFO"/> structure pointed to by the <paramref name="lpbi"/> parameter.</param>
-        /// <param name="lpbi">A pointer to a <see cref="BITMAPINFO"/> structure that specifies the desired format for the DIB data.</param>
-        /// <param name="uUsage">The format of the bmiColors member of the <see cref="BITMAPINFO"/> structure. It must be one of the following values.</param>
-        /// <returns>If the lpvBits parameter is non-NULL and the function succeeds, the return value is the number of scan lines copied from the bitmap.
-        /// If the lpvBits parameter is NULL and GetDIBits successfully fills the <see cref="BITMAPINFO"/> structure, the return value is nonzero.
-        /// If the function fails, the return value is zero.
+        /// <param name="lpbi">A pointer to a <see cref="BitmapInfoHeader"/> structure that specifies the desired format for the DIB data.</param>
+        /// <param name="uUsage">The format of the bmiColors member of the <see cref="BitmapInfoHeader"/> structure. It must be one of the following values.</param>
+        /// <returns>If the lpvBits parameter is non-NULL and the function succeeds, the return value is the number of scan lines copied from the bitmap.<para/>
+        /// If the lpvBits parameter is NULL and GetDIBits successfully fills the <see cref="BitmapInfoHeader"/> structure, the return value is nonzero.<para/>
+        /// If the function fails, the return value is zero.<para/>
         /// This function can return the following value: ERROR_INVALID_PARAMETER (87 (0×57))</returns>
-        [DllImport("gdi32.dll", EntryPoint = "GetDIBits")]
-        internal unsafe static extern int GetDIBits(IntPtr hDC, IntPtr hbmp, int uStartScan, int cScanLines, byte* lpvBits, BitmapInfoHeader* lpbi, DIBColorMode uUsage);
+        [DllImport("Gdi32.dll")]
+        internal static extern int GetDIBits(IntPtr hDC, IntPtr hbmp, int uStartScan, int cScanLines, byte* lpvBits, BitmapInfoHeader* lpbi, DIBColorMode uUsage);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("Gdi32.dll")]
+        internal static extern int GetDIBits(IntPtr hDC, IntPtr hbmp, int uStartScan, int cScanLines, byte* lpvBits, IntPtr lpbi, DIBColorMode uUsage);
+
+        [DllImport("Gdi32.dll")]
         internal static extern IntPtr CreateBitmap(int Width, int Height, int cPlanes, int cBitsPerPel, IntPtr lpvBits);
 
         #endregion
 
         #region Windows API (Icon)
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern IntPtr CreateIconIndirect(ref IconInfo piconinfo);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern IntPtr CopyIcon(IntPtr hIcon);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern bool DestroyIcon(IntPtr hIcon);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern bool GetIconInfo(IntPtr hIcon, out IconInfo pIconInfo);
 
         #endregion
@@ -221,6 +224,7 @@ namespace MenthaAssembly.Win32
                 biClrUsed = 0,
                 biClrImportant = 0,
             };
+
             try
             {
                 if (GetDIBits(HDC, HBitmap, 0, 0, null, &Header, DIBColorMode.RGB_Colors) == 0)
@@ -282,7 +286,7 @@ namespace MenthaAssembly.Win32
             }
             finally
             {
-                ReleaseDC(IntPtr.Zero, HDC);
+                DeleteDC(HDC);
             }
 
             return false;
@@ -347,25 +351,34 @@ namespace MenthaAssembly.Win32
             }
         }
 
-        //public static bool TryDecodeHIcon(IntPtr HIcon, out ImageContext<BGRA> Icon)
-        //{
-        //    Icon = null;
-        //    GetIconInfo(HIcon, out IconInfo Info);
+        public static bool TryDecodeHIcon(IntPtr HIcon, out ImageContext<BGRA> Icon)
+        {
+            Icon = null;
+            GetIconInfo(HIcon, out IconInfo Info);
 
-        //    if (TryDecodeHBitmap(Info.hbmMask, out IImageContext Mask))
-        //    {
-        //        if (TryDecodeHBitmap(Info.hbmColor, out IImageContext Color))
-        //        {
+            if (TryDecodeHBitmap(Info.hbmColor, out IImageContext Color))
+            {
+                if (Color.PixelType.Equals(typeof(BGRA)))
+                {
+                    Icon = Color.Cast<BGRA>();
+                    return true;
+                }
+            }
 
-        //        }
-        //        else
-        //        {
+            //if (TryDecodeHBitmap(Info.hbmMask, out IImageContext Mask))
+            //{
+            //    if (TryDecodeHBitmap(Info.hbmColor, out IImageContext Color))
+            //    {
 
-        //        }
-        //    }
+            //    }
+            //    else
+            //    {
 
-        //    return false;
-        //}
+            //    }
+            //}
+
+            return false;
+        }
 
     }
 }

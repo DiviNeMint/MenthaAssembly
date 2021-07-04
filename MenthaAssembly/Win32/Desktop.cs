@@ -6,61 +6,61 @@ using static MenthaAssembly.Win32.Graphic;
 
 namespace MenthaAssembly.Win32
 {
-    public static class Desktop
+    public unsafe static class Desktop
     {
         #region Windows API (Window)
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        [DllImport("User32.dll", CharSet = CharSet.Unicode)]
         internal static extern IntPtr FindWindow(string ClassName, string WindowName);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern IntPtr FindWindowEx(IntPtr pParent, IntPtr pChild, string ClassName, string WindowName);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern IntPtr GetDesktopWindow();
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern bool GetWindowInfo(IntPtr Hwnd, out WindowInfo Info);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern bool GetWindowRect(IntPtr Hwnd, out Int32Bound Bound);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern long GetWindowLong(IntPtr Hwnd, WindowLongType Type);
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern long SetWindowLong(IntPtr Hwnd, WindowLongType Type, long dwNewLong);
 
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("User32.dll", SetLastError = true)]
         internal static extern bool SetWindowPlacement(IntPtr Hwnd, ref WindowPlacementData lpwndpl);
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern bool GetWindowPlacement(IntPtr Hwnd, out WindowPlacementData lpwndpl);
 
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("User32.dll", SetLastError = true)]
         internal static extern bool SetWindowPos(IntPtr Hwnd, IntPtr HwndInsertAfter, int X, int Y, int Width, int Height, WindowPosFlags uFlags);
 
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("User32.dll", SetLastError = true)]
         internal static extern bool SetWindowPos(IntPtr Hwnd, WindowPosZOrders ZOrder, int X, int Y, int Width, int Height, WindowPosFlags uFlags);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern int SetLayeredWindowAttributes(IntPtr Hwnd, int ColorKey, byte alpha, WindowLayeredAttributeFlags flags);
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern bool GetLayeredWindowAttributes(IntPtr Hwnd, out int ColorKey, out byte alpha, out WindowLayeredAttributeFlags Flags);
 
-        [DllImport("user32.dll", EntryPoint = "RegisterWindowMessageW")]
+        [DllImport("User32.dll", EntryPoint = "RegisterWindowMessageW")]
         internal static extern int RegisterWindowMessage([MarshalAs(UnmanagedType.LPWStr)] string lpString);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern bool SetForegroundWindow(IntPtr Hwnd);
 
         [DllImport("User32.dll", CharSet = CharSet.Auto)]
         internal static extern int GetWindowThreadProcessId(IntPtr Hwnd, out int ProcessId);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern bool ShowWindow(IntPtr Hwnd, WindowShowType flags);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern bool PrintWindow(IntPtr Hwnd, IntPtr hdcBlt, WindowPrintFlags Flags);
 
-        [DllImport("user32.dll")]
+        [DllImport("User32.dll")]
         internal static extern int EnumChildWindows(IntPtr hwnd, EnumChildCallbackProc lpfn, IntPtr lParam);
         internal delegate bool EnumChildCallbackProc(IntPtr hwnd, IntPtr lParam);
 
@@ -74,17 +74,23 @@ namespace MenthaAssembly.Win32
         #endregion
 
         #region Windows API (AppBar)
-        [DllImport("shell32.dll")]
+        [DllImport("Shell32.dll")]
         internal static extern uint SHAppBarMessage(AppBarMessages dwMessage, ref AppBarData data);
 
         #endregion
 
         #region Windows API (NotifyIcon)
-        [DllImport("shell32.dll")]
+        [DllImport("Shell32.dll")]
         internal static extern bool Shell_NotifyIcon(NotifyCommand Command, ref NotifyIconData Data);
 
-        [DllImport("shell32.dll", SetLastError = true)]
+        [DllImport("Shell32.dll", SetLastError = true)]
         internal static extern int Shell_NotifyIconGetRect(ref NotifyIconIdentifier identifier, out Int32Bound Bound);
+
+        #endregion
+
+        #region Windows API (File System)
+        [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
+        internal static extern int SHGetFileInfo(string pszPath, SHFileAttributes dwFileAttributes, out SHFileInfo psfi, int cbfileInfo, SHGetFileInfoFlags uFlags);
 
         #endregion
 
