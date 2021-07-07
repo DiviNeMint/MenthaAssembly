@@ -16,18 +16,18 @@ namespace System.Reflection
         }
 
         public static bool TryGetProperty<T>(string PropertyName, out PropertyInfo PropertyInfo)
-            => TryGetSpecialProperty(typeof(T), PublicFlags, PropertyName, out PropertyInfo);
+            => TryGetProperty(typeof(T), PublicFlags, PropertyName, out PropertyInfo);
         public static bool TryGetProperty(this Type This, string PropertyName, out PropertyInfo PropertyInfo)
-            => TryGetSpecialProperty(This, PublicFlags, PropertyName, out PropertyInfo);
+            => TryGetProperty(This, PublicFlags, PropertyName, out PropertyInfo);
 
         public static bool TryGetInternalProperty<T>(string PropertyName, out PropertyInfo PropertyInfo)
-            => TryGetSpecialProperty(typeof(T), InternalFlags, PropertyName, out PropertyInfo);
+            => TryGetProperty(typeof(T), InternalFlags, PropertyName, out PropertyInfo);
         public static bool TryGetInternalProperty(this Type This, string PropertyName, out PropertyInfo PropertyInfo)
-            => TryGetSpecialProperty(This, InternalFlags, PropertyName, out PropertyInfo);
+            => TryGetProperty(This, InternalFlags, PropertyName, out PropertyInfo);
 
-        public static bool TryGetSpecialProperty<T>(BindingFlags Flags, string PropertyName, out PropertyInfo PropertyInfo)
-            => TryGetSpecialProperty(typeof(T), Flags, PropertyName, out PropertyInfo);
-        public static bool TryGetSpecialProperty(this Type This, BindingFlags Flags, string PropertyName, out PropertyInfo PropertyInfo)
+        public static bool TryGetProperty<T>(BindingFlags Flags, string PropertyName, out PropertyInfo PropertyInfo)
+            => TryGetProperty(typeof(T), Flags, PropertyName, out PropertyInfo);
+        public static bool TryGetProperty(this Type This, BindingFlags Flags, string PropertyName, out PropertyInfo PropertyInfo)
         {
             Type BaseType = This;
             PropertyInfo Result = BaseType?.GetProperty(PropertyName, Flags);
@@ -47,18 +47,18 @@ namespace System.Reflection
         }
 
         public static bool TrySetPropertyValue<T>(this object This, string PropertyName, T Value)
-            => TrySetSpecialPropertyValue(This, PublicFlags, PropertyName, Value);
+            => TrySetPropertyValue(This, PublicFlags, PropertyName, Value);
         public static bool TryGetPropertyValue<T>(this object This, string PropertyName, out T Value)
-            => TryGetSpecialPropertyValue(This, PublicFlags, PropertyName, out Value);
+            => TryGetPropertyValue(This, PublicFlags, PropertyName, out Value);
 
         public static bool TrySetInternalPropertyValue<T>(this object This, string PropertyName, T Value)
-            => TrySetSpecialPropertyValue(This, InternalFlags, PropertyName, Value);
+            => TrySetPropertyValue(This, InternalFlags, PropertyName, Value);
         public static bool TryGetInternalPropertyValue<T>(this object This, string PropertyName, out T Value)
-            => TryGetSpecialPropertyValue(This, InternalFlags, PropertyName, out Value);
+            => TryGetPropertyValue(This, InternalFlags, PropertyName, out Value);
 
-        public static bool TrySetSpecialPropertyValue<T>(this object This, BindingFlags Flags, string PropertyName, T Value)
+        public static bool TrySetPropertyValue<T>(this object This, BindingFlags Flags, string PropertyName, T Value)
         {
-            if (TryGetSpecialProperty(This?.GetType(), Flags, PropertyName, out PropertyInfo Info) &&
+            if (TryGetProperty(This?.GetType(), Flags, PropertyName, out PropertyInfo Info) &&
                 typeof(T).IsBaseOn(Info.PropertyType))
             {
                 Info.SetValue(This, Value);
@@ -66,9 +66,9 @@ namespace System.Reflection
             }
             return false;
         }
-        public static bool TryGetSpecialPropertyValue<T>(this object This, BindingFlags Flags, string PropertyName, out T Value)
+        public static bool TryGetPropertyValue<T>(this object This, BindingFlags Flags, string PropertyName, out T Value)
         {
-            if (TryGetSpecialProperty(This?.GetType(), Flags, PropertyName, out PropertyInfo Info) &&
+            if (TryGetProperty(This?.GetType(), Flags, PropertyName, out PropertyInfo Info) &&
                 Info.PropertyType.IsBaseOn<T>())
             {
                 Value = (T)Info.GetValue(This);
@@ -83,18 +83,18 @@ namespace System.Reflection
 
         #region Field
         public static bool TryGetField<T>(string FieldName, out FieldInfo FieldInfo)
-            => TryGetSpecialField(typeof(T), PublicFlags, FieldName, out FieldInfo);
+            => TryGetField(typeof(T), PublicFlags, FieldName, out FieldInfo);
         public static bool TryGetField(this Type This, string FieldName, out FieldInfo FieldInfo)
-            => TryGetSpecialField(This, PublicFlags, FieldName, out FieldInfo);
+            => TryGetField(This, PublicFlags, FieldName, out FieldInfo);
 
         public static bool TryGetInternalField<T>(string FieldName, out FieldInfo FieldInfo)
-            => TryGetSpecialField(typeof(T), InternalFlags, FieldName, out FieldInfo);
+            => TryGetField(typeof(T), InternalFlags, FieldName, out FieldInfo);
         public static bool TryGetInternalField(this Type This, string FieldName, out FieldInfo FieldInfo)
-            => TryGetSpecialField(This, InternalFlags, FieldName, out FieldInfo);
+            => TryGetField(This, InternalFlags, FieldName, out FieldInfo);
 
-        public static bool TryGetSpecialField<T>(BindingFlags Flags, string FieldName, out FieldInfo FieldInfo)
-            => TryGetSpecialField(typeof(T), Flags, FieldName, out FieldInfo);
-        public static bool TryGetSpecialField(this Type This, BindingFlags Flags, string FieldName, out FieldInfo FieldInfo)
+        public static bool TryGetField<T>(BindingFlags Flags, string FieldName, out FieldInfo FieldInfo)
+            => TryGetField(typeof(T), Flags, FieldName, out FieldInfo);
+        public static bool TryGetField(this Type This, BindingFlags Flags, string FieldName, out FieldInfo FieldInfo)
         {
             Type BaseType = This;
             FieldInfo Result = BaseType?.GetField(FieldName, Flags);
@@ -114,18 +114,18 @@ namespace System.Reflection
         }
 
         public static bool TrySetFieldValue<T>(this object This, string FieldName, T Value)
-            => TrySetSpecialFieldValue(This, PublicFlags, FieldName, Value);
+            => TrySetFieldValue(This, PublicFlags, FieldName, Value);
         public static bool TryGetFieldValue<T>(this object This, string FieldName, out T Value)
-            => TryGetSpecialFieldValue(This, PublicFlags, FieldName, out Value);
+            => TryGetFieldValue(This, PublicFlags, FieldName, out Value);
 
         public static bool TrySetInternalFieldValue<T>(this object This, string FieldName, T Value)
-            => TrySetSpecialFieldValue(This, InternalFlags, FieldName, Value);
+            => TrySetFieldValue(This, InternalFlags, FieldName, Value);
         public static bool TryGetInternalFieldValue<T>(this object This, string FieldName, out T Value)
-            => TryGetSpecialFieldValue(This, InternalFlags, FieldName, out Value);
+            => TryGetFieldValue(This, InternalFlags, FieldName, out Value);
 
-        public static bool TrySetSpecialFieldValue<T>(this object This, BindingFlags Flags, string FieldName, T Value)
+        public static bool TrySetFieldValue<T>(this object This, BindingFlags Flags, string FieldName, T Value)
         {
-            if (TryGetSpecialField(This?.GetType(), Flags, FieldName, out FieldInfo Info) &&
+            if (TryGetField(This?.GetType(), Flags, FieldName, out FieldInfo Info) &&
                 typeof(T).IsBaseOn(Info.FieldType))
             {
                 Info.SetValue(This, Value);
@@ -133,9 +133,9 @@ namespace System.Reflection
             }
             return false;
         }
-        public static bool TryGetSpecialFieldValue<T>(this object This, BindingFlags Flags, string FieldName, out T Value)
+        public static bool TryGetFieldValue<T>(this object This, BindingFlags Flags, string FieldName, out T Value)
         {
-            if (TryGetSpecialField(This?.GetType(), Flags, FieldName, out FieldInfo Info) &&
+            if (TryGetField(This?.GetType(), Flags, FieldName, out FieldInfo Info) &&
                 Info.FieldType.IsBaseOn<T>())
             {
                 Value = (T)Info.GetValue(This);
@@ -150,18 +150,18 @@ namespace System.Reflection
 
         #region Method
         public static bool TryGetMethod<T>(string MethodName, out MethodInfo MethodInfo)
-            => TryGetSpecialMethod(typeof(T), PublicFlags, MethodName, out MethodInfo);
+            => TryGetMethod(typeof(T), PublicFlags, MethodName, out MethodInfo);
         public static bool TryGetMethod(this Type This, string MethodName, out MethodInfo MethodInfo)
-            => TryGetSpecialMethod(This, PublicFlags, MethodName, out MethodInfo);
+            => TryGetMethod(This, PublicFlags, MethodName, out MethodInfo);
 
         public static bool TryGetInternalMethod<T>(string MethodName, out MethodInfo MethodInfo)
-            => TryGetSpecialMethod(typeof(T), InternalFlags, MethodName, out MethodInfo);
+            => TryGetMethod(typeof(T), InternalFlags, MethodName, out MethodInfo);
         public static bool TryGetInternalMethod(this Type This, string MethodName, out MethodInfo MethodInfo)
-            => TryGetSpecialMethod(This, InternalFlags, MethodName, out MethodInfo);
+            => TryGetMethod(This, InternalFlags, MethodName, out MethodInfo);
 
-        public static bool TryGetSpecialMethod<T>(BindingFlags Flags, string MethodName, out MethodInfo MethodInfo)
-            => TryGetSpecialMethod(typeof(T), Flags, MethodName, out MethodInfo);
-        public static bool TryGetSpecialMethod(this Type This, BindingFlags Flags, string MethodName, out MethodInfo MethodInfo)
+        public static bool TryGetMethod<T>(BindingFlags Flags, string MethodName, out MethodInfo MethodInfo)
+            => TryGetMethod(typeof(T), Flags, MethodName, out MethodInfo);
+        public static bool TryGetMethod(this Type This, BindingFlags Flags, string MethodName, out MethodInfo MethodInfo)
         {
             Type BaseType = This;
             MethodInfo Result = BaseType?.GetMethod(MethodName, Flags);
@@ -181,18 +181,18 @@ namespace System.Reflection
         }
 
         public static bool TryInvokeMethod(this object This, string MethodName, params object[] Args)
-            => TryInvokeSpecialMethod(This, PublicFlags, MethodName, Args);
+            => TryInvokeMethod(This, PublicFlags, MethodName, Args);
         public static bool TryInvokeMethod<T>(this object This, string MethodName, out T Result, params object[] Args)
-            => TryInvokeSpecialMethod(This, PublicFlags, MethodName, out Result, Args);
+            => TryInvokeMethod(This, PublicFlags, MethodName, out Result, Args);
 
         public static bool TryInvokeInternalMethod(this object This, string MethodName, params object[] Args)
-            => TryInvokeSpecialMethod(This, InternalFlags, MethodName, Args);
+            => TryInvokeMethod(This, InternalFlags, MethodName, Args);
         public static bool TryInvokeInternalMethod<T>(this object This, string MethodName, out T Result, params object[] Args)
-            => TryInvokeSpecialMethod(This, InternalFlags, MethodName, out Result, Args);
+            => TryInvokeMethod(This, InternalFlags, MethodName, out Result, Args);
 
-        public static bool TryInvokeSpecialMethod(this object This, BindingFlags Flags, string MethodName, params object[] Args)
+        public static bool TryInvokeMethod(this object This, BindingFlags Flags, string MethodName, params object[] Args)
         {
-            if (TryGetSpecialMethod(This?.GetType(), Flags, MethodName, out MethodInfo Method))
+            if (TryGetMethod(This?.GetType(), Flags, MethodName, out MethodInfo Method))
             {
                 Method.Invoke(This, Args);
                 return true;
@@ -200,9 +200,9 @@ namespace System.Reflection
 
             return false;
         }
-        public static bool TryInvokeSpecialMethod<T>(this object This, BindingFlags Flags, string MethodName, out T Result, params object[] Args)
+        public static bool TryInvokeMethod<T>(this object This, BindingFlags Flags, string MethodName, out T Result, params object[] Args)
         {
-            if (TryGetSpecialMethod(This?.GetType(), Flags, MethodName, out MethodInfo Method) &&
+            if (TryGetMethod(This?.GetType(), Flags, MethodName, out MethodInfo Method) &&
                 Method.ReturnType.IsBaseOn<T>())
             {
                 Result = (T)Method.Invoke(This, Args);

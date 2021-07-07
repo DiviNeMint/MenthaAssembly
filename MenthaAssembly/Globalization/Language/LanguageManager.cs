@@ -60,7 +60,7 @@ namespace MenthaAssembly
                 if (Directory.Exists)
                 {
                     IEnumerable<string> FilesNames = Directory.EnumerateFiles()
-                                                              .Where(i => i.Extension?.Equals(ExtensionName) ?? false)
+                                                              .Where(i => ExtensionName.Equals(i.Extension))
                                                               .Select(i => i.Name.Replace(ExtensionName, string.Empty));
 
                     IEnumerable<string> TempFilesNames = _Languages.Except(FilesNames);
@@ -82,66 +82,53 @@ namespace MenthaAssembly
             }
         }
 
-
         public static void Load(string LanguageName)
         {
             if (Current is null &&
                 AppDomain.CurrentDomain.GetAssemblies()
                                        .TrySelectMany(i => i.GetTypes())
-                                       .FirstOrDefault(i => i.IsClass &&
-                                                            !i.IsAbstract &&
-                                                            i.BaseType != null &&
-                                                            i.BaseType.Name.Equals(nameof(ILanguagePacket))) is Type DataType)
-                Current = Activator.CreateInstance(DataType) as ILanguagePacket;
+                                       .Where(i => i.IsClass &&
+                                                   !i.IsAbstract &&
+                                                   !i.Name.Equals(nameof(MultiLanguagePacket)) &&
+                                                   i.IsBaseOn<ILanguagePacket>()) is IEnumerable<Type> DataTypes)
+                Current = new MultiLanguagePacket(DataTypes.Select(t => Activator.CreateInstance(t) as ILanguagePacket)
+                                                           .Where(i => i != null));
 
             Current.Load(LanguageName);
         }
-        public static void Load(this ILanguagePacket LanguagePacket, string LanguageName)
+        public static void Load(this ILanguagePacket Packet, string LanguageName)
         {
             string FilePath = Path.Combine(LanguagesFolder, $"{LanguageName}{ExtensionName}");
             if (File.Exists(FilePath))
             {
-                PropertyInfo[] PropertyInfos = LanguagePacket.GetType().GetProperties();
                 foreach (Match item in Regex.Matches(File.ReadAllText(FilePath), @"(?<Property>[^=\s]+)=(?<Value>[^\r\n]+)"))
-                    if (PropertyInfos.FirstOrDefault(i => i.Name.Equals(item.Groups["Property"].Value)) is PropertyInfo PropertyInfo)
-                        PropertyInfo.SetValue(LanguagePacket, item.Groups["Value"].Value);
+                    Packet[item.Groups["Property"].Value] = item.Groups["Value"].Value;
 
-                LanguagePacket.LanguageName = LanguageName;
-                LanguagePacket.OnPropertyChanged();
+                Packet.LanguageName = LanguageName;
+                Packet.OnPropertyChanged();
             }
             else
             {
                 throw new ArgumentNullException(LanguageName, $"Can't find Language Packet at {FilePath}");
             }
         }
-        public static void Save(this ILanguagePacket LanguagePacket, string DirectoryPath)
-        {
-            if (!Directory.Exists(LanguagesFolder))
-                Directory.CreateDirectory(LanguagesFolder);
-
-            File.WriteAllLines(Path.Combine(DirectoryPath, $"{LanguagePacket.LanguageName}{ExtensionName}"),
-                               LanguagePacket.GetType()
-                                             .GetProperties()
-                                             .Where(i => i.Name != nameof(LanguagePacket.LanguageName))
-                                             .TrySelect(i => $"{i.Name}={i.GetValue(LanguagePacket)}"));
-        }
-        public static void Save(this ILanguagePacket LanguagePacket, string LanguageName, string DirectoryPath)
+        public static void Save(this ILanguagePacket Packet, string DirectoryPath)
+            => Save(Packet, Packet.LanguageName, DirectoryPath);
+        public static void Save(this ILanguagePacket Packet, string LanguageName, string DirectoryPath)
         {
             if (!Directory.Exists(LanguagesFolder))
                 Directory.CreateDirectory(LanguagesFolder);
 
             File.WriteAllLines(Path.Combine(DirectoryPath, $"{LanguageName}{ExtensionName}"),
-                               LanguagePacket.GetType()
-                                             .GetProperties()
-                                             .Where(i => !i.Name.Equals(nameof(LanguageName)) && !i.Name.Equals("Item"))
-                                             .TrySelect(i => $"{i.Name}={i.GetValue(LanguagePacket)}"));
+                               Packet.GetPropertyNames()
+                                     .TrySelect(i => $"{i}={Packet[i]}"));
         }
 
         public static void Import(string FilePath)
         {
             FileInfo File = new FileInfo(FilePath);
             if (File.Exists &&
-                (File.Extension?.Equals(ExtensionName) ?? false))
+                ExtensionName.Equals(File.Extension))
             {
                 string FileName = File.Name.Replace(ExtensionName, string.Empty);
                 if (!_Languages.Contains(FileName))
@@ -151,10 +138,10 @@ namespace MenthaAssembly
                 OnStaticPropertyChanged(nameof(Languages));
             }
         }
-        public static void Export(string DirectoryPath) 
+        public static void Export(string DirectoryPath)
             => Current?.Save(DirectoryPath);
 
-        private static void OnStaticPropertyChanged([CallerMemberName]string PropertyName = null) 
+        private static void OnStaticPropertyChanged([CallerMemberName] string PropertyName = null)
             => StaticPropertyChanged?.Invoke(null, new PropertyChangedEventArgs(PropertyName));
 
     }
