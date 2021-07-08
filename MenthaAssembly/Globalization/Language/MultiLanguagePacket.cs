@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 
 namespace MenthaAssembly.Globalization
@@ -26,16 +25,13 @@ namespace MenthaAssembly.Globalization
                 if (Packets.FirstOrDefault(i => i.GetPropertyNames().Contains(Name)) is ILanguagePacket Packet)
                     return Packet[Name];
 
-                Debug.WriteLine($"[LanguagePacket]Not fount {Name}.");
-                return null;
+                throw new KeyNotFoundException($"[LanguagePacket]Not fount {Name}.");
             }
 
             internal set
             {
                 if (Packets.FirstOrDefault(i => i.GetPropertyNames().Contains(Name)) is ILanguagePacket Packet)
                     Packet[Name] = value;
-                else
-                    Debug.WriteLine($"[LanguagePacket]Not fount {Name}.");
             }
         }
 

@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 
@@ -27,8 +26,7 @@ namespace MenthaAssembly.Globalization
                 if (_CachePropertyInfos.FirstOrDefault(i => i.Name.Equals(Name)) is PropertyInfo Info)
                     return Info.GetValue(this).ToString();
 
-                Debug.WriteLine($"[{this.GetType().Name}]Not fount {Name}.");
-                return null;
+                throw new KeyNotFoundException($"[{this.GetType().Name}]Not fount {Name}.");
             }
             internal set
             {
@@ -40,8 +38,6 @@ namespace MenthaAssembly.Globalization
 
                 if (_CachePropertyInfos.FirstOrDefault(i => i.Name.Equals(Name)) is PropertyInfo Info)
                     Info.SetValue(this, value);
-                else
-                    Debug.WriteLine($"[{this.GetType().Name}]Not fount {Name}.");
             }
         }
 
