@@ -43,6 +43,8 @@ namespace MenthaAssembly
             get => _Current;
             set
             {
+                AppDomain.CurrentDomain.AssemblyLoad -= OnAssemblyLoad;
+
                 _Current = value;
                 OnStaticPropertyChanged();
             }
@@ -91,8 +93,11 @@ namespace MenthaAssembly
                                                    !i.IsAbstract &&
                                                    !i.Name.Equals(nameof(MultiLanguagePacket)) &&
                                                    i.IsBaseOn<ILanguagePacket>()) is IEnumerable<Type> DataTypes)
+            {
                 Current = new MultiLanguagePacket(DataTypes.Select(t => Activator.CreateInstance(t) as ILanguagePacket)
                                                            .Where(i => i != null));
+                AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
+            }
 
             Current.Load(LanguageName);
         }
@@ -140,6 +145,33 @@ namespace MenthaAssembly
         }
         public static void Export(string DirectoryPath)
             => Current?.Save(DirectoryPath);
+
+        private static void OnAssemblyLoad(object sender, AssemblyLoadEventArgs e)
+        {
+            try
+            {
+                if (_Current is MultiLanguagePacket Packet)
+                {
+                    ILanguagePacket[] Packets = e.LoadedAssembly.GetTypes()
+                                                                .Where(i => i.IsClass &&
+                                                                            !i.IsAbstract &&
+                                                                            !i.Name.Equals(nameof(MultiLanguagePacket)) &&
+                                                                            i.IsBaseOn<ILanguagePacket>())
+                                                                .Select(t => Activator.CreateInstance(t) as ILanguagePacket)
+                                                                .Where(i => i != null)
+                                                                .ToArray();
+                    if (Packets.Length > 0)
+                    {
+                        MultiLanguagePacket TempPacket = new MultiLanguagePacket(Packets);
+                        TempPacket.Load(_Current.LanguageName);
+                        Packet.Packets.Add(TempPacket);
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
 
         private static void OnStaticPropertyChanged([CallerMemberName] string PropertyName = null)
             => StaticPropertyChanged?.Invoke(null, new PropertyChangedEventArgs(PropertyName));
