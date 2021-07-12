@@ -7,8 +7,9 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public unsafe class ImageContext<Pixel> : IImageContext<Pixel>, ICloneable
+    public unsafe class ImageContext<Pixel, Struct> : IImageContext<Pixel, Struct>, ICloneable
         where Pixel : unmanaged, IPixel
+        where Struct : unmanaged, IPixelIndexed
     {
         private static readonly ParallelOptions DefaultParallelOptions = new ParallelOptions();
 
@@ -26,7 +27,7 @@ namespace MenthaAssembly.Media.Imaging
 
         Type IImageContext.PixelType => typeof(Pixel);
 
-        Type IImageContext.StructType => typeof(Pixel);
+        Type IImageContext.StructType => typeof(Struct);
 
         public Pixel this[int X, int Y]
         {
@@ -57,32 +58,18 @@ namespace MenthaAssembly.Media.Imaging
         private readonly IntPtr _Scan0;
         private readonly Func<IntPtr> GetScan0;
         public IntPtr Scan0 => GetScan0();
+        IntPtr IImageContext.ScanA => throw new NotSupportedException();
+        IntPtr IImageContext.ScanR => throw new NotSupportedException();
+        IntPtr IImageContext.ScanG => throw new NotSupportedException();
+        IntPtr IImageContext.ScanB => throw new NotSupportedException();
 
-        internal readonly byte[] DataA;
-        private readonly IntPtr _ScanA;
-        private readonly Func<IntPtr> GetScanA;
-        public IntPtr ScanA => GetScanA();
-
-        internal readonly byte[] DataR;
-        private readonly IntPtr _ScanR;
-        private readonly Func<IntPtr> GetScanR;
-        public IntPtr ScanR => GetScanR();
-
-        internal readonly byte[] DataG;
-        private readonly IntPtr _ScanG;
-        private readonly Func<IntPtr> GetScanG;
-        public IntPtr ScanG => GetScanG();
-
-        internal readonly byte[] DataB;
-        internal readonly IntPtr _ScanB;
-        private readonly Func<IntPtr> GetScanB;
-        public IntPtr ScanB => GetScanB();
-
-        IImagePalette IImageContext.Palette => null;
+        public ImagePalette<Pixel> Palette { get; }
+        IImagePalette IImageContext.Palette => this.Palette;
 
         private ImageContext()
         {
-            this.BitsPerPixel = default(Pixel).BitsPerPixel;
+            this.BitsPerPixel = default(Struct).BitsPerPixel;
+            this.Operator = ImageIndexedOperator<Struct>.GetOperator();
         }
 
         private readonly HGlobalIntPtr UnmanagedScan0;
@@ -111,19 +98,18 @@ namespace MenthaAssembly.Media.Imaging
                 };
             }
 
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () => throw new NotImplementedException();
-            GetScanG = () => throw new NotImplementedException();
-            GetScanB = () => throw new NotImplementedException();
-
-            this.Operator = ImageOperator.Instance;
+            this.Palette = ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
 
-        public ImageContext(int Width, int Height, IntPtr Scan0) :
-            this(Width, Height, Scan0, Width)
+        public ImageContext(int Width, int Height, IntPtr Scan0, IEnumerable<Pixel> Palette) :
+            this(Width, Height, Scan0, (Width * default(Struct).BitsPerPixel + 7) >> 3, Palette)
         {
         }
-        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride) : this()
+        public ImageContext(int Width, int Height, IntPtr Scan0, ImagePalette<Pixel> Palette) :
+            this(Width, Height, Scan0, (Width * default(Struct).BitsPerPixel + 7) >> 3, Palette)
+        {
+        }
+        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, IEnumerable<Pixel> Palette) : this()
         {
             this.Width = Width;
             this.Height = Height;
@@ -132,60 +118,24 @@ namespace MenthaAssembly.Media.Imaging
 
             this._Scan0 = Scan0;
             GetScan0 = () => this._Scan0;
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () => throw new NotImplementedException();
-            GetScanG = () => throw new NotImplementedException();
-            GetScanB = () => throw new NotImplementedException();
 
-            this.Operator = ImageOperator.Instance;
+            this.Palette = Palette is null ? ImagePalette<Pixel>.GetSystemPalette<Struct>() :
+                                             new ImagePalette<Pixel>(BitsPerPixel, Palette);
         }
-        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) :
-            this(Width, Height, ScanR, ScanG, ScanB, Width)
-        {
-        }
-        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride) : this()
+        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, ImagePalette<Pixel> Palette) : this()
         {
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
-            this.Channels = 3;
+            this.Channels = 1;
 
-            this._ScanR = ScanR;
-            this._ScanG = ScanG;
-            this._ScanB = ScanB;
-            GetScan0 = () => throw new NotImplementedException();
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () => this._ScanR;
-            GetScanG = () => this._ScanG;
-            GetScanB = () => this._ScanB;
+            this._Scan0 = Scan0;
+            GetScan0 = () => this._Scan0;
 
-            this.Operator = ImageOperator3.Instance;
-        }
-        public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) :
-            this(Width, Height, ScanA, ScanR, ScanG, ScanB, Width)
-        {
-        }
-        public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride) : this()
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Stride = Stride;
-            this.Channels = 4;
-
-            this._ScanA = ScanA;
-            this._ScanR = ScanR;
-            this._ScanG = ScanG;
-            this._ScanB = ScanB;
-            GetScan0 = () => throw new NotImplementedException();
-            GetScanA = () => this._ScanA;
-            GetScanR = () => this._ScanR;
-            GetScanG = () => this._ScanG;
-            GetScanB = () => this._ScanB;
-
-            this.Operator = ImageOperator4.Instance;
+            this.Palette = Palette ?? ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
 
-        public ImageContext(int Width, int Height, byte[] Data) : this()
+        public ImageContext(int Width, int Height, byte[] Data, IEnumerable<Pixel> Palette) : this()
         {
             this.Width = Width;
             this.Height = Height;
@@ -199,77 +149,26 @@ namespace MenthaAssembly.Media.Imaging
                 fixed (byte* pScan0 = &this.Data0[0])
                     return (IntPtr)pScan0;
             };
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () => throw new NotImplementedException();
-            GetScanG = () => throw new NotImplementedException();
-            GetScanB = () => throw new NotImplementedException();
 
-            this.Operator = ImageOperator.Instance;
+            this.Palette = Palette is null ? ImagePalette<Pixel>.GetSystemPalette<Struct>() :
+                                             new ImagePalette<Pixel>(BitsPerPixel, Palette);
         }
-        public ImageContext(int Width, int Height, byte[] DataR, byte[] DataG, byte[] DataB) : this()
+        public ImageContext(int Width, int Height, byte[] Data, ImagePalette<Pixel> Palette) : this()
         {
             this.Width = Width;
             this.Height = Height;
-            this.Stride = DataR.Length / Height;
-            this.Channels = 3;
 
-            this.DataR = DataR;
-            this.DataG = DataG;
-            this.DataB = DataB;
-            GetScan0 = () => throw new NotImplementedException();
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () =>
+            this.Stride = Data.Length / Height;
+            this.Channels = 1;
+
+            this.Data0 = Data;
+            GetScan0 = () =>
             {
-                fixed (byte* pScanR = &this.DataR[0])
-                    return (IntPtr)pScanR;
-            };
-            GetScanG = () =>
-            {
-                fixed (byte* pScanG = &this.DataG[0])
-                    return (IntPtr)pScanG;
-            };
-            GetScanB = () =>
-            {
-                fixed (byte* pScanB = &this.DataB[0])
-                    return (IntPtr)pScanB;
+                fixed (byte* pScan0 = &this.Data0[0])
+                    return (IntPtr)pScan0;
             };
 
-            this.Operator = ImageOperator3.Instance;
-        }
-        public ImageContext(int Width, int Height, byte[] DataA, byte[] DataR, byte[] DataG, byte[] DataB) : this()
-        {
-            this.Width = Width;
-            this.Height = Height;
-            this.Stride = DataA.Length / Height;
-            this.Channels = 4;
-
-            this.DataA = DataA;
-            this.DataR = DataR;
-            this.DataG = DataG;
-            this.DataB = DataB;
-            GetScan0 = () => throw new NotImplementedException();
-            GetScanA = () =>
-            {
-                fixed (byte* pScanA = &this.DataA[0])
-                    return (IntPtr)pScanA;
-            };
-            GetScanR = () =>
-            {
-                fixed (byte* pScanR = &this.DataR[0])
-                    return (IntPtr)pScanR;
-            };
-            GetScanG = () =>
-            {
-                fixed (byte* pScanG = &this.DataG[0])
-                    return (IntPtr)pScanG;
-            };
-            GetScanB = () =>
-            {
-                fixed (byte* pScanB = &this.DataB[0])
-                    return (IntPtr)pScanB;
-            };
-
-            this.Operator = ImageOperator4.Instance;
+            this.Palette = Palette ?? ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
 
         #region Graphic Processing
@@ -1350,135 +1249,6 @@ namespace MenthaAssembly.Media.Imaging
             => this.DrawBeziers(Points, IImageOperator.ToPixel<Pixel>(Color));
         void IImageContext.DrawBeziers(IList<int> Points, ImageContour Contour, IPixel Fill)
             => this.DrawBeziers(Points, Contour, IImageOperator.ToPixel<Pixel>(Fill));
-
-        #endregion
-
-        #region Other
-        ///// <summary>
-        ///// Draws a colored dotted line
-        ///// </summary>
-        ///// <param name="X0">The x-coordinate of the start point.</param>
-        ///// <param name="Y0">The y-coordinate of the start point.</param>
-        ///// <param name="X1">The x-coordinate of the end point.</param>
-        ///// <param name="Y1">The y-coordinate of the end point.</param>
-        ///// <param name="DotSpace">length of space between each line segment</param>
-        ///// <param name="DotLength">length of each line segment</param>
-        ///// <param name="Color">The color for the line.</param>
-        //public void DrawDottedLine(int X0, int Y0, int X1, int Y1, int DotSpace, int DotLength, Pixel Color)
-        //{
-        //    if (X0 == X1)       // Vertically
-        //    {
-        //        if (Y1 < Y0)
-        //            MathHelper.Swap(ref Y0, ref Y1);
-
-        //        // Draw
-        //        {
-        //            if (X0 < 0 || X0 > Width)
-        //                return;
-
-        //            bool on = true;
-        //            int spaceCnt = 0;
-        //            for (int i = Y0; i <= Y1; i++)
-        //            {
-        //                if (i < 1)
-        //                    continue;
-
-        //                if (i >= Height)
-        //                    break;
-
-        //                if (on)
-        //                {
-        //                    this.Operator.SetPixel(this, X0, i - 1, Color);
-
-        //                    on = i % DotLength != 0;
-        //                    spaceCnt = 0;
-        //                }
-        //                else
-        //                {
-        //                    spaceCnt++;
-        //                    on = spaceCnt % DotSpace == 0;
-        //                }
-        //            }
-        //        }
-        //    }
-        //    else if (Y0 == Y1)  // Horizontally
-        //    {
-        //        if (X1 < X0)
-        //            MathHelper.Swap(ref X0, ref X1);
-
-        //        // Draw
-        //        {
-        //            if (Y0 < 0 || Y0 > Height)
-        //                return;
-
-        //            bool on = true;
-        //            int spaceCnt = 0;
-        //            for (int i = X0; i <= X1; i++)
-        //            {
-        //                if (i < 1)
-        //                    continue;
-
-        //                if (i >= Width)
-        //                    break;
-
-        //                if (Y0 >= Height)
-        //                    break;
-
-        //                if (on)
-        //                {
-        //                    this.Operator.SetPixel(this, i - 1, Y0, Color);
-
-        //                    on = i % DotLength != 0;
-        //                    spaceCnt = 0;
-        //                }
-        //                else
-        //                {
-        //                    spaceCnt++;
-        //                    on = spaceCnt % DotSpace == 0;
-        //                }
-        //            }
-        //        }
-        //    }
-        //    else
-        //    {
-        //        if (X1 < X0)
-        //        {
-        //            MathHelper.Swap(ref X0, ref X1);
-        //            MathHelper.Swap(ref Y0, ref Y1);
-        //        }
-
-        //        float m = (Y1 - Y0) / (float)(X1 - X0),
-        //              n = Y0 - m * X0;
-
-        //        bool on = true;
-        //        int spaceCnt = 0;
-        //        for (int i = X0; i <= Width; i++)
-        //        {
-        //            if (i == 0)
-        //                continue;
-
-        //            int y = (int)(m * i + n);
-        //            if (y <= 0)
-        //                continue;
-
-        //            if (y >= Height || i >= X1)
-        //                continue;
-
-        //            if (on)
-        //            {
-        //                this.Operator.SetPixel(this, i - 1, y - 1, Color);
-
-        //                spaceCnt = 0;
-        //                on = i % DotLength != 0;
-        //            }
-        //            else
-        //            {
-        //                spaceCnt++;
-        //                on = spaceCnt % DotSpace == 0;
-        //            }
-        //        }
-        //    }
-        //}
 
         #endregion
 
@@ -3361,8 +3131,8 @@ namespace MenthaAssembly.Media.Imaging
 
         object ICloneable.Clone()
             => this.Clone();
-        public ImageContext<Pixel> Clone()
-            => this.Cast<Pixel>();
+        public ImageContext<Pixel, Struct> Clone()
+            => this.Cast<Pixel, Struct>();
 
     }
 }

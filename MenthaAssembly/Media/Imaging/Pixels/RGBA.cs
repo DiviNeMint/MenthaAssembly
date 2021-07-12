@@ -20,6 +20,29 @@
             this.B = B;
         }
 
+        void IPixel.Override(byte A, byte R, byte G, byte B)
+        {
+            this.R = R;
+            this.G = G;
+            this.B = B;
+            this.A = A;
+        }
+
+        void IPixel.Overlay(byte A, byte R, byte G, byte B)
+        {
+            if (A == 0)
+                return;
+
+            int A1 = this.A,
+                rA = 255 - A,
+                Alpha = 65025 - rA * (255 - A1);
+
+            this.R = (byte)((R * A * 255 + this.R * A1 * rA) / Alpha);
+            this.G = (byte)((G * A * 255 + this.G * A1 * rA) / Alpha);
+            this.B = (byte)((B * A * 255 + this.B * A1 * rA) / Alpha);
+            this.A = (byte)(Alpha / 255);
+        }
+
         public override string ToString()
             => $"{{ R : {this.R}, G : {this.G}, B : {this.B}, A : {this.A}}}";
 

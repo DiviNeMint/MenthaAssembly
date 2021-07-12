@@ -159,7 +159,7 @@ namespace MenthaAssembly.Media.Imaging
             // Palette
             if (HeaderOffset > 54)
             {
-                IList<IPixel> Palette = Image.Palette;
+                IImagePalette Palette = Image.Palette;
                 byte[] Datas = new byte[sizeof(int)];
                 if (Palette is null ||
                     Palette.Count == 0)

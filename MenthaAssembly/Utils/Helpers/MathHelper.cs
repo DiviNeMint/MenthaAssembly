@@ -22,9 +22,23 @@ namespace MenthaAssembly
         public static double Tan(double Angle)
             => Math.Tan(Angle * UnitTheta);
 
+        public static T Clamp<T>(this T This, T Min, T Max)
+            where T : IComparable<T>
+        {
+            if (This.CompareTo(Min) < 0)
+                return Min;
+
+            if (This.CompareTo(Max) > 0)
+                return Max;
+
+            return This;
+        }
+
         public static void MinAndMax<T>(out T Min, out T Max, params T[] Source)
             where T : IComparable<T>
-            => Source.MinAndMax(out Min, out Max);
+        {
+            Source.MinAndMax(out Min, out Max);
+        }
         public static void MinAndMax<T>(this IEnumerable<T> Source, out T Min, out T Max)
             where T : IComparable<T>
         {

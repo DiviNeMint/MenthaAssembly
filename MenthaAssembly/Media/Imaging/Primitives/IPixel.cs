@@ -12,5 +12,8 @@ namespace MenthaAssembly.Media.Imaging
 
         public byte B { get; }
 
+        internal void Override(byte A, byte R, byte G, byte B);
+        internal void Overlay(byte A, byte R, byte G, byte B);
+
     }
 }

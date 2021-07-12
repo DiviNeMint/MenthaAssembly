@@ -25,6 +25,23 @@
             this.Gray = (byte)((R * 30 + G * 59 + B * 11 + 50) / 100);
         }
 
+        void IPixel.Override(byte A, byte R, byte G, byte B)
+        {
+            this.Gray = (byte)((R * 30 + G * 59 + B * 11 + 50) / 100);
+        }
+
+        void IPixel.Overlay(byte A, byte R, byte G, byte B)
+        {
+            if (A == 0)
+                return;
+
+            int rA = 255 - A;
+
+            this.Gray = (byte)(((R * A + this.Gray * rA) / 255 * 30 +
+                                (G * A + this.Gray * rA) / 255 * 59 +
+                                (B * A + this.Gray * rA) / 255 * 11 + 50) / 100);
+        }
+
         public static implicit operator Gray8(RGB Target) => new Gray8(Target.R, Target.G, Target.B);
         public static implicit operator Gray8(BGR Target) => new Gray8(Target.R, Target.G, Target.B);
         public static implicit operator Gray8(ARGB Target) => new Gray8(Target.R, Target.G, Target.B);
