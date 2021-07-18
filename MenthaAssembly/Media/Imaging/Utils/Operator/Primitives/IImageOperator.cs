@@ -4,11 +4,8 @@
 
     internal unsafe abstract class IImageOperator
     {
-        public abstract T GetPixel<T>(IImageContext Source, int X, int Y)
-            where T : unmanaged, IPixel;
-
-        public abstract void SetPixel<T>(IImageContext Source, int X, int Y, T Pixel)
-            where T : unmanaged, IPixel;
+        public abstract T GetPixel<T>(IImageContext Source, int X, int Y) where T : unmanaged, IPixel;
+        public abstract void SetPixel<T>(IImageContext Source, int X, int Y, T Pixel) where T : unmanaged, IPixel;
 
         public static T ToPixel<T>(IPixel Color)
             where T : unmanaged, IPixel
@@ -22,12 +19,14 @@
         }
 
         public abstract void ScanLineOverride<T>(IImageContext Destination, int X, int Y, int Length, T Color) where T : unmanaged, IPixel;
-        public abstract void ScanLineOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDest) where T : unmanaged, IPixel;
+        public virtual void ScanLineOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDest) where T : unmanaged, IPixel
+            => ScanLineOverrideTo<T, T>(Source, X, Y, Length, (T*)pDest);
         public abstract void ScanLineOverrideTo<T, T2>(IImageContext Source, int X, int Y, int Length, T2* pDest) where T : unmanaged, IPixel where T2 : unmanaged, IPixel;
         public abstract void ScanLineOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
         public abstract void ScanLineOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
 
-        public abstract void ScanLineReverseOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDest) where T : unmanaged, IPixel;
+        public virtual void ScanLineReverseOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDest) where T : unmanaged, IPixel
+            => ScanLineReverseOverrideTo<T, T>(Source, X, Y, Length, (T*)pDest);
         public abstract void ScanLineReverseOverrideTo<T, T2>(IImageContext Source, int X, int Y, int Length, T2* pDest) where T : unmanaged, IPixel where T2 : unmanaged, IPixel;
         public abstract void ScanLineReverseOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
         public abstract void ScanLineReverseOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
@@ -37,9 +36,21 @@
         public abstract void ScanLineOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
         public abstract void ScanLineOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
 
-        public abstract void ScanLineReverseOverlayTo<T, T2>(IImageContext Source, int X, int Y, int Length, T2* pDest) where T : unmanaged, IPixel where T2 : unmanaged, IPixel;
-        public abstract void ScanLineReverseOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
-        public abstract void ScanLineReverseOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
+        //public abstract void ScanLineReverseOverlayTo<T, T2>(IImageContext Source, int X, int Y, int Length, T2* pDest) where T : unmanaged, IPixel where T2 : unmanaged, IPixel;
+        //public abstract void ScanLineReverseOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
+        //public abstract void ScanLineReverseOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
+
+        public virtual void ScanLineNearestResizeTo<T>(IImageContext Source, int Step, int Max, int X, int Y, int Length, byte* pDest) where T : unmanaged, IPixel
+            => ScanLineNearestResizeTo<T, T>(Source, Step, Max, X, Y, Length, (T*)pDest);
+        public abstract void ScanLineNearestResizeTo<T, T2>(IImageContext Source, int Step, int Max, int X, int Y, int Length, T2* pDest) where T : unmanaged, IPixel where T2 : unmanaged, IPixel;
+        public abstract void ScanLineNearestResizeTo<T>(IImageContext Source, int Step, int Max, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
+        public abstract void ScanLineNearestResizeTo<T>(IImageContext Source, int Step, int Max, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
+
+        public virtual void ScanLineBilinearResizeTo<T>(IImageContext Source, int StepX, int FracY, int Max, int X, int Y, int Length, byte* pDest) where T : unmanaged, IPixel
+            => ScanLineBilinearResizeTo<T, T>(Source, StepX, FracY, Max, X, Y, Length, (T*)pDest);
+        public abstract void ScanLineBilinearResizeTo<T, T2>(IImageContext Source, int StepX, int FracY, int Max, int X, int Y, int Length, T2* pDest) where T : unmanaged, IPixel where T2 : unmanaged, IPixel;
+        public abstract void ScanLineBilinearResizeTo<T>(IImageContext Source, int StepX, int FracY, int Max, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
+        public abstract void ScanLineBilinearResizeTo<T>(IImageContext Source, int StepX, int FracY, int Max, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB) where T : unmanaged, IPixel;
 
         protected void Overlay(ref byte* pDestR, ref byte* pDestG, ref byte* pDestB, byte A, byte R, byte G, byte B)
         {
@@ -84,14 +95,11 @@
             *pDestB = (byte)((B * A * 255 + *pDestB * A1 * rA) / Alpha);
         }
 
-        public abstract void ContourOverlay<T>(IImageContext Destination, ImageContour Contour, T Color, int OffsetX, int OffsetY)
-            where T : unmanaged, IPixel;
+        public abstract void ContourOverlay<T>(IImageContext Destination, ImageContour Contour, T Color, int OffsetX, int OffsetY) where T : unmanaged, IPixel;
 
-        public abstract void BlockOverlay<T>(IImageContext Destination, int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height)
-            where T : unmanaged, IPixel;
+        public abstract void BlockOverlay<T>(IImageContext Destination, int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height) where T : unmanaged, IPixel;
 
-        public abstract ImageContour FindBound<T>(IImageContext Source, int SeedX, int SeedY, ImagePredicate Predicate)
-            where T : unmanaged, IPixel;
+        public abstract ImageContour FindBound<T>(IImageContext Source, int SeedX, int SeedY, ImagePredicate Predicate) where T : unmanaged, IPixel;
 
     }
 

@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Win32
 {
-    public static class System
+    public unsafe static class System
     {
         #region Windows API (Send/Post)
         [DllImport("user32.dll")]
@@ -88,7 +90,50 @@ namespace MenthaAssembly.Win32
 
         #endregion
 
-        public static unsafe bool EnableMinMaxAnimation
+        #region Windows API (Font)
+        [DllImport("Gdi32.dll")]
+        internal static extern IntPtr CreateFontIndirect([In] FontData lplf);
+
+        [DllImport("Gdi32.dll")]
+        internal static extern bool GetTextMetrics(IntPtr hdc, out TextMetric Metric);
+
+        [DllImport("Gdi32.dll")]
+        static extern int EnumFontFamiliesEx(IntPtr hdc, ref FontData lpLogfont, EnumFontExDelegate Callback, IntPtr lParam, uint dwFlags);
+        internal delegate int EnumFontExDelegate(ref FontData Font, ref TextMetric lpntme, int FontType, int lParam);
+
+        #endregion
+
+        public static IEnumerable<string> FontFamilyNames
+        {
+            get
+            {
+                List<string> Result = new List<string>();
+
+                int Callback(ref FontData Font, ref TextMetric lpntme, int FontType, int lParam)
+                {
+                    if (!'@'.Equals(Font.FaceName.FirstOrDefault()))
+                        Result.Add(Font.FaceName);
+
+                    return 1;
+                }
+
+                FontData Data = new FontData();
+                IntPtr hdc = Graphic.GetDC(IntPtr.Zero);
+
+                try
+                {
+                    EnumFontFamiliesEx(hdc, ref Data, Callback, IntPtr.Zero, 0);
+                }
+                finally
+                {
+                    Graphic.DeleteDC(hdc);
+                }
+
+                return Result;
+            }
+        }
+
+        public static bool EnableMinMaxAnimation
         {
             get
             {

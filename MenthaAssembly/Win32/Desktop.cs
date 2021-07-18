@@ -340,7 +340,7 @@ namespace MenthaAssembly.Win32
         /// <param name="Y">Y-coordinate of Screen.</param>
         /// <param name="Width">Width of snapshot size.</param>
         /// <param name="Height">Height of snapshot size.</param>
-        public unsafe static ImageContext<BGR> Screenshot(int X, int Y, int Width, int Height)
+        public static ImageContext<BGR> Screenshot(int X, int Y, int Width, int Height)
         {
             IntPtr Hwnd = GetDesktopWindow(),
                    hdcSrc = GetWindowDC(Hwnd),
@@ -396,7 +396,7 @@ namespace MenthaAssembly.Win32
         /// Snapshot window
         /// </summary>
         /// <param name="Hwnd">A handle to the window that will be snapshotted.</param>
-        public unsafe static ImageContext<BGR> Snapshot(IntPtr Hwnd)
+        public static ImageContext<BGR> Snapshot(IntPtr Hwnd)
         {
             if (GetWindowPlacement(Hwnd, out WindowPlacementData PlacementData))
             {

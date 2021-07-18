@@ -1,8 +1,10 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
+using MenthaAssembly.Win32;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -964,6 +966,21 @@ namespace MenthaAssembly.Media.Imaging
 
             return LineContour;
         }
+
+        public static ImageContour CreateTextContour(int X, int Y, string Text, string FontName, int CharSize, double Angle = 0, FontWeightType Weight = FontWeightType.Normal, bool Italic = false)
+        {
+            FontData Font = new FontData
+            {
+                FaceName = string.IsNullOrEmpty(FontName) ? "System" : FontName,
+                Height = CharSize,
+                Weight = Weight,
+                Escapement = (int)(Angle * 10),
+                Italic = Italic,
+            };
+
+            return Graphic.CreateTextContour(X, Y, Text, Font);
+        }
+
 
         public static ImageContour operator +(ImageContour This, ImageContour Contour)
         {

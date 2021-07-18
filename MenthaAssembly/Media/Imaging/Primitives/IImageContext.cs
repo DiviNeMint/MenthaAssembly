@@ -768,9 +768,38 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        #region Text Rendering
+        public void DrawText(int X, int Y, string Text, int CharSize, IPixel Fill);
+        public void DrawText(int X, int Y, string Text, int CharSize, IPixel Fill, double Angle, FontWeightType Weight, bool Italic);
+        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, IPixel Fill);
+        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, IPixel Fill, double Angle, FontWeightType Weight, bool Italic);
+
+        #endregion
+
         #endregion
 
         #region Transform Processing
+        #region Resize
+        /// <summary>
+        /// Creates a new resized <see cref="ImageContext{T}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Width">The width of the rectangle that defines the new size.</param>
+        /// <param name="Height">The height of the rectangle that defines the new size.</param>
+        /// <param name="Interpolation">The algorithm of interpolation.</param>
+        public ImageContext<T> Resize<T>(int Width, int Height, InterpolationTypes Interpolation) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Creates a new resized <see cref="ImageContext{T}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Width">The width of the rectangle that defines the new size.</param>
+        /// <param name="Height">The height of the rectangle that defines the new size.</param>
+        /// <param name="Interpolation">The algorithm of interpolation.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T> Resize<T>(int Width, int Height, InterpolationTypes Interpolation, ParallelOptions Options) where T : unmanaged, IPixel;
+
+        #endregion
 
         #region Flip
         /// <summary>
@@ -2438,9 +2467,37 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        #region Text Rendering
+        public void DrawText(int X, int Y, string Text, int CharSize, Pixel Fill);
+        public void DrawText(int X, int Y, string Text, int CharSize, Pixel Fill, double Angle, FontWeightType Weight, bool Italic);
+        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, Pixel Fill);
+        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, Pixel Fill, double Angle, FontWeightType Weight, bool Italic);
+
+        #endregion
+
         #endregion
 
         #region Transform Processing
+
+        #region Resize
+        /// <summary>
+        /// Creates a new resized <see cref="ImageContext{Pixel}"/>.
+        /// </summary>
+        /// <param name="Width">The width of the rectangle that defines the new size.</param>
+        /// <param name="Height">The height of the rectangle that defines the new size.</param>
+        /// <param name="Interpolation">The algorithm of interpolation.</param>
+        public ImageContext<Pixel> Resize(int Width, int Height, InterpolationTypes Interpolation);
+        /// <summary>
+        /// Creates a new resized <see cref="ImageContext{Pixel}"/>.
+        /// </summary>
+        /// <param name="Width">The width of the rectangle that defines the new size.</param>
+        /// <param name="Height">The height of the rectangle that defines the new size.</param>
+        /// <param name="Interpolation">The algorithm of interpolation.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<Pixel> Resize(int Width, int Height, InterpolationTypes Interpolation, ParallelOptions Options);
+
+        #endregion
 
         #region Flip
         /// <summary>

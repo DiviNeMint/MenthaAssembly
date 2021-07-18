@@ -2248,15 +2248,288 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        #region Text Rendering
+        public void DrawText(int X, int Y, string Text, int CharSize, Pixel Fill)
+            => this.DrawText(X, Y, Text, null, CharSize, Fill, 0d, FontWeightType.Normal, false);
+        public void DrawText(int X, int Y, string Text, int CharSize, Pixel Fill, double Angle, FontWeightType Weight, bool Italic)
+            => this.DrawText(X, Y, Text, null, CharSize, Fill, Angle, Weight, Italic);
+        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, Pixel Fill)
+            => this.DrawText(X, Y, Text, FontName, CharSize, Fill, 0d, FontWeightType.Normal, false);
+        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, Pixel Fill, double Angle, FontWeightType Weight, bool Italic)
+        {
+            ImageContour Contour = ImageContour.CreateTextContour(X, Y, Text, FontName, CharSize, Angle, Weight, Italic);
+            this.Operator.ContourOverlay(this, Contour, Fill, 0, 0);
+        }
+
+        void IImageContext.DrawText(int X, int Y, string Text, int CharSize, IPixel Fill)
+            => this.DrawText(X, Y, Text, CharSize, IImageOperator.ToPixel<Pixel>(Fill));
+        void IImageContext.DrawText(int X, int Y, string Text, int CharSize, IPixel Fill, double Angle, FontWeightType Weight, bool Italic)
+            => this.DrawText(X, Y, Text, CharSize, IImageOperator.ToPixel<Pixel>(Fill), Angle, Weight, Italic);
+        void IImageContext.DrawText(int X, int Y, string Text, string FontName, int CharSize, IPixel Fill)
+            => this.DrawText(X, Y, Text, FontName, CharSize, IImageOperator.ToPixel<Pixel>(Fill));
+        void IImageContext.DrawText(int X, int Y, string Text, string FontName, int CharSize, IPixel Fill, double Angle, FontWeightType Weight, bool Italic)
+            => this.DrawText(X, Y, Text, FontName, CharSize, IImageOperator.ToPixel<Pixel>(Fill), Angle, Weight, Italic);
+
+        #endregion
+
         #endregion
 
         #region Transform Processing
 
+        #region Resize
+        public ImageContext<Pixel> Resize(int Width, int Height, InterpolationTypes Interpolation)
+        {
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+
+            byte* pDest0 = (byte*)Result.Scan0;
+            long StepX = ((long)this.Width << 8) / Width,
+                 StepY = ((long)this.Height << 8) / Height,
+                 SumStepY = 0;
+
+            switch (Interpolation)
+            {
+                case InterpolationTypes.Nearest:
+                    {
+                        for (int j = 0; j < Height; j++)
+                        {
+                            byte* pDest = pDest0 + j * Result.Stride;
+                            this.Operator.ScanLineNearestResizeTo<Pixel>(this, (int)StepX, 256, 0, (int)(SumStepY >> 8), Width, pDest);
+
+                            SumStepY += StepY;
+                        }
+                        break;
+                    }
+                case InterpolationTypes.Bilinear:
+                    {
+                        for (int j = 0; j < Height; j++)
+                        {
+                            byte* pDest = pDest0 + j * Result.Stride;
+                            this.Operator.ScanLineBilinearResizeTo<Pixel>(this, (int)StepX, (int)(SumStepY & 255), 256, 0, (int)(SumStepY >> 8), Width, pDest);
+
+                            SumStepY += StepY;
+                        }
+                        break;
+                    }
+            }
+
+            return Result;
+        }
+        public ImageContext<Pixel> Resize(int Width, int Height, InterpolationTypes Interpolation, ParallelOptions Options)
+        {
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+
+            byte* pDest0 = (byte*)Result.Scan0;
+            long StepX = ((long)this.Width << 8) / Width,
+                 StepY = ((long)this.Height << 8) / Height;
+
+            switch (Interpolation)
+            {
+                case InterpolationTypes.Nearest:
+                    {
+                        Parallel.For(0, Height, Options, j =>
+                        {
+                            long Y = StepY * j >> 8;
+                            byte* pDest = pDest0 + j * Result.Stride;
+
+                            this.Operator.ScanLineNearestResizeTo<Pixel>(this, (int)StepX, 256, 0, (int)Y, Width, pDest);
+                        });
+                        break;
+                    }
+                case InterpolationTypes.Bilinear:
+                    {
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+                        {
+                            long SumStepY = StepY * j;
+                            byte* pDest = pDest0 + j * Result.Stride;
+
+                            this.Operator.ScanLineBilinearResizeTo<Pixel>(this, (int)StepX, (int)(SumStepY & 255), 256, 0, (int)(SumStepY >> 8), Width, pDest);
+                        });
+                        break;
+                    }
+            }
+
+            return Result;
+        }
+
+        public ImageContext<T> Resize<T>(int Width, int Height, InterpolationTypes Interpolation)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new ImageContext<T>(Width, Height);
+
+            byte* pDest0 = (byte*)Result.Scan0;
+            long StepX = ((long)this.Width << 8) / Width,
+                 StepY = ((long)this.Height << 8) / Height,
+                 SumStepY = 0;
+
+            switch (Interpolation)
+            {
+                case InterpolationTypes.Nearest:
+                    {
+                        for (int j = 0; j < Height; j++)
+                        {
+                            byte* pDest = pDest0 + j * Result.Stride;
+                            this.Operator.ScanLineNearestResizeTo<Pixel, T>(this, (int)StepX, 256, 0, (int)(SumStepY >> 8), Width, (T*)pDest);
+
+                            SumStepY += StepY;
+                        }
+                        break;
+                    }
+                case InterpolationTypes.Bilinear:
+                    {
+                        for (int j = 0; j < Height; j++)
+                        {
+                            byte* pDest = pDest0 + j * Result.Stride;
+                            this.Operator.ScanLineBilinearResizeTo<Pixel, T>(this, (int)StepX, (int)(SumStepY & 255), 256, 0, (int)(SumStepY >> 8), Width, (T*)pDest);
+
+                            SumStepY += StepY;
+                        }
+                        break;
+                    }
+            }
+
+            return Result;
+        }
+        public ImageContext<T> Resize<T>(int Width, int Height, InterpolationTypes Interpolation, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new ImageContext<T>(Width, Height);
+
+            byte* pDest0 = (byte*)Result.Scan0;
+            long StepX = ((long)this.Width << 8) / Width,
+                 StepY = ((long)this.Height << 8) / Height;
+
+            switch (Interpolation)
+            {
+                case InterpolationTypes.Nearest:
+                    {
+                        Parallel.For(0, Height, Options, j =>
+                        {
+                            long Y = StepY * j >> 8;
+                            byte* pDest = pDest0 + j * Result.Stride;
+
+                            this.Operator.ScanLineNearestResizeTo<Pixel, T>(this, (int)StepX, 256, 0, (int)Y, Width, (T*)pDest);
+                        });
+                        break;
+                    }
+                case InterpolationTypes.Bilinear:
+                    {
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+                        {
+                            long SumStepY = StepY * j;
+                            byte* pDest = pDest0 + j * Result.Stride;
+
+                            this.Operator.ScanLineBilinearResizeTo<Pixel, T>(this, (int)StepX, (int)(SumStepY & 255), 256, 0, (int)(SumStepY >> 8), Width, (T*)pDest);
+                        });
+                        break;
+                    }
+            }
+
+            return Result;
+        }
+
+        #endregion
+
         #region Flip
         public ImageContext<Pixel> Flip(FlipMode Mode)
-            => this.Flip<Pixel>(Mode);
+        {
+            switch (Mode)
+            {
+                case FlipMode.Vertical:
+                    {
+                        ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+                        long DestStride = Result.Stride;
+                        byte* Dest0 = (byte*)Result.Scan0;
+
+                        for (int y = 0; y < Height; y++)
+                        {
+                            byte* Dest = Dest0 + DestStride * (Height - 1 - y);
+                            this.Operator.ScanLineOverrideTo<Pixel>(this, 0, y, Width, Dest);
+                        }
+
+                        return Result;
+                    }
+                case FlipMode.Horizontal:
+                    {
+                        ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+                        long DestStride = Result.Stride;
+                        byte* Dest0 = (byte*)Result.Scan0;
+
+                        for (int y = 0; y < Height; y++)
+                        {
+                            byte* Dest = Dest0 + DestStride * y;
+                            this.Operator.ScanLineReverseOverrideTo<Pixel>(this, 0, y, Width, Dest);
+                        }
+
+                        return Result;
+                    }
+                case FlipMode.Vertical | FlipMode.Horizontal:
+                    {
+                        ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+                        long DestStride = Result.Stride;
+                        byte* Dest0 = (byte*)Result.Scan0;
+
+                        for (int y = 0; y < Height; y++)
+                        {
+                            byte* Dest = Dest0 + DestStride * (Height - 1 - y);
+                            this.Operator.ScanLineReverseOverrideTo<Pixel>(this, 0, y, Width, Dest);
+                        }
+
+                        return Result;
+                    }
+            }
+
+            return this.Cast<Pixel>();
+        }
         public ImageContext<Pixel> Flip(FlipMode Mode, ParallelOptions Options)
-            => this.Flip<Pixel>(Mode, Options);
+        {
+            switch (Mode)
+            {
+                case FlipMode.Vertical:
+                    {
+                        ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+                        long DestStride = Result.Stride;
+                        byte* Dest0 = (byte*)Result.Scan0;
+
+                        Parallel.For(0, Height, Options, (y) =>
+                        {
+                            byte* Dest = Dest0 + DestStride * (Height - 1 - y);
+                            this.Operator.ScanLineOverrideTo<Pixel>(this, 0, y, Width, Dest);
+                        });
+
+                        return Result;
+                    }
+                case FlipMode.Horizontal:
+                    {
+                        ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+                        long DestStride = Result.Stride;
+                        byte* Dest0 = (byte*)Result.Scan0;
+
+                        Parallel.For(0, Height, Options, (y) =>
+                        {
+                            byte* Dest = Dest0 + DestStride * y;
+                            this.Operator.ScanLineReverseOverrideTo<Pixel>(this, 0, y, Width, Dest);
+                        });
+
+                        return Result;
+                    }
+                case FlipMode.Vertical | FlipMode.Horizontal:
+                    {
+                        ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+                        long DestStride = Result.Stride;
+                        byte* Dest0 = (byte*)Result.Scan0;
+
+                        Parallel.For(0, Height, Options, (y) =>
+                        {
+                            byte* Dest = Dest0 + DestStride * (Height - 1 - y);
+                            this.Operator.ScanLineReverseOverrideTo<Pixel>(this, 0, y, Width, Dest);
+                        });
+
+                        return Result;
+                    }
+            }
+
+            return this.Cast<Pixel>(Options);
+        }
 
         public ImageContext<T> Flip<T>(FlipMode Mode)
             where T : unmanaged, IPixel
@@ -2446,9 +2719,43 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Crop
         public ImageContext<Pixel> Crop(int X, int Y, int Width, int Height)
-            => this.Crop<Pixel>(X, Y, Width, Height);
+        {
+            // If the rectangle is completely out of the bitmap
+            if (X > this.Width || Y > this.Height)
+                return new ImageContext<Pixel>(0, 0);
+
+            // Clamp to boundaries
+            X = Math.Max(X, 0);
+            Y = Math.Max(Y, 0);
+            Width = Width.Clamp(0, this.Width - X);
+            Height = Height.Clamp(0, this.Height - Y);
+
+            // Create Result
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+
+            this.BlockCopy(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride);
+
+            return Result;
+        }
         public ImageContext<Pixel> Crop(int X, int Y, int Width, int Height, ParallelOptions Options)
-            => this.Crop<Pixel>(X, Y, Width, Height, Options);
+        {
+            // If the rectangle is completely out of the bitmap
+            if (X > this.Width || Y > this.Height)
+                return new ImageContext<Pixel>(0, 0);
+
+            // Clamp to boundaries
+            X = Math.Max(X, 0);
+            Y = Math.Max(Y, 0);
+            Width = Width.Clamp(0, this.Width - X);
+            Height = Height.Clamp(0, this.Height - Y);
+
+            // Create Result
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(Width, Height);
+
+            this.BlockCopy(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride, Options);
+
+            return Result;
+        }
 
         public ImageContext<T> Crop<T>(int X, int Y, int Width, int Height)
             where T : unmanaged, IPixel
@@ -2460,8 +2767,8 @@ namespace MenthaAssembly.Media.Imaging
             // Clamp to boundaries
             X = Math.Max(X, 0);
             Y = Math.Max(Y, 0);
-            Width = Math.Max(Math.Min(Width, this.Width - X), 0);
-            Height = Math.Max(Math.Min(Height, this.Height - Y), 0);
+            Width = Width.Clamp(0, this.Width - X);// Math.Max(Math.Min(Width, this.Width - X), 0);
+            Height = Height.Clamp(0, this.Height - Y);// Math.Max(Math.Min(Height, this.Height - Y), 0);
 
             // Create Result
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
@@ -2554,9 +2861,120 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Convolute
         public ImageContext<Pixel> Convolute(ConvoluteKernel Kernel)
-            => Convolute<Pixel>(Kernel.Datas, Kernel.FactorSum, Kernel.Offset);
+            => Convolute(Kernel.Datas, Kernel.FactorSum, Kernel.Offset);
         public ImageContext<Pixel> Convolute(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
-            => Convolute<Pixel>(Kernel, KernelFactorSum, KernelOffsetSum);
+        {
+            int KH = Kernel.GetUpperBound(0) + 1,
+                KW = Kernel.GetUpperBound(1) + 1;
+
+            if ((KW & 1) == 0)
+                throw new InvalidOperationException("Kernel width must be odd!");
+
+            if ((KH & 1) == 0)
+                throw new InvalidOperationException("Kernel height must be odd!");
+
+            KernelFactorSum = Math.Max(KernelFactorSum, 1);
+
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(this.Width, this.Height);
+
+            int kwh = KW >> 1;
+            int khh = KH >> 1;
+
+            // Init Common Function
+            Pixel[] GetVerticalPixels(int X, int Y)
+            {
+                Pixel[] Pixels = new Pixel[KH];
+                for (int j = 0; j < KH; j++)
+                    Pixels[j] = this.Operator.GetPixel<Pixel>(this, X, MathHelper.Clamp(Y + j - khh, 0, this.Height - 1));
+
+                return Pixels;
+            };
+
+            Parallel.For(0, this.Height, (y) =>
+            {
+                Queue<Pixel[]> PixelBlock = new Queue<Pixel[]>();
+
+                // Init Block
+                Pixel[] LeftBoundPixels = GetVerticalPixels(0, y);
+
+                // Repeat pixels at borders
+                for (int i = 0; i <= kwh; i++)
+                    PixelBlock.Enqueue(LeftBoundPixels);
+
+                // Fill pixels at center
+                for (int i = 1; i < kwh; i++)
+                    PixelBlock.Enqueue(GetVerticalPixels(Math.Min(i, this.Width - 1), y));
+
+                for (int x = 0; x < this.Width; x++)
+                {
+                    int A = 0,
+                        R = 0,
+                        G = 0,
+                        B = 0;
+
+                    // Left Bound and not enqueue.
+                    int KXIndex = 0;
+                    Pixel[] Pixels = PixelBlock.Dequeue();
+                    for (int j = 0; j < KH; j++)
+                    {
+                        int k = Kernel[j, KXIndex];
+                        if (k == 0)
+                            continue;
+
+                        Pixel Pixel = Pixels[j];
+                        A += Pixel.A * k;
+                        R += Pixel.R * k;
+                        G += Pixel.G * k;
+                        B += Pixel.B * k;
+                    }
+
+                    for (KXIndex = 1; KXIndex < KW - 1; KXIndex++)
+                    {
+                        Pixels = PixelBlock.Dequeue();
+                        for (int j = 0; j < KH; j++)
+                        {
+                            int k = Kernel[j, KXIndex];
+                            if (k == 0)
+                                continue;
+
+                            Pixel Pixel = Pixels[j];
+                            A += Pixel.A * k;
+                            R += Pixel.R * k;
+                            G += Pixel.G * k;
+                            B += Pixel.B * k;
+                        }
+
+                        PixelBlock.Enqueue(Pixels);
+                    }
+
+                    // Right Bound and enqueue
+                    Pixels = new Pixel[KH];
+                    for (int j = 0; j < KH; j++)
+                    {
+                        Pixel Pixel = this.Operator.GetPixel<Pixel>(this, Math.Min(x + kwh, this.Width - 1), MathHelper.Clamp(y + j - khh, 0, this.Height - 1));
+                        Pixels[j] = Pixel;
+
+                        int k = Kernel[j, KXIndex];
+                        if (k == 0)
+                            continue;
+
+                        A += Pixel.A * k;
+                        R += Pixel.R * k;
+                        G += Pixel.G * k;
+                        B += Pixel.B * k;
+                    }
+
+                    PixelBlock.Enqueue(Pixels);
+
+                    Result.Operator.SetPixel(Result, x, y, IImageOperator.ToPixel<Pixel>((byte)MathHelper.Clamp((A / KernelFactorSum) + KernelOffsetSum, 0, 255),
+                                                                                         (byte)MathHelper.Clamp((R / KernelFactorSum) + KernelOffsetSum, 0, 255),
+                                                                                         (byte)MathHelper.Clamp((G / KernelFactorSum) + KernelOffsetSum, 0, 255),
+                                                                                         (byte)MathHelper.Clamp((B / KernelFactorSum) + KernelOffsetSum, 0, 255)));
+                }
+            });
+
+            return Result;
+        }
 
         public ImageContext<T> Convolute<T>(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
             where T : unmanaged, IPixel
@@ -2849,7 +3267,7 @@ namespace MenthaAssembly.Media.Imaging
                 for (int X = 0; X < Width; X++)
                 {
                     SourcePixel = this.Operator.GetPixel<Pixel>(this, X, Y);
-                    Result.Operator.SetPixel(Result, X, Y, IImageOperator.ToPixel<T>(SourcePixel.A, SourcePixel.R, SourcePixel.G, SourcePixel.B));
+                    Result.Operator.SetPixel(Result, X, Y, IImageOperator.ToPixel<T>(SourcePixel));
                 }
             });
 

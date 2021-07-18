@@ -1,6 +1,7 @@
 ﻿using MenthaAssembly.Media.Imaging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Win32
@@ -135,6 +136,12 @@ namespace MenthaAssembly.Win32
 
         [DllImport("User32.dll")]
         internal static extern bool GetIconInfo(IntPtr hIcon, out IconInfo pIconInfo);
+
+        #endregion
+
+        #region Windows API (Font)
+        [DllImport("Gdi32.dll", EntryPoint = "GetGlyphOutlineW")]
+        internal static extern int GetGlyphOutline(IntPtr hdc, uint uChar, GetGlyphOutlineFormats uFormat, out GlyphMetrics lpgm, int cbBuffer, byte* lpvBuffer, Mat2* lpmat2);
 
         #endregion
 
@@ -378,6 +385,111 @@ namespace MenthaAssembly.Win32
             //}
 
             return false;
+        }
+
+        internal static ImageContour CreateTextContour(int X, int Y, string Text, FontData Font)
+        {
+            IntPtr pFont = System.CreateFontIndirect(Font);
+
+            GlyphMetrics GMetric = new GlyphMetrics();
+            Mat2 Matrix = new Mat2();
+            Matrix.eM11.Value = 1;
+            Matrix.eM12.Value = 0;
+            Matrix.eM21.Value = 0;
+            Matrix.eM22.Value = 1;
+
+            IntPtr hdc = GetDC(IntPtr.Zero);
+            IntPtr prev = SelectObject(hdc, pFont);
+
+            if (!System.GetTextMetrics(hdc, out TextMetric TMetric))
+                return null;
+
+            try
+            {
+                ImageContour Contour = new ImageContour();
+
+                foreach (uint c in Text.Select(i => (uint)i))
+                {
+                    int Length = GetGlyphOutline(hdc, c, GetGlyphOutlineFormats.Gray8_Bitmap, out GMetric, 0, null, &Matrix);
+                    if (Length > 0)
+                    {
+                        IntPtr Buffer = Marshal.AllocHGlobal(Length);
+                        try
+                        {
+                            byte* pBuffer = (byte*)Buffer;
+                            if (GetGlyphOutline(hdc, c, GetGlyphOutlineFormats.Gray8_Bitmap, out GMetric, Length, pBuffer, &Matrix) > 0)
+                            {
+                                int Ox = GMetric.GlyphOriginX,
+                                    Oy = TMetric.Ascent - GMetric.GlyphOriginY,
+                                    Stride = Length / GMetric.BlackBoxY;
+
+                                for (int j = 0; j < GMetric.BlackBoxY; j++)
+                                {
+                                    byte* pData = pBuffer + j * Stride;
+                                    int Ty = Y + Oy + j,
+                                        Tx = X + Ox,
+                                        Dx = 0;
+
+                                    int i = 0;
+                                    while (i < GMetric.BlackBoxX)
+                                    {
+                                        for (; i < GMetric.BlackBoxX; i++)
+                                        {
+                                            if (*pData++ > 0)
+                                            {
+                                                Dx = i++;
+                                                break;
+                                            }
+                                        }
+
+                                        if (i == GMetric.BlackBoxX)
+                                            break;
+
+                                        do
+                                        {
+                                            if (*pData++ == 0)
+                                            {
+                                                Contour[Ty].Union(Tx + Dx, Tx + i);
+                                                i++;
+                                                break;
+                                            }
+
+                                            i++;
+
+                                            if (i == GMetric.BlackBoxX)
+                                            {
+                                                Contour[Ty].Union(Tx + Dx, Tx + i);
+                                                break;
+                                            }
+
+                                        } while (true);
+                                    }
+                                }
+                            }
+
+                            X += GMetric.CellIncX;
+                            Y += GMetric.CellIncY;
+                            continue;
+                        }
+                        finally
+                        {
+                            Marshal.FreeHGlobal(Buffer);
+                        }
+                    }
+
+                    double Theta = Font.Escapement * 0.1d * MathHelper.UnitTheta;
+                    X += (int)(Font.Width * Math.Cos(Theta));
+                    Y += (int)(Font.Width * Math.Sin(Theta));
+                }
+
+                return Contour;
+            }
+            finally
+            {
+                DeleteDC(hdc);
+                DeleteObject(prev);
+                DeleteObject(pFont);
+            }
         }
 
     }
