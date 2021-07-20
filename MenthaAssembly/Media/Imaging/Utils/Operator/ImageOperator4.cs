@@ -1,39 +1,50 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal unsafe class ImageOperator4 : IImageOperator
+    internal unsafe class ImageOperator4<T> : IImageOperator<T>
+        where T : unmanaged, IPixel
     {
-        public static ImageOperator4 Instance { get; } = new ImageOperator4();
+        public IImageContext<T> Context { get; }
+        IImageContext IImageOperator.Context => this.Context;
 
-        public override T GetPixel<T>(IImageContext Source, int X, int Y)
+        public T GetPixel(int X, int Y)
         {
             T Pixel = default;
-            long Offset = Source.Stride * Y + X;
-            Pixel.Override(*((byte*)Source.ScanA + Offset),
-                           *((byte*)Source.ScanR + Offset),
-                           *((byte*)Source.ScanG + Offset),
-                           *((byte*)Source.ScanB + Offset));
+            long Offset = Context.Stride * Y + X;
+            Pixel.Override(*((byte*)Context.ScanA + Offset),
+                           *((byte*)Context.ScanR + Offset),
+                           *((byte*)Context.ScanG + Offset),
+                           *((byte*)Context.ScanB + Offset));
             return Pixel;
         }
-        public override void SetPixel<T>(IImageContext Source, int X, int Y, T Pixel)
+        IPixel IImageOperator.GetPixel(int X, int Y)
+            => this.GetPixel(X, Y);
+
+        public void SetPixel(int X, int Y, T Pixel)
         {
-            long Offset = Source.Stride * Y + X;
-            *((byte*)Source.ScanA + Offset) = Pixel.A;
-            *((byte*)Source.ScanR + Offset) = Pixel.R;
-            *((byte*)Source.ScanG + Offset) = Pixel.G;
-            *((byte*)Source.ScanB + Offset) = Pixel.B;
+            long Offset = Context.Stride * Y + X;
+            *((byte*)Context.ScanA + Offset) = Pixel.A;
+            *((byte*)Context.ScanR + Offset) = Pixel.R;
+            *((byte*)Context.ScanG + Offset) = Pixel.G;
+            *((byte*)Context.ScanB + Offset) = Pixel.B;
+        }
+        void IImageOperator.SetPixel(int X, int Y, IPixel Pixel)
+            => this.SetPixel(X, Y, Pixel.ToPixel<T>());
+
+        public ImageOperator4(IImageContext<T> Context)
+        {
+            this.Context = Context;
         }
 
-        public override void ScanLineOverride<T>(IImageContext Destination, int X, int Y, int Length, T Color)
+        public void ScanLineOverride(int X, int Y, int Length, T Color)
         {
-            long Offset = Destination.Stride * Y + ((X * Destination.BitsPerPixel) >> 3);
-            byte* pPixelA = (byte*)Destination.ScanA + Offset,
-                  pPixelR = (byte*)Destination.ScanR + Offset,
-                  pPixelG = (byte*)Destination.ScanG + Offset,
-                  pPixelB = (byte*)Destination.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* pPixelA = (byte*)Context.ScanA + Offset,
+                  pPixelR = (byte*)Context.ScanR + Offset,
+                  pPixelG = (byte*)Context.ScanG + Offset,
+                  pPixelB = (byte*)Context.ScanB + Offset;
 
             for (int i = 0; i < Length; i++)
             {
@@ -43,23 +54,28 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 *pPixelB++ = Color.B;
             }
         }
-        public override void ScanLineOverrideTo<T, T2>(IImageContext Source, int X, int Y, int Length, T2* pDest)
+        void IImageOperator.ScanLineOverride(int X, int Y, int Length, IPixel Color)
+            => this.ScanLineOverride(X, Y, Length, Color.ToPixel<T>());
+        public void ScanLineOverrideTo(int X, int Y, int Length, byte* pDest)
+            => this.ScanLineOverrideTo(X, Y, Length, (T*)pDest);
+        public void ScanLineOverrideTo<T2>(int X, int Y, int Length, T2* pDest)
+            where T2 : unmanaged, IPixel
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelA = (byte*)Source.ScanA + Offset,
-                  PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelA = (byte*)Context.ScanA + Offset,
+                  PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
             for (int i = 0; i < Length; i++)
                 pDest++->Override(*PixelA++, *PixelR++, *PixelG++, *PixelB++);
         }
-        public override void ScanLineOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineOverrideTo(int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
             for (int i = 0; i < Length; i++)
             {
@@ -68,13 +84,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 *pDestB++ = *PixelB++;
             }
         }
-        public override void ScanLineOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineOverrideTo(int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelA = (byte*)Source.ScanA + Offset,
-                  PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelA = (byte*)Context.ScanA + Offset,
+                  PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
             for (int i = 0; i < Length; i++)
             {
@@ -85,25 +101,28 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public override void ScanLineReverseOverrideTo<T, T2>(IImageContext Source, int X, int Y, int Length, T2* pDest)
+        public void ScanLineReverseOverrideTo(int X, int Y, int Length, byte* pDest)
+            => this.ScanLineReverseOverrideTo(X, Y, Length, (T*)pDest);
+        public void ScanLineReverseOverrideTo<T2>(int X, int Y, int Length, T2* pDest)
+            where T2 : unmanaged, IPixel
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelA = (byte*)Source.ScanA + Offset,
-                  PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelA = (byte*)Context.ScanA + Offset,
+                  PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
             pDest += Length - 1;
 
             for (int i = 0; i < Length; i++)
                 pDest--->Override(*PixelA++, *PixelR++, *PixelG++, *PixelB++);
         }
-        public override void ScanLineReverseOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineReverseOverrideTo(int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
             int OffsetToEnd = Length - 1;
             pDestR += OffsetToEnd;
@@ -117,13 +136,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 *pDestB-- = *PixelB++;
             }
         }
-        public override void ScanLineReverseOverrideTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineReverseOverrideTo(int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelA = (byte*)Source.ScanA + Offset,
-                  PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelA = (byte*)Context.ScanA + Offset,
+                  PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
             int OffsetToEnd = Length - 1;
             pDestA += OffsetToEnd;
@@ -140,66 +159,69 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public override void ScanLineOverlay<T>(IImageContext Destination, int X, int Y, int Length, T Color)
+        public void ScanLineOverlay(int X, int Y, int Length, T Color)
         {
             if (Color.A is byte.MinValue || Color.A is byte.MaxValue)
             {
-                ScanLineOverride(Destination, X, Y, Length, Color);
+                ScanLineOverride(X, Y, Length, Color);
                 return;
             }
 
-            long Offset = Destination.Stride * Y + ((X * Destination.BitsPerPixel) >> 3);
-            byte* pDestA = (byte*)Destination.ScanA + Offset,
-                  pDestR = (byte*)Destination.ScanR + Offset,
-                  pDestG = (byte*)Destination.ScanG + Offset,
-                  pDestB = (byte*)Destination.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* pDestA = (byte*)Context.ScanA + Offset,
+                  pDestR = (byte*)Context.ScanR + Offset,
+                  pDestG = (byte*)Context.ScanG + Offset,
+                  pDestB = (byte*)Context.ScanB + Offset;
 
             for (int i = 0; i < Length; i++)
             {
-                this.Overlay(ref pDestA, ref pDestR, ref pDestG, ref pDestB, Color.A, Color.R, Color.G, Color.B);
+                PixelHelper.Overlay(ref pDestA, ref pDestR, ref pDestG, ref pDestB, Color.A, Color.R, Color.G, Color.B);
                 pDestA++;
                 pDestR++;
                 pDestG++;
                 pDestB++;
             }
         }
-        public override void ScanLineOverlayTo<T, T2>(IImageContext Source, int X, int Y, int Length, T2* pDest)
+        void IImageOperator.ScanLineOverlay(int X, int Y, int Length, IPixel Color)
+            => this.ScanLineOverlay(X, Y, Length, Color.ToPixel<T>());
+        public void ScanLineOverlayTo<T2>(int X, int Y, int Length, T2* pDest)
+            where T2 : unmanaged, IPixel
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelA = (byte*)Source.ScanA + Offset,
-                  PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelA = (byte*)Context.ScanA + Offset,
+                  PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
             for (int i = 0; i < Length; i++)
                 pDest++->Overlay(*PixelA++, *PixelR++, *PixelG++, *PixelB++);
         }
-        public override void ScanLineOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineOverlayTo(int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
             for (int i = 0; i < Length; i++)
             {
-                this.Overlay(ref pDestR, ref pDestG, ref pDestB, byte.MaxValue, *PixelR++, *PixelG++, *PixelB++);
+                PixelHelper.Overlay(ref pDestR, ref pDestG, ref pDestB, byte.MaxValue, *PixelR++, *PixelG++, *PixelB++);
                 pDestR++;
                 pDestG++;
                 pDestB++;
             }
         }
-        public override void ScanLineOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineOverlayTo(int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelA = (byte*)Source.ScanA + Offset,
-                  PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelA = (byte*)Context.ScanA + Offset,
+                  PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
             for (int i = 0; i < Length; i++)
             {
-                this.Overlay(ref pDestA, ref pDestR, ref pDestG, ref pDestB, *PixelA++, *PixelR++, *PixelG++, *PixelB++);
+                PixelHelper.Overlay(ref pDestA, ref pDestR, ref pDestG, ref pDestB, *PixelA++, *PixelR++, *PixelG++, *PixelB++);
                 pDestA++;
                 pDestR++;
                 pDestG++;
@@ -207,81 +229,25 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        //public override void ScanLineReverseOverlayTo<T, T2>(IImageContext Source, int X, int Y, int Length, T2* pDest)
-        //{
-        //    long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-        //    byte* PixelA = (byte*)Source.ScanA + Offset,
-        //          PixelR = (byte*)Source.ScanR + Offset,
-        //          PixelG = (byte*)Source.ScanG + Offset,
-        //          PixelB = (byte*)Source.ScanB + Offset;
-
-        //    pDest += Length - 1;
-
-        //    for (int i = 0; i < Length; i++)
-        //        pDest--->Overlay(*PixelA++, *PixelR++, *PixelG++, *PixelB++);
-        //}
-        //public override void ScanLineReverseOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
-        //{
-        //    long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-        //    byte* PixelA = (byte*)Source.ScanA + Offset,
-        //          PixelR = (byte*)Source.ScanR + Offset,
-        //          PixelG = (byte*)Source.ScanG + Offset,
-        //          PixelB = (byte*)Source.ScanB + Offset;
-
-        //    int OffsetToEnd = Length - 1;
-        //    pDestR += OffsetToEnd;
-        //    pDestG += OffsetToEnd;
-        //    pDestB += OffsetToEnd;
-
-        //    for (int i = 0; i < Length; i++)
-        //    {
-        //        this.Overlay(ref pDestR, ref pDestG, ref pDestB, *PixelA++, *PixelR++, *PixelG++, *PixelB++);
-        //        pDestR--;
-        //        pDestG--;
-        //        pDestB--;
-        //    }
-        //}
-        //public override void ScanLineReverseOverlayTo<T>(IImageContext Source, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
-        //{
-        //    long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-        //    byte* PixelA = (byte*)Source.ScanA + Offset,
-        //          PixelR = (byte*)Source.ScanR + Offset,
-        //          PixelG = (byte*)Source.ScanG + Offset,
-        //          PixelB = (byte*)Source.ScanB + Offset;
-
-        //    int OffsetToEnd = Length - 1;
-        //    pDestA += OffsetToEnd;
-        //    pDestR += OffsetToEnd;
-        //    pDestG += OffsetToEnd;
-        //    pDestB += OffsetToEnd;
-
-        //    for (int i = 0; i < Length; i++)
-        //    {
-        //        this.Overlay(ref pDestA, ref pDestR, ref pDestG, ref pDestB, *PixelA++, *PixelR++, *PixelG++, *PixelB++);
-        //        pDestA--;
-        //        pDestR--;
-        //        pDestG--;
-        //        pDestB--;
-        //    }
-        //}
-
-        public override void ScanLineNearestResizeTo<T, T2>(IImageContext Source, int Step, int Max, int X, int Y, int Length, T2* pDest)
+        public void ScanLineNearestResizeTo(float FracX, float Step, int X, int Y, int Length, byte* pDest)
+            => ScanLineNearestResizeTo(FracX, Step, X, Y, Length, (T*)pDest);
+        public void ScanLineNearestResizeTo<T2>(float FracX, float Step, int X, int Y, int Length, T2* pDest)
+            where T2 : unmanaged, IPixel
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelA = (byte*)Source.ScanA + Offset,
-                  PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelA = (byte*)Context.ScanA + Offset,
+                  PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
-            int Count = 0;
             for (int i = 0; i < Length; i++)
             {
                 pDest++->Override(*PixelA, *PixelR, *PixelG, *PixelB);
 
-                Count += Step;
-                while (Count >= Max)
+                FracX += Step;
+                while (FracX >= 1f)
                 {
-                    Count -= Max;
+                    FracX -= 1f;
                     PixelA++;
                     PixelR++;
                     PixelG++;
@@ -289,39 +255,37 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
-        public override void ScanLineNearestResizeTo<T>(IImageContext Source, int Step, int Max, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineNearestResizeTo(float FracX, float Step, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
-            int Count = 0;
             for (int i = 0; i < Length; i++)
             {
                 *pDestR++ = *PixelR;
                 *pDestG++ = *PixelG;
                 *pDestB++ = *PixelB;
 
-                Count += Step;
-                while (Count >= Max)
+                FracX += Step;
+                while (FracX >= 1f)
                 {
-                    Count -= Max;
+                    FracX -= 1f;
                     PixelR++;
                     PixelG++;
                     PixelB++;
                 }
             }
         }
-        public override void ScanLineNearestResizeTo<T>(IImageContext Source, int Step, int Max, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineNearestResizeTo(float FracX, float Step, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* PixelA = (byte*)Source.ScanA + Offset,
-                  PixelR = (byte*)Source.ScanR + Offset,
-                  PixelG = (byte*)Source.ScanG + Offset,
-                  PixelB = (byte*)Source.ScanB + Offset;
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelA = (byte*)Context.ScanA + Offset,
+                  PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
 
-            int Count = 0;
             for (int i = 0; i < Length; i++)
             {
                 *pDestA++ = *PixelA;
@@ -329,10 +293,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 *pDestG++ = *PixelG;
                 *pDestB++ = *PixelB;
 
-                Count += Step;
-                while (Count >= Max)
+                FracX += Step;
+                while (FracX >= 1f)
                 {
-                    Count -= Max;
+                    FracX -= 1f;
                     PixelA++;
                     PixelR++;
                     PixelG++;
@@ -341,23 +305,24 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public override void ScanLineBilinearResizeTo<T, T2>(IImageContext Source, int StepX, int FracY, int Max, int X, int Y, int Length, T2* pDest)
+        public void ScanLineBilinearResizeTo(float FracX, float FracY, float Step, int X, int Y, int Length, byte* pDest)
+            => ScanLineBilinearResizeTo(FracX, FracY, Step, X, Y, Length, (T*)pDest);
+        public void ScanLineBilinearResizeTo<T2>(float FracX, float FracY, float Step, int X, int Y, int Length, T2* pDest)
+            where T2 : unmanaged, IPixel
         {
-            long SourceStride = Source.Stride,
-                 Offset = SourceStride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* pPixelA0 = (byte*)Source.ScanA + Offset,
-                  pPixelR0 = (byte*)Source.ScanR + Offset,
-                  pPixelG0 = (byte*)Source.ScanG + Offset,
-                  pPixelB0 = (byte*)Source.ScanB + Offset,
+            long SourceStride = Context.Stride,
+                 Offset = SourceStride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* pPixelA0 = (byte*)Context.ScanA + Offset,
+                  pPixelR0 = (byte*)Context.ScanR + Offset,
+                  pPixelG0 = (byte*)Context.ScanG + Offset,
+                  pPixelB0 = (byte*)Context.ScanB + Offset,
                   pPixelA1 = pPixelA0 + SourceStride,
                   pPixelR1 = pPixelR0 + SourceStride,
                   pPixelG1 = pPixelG0 + SourceStride,
                   pPixelB1 = pPixelB0 + SourceStride;
 
-            int FracX = 0,
-                 IFracY = Max - FracY,
-                 SqrMax = Max * Max,
-                 SourceW = Source.Width;
+            float IFracY = 1f - FracY;
+            int SourceW = Context.Width;
             for (int i = 0; i < Length; i++)
             {
                 byte A00 = *pPixelA0,
@@ -395,21 +360,21 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     B11 = *(pPixelB1 + 1);
                 }
 
-                int IFracX = Max - FracX,
-                    IFxIFy = IFracX * IFracY,
-                    IFxFy = IFracX * FracY,
-                    FxIFy = FracX * IFracY,
-                    FxFy = FracX * FracY;
+                float IFracX = 1f - FracX,
+                      IFxIFy = IFracX * IFracY,
+                      IFxFy = IFracX * FracY,
+                      FxIFy = FracX * IFracY,
+                      FxFy = FracX * FracY;
 
-                pDest++->Override((byte)((A00 * IFxIFy + A01 * FxIFy + A10 * IFxFy + A11 * FxFy) / SqrMax),
-                                  (byte)((R00 * IFxIFy + R01 * FxIFy + R10 * IFxFy + R11 * FxFy) / SqrMax),
-                                  (byte)((G00 * IFxIFy + G01 * FxIFy + G10 * IFxFy + G11 * FxFy) / SqrMax),
-                                  (byte)((B00 * IFxIFy + B01 * FxIFy + B10 * IFxFy + B11 * FxFy) / SqrMax));
+                pDest++->Override((byte)(A00 * IFxIFy + A01 * FxIFy + A10 * IFxFy + A11 * FxFy),
+                                  (byte)(R00 * IFxIFy + R01 * FxIFy + R10 * IFxFy + R11 * FxFy),
+                                  (byte)(G00 * IFxIFy + G01 * FxIFy + G10 * IFxFy + G11 * FxFy),
+                                  (byte)(B00 * IFxIFy + B01 * FxIFy + B10 * IFxFy + B11 * FxFy));
 
-                FracX += StepX;
-                while (FracX >= Max)
+                FracX += Step;
+                while (FracX >= 1f)
                 {
-                    FracX -= Max;
+                    FracX -= 1f;
 
                     X++;
 
@@ -425,21 +390,19 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
-        public override void ScanLineBilinearResizeTo<T>(IImageContext Source, int StepX, int FracY, int Max, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineBilinearResizeTo(float FracX, float FracY, float Step, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long SourceStride = Source.Stride,
-                 Offset = SourceStride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* pPixelR0 = (byte*)Source.ScanR + Offset,
-                  pPixelG0 = (byte*)Source.ScanG + Offset,
-                  pPixelB0 = (byte*)Source.ScanB + Offset,
+            long SourceStride = Context.Stride,
+                 Offset = SourceStride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* pPixelR0 = (byte*)Context.ScanR + Offset,
+                  pPixelG0 = (byte*)Context.ScanG + Offset,
+                  pPixelB0 = (byte*)Context.ScanB + Offset,
                   pPixelR1 = pPixelR0 + SourceStride,
                   pPixelG1 = pPixelG0 + SourceStride,
                   pPixelB1 = pPixelB0 + SourceStride;
 
-            int FracX = 0,
-                IFracY = Max - FracY,
-                SqrMax = Max * Max,
-                SourceW = Source.Width;
+            float IFracY = 1f - FracY;
+            int SourceW = Context.Width;
             for (int i = 0; i < Length; i++)
             {
                 byte R00 = *pPixelR0,
@@ -471,20 +434,20 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     B11 = *(pPixelB1 + 1);
                 }
 
-                int IFracX = Max - FracX,
-                    IFxIFy = IFracX * IFracY,
-                    IFxFy = IFracX * FracY,
-                    FxIFy = FracX * IFracY,
-                    FxFy = FracX * FracY;
+                float IFracX = 1f - FracX,
+                      IFxIFy = IFracX * IFracY,
+                      IFxFy = IFracX * FracY,
+                      FxIFy = FracX * IFracY,
+                      FxFy = FracX * FracY;
 
-                *pDestR++ = (byte)((R00 * IFxIFy + R01 * FxIFy + R10 * IFxFy + R11 * FxFy) / SqrMax);
-                *pDestG++ = (byte)((G00 * IFxIFy + G01 * FxIFy + G10 * IFxFy + G11 * FxFy) / SqrMax);
-                *pDestB++ = (byte)((B00 * IFxIFy + B01 * FxIFy + B10 * IFxFy + B11 * FxFy) / SqrMax);
+                *pDestR++ = (byte)(R00 * IFxIFy + R01 * FxIFy + R10 * IFxFy + R11 * FxFy);
+                *pDestG++ = (byte)(G00 * IFxIFy + G01 * FxIFy + G10 * IFxFy + G11 * FxFy);
+                *pDestB++ = (byte)(B00 * IFxIFy + B01 * FxIFy + B10 * IFxFy + B11 * FxFy);
 
-                FracX += StepX;
-                while (FracX >= Max)
+                FracX += Step;
+                while (FracX >= 1f)
                 {
-                    FracX -= Max;
+                    FracX -= 1f;
 
                     X++;
 
@@ -498,23 +461,21 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
-        public override void ScanLineBilinearResizeTo<T>(IImageContext Source, int StepX, int FracY, int Max, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineBilinearResizeTo(float FracX, float FracY, float Step, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
-            long SourceStride = Source.Stride,
-                 Offset = SourceStride * Y + ((X * Source.BitsPerPixel) >> 3);
-            byte* pPixelA0 = (byte*)Source.ScanA + Offset,
-                  pPixelR0 = (byte*)Source.ScanR + Offset,
-                  pPixelG0 = (byte*)Source.ScanG + Offset,
-                  pPixelB0 = (byte*)Source.ScanB + Offset,
+            long SourceStride = Context.Stride,
+                 Offset = SourceStride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* pPixelA0 = (byte*)Context.ScanA + Offset,
+                  pPixelR0 = (byte*)Context.ScanR + Offset,
+                  pPixelG0 = (byte*)Context.ScanG + Offset,
+                  pPixelB0 = (byte*)Context.ScanB + Offset,
                   pPixelA1 = pPixelA0 + SourceStride,
                   pPixelR1 = pPixelR0 + SourceStride,
                   pPixelG1 = pPixelG0 + SourceStride,
                   pPixelB1 = pPixelB0 + SourceStride;
 
-            int FracX = 0,
-                IFracY = Max - FracY,
-                SqrMax = Max * Max,
-                SourceW = Source.Width;
+            float IFracY = 1f - FracY;
+            int SourceW = Context.Width;
             for (int i = 0; i < Length; i++)
             {
                 byte A00 = *pPixelA0,
@@ -552,21 +513,21 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     B11 = *(pPixelB1 + 1);
                 }
 
-                int IFracX = Max - FracX,
-                    IFxIFy = IFracX * IFracY,
-                    IFxFy = IFracX * FracY,
-                    FxIFy = FracX * IFracY,
-                    FxFy = FracX * FracY;
+                float IFracX = 1f - FracX,
+                      IFxIFy = IFracX * IFracY,
+                      IFxFy = IFracX * FracY,
+                      FxIFy = FracX * IFracY,
+                      FxFy = FracX * FracY;
 
-                *pDestA++ = (byte)((A00 * IFxIFy + A01 * FxIFy + A10 * IFxFy + A11 * FxFy) / SqrMax);
-                *pDestR++ = (byte)((R00 * IFxIFy + R01 * FxIFy + R10 * IFxFy + R11 * FxFy) / SqrMax);
-                *pDestG++ = (byte)((G00 * IFxIFy + G01 * FxIFy + G10 * IFxFy + G11 * FxFy) / SqrMax);
-                *pDestB++ = (byte)((B00 * IFxIFy + B01 * FxIFy + B10 * IFxFy + B11 * FxFy) / SqrMax);
+                *pDestA++ = (byte)(A00 * IFxIFy + A01 * FxIFy + A10 * IFxFy + A11 * FxFy);
+                *pDestR++ = (byte)(R00 * IFxIFy + R01 * FxIFy + R10 * IFxFy + R11 * FxFy);
+                *pDestG++ = (byte)(G00 * IFxIFy + G01 * FxIFy + G10 * IFxFy + G11 * FxFy);
+                *pDestB++ = (byte)(B00 * IFxIFy + B01 * FxIFy + B10 * IFxFy + B11 * FxFy);
 
-                FracX += StepX;
-                while (FracX >= Max)
+                FracX += Step;
+                while (FracX >= 1f)
                 {
-                    FracX -= Max;
+                    FracX -= 1f;
 
                     X++;
 
@@ -583,14 +544,46 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public override void ContourOverlay<T>(IImageContext Destination, ImageContour Contour, T Color, int OffsetX, int OffsetY)
+        public void ScanLineNearestResizeTo(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref byte* pDest)
+        {
+            T* pTemp = (T*)pDest;
+            ScanLineNearestResizeTo(ref FracX, Step, ref X, MaxX, MaxXFrac, Y, ref pTemp);
+            pDest = (byte*)pTemp;
+        }
+        public void ScanLineNearestResizeTo<T2>(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref T2* pDest) 
+            where T2 : unmanaged, IPixel
+        {
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* PixelA = (byte*)Context.ScanA + Offset,
+                  PixelR = (byte*)Context.ScanR + Offset,
+                  PixelG = (byte*)Context.ScanG + Offset,
+                  PixelB = (byte*)Context.ScanB + Offset;
+
+            while (X < Context.Width && (X < MaxX || (X == MaxX && FracX < MaxXFrac)))
+            {
+                pDest++->Override(*PixelA, *PixelR, *PixelG, *PixelB);
+
+                FracX += Step;
+                while (FracX >= 1f)
+                {
+                    FracX -= 1f;
+                    PixelA++;
+                    PixelR++;
+                    PixelG++;
+                    PixelB++;
+                    X++;
+                }
+            }
+        }
+
+        public void ContourOverlay(ImageContour Contour, T Color, int OffsetX, int OffsetY)
         {
             IEnumerator<KeyValuePair<int, ContourData>> Enumerator = Contour.GetEnumerator();
             if (!Enumerator.MoveNext())
                 return;
 
-            int MaxX = Destination.Width - 1,
-                MaxY = Destination.Height - 1;
+            int MaxX = Context.Width - 1,
+                MaxY = Context.Height - 1;
             KeyValuePair<int, ContourData> Current = Enumerator.Current;
 
             long Y = Current.Key + OffsetY;
@@ -609,11 +602,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     return;
             }
 
-            long Offset = Destination.Stride * Y;
-            byte* pPixelA = (byte*)Destination.ScanA + Offset,
-                  pPixelR = (byte*)Destination.ScanR + Offset,
-                  pPixelG = (byte*)Destination.ScanG + Offset,
-                  pPixelB = (byte*)Destination.ScanB + Offset;
+            long Offset = Context.Stride * Y;
+            byte* pPixelA = (byte*)Context.ScanA + Offset,
+                  pPixelR = (byte*)Context.ScanR + Offset,
+                  pPixelG = (byte*)Context.ScanG + Offset,
+                  pPixelB = (byte*)Context.ScanB + Offset;
 
             ContourData Data = Current.Value;
 
@@ -636,7 +629,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     if (MaxX < Sx)
                         return;
 
-                    Offset = ((Sx - CurrentX) * Destination.BitsPerPixel) >> 3;
+                    Offset = ((Sx - CurrentX) * Context.BitsPerPixel) >> 3;
                     pTempPixelA += Offset;
                     pTempPixelR += Offset;
                     pTempPixelG += Offset;
@@ -644,7 +637,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
                     for (int j = Sx; j <= Ex; j++)
                     {
-                        this.Overlay(ref pTempPixelA, ref pTempPixelR, ref pTempPixelG, ref pTempPixelB, Color.A, Color.R, Color.G, Color.B);
+                        PixelHelper.Overlay(ref pTempPixelA, ref pTempPixelR, ref pTempPixelG, ref pTempPixelB, Color.A, Color.R, Color.G, Color.B);
                         pTempPixelA++;
                         pTempPixelR++;
                         pTempPixelG++;
@@ -663,7 +656,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 if (MaxY < TempY)
                     return;
 
-                Offset = Destination.Stride * (TempY - Y);
+                Offset = Context.Stride * (TempY - Y);
                 pPixelA += Offset;
                 pPixelR += Offset;
                 pPixelG += Offset;
@@ -675,22 +668,32 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 OverlayHandler();
             }
         }
+        void IImageOperator.ContourOverlay(ImageContour Contour, IPixel Color, int OffsetX, int OffsetY)
+            => this.ContourOverlay(Contour, Color.ToPixel<T>(), OffsetX, OffsetY);
 
-        public override void BlockOverlay<T>(IImageContext Destination, int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height)
+        public void BlockOverlay(int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height)
         {
-            long Offset = Destination.Stride * Y + ((X * Destination.BitsPerPixel) >> 3);
-            byte* pPixelA = (byte*)Destination.ScanA + Offset,
-                  pPixelR = (byte*)Destination.ScanR + Offset,
-                  pPixelG = (byte*)Destination.ScanG + Offset,
-                  pPixelB = (byte*)Destination.ScanB + Offset;
+            long Stride = Context.Stride,
+                 Offset = Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            byte* pPixelA = (byte*)Context.ScanA + Offset,
+                  pPixelR = (byte*)Context.ScanR + Offset,
+                  pPixelG = (byte*)Context.ScanG + Offset,
+                  pPixelB = (byte*)Context.ScanB + Offset;
 
-            Source.BlockOverlayTo<T>(OffsetX, OffsetY, Width, Height, pPixelA, pPixelR, pPixelG, pPixelB, Destination.Stride);
+            for (int j = 0; j < Height; j++)
+            {
+                Source.Operator.ScanLineOverlayTo(X, Y + j, Width, pPixelA, pPixelR, pPixelG, pPixelB);
+                pPixelA += Stride;
+                pPixelR += Stride;
+                pPixelG += Stride;
+                pPixelB += Stride;
+            }
         }
 
-        public override ImageContour FindBound<T>(IImageContext Source, int SeedX, int SeedY, ImagePredicate Predicate)
+        public ImageContour FindBound(int SeedX, int SeedY, ImagePredicate Predicate)
         {
-            int Width = Source.Width,
-                Height = Source.Height;
+            int Width = Context.Width,
+                Height = Context.Height;
 
             if (SeedX < 0 || Width <= SeedX ||
                 SeedY < 0 || Height <= SeedY)
@@ -712,12 +715,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Y = StackY.Pop();
                 SaveX = X;
 
-                Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
+                Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
 
-                pSeedA = (byte*)Source.ScanA + Offset;
-                pSeedR = (byte*)Source.ScanR + Offset;
-                pSeedG = (byte*)Source.ScanG + Offset;
-                pSeedB = (byte*)Source.ScanB + Offset;
+                pSeedA = (byte*)Context.ScanA + Offset;
+                pSeedR = (byte*)Context.ScanR + Offset;
+                pSeedG = (byte*)Context.ScanG + Offset;
+                pSeedB = (byte*)Context.ScanB + Offset;
 
                 // Find Right Bound
                 pPixelA = pSeedA;
@@ -760,11 +763,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 X = Lx;
                 Y++;
 
-                Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-                pSeedA = (byte*)Source.ScanA + Offset;
-                pSeedR = (byte*)Source.ScanR + Offset;
-                pSeedG = (byte*)Source.ScanG + Offset;
-                pSeedB = (byte*)Source.ScanB + Offset;
+                Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+                pSeedA = (byte*)Context.ScanA + Offset;
+                pSeedR = (byte*)Context.ScanR + Offset;
+                pSeedG = (byte*)Context.ScanG + Offset;
+                pSeedB = (byte*)Context.ScanB + Offset;
                 if (-1 < Y && Y < Height &&
                     !Contour.Contain(X, Y))
                     for (; X <= Rx; X++)
@@ -792,11 +795,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 X = Lx;
                 Y -= 2;
 
-                Offset = Source.Stride * Y + ((X * Source.BitsPerPixel) >> 3);
-                pSeedA = (byte*)Source.ScanA + Offset;
-                pSeedR = (byte*)Source.ScanR + Offset;
-                pSeedG = (byte*)Source.ScanG + Offset;
-                pSeedB = (byte*)Source.ScanB + Offset;
+                Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+                pSeedA = (byte*)Context.ScanA + Offset;
+                pSeedR = (byte*)Context.ScanR + Offset;
+                pSeedG = (byte*)Context.ScanG + Offset;
+                pSeedB = (byte*)Context.ScanB + Offset;
                 if (0 <= Y && Y < Height &&
                     !Contour.Contain(X, Y))
                     for (; X <= Rx; X++)

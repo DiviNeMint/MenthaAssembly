@@ -8,6 +8,8 @@ namespace MenthaAssembly.Media.Imaging
 {
     public unsafe interface IImageContext
     {
+        internal IImageOperator Operator { get; }
+
         public int Width { get; }
 
         public int Height { get; }
@@ -1925,13 +1927,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="DestG">The target address of G channel to copy to.</param>
         /// <param name="DestB">The target address of B channel to copy to.</param>
         public void ScanLineCopy4(int X, int Y, int Length, byte* DestA, byte* DestR, byte* DestG, byte* DestB);
-
-        #endregion
-
-        #region BlockOverlayTo
-        public void BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride) where T : unmanaged, IPixel;
-        public void BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride) where T : unmanaged, IPixel;
-        public void BlockOverlayTo<T>(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride) where T : unmanaged, IPixel;
 
         #endregion
 

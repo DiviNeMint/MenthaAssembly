@@ -206,6 +206,14 @@ namespace MenthaAssembly
 
         public bool Contains(FloatPoint Point)
             => Contains(Point.X, Point.Y);
+        public bool Contains(double X, double Y)
+        {
+            if (IsEmpty)
+                return false;
+
+            return Left < X && X < Right &&
+                   Top < Y && Y < Bottom;
+        }
         public bool Contains(float X, float Y)
         {
             if (IsEmpty)

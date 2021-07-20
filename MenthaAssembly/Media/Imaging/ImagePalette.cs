@@ -1,5 +1,4 @@
-﻿using MenthaAssembly.Media.Imaging.Utils;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging
@@ -47,7 +46,7 @@ namespace MenthaAssembly.Media.Imaging
             return false;
         }
         bool IImagePalette.TryGetOrAdd(IPixel Color, out int Index)
-            => this.TryGetOrAdd(IImageOperator.ToPixel<Pixel>(Color), out Index);
+            => this.TryGetOrAdd(Color.ToPixel<Pixel>(), out Index);
 
         public static ImagePalette<Pixel> GetSystemPalette<Struct>()
             where Struct : unmanaged, IPixelIndexed
@@ -57,7 +56,7 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         public T[] Extract<T>() where T : unmanaged, IPixel
-            => Palette.Select(i => IImageOperator.ToPixel<T>(i))
+            => Palette.Select(i => i.ToPixel<T>())
                       .ToArray();
     }
 }
