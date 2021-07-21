@@ -37,7 +37,7 @@ namespace MenthaAssembly
             this.Bottom = (int)Bottom;
         }
 
-        public Int32Bound(Int32Point Position, Int32Size Size)
+        public Int32Bound(Int32Point Position, Size<int> Size)
         {
             this.Left = Position.X;
             this.Top = Position.Y;
@@ -147,7 +147,7 @@ namespace MenthaAssembly
                                   Math.Max(Bound1.Bottom, Bound2.Bottom));
         }
 
-        public void Offset(Int32Vector Vector)
+        public void Offset(Vector<int> Vector)
             => Offset(Vector.X, Vector.Y);
         public void Offset(int X, int Y)
         {

@@ -5,10 +5,10 @@
     /// </summary>
     internal struct WindowMinMaxInfo
     {
-        public Int32Point ptReserved;
-        public Int32Size ptMaxSize;
-        public Int32Point ptMaxPosition;
-        public Int32Size ptMinTrackSize;
-        public Int32Size ptMaxTrackSize;
+        public Point<int> ptReserved;
+        public Size<int> ptMaxSize;
+        public Point<int> ptMaxPosition;
+        public Size<int> ptMinTrackSize;
+        public Size<int> ptMaxTrackSize;
     };
 }

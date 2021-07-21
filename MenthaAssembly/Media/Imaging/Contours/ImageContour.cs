@@ -993,12 +993,12 @@ namespace MenthaAssembly.Media.Imaging
             return This;
         }
 
-        public static ImageContour operator +(ImageContour This, Int32Vector Offset)
+        public static ImageContour operator +(ImageContour This, Vector<int> Offset)
         {
             This.Offset(Offset.X, Offset.Y);
             return This;
         }
-        public static ImageContour operator -(ImageContour This, Int32Vector Offset)
+        public static ImageContour operator -(ImageContour This, Vector<int> Offset)
         {
             This.Offset(-Offset.X, -Offset.Y);
             return This;

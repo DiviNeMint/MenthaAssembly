@@ -39,8 +39,8 @@ namespace MenthaAssembly
         public static Int32Point operator -(Int32Point This)
             => new Int32Point(-This.X, -This.Y);
 
-        public static Int32Vector operator -(Int32Point This, Int32Point Target)
-            => new Int32Vector(This.X - Target.X, This.Y - Target.Y);
+        public static Vector<int> operator -(Int32Point This, Int32Point Target)
+            => new Vector<int>(This.X - Target.X, This.Y - Target.Y);
 
         public Int32Point Clone()
             => new Int32Point(this.X, this.Y);
