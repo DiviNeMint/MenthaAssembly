@@ -162,9 +162,8 @@ namespace MenthaAssembly
                                                                 .ToArray();
                     if (Packets.Length > 0)
                     {
-                        MultiLanguagePacket TempPacket = new MultiLanguagePacket(Packets);
-                        TempPacket.Load(_Current.LanguageName);
-                        Packet.Packets.Add(TempPacket);
+                        Packet.Add(Packets);
+                        Packet.Load(_Current.LanguageName);
                     }
                 }
             }

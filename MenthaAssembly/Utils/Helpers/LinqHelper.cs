@@ -91,6 +91,12 @@ namespace System.Linq
             return false;
         }
 
+        public static void Add<T>(this ICollection<T> Collection, IEnumerable<T> Items)
+        {
+            foreach (T i in Items)
+                Collection.Add(i);
+        }
+
         public static int IndexOf(this IEnumerable Source, object Item)
         {
             int Index = 0;
