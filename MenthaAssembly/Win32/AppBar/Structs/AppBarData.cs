@@ -10,7 +10,7 @@ namespace MenthaAssembly.Win32
         public IntPtr Hwnd;
         public uint uCallbackMessage;
         public uint uEdge;
-        public Int32Bound Bound;
+        public Bound<int> Bound;
         public int lParam;
     }
 }

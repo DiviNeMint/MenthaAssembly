@@ -6,8 +6,8 @@
     internal struct WindowInfo
     {
         public int cbSize;
-        public Int32Bound rcWindow;
-        public Int32Bound rcClient;
+        public Bound<int> rcWindow;
+        public Bound<int> rcClient;
         public WindowStyles dwStyle;
         public WindowExStyles dwExStyle;
         public uint dwWindowStatus;

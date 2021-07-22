@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Devices
 {
-    public static class GlobalMouse
+    public unsafe static class GlobalMouse
     {
         #region Windows API
         //https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexa
@@ -27,7 +27,7 @@ namespace MenthaAssembly.Devices
         [StructLayout(LayoutKind.Sequential)]
         internal struct MouseInputInfo
         {
-            public Int32Point Position { set; get; }
+            public Point<int> Position { set; get; }
 
             public int MouseData { set; get; }
 
@@ -65,7 +65,7 @@ namespace MenthaAssembly.Devices
         private delegate int HookProc(int nCode, int wParam, IntPtr lParam);
 
         [DllImport("user32.dll")]
-        private static extern bool GetCursorPos(out Int32Point Point);
+        private static extern bool GetCursorPos(Point<int>* Point);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall, SetLastError = true)]
         private static extern int SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, int dwThreadId);
@@ -122,8 +122,8 @@ namespace MenthaAssembly.Devices
             }
         }
 
-        private static event Action<Int32Point> _MouseMove;
-        public static event Action<Int32Point> MouseMove
+        private static event Action<Point<int>> _MouseMove;
+        public static event Action<Point<int>> MouseMove
         {
             add
             {
@@ -162,14 +162,15 @@ namespace MenthaAssembly.Devices
             }
         }
 
-        public static Int32Point Position
+        public static Point<int> Position
         {
             get
             {
-                if (GetCursorPos(out Int32Point Position))
+                Point<int> Position;
+                if (GetCursorPos(&Position))
                     return Position;
 
-                return new Int32Point();
+                return new Point<int>();
             }
         }
 

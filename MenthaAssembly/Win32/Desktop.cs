@@ -22,7 +22,7 @@ namespace MenthaAssembly.Win32
         internal static extern bool GetWindowInfo(IntPtr Hwnd, out WindowInfo Info);
 
         [DllImport("User32.dll")]
-        internal static extern bool GetWindowRect(IntPtr Hwnd, out Int32Bound Bound);
+        internal static extern bool GetWindowRect(IntPtr Hwnd, Bound<int>* Bound);
 
         [DllImport("User32.dll")]
         internal static extern long GetWindowLong(IntPtr Hwnd, WindowLongType Type);
@@ -84,7 +84,7 @@ namespace MenthaAssembly.Win32
         internal static extern bool Shell_NotifyIcon(NotifyCommand Command, ref NotifyIconData Data);
 
         [DllImport("Shell32.dll", SetLastError = true)]
-        internal static extern int Shell_NotifyIconGetRect(ref NotifyIconIdentifier identifier, out Int32Bound Bound);
+        internal static extern int Shell_NotifyIconGetRect(ref NotifyIconIdentifier identifier, out Bound<int> Bound);
 
         #endregion
 
@@ -327,7 +327,7 @@ namespace MenthaAssembly.Win32
         /// </summary>
         public static ImageContext<BGR> Screenshot()
         {
-            Int32Bound ScreenArea = Screen.Current.Bound;
+            Bound<int> ScreenArea = Screen.Current.Bound;
             return Screenshot(ScreenArea.Left,
                               ScreenArea.Top,
                               ScreenArea.Width,

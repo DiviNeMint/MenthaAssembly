@@ -49,7 +49,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P0">The coordinate of the start.</param>
         /// <param name="P1">The coordinate of the end.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawLine(Int32Point P0, Int32Point P1, IPixel Color);
+        public void DrawLine(Point<int> P0, Point<int> P1, IPixel Color);
         /// <summary>
         /// Draw an line.
         /// </summary>
@@ -65,7 +65,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P0">The coordinate of the start.</param>
         /// <param name="P1">The coordinate of the end.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
-        public void DrawLine(Int32Point P0, Int32Point P1, IImageContext Pen);
+        public void DrawLine(Point<int> P0, Point<int> P1, IImageContext Pen);
         /// <summary>
         /// Draw an line.
         /// </summary>
@@ -82,7 +82,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P1">The coordinate of the end.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawLine(Int32Point P0, Int32Point P1, ImageContour Contour, IPixel Fill);
+        public void DrawLine(Point<int> P0, Point<int> P1, ImageContour Contour, IPixel Fill);
         /// <summary>
         /// Draw an line.
         /// </summary>
@@ -107,7 +107,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Ry">The y-length of the radius.</param>
         /// <param name="Clockwise">The clockwise for the arc.</param>
         /// <param name="Color">The color for the arc.</param>
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IPixel Color);
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IPixel Color);
         /// <summary>
         /// Draw an Arc.
         /// </summary>
@@ -132,7 +132,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Ry">The y-length of the radius.</param>
         /// <param name="Clockwise">The clockwise for the arc.</param>        
         /// <param name="Pen">The pen with transparent background for the arc.</param>
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IImageContext Pen);
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen);
         /// <summary>
         /// Draw an Arc.
         /// </summary>
@@ -158,7 +158,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Clockwise">The clockwise for the arc.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, IPixel Fill);
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, IPixel Fill);
         /// <summary>
         /// Draw an Arc.
         /// </summary>
@@ -193,7 +193,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurve(IList<Int32Point> Points, float Tension, IPixel Color);
+        public void DrawCurve(IList<Point<int>> Points, float Tension, IPixel Color);
         /// <summary>
         /// Draws a Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -209,7 +209,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Pen">The pen with transparent background for the arc.</param>
-        public void DrawCurve(IList<Int32Point> Points, float Tension, IImageContext Pen);
+        public void DrawCurve(IList<Point<int>> Points, float Tension, IImageContext Pen);
         /// <summary>
         /// Draws a Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -227,7 +227,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawCurve(IList<Int32Point> Points, float Tension, ImageContour Contour, IPixel Fill);
+        public void DrawCurve(IList<Point<int>> Points, float Tension, ImageContour Contour, IPixel Fill);
 
         /// <summary>
         /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
@@ -245,7 +245,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurveClosed(IList<Int32Point> Points, float Tension, IPixel Color);
+        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, IPixel Color);
         /// <summary>
         /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -261,7 +261,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Pen">The pen with transparent background for the arc.</param>
-        public void DrawCurveClosed(IList<Int32Point> Points, float Tension, IImageContext Pen);
+        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, IImageContext Pen);
         /// <summary>
         /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -279,7 +279,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawCurveClosed(IList<Int32Point> Points, float Tension, ImageContour Contour, IPixel Fill);
+        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -376,7 +376,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P2">The coordinate of the 2nd point.</param>
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="Color">The color.</param>
-        public void DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, IPixel Color);
+        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, IPixel Color);
         /// <summary>
         /// Draws a triangle.
         /// </summary>
@@ -395,7 +395,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P2">The coordinate of the 2nd point.</param>
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
-        public void DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, IImageContext Pen);
+        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, IImageContext Pen);
         /// <summary>
         /// Draws a triangle.
         /// </summary>
@@ -416,7 +416,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, ImageContour Contour, IPixel Fill);
+        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -436,7 +436,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P1">The coordinate of the bounding rectangle's left-top.</param>
         /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
         /// <param name="Color">The color.</param>
-        public void DrawRectangle(Int32Point P1, Int32Point P2, IPixel Color);
+        public void DrawRectangle(Point<int> P1, Point<int> P2, IPixel Color);
         /// <summary>
         /// Draws a rectangle.
         /// </summary>
@@ -452,7 +452,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P1">The coordinate of the bounding rectangle's left-top.</param>
         /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
-        public void DrawRectangle(Int32Point P1, Int32Point P2, IImageContext Pen);
+        public void DrawRectangle(Point<int> P1, Point<int> P2, IImageContext Pen);
         /// <summary>
         /// Draws a rectangle.
         /// </summary>
@@ -470,7 +470,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawRectangle(Int32Point P1, Int32Point P2, ImageContour Contour, IPixel Fill);
+        public void DrawRectangle(Point<int> P1, Point<int> P2, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -496,7 +496,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="P4">The coordinate of the 4th point.</param>
         /// <param name="Color">The color.</param>
-        public void DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, IPixel Color);
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IPixel Color);
         /// <summary>
         /// Draws a quad.
         /// </summary>
@@ -518,7 +518,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="P4">The coordinate of the 4th point.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
-        public void DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, IImageContext Pen);
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IImageContext Pen);
         /// <summary>
         /// Draws a quad.
         /// </summary>
@@ -542,7 +542,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P4">The coordinate of the 4th point.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, ImageContour Contour, IPixel Fill);
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -552,7 +552,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <param name="Bound">The bounding rectangle of ellipse.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(Int32Bound Bound, IPixel Color);
+        public void DrawEllipse(Bound<int> Bound, IPixel Color);
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -560,7 +560,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Rx">The radius of the ellipse in x-direction.</param>
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(Int32Point Center, int Rx, int Ry, IPixel Color);
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, IPixel Color);
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -575,7 +575,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <param name="Bound">The bounding rectangle of ellipse.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
-        public void DrawEllipse(Int32Bound Bound, IImageContext Pen);
+        public void DrawEllipse(Bound<int> Bound, IImageContext Pen);
         /// <summary>        
         /// Draw an ellipse.
         /// </summary>
@@ -583,7 +583,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Rx">The radius of the ellipse in x-direction.</param>
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
-        public void DrawEllipse(Int32Point Center, int Rx, int Ry, IImageContext Pen);
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, IImageContext Pen);
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -599,7 +599,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Bound">The bounding rectangle of ellipse.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(Int32Bound Bound, ImageContour Contour, IPixel Fill);
+        public void DrawEllipse(Bound<int> Bound, ImageContour Contour, IPixel Fill);
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -608,7 +608,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(Int32Point Center, int Rx, int Ry, ImageContour Contour, IPixel Fill);
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, ImageContour Contour, IPixel Fill);
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -625,7 +625,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <param name="Bound">The bounding rectangle of ellipse.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void FillEllipse(Int32Bound Bound, IPixel Fill);
+        public void FillEllipse(Bound<int> Bound, IPixel Fill);
         /// <summary>
         /// Fill an ellipse.
         /// </summary>
@@ -633,7 +633,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Rx">The radius of the ellipse in x-direction.</param>
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Fill">The color for the ellipses.</param>
-        public void FillEllipse(Int32Point Center, int Rx, int Ry, IPixel Fill);
+        public void FillEllipse(Point<int> Center, int Rx, int Ry, IPixel Fill);
         /// <summary>
         /// Fill an ellipse.
         /// </summary>
@@ -655,7 +655,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="VertexNum">The number of the polygons vertex.</param>
         /// <param name="Color">The color for the line.</param>
         /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, IPixel Color, double StartAngle);
+        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, IPixel Color, double StartAngle);
         /// <summary>
         /// Draw a regular polygon.
         /// </summary>
@@ -674,7 +674,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="VertexNum">The number of the polygons vertex.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
         /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, IImageContext Pen, double StartAngle);
+        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, IImageContext Pen, double StartAngle);
         /// <summary>
         /// Draw a regular polygon.
         /// </summary>
@@ -694,7 +694,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
         /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle);
+        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle);
         /// <summary>
         /// Draw a regular polygon.
         /// </summary>
@@ -714,7 +714,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IList<Int32Point> Vertices, IPixel Fill, int OffsetX, int OffsetY);
+        public void FillPolygon(IList<Point<int>> Vertices, IPixel Fill, int OffsetX, int OffsetY);
         /// <summary>
         /// Fill a polygon.
         /// </summary>
@@ -732,7 +732,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <param name="Position">The coordinate of left-top in stamp.</param>
         /// <param name="Stamp">The stamp to draw.</param>
-        public void DrawStamp(Int32Point Position, IImageContext Stamp);
+        public void DrawStamp(Point<int> Position, IImageContext Stamp);
         /// <summary>
         /// Draw a stamp.
         /// </summary>
@@ -756,7 +756,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="SeedPoint">The coordinate of seed.</param>
         /// <param name="Fill">The fill color for the region.</param>
         /// <param name="Predicate">The decider of bound.</param>
-        public void SeedFill(Int32Point SeedPoint, IPixel Fill, ImagePredicate Predicate);
+        public void SeedFill(Point<int> SeedPoint, IPixel Fill, ImagePredicate Predicate);
         /// <summary>
         /// Fill a region by <paramref name="Predicate"/>.
         /// </summary>
@@ -1950,7 +1950,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P0">The coordinate of the start.</param>
         /// <param name="P1">The coordinate of the end.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawLine(Int32Point P0, Int32Point P1, Pixel Color);
+        public void DrawLine(Point<int> P0, Point<int> P1, Pixel Color);
         /// <summary>
         /// Draw an line.
         /// </summary>
@@ -1967,7 +1967,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P1">The coordinate of the end.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawLine(Int32Point P0, Int32Point P1, ImageContour Contour, Pixel Fill);
+        public void DrawLine(Point<int> P0, Point<int> P1, ImageContour Contour, Pixel Fill);
         /// <summary>
         /// Draw an line.
         /// </summary>
@@ -1992,7 +1992,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Ry">The y-length of the radius.</param>
         /// <param name="Clockwise">The clockwise for the arc.</param>
         /// <param name="Color">The color for the arc.</param>
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, Pixel Color);
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, Pixel Color);
         /// <summary>
         /// Draw an Arc.
         /// </summary>
@@ -2018,7 +2018,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Clockwise">The clockwise for the arc.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill);
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill);
         /// <summary>
         /// Draw an Arc.
         /// </summary>
@@ -2053,7 +2053,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurve(IList<Int32Point> Points, float Tension, Pixel Color);
+        public void DrawCurve(IList<Point<int>> Points, float Tension, Pixel Color);
         /// <summary>
         /// Draws a Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -2071,7 +2071,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawCurve(IList<Int32Point> Points, float Tension, ImageContour Contour, Pixel Fill);
+        public void DrawCurve(IList<Point<int>> Points, float Tension, ImageContour Contour, Pixel Fill);
 
         /// <summary>
         /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
@@ -2089,7 +2089,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurveClosed(IList<Int32Point> Points, float Tension, Pixel Color);
+        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, Pixel Color);
         /// <summary>
         /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -2107,7 +2107,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawCurveClosed(IList<Int32Point> Points, float Tension, ImageContour Contour, Pixel Fill);
+        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, ImageContour Contour, Pixel Fill);
 
         #endregion
 
@@ -2183,7 +2183,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P2">The coordinate of the 2nd point.</param>
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="Color">The color.</param>
-        public void DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, Pixel Color);
+        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, Pixel Color);
         /// <summary>
         /// Draws a triangle.
         /// </summary>
@@ -2202,7 +2202,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P2">The coordinate of the 2nd point.</param>
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="Contour">The stroke for the line.</param>
-        public void DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, ImageContour Contour, Pixel Fill);
+        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, Pixel Fill);
 
         #endregion
 
@@ -2222,7 +2222,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P1">The coordinate of the bounding rectangle's left-top.</param>
         /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
         /// <param name="Color">The color.</param>
-        public void DrawRectangle(Int32Point P1, Int32Point P2, Pixel Color);
+        public void DrawRectangle(Point<int> P1, Point<int> P2, Pixel Color);
         /// <summary>
         /// Draws a rectangle.
         /// </summary>
@@ -2240,7 +2240,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawRectangle(Int32Point P1, Int32Point P2, ImageContour Contour, Pixel Fill);
+        public void DrawRectangle(Point<int> P1, Point<int> P2, ImageContour Contour, Pixel Fill);
 
         #endregion
 
@@ -2266,7 +2266,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="P4">The coordinate of the 4th point.</param>
         /// <param name="Color">The color.</param>
-        public void DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, Pixel Color);
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, Pixel Color);
         /// <summary>
         /// Draws a quad.
         /// </summary>
@@ -2290,7 +2290,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P4">The coordinate of the 4th point.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, ImageContour Contour, Pixel Fill);
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, Pixel Fill);
 
         #endregion
 
@@ -2300,7 +2300,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <param name="Bound">The bounding rectangle of ellipse.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(Int32Bound Bound, Pixel Color);
+        public void DrawEllipse(Bound<int> Bound, Pixel Color);
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -2308,7 +2308,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Rx">The radius of the ellipse in x-direction.</param>
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(Int32Point Center, int Rx, int Ry, Pixel Color);
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, Pixel Color);
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -2324,7 +2324,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Bound">The bounding rectangle of ellipse.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(Int32Bound Bound, ImageContour Contour, Pixel Fill);
+        public void DrawEllipse(Bound<int> Bound, ImageContour Contour, Pixel Fill);
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -2333,7 +2333,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(Int32Point Center, int Rx, int Ry, ImageContour Contour, Pixel Fill);
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, ImageContour Contour, Pixel Fill);
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -2350,7 +2350,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <param name="Bound">The bounding rectangle of ellipse.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void FillEllipse(Int32Bound Bound, Pixel Fill);
+        public void FillEllipse(Bound<int> Bound, Pixel Fill);
         /// <summary>
         /// Fill an ellipse.
         /// </summary>
@@ -2358,7 +2358,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Rx">The radius of the ellipse in x-direction.</param>
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Fill">The color for the ellipses.</param>
-        public void FillEllipse(Int32Point Center, int Rx, int Ry, Pixel Fill);
+        public void FillEllipse(Point<int> Center, int Rx, int Ry, Pixel Fill);
         /// <summary>
         /// Fill an ellipse.
         /// </summary>
@@ -2380,7 +2380,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="VertexNum">The number of the polygons vertex.</param>
         /// <param name="Color">The color for the line.</param>
         /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, Pixel Color, double StartAngle);
+        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, Pixel Color, double StartAngle);
         /// <summary>
         /// Draw a regular polygon.
         /// </summary>
@@ -2400,7 +2400,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
         /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, ImageContour Contour, Pixel Fill, double StartAngle);
+        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, Pixel Fill, double StartAngle);
         /// <summary>
         /// Draw a regular polygon.
         /// </summary>
@@ -2420,7 +2420,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IList<Int32Point> Vertices, Pixel Fill, int OffsetX, int OffsetY);
+        public void FillPolygon(IList<Point<int>> Vertices, Pixel Fill, int OffsetX, int OffsetY);
         /// <summary>
         /// Fill a polygon.
         /// </summary>
@@ -2448,7 +2448,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="SeedPoint">The coordinate of seed.</param>
         /// <param name="Fill">The fill color for the region.</param>
         /// <param name="Predicate">The decider of bound.</param>
-        public void SeedFill(Int32Point SeedPoint, Pixel Fill, ImagePredicate Predicate);
+        public void SeedFill(Point<int> SeedPoint, Pixel Fill, ImagePredicate Predicate);
         /// <summary>
         /// Fill a region by <paramref name="Predicate"/>.
         /// </summary>

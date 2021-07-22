@@ -4,13 +4,13 @@ using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Devices
 {
-    public static class Screen
+    public unsafe static class Screen
     {
         #region Windows API (Monitor)
-        internal delegate bool MonitorEnumProc(IntPtr hDesktop, IntPtr hdc, ref Int32Bound pRect, int dwData);
+        internal delegate bool MonitorEnumProc(IntPtr hDesktop, IntPtr hdc, Bound<int>* pRect, int dwData);
 
         [DllImport("user32")]
-        private static extern IntPtr MonitorFromPoint(Int32Point Position, MonitorOptions dwFlags);
+        private static extern IntPtr MonitorFromPoint(Point<int>* Position, MonitorOptions dwFlags);
 
         [DllImport("user32", CharSet = CharSet.Unicode)]
         internal static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo lpmi);
@@ -29,8 +29,8 @@ namespace MenthaAssembly.Devices
         internal struct MonitorInfo
         {
             public int cbSize;
-            public Int32Bound rcMonitor;
-            public Int32Bound rcWork;
+            public Bound<int> rcMonitor;
+            public Bound<int> rcWork;
             public int dwFlags;
 
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
@@ -44,7 +44,7 @@ namespace MenthaAssembly.Devices
             get
             {
                 List<ScreenInfo> Result = new List<ScreenInfo>();
-                bool Callback(IntPtr pScreen, IntPtr hdc, ref Int32Bound prect, int d)
+                bool Callback(IntPtr pScreen, IntPtr hdc, Bound<int>* prect, int d)
                 {
                     MonitorInfo Info = new MonitorInfo();
                     Info.cbSize = Marshal.SizeOf(Info);
@@ -64,8 +64,8 @@ namespace MenthaAssembly.Devices
         {
             get
             {
-                Int32Point Position = GlobalMouse.Position;
-                IntPtr pScreen = MonitorFromPoint(Position, MonitorOptions.Monitor_DefaultToNearest);
+                Point<int> Position = GlobalMouse.Position;
+                IntPtr pScreen = MonitorFromPoint(&Position, MonitorOptions.Monitor_DefaultToNearest);
 
                 MonitorInfo Info = new MonitorInfo();
                 Info.cbSize = Marshal.SizeOf(Info);

@@ -14,7 +14,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public int Count => Datas.Count;
 
-        public Int32Bound Bound
+        public Bound<int> Bound
         {
             get
             {
@@ -28,7 +28,7 @@ namespace MenthaAssembly.Media.Imaging
                         while (Value.Count == 0)
                         {
                             if (!Enumerator.MoveNext())
-                                return Int32Bound.Empty;
+                                return Bound<int>.Empty;
 
                             Key = Enumerator.Current.Key;
                             Value = Enumerator.Current.Value;
@@ -47,10 +47,10 @@ namespace MenthaAssembly.Media.Imaging
                             Bottom = Enumerator.Current.Key;
                         }
 
-                        return new Int32Bound(Left, Top, Right, Bottom);
+                        return new Bound<int>(Left, Top, Right, Bottom);
                     }
 
-                    return Int32Bound.Empty;
+                    return Bound<int>.Empty;
                 }
                 finally
                 {
@@ -111,7 +111,7 @@ namespace MenthaAssembly.Media.Imaging
             // Horizontal
             if ((Mode & FlipMode.Horizontal) > 0)
             {
-                Int32Bound Bound = this.Bound;
+                Bound<int> Bound = this.Bound;
                 int Delta = Bound.Left + Bound.Right;
                 foreach (KeyValuePair<int, ContourData> Data in Datas)
                 {
@@ -133,7 +133,7 @@ namespace MenthaAssembly.Media.Imaging
                 KeyValuePair<int, ContourData>[] TempDatas = Datas.ToArray();
                 Datas.Clear();
 
-                Int32Bound Bound = this.Bound;
+                Bound<int> Bound = this.Bound;
                 int Delta = Bound.Top + Bound.Bottom;
                 foreach (KeyValuePair<int, ContourData> Data in TempDatas)
                     Datas.Add(Delta - Data.Key, Data.Value);
@@ -812,7 +812,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateLineContour(int X0, int Y0, int X1, int Y1, ImageContour Pen)
         {
-            Int32Bound Bound = Pen.Bound;
+            Bound<int> Bound = Pen.Bound;
             if (Bound.IsEmpty)
                 return null;
 

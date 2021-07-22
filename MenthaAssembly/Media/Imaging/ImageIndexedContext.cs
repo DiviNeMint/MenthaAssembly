@@ -177,7 +177,7 @@ namespace MenthaAssembly.Media.Imaging
         #region Line Rendering
 
         #region Line
-        public void DrawLine(Int32Point P0, Int32Point P1, Pixel Color)
+        public void DrawLine(Point<int> P0, Point<int> P1, Pixel Color)
             => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Color);
         public void DrawLine(int X0, int Y0, int X1, int Y1, Pixel Color)
         {
@@ -253,7 +253,7 @@ namespace MenthaAssembly.Media.Imaging
 
             #endregion
         }
-        public void DrawLine(Int32Point P0, Int32Point P1, IImageContext Pen)
+        public void DrawLine(Point<int> P0, Point<int> P1, IImageContext Pen)
             => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Pen);
         public void DrawLine(int X0, int Y0, int X1, int Y1, IImageContext Pen)
         {
@@ -265,11 +265,11 @@ namespace MenthaAssembly.Media.Imaging
 
             GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, Math.Abs(DeltaX), Math.Abs(DeltaY), (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen));
         }
-        public void DrawLine(Int32Point P0, Int32Point P1, ImageContour Contour, Pixel Fill)
+        public void DrawLine(Point<int> P0, Point<int> P1, ImageContour Contour, Pixel Fill)
             => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, Fill);
         public void DrawLine(int X0, int Y0, int X1, int Y1, ImageContour Contour, Pixel Fill)
         {
-            Int32Bound Bound = Contour.Bound;
+            Bound<int> Bound = Contour.Bound;
             if (Bound.IsEmpty)
                 return;
 
@@ -501,22 +501,22 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        void IImageContext.DrawLine(Int32Point P0, Int32Point P1, IPixel Color)
+        void IImageContext.DrawLine(Point<int> P0, Point<int> P1, IPixel Color)
             => this.DrawLine(P0.X, P0.Y, P1.X, P1.Y, Color.ToPixel<Pixel>());
         void IImageContext.DrawLine(int X0, int Y0, int X1, int Y1, IPixel Color)
             => this.DrawLine(X0, Y0, X1, Y1, Color.ToPixel<Pixel>());
-        void IImageContext.DrawLine(Int32Point P0, Int32Point P1, IImageContext Pen)
+        void IImageContext.DrawLine(Point<int> P0, Point<int> P1, IImageContext Pen)
             => this.DrawLine(P0.X, P0.Y, P1.X, P1.Y, Pen);
         void IImageContext.DrawLine(int X0, int Y0, int X1, int Y1, IImageContext Pen)
             => this.DrawLine(X0, Y0, X1, Y1, Pen);
-        void IImageContext.DrawLine(Int32Point P0, Int32Point P1, ImageContour Contour, IPixel Fill)
+        void IImageContext.DrawLine(Point<int> P0, Point<int> P1, ImageContour Contour, IPixel Fill)
             => this.DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, Fill.ToPixel<Pixel>());
         void IImageContext.DrawLine(int X0, int Y0, int X1, int Y1, ImageContour Contour, IPixel Fill)
             => this.DrawLine(X0, Y0, X1, Y1, Contour, Fill.ToPixel<Pixel>());
         #endregion
 
         #region Arc
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, Pixel Color)
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, Pixel Color)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Color);
         public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, Pixel Color)
             => GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy,
@@ -524,7 +524,7 @@ namespace MenthaAssembly.Media.Imaging
                                                       Rx, Ry,
                                                       Clockwise,
                                                       (Dx, Dy) => this.Operator.SetPixel(Cx + Dx, Cy + Dy, Color));
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
         public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
         {
@@ -534,12 +534,12 @@ namespace MenthaAssembly.Media.Imaging
             GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
                 (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen));
         }
-        public void DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill)
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, Fill);
         public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill)
         {
             ImageContour ArcContour = new ImageContour();
-            Int32Bound Bound = Contour.Bound;
+            Bound<int> Bound = Contour.Bound;
 
             if (Bound.IsEmpty)
                 return;
@@ -672,15 +672,15 @@ namespace MenthaAssembly.Media.Imaging
             this.Operator.ContourOverlay(ArcContour, Fill, 0, 0);
         }
 
-        void IImageContext.DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IPixel Color)
+        void IImageContext.DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IPixel Color)
             => this.DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Color.ToPixel<Pixel>());
         void IImageContext.DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IPixel Color)
             => this.DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Color.ToPixel<Pixel>());
-        void IImageContext.DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
+        void IImageContext.DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
             => this.DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
         void IImageContext.DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
             => this.DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Pen);
-        void IImageContext.DrawArc(Int32Point Start, Int32Point End, Int32Point Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, IPixel Fill)
+        void IImageContext.DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, IPixel Fill)
             => this.DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, Fill.ToPixel<Pixel>());
         void IImageContext.DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, IPixel Fill)
             => this.DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Contour, Fill.ToPixel<Pixel>());
@@ -719,7 +719,7 @@ namespace MenthaAssembly.Media.Imaging
                                                    Tension,
                                                    DrawHandler);
         }
-        public void DrawCurve(IList<Int32Point> Points, float Tension, Pixel Color)
+        public void DrawCurve(IList<Point<int>> Points, float Tension, Pixel Color)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
@@ -781,7 +781,7 @@ namespace MenthaAssembly.Media.Imaging
                                                    Tension,
                                                    DrawHandler);
         }
-        public void DrawCurve(IList<Int32Point> Points, float Tension, IImageContext Pen)
+        public void DrawCurve(IList<Point<int>> Points, float Tension, IImageContext Pen)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Pen);
@@ -843,7 +843,7 @@ namespace MenthaAssembly.Media.Imaging
                                                    Tension,
                                                    DrawHandler);
         }
-        public void DrawCurve(IList<Int32Point> Points, float Tension, ImageContour Contour, Pixel Fill)
+        public void DrawCurve(IList<Point<int>> Points, float Tension, ImageContour Contour, Pixel Fill)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
@@ -877,11 +877,11 @@ namespace MenthaAssembly.Media.Imaging
 
         void IImageContext.DrawCurve(IList<int> Points, float Tension, IPixel Color)
             => this.DrawCurve(Points, Tension, Color.ToPixel<Pixel>());
-        void IImageContext.DrawCurve(IList<Int32Point> Points, float Tension, IPixel Color)
+        void IImageContext.DrawCurve(IList<Point<int>> Points, float Tension, IPixel Color)
             => this.DrawCurve(Points, Tension, Color.ToPixel<Pixel>());
         void IImageContext.DrawCurve(IList<int> Points, float Tension, ImageContour Contour, IPixel Fill)
             => this.DrawCurve(Points, Tension, Contour, Fill.ToPixel<Pixel>());
-        void IImageContext.DrawCurve(IList<Int32Point> Points, float Tension, ImageContour Contour, IPixel Fill)
+        void IImageContext.DrawCurve(IList<Point<int>> Points, float Tension, ImageContour Contour, IPixel Fill)
             => this.DrawCurve(Points, Tension, Contour, Fill.ToPixel<Pixel>());
 
         public void DrawCurveClosed(IList<int> Points, float Tension, Pixel Color)
@@ -927,7 +927,7 @@ namespace MenthaAssembly.Media.Imaging
                                                    Tension,
                                                    DrawHandler);
         }
-        public void DrawCurveClosed(IList<Int32Point> Points, float Tension, Pixel Color)
+        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, Pixel Color)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
@@ -1012,7 +1012,7 @@ namespace MenthaAssembly.Media.Imaging
                                                    Tension,
                                                    DrawHandler);
         }
-        public void DrawCurveClosed(IList<Int32Point> Points, float Tension, IImageContext Pen)
+        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, IImageContext Pen)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Pen);
@@ -1097,7 +1097,7 @@ namespace MenthaAssembly.Media.Imaging
                                                    Tension,
                                                    DrawHandler);
         }
-        public void DrawCurveClosed(IList<Int32Point> Points, float Tension, ImageContour Contour, Pixel Fill)
+        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, ImageContour Contour, Pixel Fill)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
@@ -1142,11 +1142,11 @@ namespace MenthaAssembly.Media.Imaging
 
         void IImageContext.DrawCurveClosed(IList<int> Points, float Tension, IPixel Color)
             => this.DrawCurveClosed(Points, Tension, Color.ToPixel<Pixel>());
-        void IImageContext.DrawCurveClosed(IList<Int32Point> Points, float Tension, IPixel Color)
+        void IImageContext.DrawCurveClosed(IList<Point<int>> Points, float Tension, IPixel Color)
             => this.DrawCurveClosed(Points, Tension, Color.ToPixel<Pixel>());
         void IImageContext.DrawCurveClosed(IList<int> Points, float Tension, ImageContour Contour, IPixel Fill)
             => this.DrawCurveClosed(Points, Tension, Contour, Fill.ToPixel<Pixel>());
-        void IImageContext.DrawCurveClosed(IList<Int32Point> Points, float Tension, ImageContour Contour, IPixel Fill)
+        void IImageContext.DrawCurveClosed(IList<Point<int>> Points, float Tension, ImageContour Contour, IPixel Fill)
             => this.DrawCurveClosed(Points, Tension, Contour, Fill.ToPixel<Pixel>());
 
         #endregion
@@ -1393,7 +1393,7 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(X2, Y2, X3, Y3, Color);
             DrawLine(X3, Y3, X1, Y1, Color);
         }
-        public void DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, Pixel Color)
+        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, Pixel Color)
         {
             DrawLine(P1.X, P1.Y, P2.X, P2.Y, Color);
             DrawLine(P2.X, P2.Y, P3.X, P3.Y, Color);
@@ -1405,7 +1405,7 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(X2, Y2, X3, Y3, Pen);
             DrawLine(X3, Y3, X1, Y1, Pen);
         }
-        public void DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, IImageContext Pen)
+        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, IImageContext Pen)
         {
             DrawLine(P1.X, P1.Y, P2.X, P2.Y, Pen);
             DrawLine(P2.X, P2.Y, P3.X, P3.Y, Pen);
@@ -1417,7 +1417,7 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(X2, Y2, X3, Y3, Contour, Fill);
             DrawLine(X3, Y3, X1, Y1, Contour, Fill);
         }
-        public void DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, ImageContour Contour, Pixel Fill)
+        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, Pixel Fill)
         {
             DrawLine(P1.X, P1.Y, P2.X, P2.Y, Contour, Fill);
             DrawLine(P2.X, P2.Y, P3.X, P3.Y, Contour, Fill);
@@ -1426,11 +1426,11 @@ namespace MenthaAssembly.Media.Imaging
 
         void IImageContext.DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, IPixel Color)
             => this.DrawTriangle(X1, Y1, X2, Y2, X3, Y3, Color.ToPixel<Pixel>());
-        void IImageContext.DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, IPixel Color)
+        void IImageContext.DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, IPixel Color)
             => this.DrawTriangle(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, Color.ToPixel<Pixel>());
         void IImageContext.DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, ImageContour Contour, IPixel Fill)
             => this.DrawTriangle(X1, Y1, X2, Y2, X3, Y3, Contour, Fill.ToPixel<Pixel>());
-        void IImageContext.DrawTriangle(Int32Point P1, Int32Point P2, Int32Point P3, ImageContour Contour, IPixel Fill)
+        void IImageContext.DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, IPixel Fill)
             => this.DrawTriangle(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, Contour, Fill.ToPixel<Pixel>());
 
         #endregion
@@ -1454,7 +1454,7 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(L, T, L, B, Color);
             DrawLine(R, T, R, B, Color);
         }
-        public void DrawRectangle(Int32Point P1, Int32Point P2, Pixel Color)
+        public void DrawRectangle(Point<int> P1, Point<int> P2, Pixel Color)
             => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Color);
         public void DrawRectangle(int X1, int Y1, int X2, int Y2, IImageContext Pen)
         {
@@ -1474,7 +1474,7 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(L, T, L, B, Pen);
             DrawLine(R, T, R, B, Pen);
         }
-        public void DrawRectangle(Int32Point P1, Int32Point P2, IImageContext Pen)
+        public void DrawRectangle(Point<int> P1, Point<int> P2, IImageContext Pen)
             => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Pen);
         public void DrawRectangle(int X1, int Y1, int X2, int Y2, ImageContour Contour, Pixel Fill)
         {
@@ -1494,16 +1494,16 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(L, T, L, B, Contour, Fill);
             DrawLine(R, T, R, B, Contour, Fill);
         }
-        public void DrawRectangle(Int32Point P1, Int32Point P2, ImageContour Contour, Pixel Fill)
+        public void DrawRectangle(Point<int> P1, Point<int> P2, ImageContour Contour, Pixel Fill)
             => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Contour, Fill);
 
         void IImageContext.DrawRectangle(int X1, int Y1, int X2, int Y2, IPixel Color)
             => this.DrawRectangle(X1, Y1, X2, Y2, Color.ToPixel<Pixel>());
-        void IImageContext.DrawRectangle(Int32Point P1, Int32Point P2, IPixel Color)
+        void IImageContext.DrawRectangle(Point<int> P1, Point<int> P2, IPixel Color)
             => this.DrawRectangle(P1, P2, Color.ToPixel<Pixel>());
         void IImageContext.DrawRectangle(int X1, int Y1, int X2, int Y2, ImageContour Contour, IPixel Fill)
             => this.DrawRectangle(X1, Y1, X2, Y2, Contour, Fill.ToPixel<Pixel>());
-        void IImageContext.DrawRectangle(Int32Point P1, Int32Point P2, ImageContour Contour, IPixel Fill)
+        void IImageContext.DrawRectangle(Point<int> P1, Point<int> P2, ImageContour Contour, IPixel Fill)
             => this.DrawRectangle(P1, P2, Contour, Fill.ToPixel<Pixel>());
 
         #endregion
@@ -1516,7 +1516,7 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(X3, Y3, X4, Y4, Color);
             DrawLine(X4, Y4, X1, Y1, Color);
         }
-        public void DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, Pixel Color)
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, Pixel Color)
             => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Color);
         public void DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, IImageContext Pen)
         {
@@ -1525,7 +1525,7 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(X3, Y3, X4, Y4, Pen);
             DrawLine(X4, Y4, X1, Y1, Pen);
         }
-        public void DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, IImageContext Pen)
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IImageContext Pen)
             => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Pen);
         public void DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, ImageContour Contour, Pixel Fill)
         {
@@ -1534,40 +1534,40 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(X3, Y3, X4, Y4, Contour, Fill);
             DrawLine(X4, Y4, X1, Y1, Contour, Fill);
         }
-        public void DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, ImageContour Contour, Pixel Fill)
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, Pixel Fill)
             => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Contour, Fill);
 
         void IImageContext.DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, IPixel Color)
             => this.DrawQuad(X1, Y1, X2, Y2, X3, Y3, X4, Y4, Color.ToPixel<Pixel>());
-        void IImageContext.DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, IPixel Color)
+        void IImageContext.DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IPixel Color)
             => this.DrawQuad(P1, P2, P3, P4, Color.ToPixel<Pixel>());
         void IImageContext.DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, ImageContour Contour, IPixel Fill)
             => this.DrawQuad(X1, Y1, X2, Y2, X3, Y3, X4, Y4, Contour, Fill.ToPixel<Pixel>());
-        void IImageContext.DrawQuad(Int32Point P1, Int32Point P2, Int32Point P3, Int32Point P4, ImageContour Contour, IPixel Fill)
+        void IImageContext.DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, IPixel Fill)
             => this.DrawQuad(P1, P2, P3, P4, Contour, Fill.ToPixel<Pixel>());
 
         #endregion
 
         #region Ellipse
-        public void DrawEllipse(Int32Bound Bound, Pixel Color)
+        public void DrawEllipse(Bound<int> Bound, Pixel Color)
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
             DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Color);
         }
-        public void DrawEllipse(Int32Point Center, int Rx, int Ry, Pixel Color)
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, Pixel Color)
             => DrawEllipse(Center.X, Center.Y, Rx, Ry, Color);
         public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, Pixel Color)
             => GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => this.Operator.SetPixel(Cx + Dx, Cy + Dy, Color));
-        public void DrawEllipse(Int32Bound Bound, IImageContext Pen)
+        public void DrawEllipse(Bound<int> Bound, IImageContext Pen)
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
             DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Pen);
         }
-        public void DrawEllipse(Int32Point Center, int Rx, int Ry, IImageContext Pen)
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, IImageContext Pen)
             => DrawEllipse(Center.X, Center.Y, Rx, Ry, Pen);
         public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen)
         {
@@ -1576,20 +1576,20 @@ namespace MenthaAssembly.Media.Imaging
 
             GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen));
         }
-        public void DrawEllipse(Int32Bound Bound, ImageContour Contour, Pixel Fill)
+        public void DrawEllipse(Bound<int> Bound, ImageContour Contour, Pixel Fill)
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
             DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Contour, Fill);
         }
-        public void DrawEllipse(Int32Point Center, int Rx, int Ry, ImageContour Contour, Pixel Fill)
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, ImageContour Contour, Pixel Fill)
             => DrawEllipse(Center.X, Center.Y, Rx, Ry, Contour, Fill);
         public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, Pixel Fill)
         {
             ImageContour EllipseContour = new ImageContour();
 
-            Int32Bound Bound = Contour.Bound;
+            Bound<int> Bound = Contour.Bound;
             ImageContour Stroke = ImageContour.Offset(Contour, Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
 
             int LastDx = 0,
@@ -1607,37 +1607,37 @@ namespace MenthaAssembly.Media.Imaging
             this.Operator.ContourOverlay(EllipseContour, Fill, 0, 0);
         }
 
-        void IImageContext.DrawEllipse(Int32Bound Bound, IPixel Color)
+        void IImageContext.DrawEllipse(Bound<int> Bound, IPixel Color)
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
             this.DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Color.ToPixel<Pixel>());
         }
-        void IImageContext.DrawEllipse(Int32Point Center, int Rx, int Ry, IPixel Color)
+        void IImageContext.DrawEllipse(Point<int> Center, int Rx, int Ry, IPixel Color)
             => this.DrawEllipse(Center.X, Center.Y, Rx, Ry, Color.ToPixel<Pixel>());
         void IImageContext.DrawEllipse(int Cx, int Cy, int Rx, int Ry, IPixel Color)
             => this.DrawEllipse(Cx, Cy, Rx, Ry, Color.ToPixel<Pixel>());
-        void IImageContext.DrawEllipse(Int32Bound Bound, ImageContour Contour, IPixel Fill)
+        void IImageContext.DrawEllipse(Bound<int> Bound, ImageContour Contour, IPixel Fill)
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
             this.DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Contour, Fill.ToPixel<Pixel>());
         }
-        void IImageContext.DrawEllipse(Int32Point Center, int Rx, int Ry, ImageContour Contour, IPixel Fill)
+        void IImageContext.DrawEllipse(Point<int> Center, int Rx, int Ry, ImageContour Contour, IPixel Fill)
             => this.DrawEllipse(Center.X, Center.Y, Rx, Ry, Contour, Fill.ToPixel<Pixel>());
         void IImageContext.DrawEllipse(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, IPixel Fill)
             => this.DrawEllipse(Cx, Cy, Rx, Ry, Contour, Fill.ToPixel<Pixel>());
 
-        public void FillEllipse(Int32Bound Bound, Pixel Fill)
+        public void FillEllipse(Bound<int> Bound, Pixel Fill)
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
             FillEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Fill);
         }
-        public void FillEllipse(Int32Point Center, int Rx, int Ry, Pixel Fill)
+        public void FillEllipse(Point<int> Center, int Rx, int Ry, Pixel Fill)
             => FillEllipse(Center.X, Center.Y, Rx, Ry, Fill);
         public void FillEllipse(int Cx, int Cy, int Rx, int Ry, Pixel Fill)
         {
@@ -1795,14 +1795,14 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        void IImageContext.FillEllipse(Int32Bound Bound, IPixel Fill)
+        void IImageContext.FillEllipse(Bound<int> Bound, IPixel Fill)
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
             this.FillEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Fill.ToPixel<Pixel>());
         }
-        void IImageContext.FillEllipse(Int32Point Center, int Rx, int Ry, IPixel Fill)
+        void IImageContext.FillEllipse(Point<int> Center, int Rx, int Ry, IPixel Fill)
             => this.FillEllipse(Center.X, Center.Y, Rx, Ry, Fill.ToPixel<Pixel>());
         void IImageContext.FillEllipse(int Cx, int Cy, int Rx, int Ry, IPixel Fill)
             => this.FillEllipse(Cx, Cy, Rx, Ry, Fill.ToPixel<Pixel>());
@@ -1810,7 +1810,7 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region Polygon
-        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, Pixel Color, double StartAngle = 0d)
+        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, Pixel Color, double StartAngle = 0d)
             => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Color, StartAngle);
         public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, Pixel Color, double StartAngle = 0d)
         {
@@ -1839,7 +1839,7 @@ namespace MenthaAssembly.Media.Imaging
 
             DrawLine(LastPx, LastPy, P0x, P0y, Color);
         }
-        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, IImageContext Pen, double StartAngle = 0d)
+        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, IImageContext Pen, double StartAngle = 0d)
             => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Pen, StartAngle);
         public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IImageContext Pen, double StartAngle = 0d)
         {
@@ -1868,7 +1868,7 @@ namespace MenthaAssembly.Media.Imaging
 
             DrawLine(LastPx, LastPy, P0x, P0y, Pen);
         }
-        public void DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, ImageContour Contour, Pixel Fill, double StartAngle = 0d)
+        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, Pixel Fill, double StartAngle = 0d)
             => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Contour, Fill, StartAngle);
         public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, Pixel Fill, double StartAngle = 0d)
         {
@@ -1898,16 +1898,16 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(LastPx, LastPy, P0x, P0y, Contour, Fill);
         }
 
-        void IImageContext.DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, IPixel Color, double StartAngle)
+        void IImageContext.DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, IPixel Color, double StartAngle)
             => this.DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Color.ToPixel<Pixel>(), StartAngle);
         void IImageContext.DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IPixel Color, double StartAngle)
             => this.DrawRegularPolygon(Cx, Cy, Radius, VertexNum, Color.ToPixel<Pixel>(), StartAngle);
-        void IImageContext.DrawRegularPolygon(Int32Point Center, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle)
+        void IImageContext.DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle)
             => this.DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Contour, Fill.ToPixel<Pixel>(), StartAngle);
         void IImageContext.DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle)
             => this.DrawRegularPolygon(Cx, Cy, Radius, VertexNum, Contour, Fill.ToPixel<Pixel>(), StartAngle);
 
-        public void FillPolygon(IList<Int32Point> Vertices, Pixel Fill, int OffsetX, int OffsetY)
+        public void FillPolygon(IList<Point<int>> Vertices, Pixel Fill, int OffsetX, int OffsetY)
         {
             int Length = Vertices.Count;
             int[] intersectionsX = new int[Length];
@@ -1933,7 +1933,7 @@ namespace MenthaAssembly.Media.Imaging
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                Int32Point P0 = Vertices[0];
+                Point<int> P0 = Vertices[0];
                 float vxi = P0.X + OffsetX,
                       vyi = P0.Y + OffsetY;
 
@@ -1943,7 +1943,7 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 1; i < Length; i++)
                 {
                     // Next point x, y
-                    Int32Point P1 = Vertices[i];
+                    Point<int> P1 = Vertices[i];
                     float vxj = P1.X + OffsetX,
                           vyj = P1.Y + OffsetY;
 
@@ -2082,7 +2082,7 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        void IImageContext.FillPolygon(IList<Int32Point> Vertices, IPixel Fill, int OffsetX, int OffsetY)
+        void IImageContext.FillPolygon(IList<Point<int>> Vertices, IPixel Fill, int OffsetX, int OffsetY)
             => this.FillPolygon(Vertices, Fill.ToPixel<Pixel>(), OffsetX, OffsetY);
         void IImageContext.FillPolygon(IList<int> VerticeDatas, IPixel Fill, int OffsetX, int OffsetY)
             => this.FillPolygon(VerticeDatas, Fill.ToPixel<Pixel>(), OffsetX, OffsetY);
@@ -2090,7 +2090,7 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region Other
-        public void DrawStamp(Int32Point Position, IImageContext Stamp)
+        public void DrawStamp(Point<int> Position, IImageContext Stamp)
             => DrawStamp(Position.X, Position.Y, Stamp);
         public void DrawStamp(int X, int Y, IImageContext Stamp)
         {
@@ -2128,7 +2128,7 @@ namespace MenthaAssembly.Media.Imaging
         void IImageContext.FillContour(ImageContour Contour, IPixel Fill, int OffsetX, int OffsetY)
             => this.FillContour(Contour, Fill.ToPixel<Pixel>(), OffsetX, OffsetY);
 
-        public void SeedFill(Int32Point SeedPoint, Pixel Fill, ImagePredicate Predicate)
+        public void SeedFill(Point<int> SeedPoint, Pixel Fill, ImagePredicate Predicate)
             => SeedFill(SeedPoint.X, SeedPoint.Y, Fill, Predicate);
         public void SeedFill(int SeedX, int SeedY, Pixel Fill, ImagePredicate Predicate)
         {
@@ -2139,7 +2139,7 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        void IImageContext.SeedFill(Int32Point SeedPoint, IPixel Fill, ImagePredicate Predicate)
+        void IImageContext.SeedFill(Point<int> SeedPoint, IPixel Fill, ImagePredicate Predicate)
             => this.SeedFill(SeedPoint.X, SeedPoint.Y, Fill.ToPixel<Pixel>(), Predicate);
         void IImageContext.SeedFill(int SeedX, int SeedY, IPixel Fill, ImagePredicate Predicate)
             => this.SeedFill(SeedX, SeedY, Fill.ToPixel<Pixel>(), Predicate);

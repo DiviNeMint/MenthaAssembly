@@ -4,7 +4,7 @@ using static MenthaAssembly.Devices.Screen;
 
 namespace MenthaAssembly.Devices
 {
-    public class ScreenInfo
+    public unsafe class ScreenInfo
     {
         #region Windows API
         [DllImport("Shcore.dll")]
@@ -29,7 +29,7 @@ namespace MenthaAssembly.Devices
                 bool Success = false;
 
                 int Counter = 0;
-                bool Callback(IntPtr pScreen, IntPtr hdc, ref Int32Bound prect, int d)
+                bool Callback(IntPtr pScreen, IntPtr hdc, Bound<int>* prect, int d)
                 {
                     Success = this.pScreen == pScreen;
                     if (Success)
@@ -48,9 +48,9 @@ namespace MenthaAssembly.Devices
 
         public bool IsPrimary { get; }
 
-        public Int32Bound Bound { get; }
+        public Bound<int> Bound { get; }
 
-        public Int32Bound WorkArea { get; }
+        public Bound<int> WorkArea { get; }
 
         public uint _DpiX;
         public uint DpiX

@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 
 namespace MenthaAssembly
 {
+    [Serializable]
     public struct Size<T> : ICloneable
         where T : struct
     {
@@ -46,12 +47,12 @@ namespace MenthaAssembly
         private static readonly Func<T, T, bool> Equal;
         static Size()
         {
-            Mul = ExpressionHelper.CreateMultiply<T>();
-            Div = ExpressionHelper.CreateDivide<T>();
+            Mul = ExpressionHelper<T>.CreateMul();
+            Div = ExpressionHelper<T>.CreateDiv();
 
-            IsDefault = ExpressionHelper.CreateIsDefault<T>();
+            IsDefault = ExpressionHelper<T>.CreateIsDefault();
 
-            Equal = ExpressionHelper.CreateEqual<T>();
+            Equal = ExpressionHelper<T>.CreateEqual();
         }
 
         public static Size<T> operator *(Size<T> This, T Factor)

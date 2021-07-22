@@ -11,9 +11,9 @@ namespace MenthaAssembly.Win32
         public int cbSize;
         public WindowPlacementFlags flags;
         public WindowShowType showCmd;
-        public Int32Point ptMinPosition;
-        public Int32Point ptMaxPosition;
-        public Int32Bound rcNormalPosition;
-        public Int32Bound rcDevice;
+        public Point<int> ptMinPosition;
+        public Point<int> ptMaxPosition;
+        public Bound<int> rcNormalPosition;
+        public Bound<int> rcDevice;
     }
 }

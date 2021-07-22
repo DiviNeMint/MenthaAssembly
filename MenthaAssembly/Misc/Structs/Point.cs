@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 
 namespace MenthaAssembly
 {
+    [Serializable]
     public struct Point<T> : ICloneable
         where T : struct
     {
@@ -56,18 +57,17 @@ namespace MenthaAssembly
         private static readonly Func<double, T> ToGeneric;
         static Point()
         {
-            Neg = ExpressionHelper.CreateNegate<T>();
+            Neg = ExpressionHelper<T>.CreateNeg();
 
-            Sub = ExpressionHelper.CreateSubtract<T>();
-            Mul = ExpressionHelper.CreateMultiply<T>();
-            Div = ExpressionHelper.CreateDivide<T>();
+            Sub = ExpressionHelper<T>.CreateSub();
+            Mul = ExpressionHelper<T>.CreateMul();
+            Div = ExpressionHelper<T>.CreateDiv();
 
-            IsDefault = ExpressionHelper.CreateIsDefault<T>();
+            IsDefault = ExpressionHelper<T>.CreateIsDefault();
+            Equal = ExpressionHelper<T>.CreateEqual();
 
-            Equal = ExpressionHelper.CreateEqual<T>();
-
-            ToDouble = ExpressionHelper.CreateCast<T, double>();
-            ToGeneric = ExpressionHelper.CreateCast<double, T>();
+            ToDouble = ExpressionHelper<T>.CreateCast<double>();
+            ToGeneric = ExpressionHelper<double>.CreateCast<T>();
         }
 
         public static Point<T> Rotate(Point<T> Point, Point<T> OriginalPoint, double Theta)

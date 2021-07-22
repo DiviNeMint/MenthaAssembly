@@ -8,7 +8,7 @@ using static MenthaAssembly.Win32.System;
 
 namespace MenthaAssembly.Win32.Primitives
 {
-    public class ToolbarWindow32
+    public unsafe class ToolbarWindow32
     {
         public IntPtr Handle { get; }
 
@@ -24,13 +24,17 @@ namespace MenthaAssembly.Win32.Primitives
             }
         }
 
-        private Int32Bound _Bound;
-        public Int32Bound Bound
+        private Bound<int> _Bound;
+        public Bound<int> Bound
         {
             get
             {
                 if (_Bound.IsEmpty)
-                    GetWindowRect(Handle, out _Bound);
+                {
+                    Bound<int> TBound;
+                    GetWindowRect(Handle, &TBound);
+                    _Bound = TBound;
+                }
 
                 return _Bound;
             }
@@ -128,14 +132,14 @@ namespace MenthaAssembly.Win32.Primitives
                     Debug.Assert(false);
 
                 // Bound
-                Int32Bound Bound = new Int32Bound();
+                Bound<int> Bound = new Bound<int>();
                 IntPtr pBound = (IntPtr)(&Bound);
                 if (SendMessage(Handle, Win32Messages.TB_GetItemRect, (IntPtr)Index, ipRemoteBuffer) == -1)
                 {
                     Debug.Assert(false);
                     return null;
                 }
-                if (!ReadProcessMemory(hProcess, ipRemoteBuffer, pBound, sizeof(Int32Bound), out _))
+                if (!ReadProcessMemory(hProcess, ipRemoteBuffer, pBound, sizeof(Bound<int>), out _))
                     Debug.Assert(false);
 
                 if (Bound.Left < 0 || Bound.Top < 0)
@@ -241,14 +245,14 @@ namespace MenthaAssembly.Win32.Primitives
                     Debug.Assert(false);
 
                 // Bound
-                Int32Bound Bound = new Int32Bound();
+                Bound<int> Bound = new Bound<int>();
                 IntPtr pBound = (IntPtr)(&Bound);
                 if (SendMessage(Handle, Win32Messages.TB_GetItemRect, (IntPtr)Index, ipRemoteBuffer) == -1)
                 {
                     Debug.Assert(false);
                     return null;
                 }
-                if (!ReadProcessMemory(hProcess, ipRemoteBuffer, pBound, sizeof(Int32Bound), out _))
+                if (!ReadProcessMemory(hProcess, ipRemoteBuffer, pBound, sizeof(Bound<int>), out _))
                     Debug.Assert(false);
 
                 if (Bound.Left < 0 || Bound.Top < 0)

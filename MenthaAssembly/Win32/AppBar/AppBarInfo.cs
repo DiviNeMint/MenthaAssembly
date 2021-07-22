@@ -10,7 +10,7 @@ namespace MenthaAssembly.Win32
 
         public Sides Side { get; }
 
-        public Int32Bound Bound { get; }
+        public Bound<int> Bound { get; }
 
         public bool AutoHide
         {

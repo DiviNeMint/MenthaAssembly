@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 
 namespace MenthaAssembly
 {
+    [Serializable]
     public struct Vector<T> : ICloneable
         where T : struct
     {
@@ -55,18 +56,17 @@ namespace MenthaAssembly
         private static readonly Func<T, double> CastDouble;
         static Vector()
         {
-            Neg = ExpressionHelper.CreateNegate<T>();
+            Neg = ExpressionHelper<T>.CreateNeg();
 
-            Add = ExpressionHelper.CreateAdd<T>();
-            Sub = ExpressionHelper.CreateSubtract<T>();
-            Mul = ExpressionHelper.CreateMultiply<T>();
-            Div = ExpressionHelper.CreateDivide<T>();
+            Add = ExpressionHelper<T>.CreateAdd();
+            Sub = ExpressionHelper<T>.CreateSub();
+            Mul = ExpressionHelper<T>.CreateMul();
+            Div = ExpressionHelper<T>.CreateDiv();
 
-            IsDefault = ExpressionHelper.CreateIsDefault<T>();
+            IsDefault = ExpressionHelper<T>.CreateIsDefault();
+            CastDouble = ExpressionHelper<T>.CreateCast<double>();
 
-            Equal = ExpressionHelper.CreateEqual<T>();
-
-            CastDouble = ExpressionHelper.CreateCast<T, double>();
+            Equal = ExpressionHelper<T>.CreateEqual();
         }
 
         public static double AngleBetween(Vector<T> A, Vector<T> B)

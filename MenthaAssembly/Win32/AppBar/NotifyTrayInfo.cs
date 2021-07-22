@@ -5,18 +5,19 @@ using static MenthaAssembly.Win32.Desktop;
 
 namespace MenthaAssembly.Win32
 {
-    public class NotifyTrayInfo
+    public unsafe class NotifyTrayInfo
     {
         public IntPtr Handle { get; }
 
-        public Int32Bound Bound
+        public Bound<int> Bound
         {
             get
             {
-                if (GetWindowRect(Handle, out Int32Bound Bound))
-                    return Bound;
+                Bound<int> TBound;
+                if (GetWindowRect(Handle, &TBound))
+                    return TBound;
 
-                return Int32Bound.Empty;
+                return Bound<int>.Empty;
             }
         }
 

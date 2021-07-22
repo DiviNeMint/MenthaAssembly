@@ -12,7 +12,7 @@ namespace MenthaAssembly.Win32
 
         public uint Uid { get; }
 
-        public Int32Bound Bound { get; }
+        public Bound<int> Bound { get; }
 
         public IntPtr HIcon { get; }
 
@@ -48,7 +48,7 @@ namespace MenthaAssembly.Win32
                     Uid = this.Uid
                 };
 
-                Shell_NotifyIconGetRect(ref Indentifier, out Int32Bound Bound);
+                Shell_NotifyIconGetRect(ref Indentifier, out Bound<int> Bound);
                 this.Bound = Bound;
             }
         }
