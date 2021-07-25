@@ -781,6 +781,27 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region Transform Processing
+
+        #region Rotate
+        /// <summary>
+        /// Creates a new rotated <see cref="ImageContext{T}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Angle">Arbitrary angle (positive = clockwise).</param>
+        /// <param name="Crop">if true: keep the size, false: adjust canvas to new size</param>
+        public ImageContext<T> Rotate<T>(double Angle, bool Crop) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Creates a new rotated <see cref="ImageContext{T}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Angle">Arbitrary angle (positive = clockwise).</param>
+        /// <param name="Crop">if true: keep the size, false: adjust canvas to new size</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T> Rotate<T>(double Angle, bool Crop, ParallelOptions Options) where T : unmanaged, IPixel;
+
+        #endregion
+
         #region Resize
         /// <summary>
         /// Creates a new resized <see cref="ImageContext{T}"/>.
@@ -896,27 +917,10 @@ namespace MenthaAssembly.Media.Imaging
         /// Creates a new filtered <see cref="ImageContext{T}"/>.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="Kernel"></param>
-        /// <param name="KernelFactorSum"></param>
-        /// <param name="KernelOffsetSum"></param>
-        public ImageContext<T> Convolute<T>(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum) where T : unmanaged, IPixel;
-
-        /// <summary>
-        /// Creates a new filtered <see cref="ImageContext{T,U}"/>.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <typeparam name="U"></typeparam>
         /// <param name="Kernel">The kernel used for convolution.</param>
-        public ImageContext<T, U> Convolute<T, U>(ConvoluteKernel Kernel) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
-        /// <summary>
-        /// Creates a new filtered <see cref="ImageContext{T,U}"/>.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <typeparam name="U"></typeparam>
-        /// <param name="Kernel">The kernel used for convolution.</param>
-        /// <param name="KernelFactorSum">The factor used for the kernel summing.</param>
-        /// <param name="KernelOffsetSum">The offset used for the kernel summing.</param>
-        public ImageContext<T, U> Convolute<T, U>(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel, ParallelOptions Options) where T : unmanaged, IPixel;
 
         #endregion
 
@@ -2474,6 +2478,24 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Transform Processing
 
+        #region Rotate
+        /// <summary>
+        /// Creates a new rotated <see cref="ImageContext{Pixel}"/>.
+        /// </summary>
+        /// <param name="Angle">Arbitrary angle (positive = clockwise).</param>
+        /// <param name="Crop">if true: keep the size, false: adjust canvas to new size</param>
+        public ImageContext<Pixel> Rotate(double Angle, bool Crop);
+        /// <summary>
+        /// Creates a new rotated <see cref="ImageContext{Pixel}"/>.
+        /// </summary>
+        /// <param name="Angle">Arbitrary angle (positive = clockwise).</param>
+        /// <param name="Crop">if true: keep the size, false: adjust canvas to new size</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<Pixel> Rotate(double Angle, bool Crop, ParallelOptions Options);
+
+        #endregion
+
         #region Resize
         /// <summary>
         /// Creates a new resized <see cref="ImageContext{Pixel}"/>.
@@ -2541,10 +2563,10 @@ namespace MenthaAssembly.Media.Imaging
         /// <summary>
         /// Creates a new filtered <see cref="ImageContext{Pixel}"/>.
         /// </summary>
-        /// <param name="Kernel"></param>
-        /// <param name="KernelFactorSum"></param>
-        /// <param name="KernelOffsetSum"></param>
-        public ImageContext<Pixel> Convolute(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum);
+        /// <param name="Kernel">The kernel used for convolution.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<Pixel> Convolute(ConvoluteKernel Kernel, ParallelOptions Options);
 
         #endregion
 

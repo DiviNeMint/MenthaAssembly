@@ -29,14 +29,23 @@
         public void ScanLineNearestResizeTo<T>(float FracX, float Step, int X, int Y, int Length, T* pDest) where T : unmanaged, IPixel;
         public void ScanLineNearestResizeTo(float FracX, float Step, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB);
         public void ScanLineNearestResizeTo(float FracX, float Step, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB);
+        public void ScanLineNearestResizeTo(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref byte* pDest);
+        public void ScanLineNearestResizeTo<T>(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref T* pDest) where T : unmanaged, IPixel;
 
         public void ScanLineBilinearResizeTo(float FracX, float FracY, float Step, int X, int Y, int Length, byte* pDest);
         public void ScanLineBilinearResizeTo<T>(float FracX, float FracY, float Step, int X, int Y, int Length, T* pDest) where T : unmanaged, IPixel;
         public void ScanLineBilinearResizeTo(float FracX, float FracY, float Step, int X, int Y, int Length, byte* pDestR, byte* pDestG, byte* pDestB);
         public void ScanLineBilinearResizeTo(float FracX, float FracY, float Step, int X, int Y, int Length, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB);
 
-        public void ScanLineNearestResizeTo(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref byte* pDest);
-        public void ScanLineNearestResizeTo<T>(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref T* pDest) where T : unmanaged, IPixel;
+        public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, byte* pDest);
+        public void ScanLineRotateTo<T>(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, T* pDest) where T : unmanaged, IPixel;
+        public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, byte* pDestR, byte* pDestG, byte* pDestB);
+        public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB);
+
+        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDest);
+        public void ScanLineConvolute<T>(int X, int Y, int Length, ConvoluteKernel Kernel, T* pDest) where T : unmanaged, IPixel;
+        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestR, byte* pDestG, byte* pDestB);
+        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB);
 
         public void ContourOverlay(ImageContour Contour, IPixel Color, int OffsetX, int OffsetY);
 

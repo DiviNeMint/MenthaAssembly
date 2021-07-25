@@ -280,6 +280,47 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
+        public void ScanLineNearestResizeTo(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref byte* pDest)
+        {
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            T* pPixels = (T*)((byte*)Context.Scan0 + Offset),
+               pDestPixel = (T*)pDest;
+
+            int Skip = sizeof(T);
+
+            while (X < Context.Width && (X < MaxX || (X == MaxX && FracX < MaxXFrac)))
+            {
+                *pDestPixel++ = *pPixels;
+                pDest += Skip;
+
+                FracX += Step;
+                while (FracX >= 1f)
+                {
+                    FracX -= 1f;
+                    pPixels++;
+                    X++;
+                }
+            }
+        }
+        public void ScanLineNearestResizeTo<T2>(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref T2* pDest)
+            where T2 : unmanaged, IPixel
+        {
+            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            T* pPixels = (T*)((byte*)Context.Scan0 + Offset);
+
+            while (X < Context.Width && (X < MaxX || (X == MaxX && FracX < MaxXFrac)))
+            {
+                pDest++->Override(pPixels->A, pPixels->R, pPixels->G, pPixels->B);
+
+                FracX += Step;
+                while (FracX >= 1f)
+                {
+                    FracX -= 1f;
+                    pPixels++;
+                    X++;
+                }
+            }
+        }
 
         public void ScanLineBilinearResizeTo(float FracX, float FracY, float Step, int X, int Y, int Length, byte* pDest)
             => ScanLineBilinearResizeTo(FracX, FracY, Step, X, Y, Length, (T*)pDest);
@@ -290,7 +331,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                  Offset = SourceStride * Y + ((X * Context.BitsPerPixel) >> 3);
             byte* pData0 = (byte*)Context.Scan0 + Offset;
             T* pPixels0 = (T*)pData0,
-               pPixels1 = (T*)(pData0 + SourceStride);
+               pPixels1 = Y + 1 < Context.Height ? (T*)(pData0 + SourceStride) : pPixels0;
 
             float IFracY = 1f - FracY;
             int SourceW = Context.Width;
@@ -339,7 +380,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                  Offset = SourceStride * Y + ((X * Context.BitsPerPixel) >> 3);
             byte* pData0 = (byte*)Context.Scan0 + Offset;
             T* pPixels0 = (T*)pData0,
-               pPixels1 = (T*)(pData0 + SourceStride);
+               pPixels1 = Y + 1 < Context.Height ? (T*)(pData0 + SourceStride) : pPixels0;
 
             float IFracY = 1f - FracY;
             int SourceW = Context.Width;
@@ -387,7 +428,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                  Offset = SourceStride * Y + ((X * Context.BitsPerPixel) >> 3);
             byte* pData0 = (byte*)Context.Scan0 + Offset;
             T* pPixels0 = (T*)pData0,
-               pPixels1 = (T*)(pData0 + SourceStride);
+               pPixels1 = Y + 1 < Context.Height ? (T*)(pData0 + SourceStride) : pPixels0;
 
             float IFracY = 1f - FracY;
             int SourceW = Context.Width;
@@ -431,45 +472,697 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public void ScanLineNearestResizeTo(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref byte* pDest)
+        public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, byte* pDest)
         {
-            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
-            T* pPixels = (T*)((byte*)Context.Scan0 + Offset),
-               pDestPixel = (T*)pDest;
+            T* pDestPixel = (T*)pDest;
+            byte* pScan0 = (byte*)Context.Scan0;
 
-            int Skip = sizeof(T);
+            FracX += X;
+            FracY += Y;
 
-            while (X < Context.Width && (X < MaxX || (X == MaxX && FracX < MaxXFrac)))
+            long Stride = Context.Stride;
+            int Wo = Context.Width,
+                Lo = Context.Height,
+                BitsPerPixel = Context.BitsPerPixel;
+            for (int i = 0; i < Length; i++)
             {
-                *pDestPixel++ = *pPixels;
-                pDest += Skip;
-
-                FracX += Step;
-                while (FracX >= 1f)
+                int a1 = (int)FracX,
+                    b1 = (int)FracY;
+                if (0 <= a1 & a1 < Wo & 0 <= b1 & b1 < Lo)
                 {
-                    FracX -= 1f;
-                    pPixels++;
-                    X++;
+                    byte* pData0 = pScan0 + Stride * b1 + ((a1 * BitsPerPixel) >> 3);
+
+                    int a2 = (int)Math.Ceiling(FracX),
+                        b3 = (int)Math.Ceiling(FracY);
+
+                    double xa13 = FracX - a1,
+                           xa24 = a2 - FracX,
+                           yb12 = FracY - b1,
+                           yb34 = b3 - FracY;
+                    T* pData = (T*)pData0;
+                    if (xa13 != 0 & xa24 != 0 & yb12 != 0 & yb34 != 0)
+                    {
+                        T p1 = *pData,
+                          p2, p3, p4;
+
+                        if (a2 > a1)
+                        {
+                            p2 = *++pData;
+                            if (b3 > b1)
+                            {
+                                pData = (T*)(pData0 + Context.Stride);
+                                p3 = *pData++;
+                                p4 = *pData;
+                            }
+                            else
+                            {
+                                p3 = p1;
+                                p4 = p2;
+                            }
+                        }
+                        else
+                        {
+                            p2 = p1;
+                            if (b3 > b1)
+                            {
+                                pData = (T*)(pData0 + Context.Stride);
+                                p3 = *pData;
+                                p4 = p3;
+                            }
+                            else
+                            {
+                                p3 = p1;
+                                p4 = p2;
+                            }
+                        }
+
+                        byte A = (byte)((p1.A * xa24 + p2.A * xa13) * yb34 + (p3.A * xa24 + p4.A * xa13) * yb12),
+                             R = (byte)((p1.R * xa24 + p2.R * xa13) * yb34 + (p3.R * xa24 + p4.R * xa13) * yb12),
+                             G = (byte)((p1.G * xa24 + p2.G * xa13) * yb34 + (p3.G * xa24 + p4.G * xa13) * yb12),
+                             B = (byte)((p1.B * xa24 + p2.B * xa13) * yb34 + (p3.B * xa24 + p4.B * xa13) * yb12);
+
+                        *pDestPixel++ = PixelHelper.ToPixel<T>(A, R, G, B);
+                    }
+                    else
+                    {
+                        *pDestPixel++ = *pData;
+                    }
                 }
+                else
+                {
+                    pDestPixel++;
+                }
+
+                FracX += Cos;
+                FracY -= Sin;
             }
         }
-        public void ScanLineNearestResizeTo<T2>(ref float FracX, float Step, ref int X, int MaxX, float MaxXFrac, int Y, ref T2* pDest) 
-            where T2 : unmanaged, IPixel
+        public void ScanLineRotateTo<T2>(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, T2* pDest) where T2 : unmanaged, IPixel
         {
-            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
-            T* pPixels = (T*)((byte*)Context.Scan0 + Offset);
+            byte* pScan0 = (byte*)Context.Scan0;
 
-            while (X < Context.Width && (X < MaxX || (X == MaxX && FracX < MaxXFrac)))
+            FracX += X;
+            FracY += Y;
+
+            long Stride = Context.Stride;
+            int Wo = Context.Width,
+                Lo = Context.Height,
+                BitsPerPixel = Context.BitsPerPixel;
+            for (int i = 0; i < Length; i++)
             {
-                pDest++->Override(pPixels->A, pPixels->R, pPixels->G, pPixels->B);
-
-                FracX += Step;
-                while (FracX >= 1f)
+                int a1 = (int)FracX,
+                    b1 = (int)FracY;
+                if (0 <= a1 & a1 < Wo & 0 <= b1 & b1 < Lo)
                 {
-                    FracX -= 1f;
-                    pPixels++;
-                    X++;
+                    byte* pData0 = pScan0 + Stride * b1 + ((a1 * BitsPerPixel) >> 3);
+
+                    int a2 = (int)Math.Ceiling(FracX),
+                        b3 = (int)Math.Ceiling(FracY);
+
+                    double xa13 = FracX - a1,
+                           xa24 = a2 - FracX,
+                           yb12 = FracY - b1,
+                           yb34 = b3 - FracY;
+                    T* pData = (T*)pData0;
+                    if (xa13 != 0 & xa24 != 0 & yb12 != 0 & yb34 != 0)
+                    {
+                        T p1 = *pData,
+                          p2, p3, p4;
+
+                        if (a2 > a1)
+                        {
+                            p2 = *++pData;
+                            if (b3 > b1)
+                            {
+                                pData = (T*)(pData0 + Stride);
+                                p3 = *pData++;
+                                p4 = *pData;
+                            }
+                            else
+                            {
+                                p3 = p1;
+                                p4 = p2;
+                            }
+                        }
+                        else
+                        {
+                            p2 = p1;
+                            if (b3 > b1)
+                            {
+                                pData = (T*)(pData0 + Stride);
+                                p3 = *pData;
+                                p4 = p3;
+                            }
+                            else
+                            {
+                                p3 = p1;
+                                p4 = p2;
+                            }
+                        }
+
+                        byte A = (byte)((p1.A * xa24 + p2.A * xa13) * yb34 + (p3.A * xa24 + p4.A * xa13) * yb12),
+                             R = (byte)((p1.R * xa24 + p2.R * xa13) * yb34 + (p3.R * xa24 + p4.R * xa13) * yb12),
+                             G = (byte)((p1.G * xa24 + p2.G * xa13) * yb34 + (p3.G * xa24 + p4.G * xa13) * yb12),
+                             B = (byte)((p1.B * xa24 + p2.B * xa13) * yb34 + (p3.B * xa24 + p4.B * xa13) * yb12);
+
+                        *pDest++ = PixelHelper.ToPixel<T2>(A, R, G, B);
+                    }
+                    else
+                    {
+
+                        pDest++->Override(pData->A, pData->R, pData->G, pData->B);
+                    }
                 }
+                else
+                {
+                    pDest++;
+                }
+
+                FracX += Cos;
+                FracY -= Sin;
+            }
+        }
+        public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, byte* pDestR, byte* pDestG, byte* pDestB)
+        {
+            byte* pScan0 = (byte*)Context.Scan0;
+
+            FracX += X;
+            FracY += Y;
+
+            long Stride = Context.Stride;
+            int Wo = Context.Width,
+                Lo = Context.Height,
+                BitsPerPixel = Context.BitsPerPixel;
+            for (int i = 0; i < Length; i++)
+            {
+                int a1 = (int)FracX,
+                    b1 = (int)FracY;
+                if (0 <= a1 & a1 < Wo & 0 <= b1 & b1 < Lo)
+                {
+                    byte* pData0 = pScan0 + Stride * b1 + ((a1 * BitsPerPixel) >> 3);
+
+                    int a2 = (int)Math.Ceiling(FracX),
+                        b3 = (int)Math.Ceiling(FracY);
+
+                    double xa13 = FracX - a1,
+                           xa24 = a2 - FracX,
+                           yb12 = FracY - b1,
+                           yb34 = b3 - FracY;
+                    T* pData = (T*)pData0;
+                    if (xa13 != 0 & xa24 != 0 & yb12 != 0 & yb34 != 0)
+                    {
+                        T p1 = *pData,
+                          p2, p3, p4;
+
+                        if (a2 > a1)
+                        {
+                            p2 = *++pData;
+                            if (b3 > b1)
+                            {
+                                pData = (T*)(pData0 + Stride);
+                                p3 = *pData++;
+                                p4 = *pData;
+                            }
+                            else
+                            {
+                                p3 = p1;
+                                p4 = p2;
+                            }
+                        }
+                        else
+                        {
+                            p2 = p1;
+                            if (b3 > b1)
+                            {
+                                pData = (T*)(pData0 + Stride);
+                                p3 = *pData;
+                                p4 = p3;
+                            }
+                            else
+                            {
+                                p3 = p1;
+                                p4 = p2;
+                            }
+                        }
+
+                        *pDestR++ = (byte)((p1.R * xa24 + p2.R * xa13) * yb34 + (p3.R * xa24 + p4.R * xa13) * yb12);
+                        *pDestG++ = (byte)((p1.G * xa24 + p2.G * xa13) * yb34 + (p3.G * xa24 + p4.G * xa13) * yb12);
+                        *pDestB++ = (byte)((p1.B * xa24 + p2.B * xa13) * yb34 + (p3.B * xa24 + p4.B * xa13) * yb12);
+                    }
+                    else
+                    {
+                        *pDestR++ = pData->R;
+                        *pDestG++ = pData->G;
+                        *pDestB++ = pData->B;
+                    }
+                }
+                else
+                {
+                    pDestR++;
+                    pDestG++;
+                    pDestB++;
+                }
+
+                FracX += Cos;
+                FracY -= Sin;
+            }
+        }
+        public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        {
+            byte* pScan0 = (byte*)Context.Scan0;
+
+            FracX += X;
+            FracY += Y;
+
+            long Stride = Context.Stride;
+            int Wo = Context.Width,
+                Lo = Context.Height,
+                BitsPerPixel = Context.BitsPerPixel;
+            for (int i = 0; i < Length; i++)
+            {
+                int a1 = (int)FracX,
+                    b1 = (int)FracY;
+                if (0 <= a1 & a1 < Wo & 0 <= b1 & b1 < Lo)
+                {
+                    byte* pData0 = pScan0 + Stride * b1 + ((a1 * BitsPerPixel) >> 3);
+
+                    int a2 = (int)Math.Ceiling(FracX),
+                        b3 = (int)Math.Ceiling(FracY);
+
+                    double xa13 = FracX - a1,
+                           xa24 = a2 - FracX,
+                           yb12 = FracY - b1,
+                           yb34 = b3 - FracY;
+                    T* pData = (T*)pData0;
+                    if (xa13 != 0 & xa24 != 0 & yb12 != 0 & yb34 != 0)
+                    {
+                        T p1 = *pData,
+                          p2, p3, p4;
+
+                        if (a2 > a1)
+                        {
+                            p2 = *++pData;
+                            if (b3 > b1)
+                            {
+                                pData = (T*)(pData0 + Stride);
+                                p3 = *pData++;
+                                p4 = *pData;
+                            }
+                            else
+                            {
+                                p3 = p1;
+                                p4 = p2;
+                            }
+                        }
+                        else
+                        {
+                            p2 = p1;
+                            if (b3 > b1)
+                            {
+                                pData = (T*)(pData0 + Stride);
+                                p3 = *pData;
+                                p4 = p3;
+                            }
+                            else
+                            {
+                                p3 = p1;
+                                p4 = p2;
+                            }
+                        }
+
+                        *pDestA++ = (byte)((p1.A * xa24 + p2.A * xa13) * yb34 + (p3.A * xa24 + p4.A * xa13) * yb12);
+                        *pDestR++ = (byte)((p1.R * xa24 + p2.R * xa13) * yb34 + (p3.R * xa24 + p4.R * xa13) * yb12);
+                        *pDestG++ = (byte)((p1.G * xa24 + p2.G * xa13) * yb34 + (p3.G * xa24 + p4.G * xa13) * yb12);
+                        *pDestB++ = (byte)((p1.B * xa24 + p2.B * xa13) * yb34 + (p3.B * xa24 + p4.B * xa13) * yb12);
+                    }
+                    else
+                    {
+                        *pDestA++ = pData->A;
+                        *pDestR++ = pData->R;
+                        *pDestG++ = pData->G;
+                        *pDestB++ = pData->B;
+                    }
+                }
+                else
+                {
+                    pDestA++;
+                    pDestR++;
+                    pDestG++;
+                    pDestB++;
+                }
+
+                FracX += Cos;
+                FracY -= Sin;
+            }
+        }
+
+        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDest)
+            => ScanLineConvolute(X, Y, Length, Kernel, (T*)pDest);
+        public void ScanLineConvolute<T2>(int X, int Y, int Length, ConvoluteKernel Kernel, T2* pDest) where T2 : unmanaged, IPixel
+        {
+            byte* pScan0 = (byte*)Context.Scan0;
+            int[,] Datas = Kernel.Datas;
+            int KernelW = Kernel.Width,
+                KernelH = Kernel.Height,
+                KernelHW = KernelW >> 1,
+                KernelHH = KernelH >> 1,
+                KernelSum = Kernel.FactorSum,
+                KernelOffset = Kernel.Offset,
+                SourceWidthL = Context.Width - 1,
+                SourceHeightL = Context.Width - 1,
+                Index,
+                LTx;
+
+            T2*[] pDatas = new T2*[KernelH];
+
+            Index = 0;
+            for (; Index < KernelHH; Index++)
+            {
+                pDatas[Index] = (T2*)(pScan0 + Math.Max(Y - Index, 0) * Context.Stride);
+                pDatas[KernelH - Index - 1] = (T2*)(pScan0 + Math.Min(Y - Index, SourceHeightL) * Context.Stride);
+            }
+            pDatas[Index] = (T2*)(pScan0 + Y * Context.Stride);
+
+            Queue<T2[]> PixelBlock = new Queue<T2[]>();
+            T2[] Pixels = new T2[KernelH];
+
+            // Init Common Function
+            void FillPixelsByX(int Xt)
+            {
+                for (int j = 0; j < KernelH; j++)
+                    Pixels[j] = *(pDatas[j] + Xt);
+            };
+
+            //Init Block
+            Index = -KernelHW;
+            LTx = int.MaxValue;
+            for (; Index <= KernelHW; Index++)
+            {
+                int Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                if (LTx != Tx)
+                {
+                    FillPixelsByX(Tx);
+                    LTx = Tx;
+                }
+                PixelBlock.Enqueue(Pixels);
+            }
+
+            for (int i = 0; i < Length; i++)
+            {
+                int A = 0,
+                    R = 0,
+                    G = 0,
+                    B = 0;
+
+                // Left Bound and not enqueue.
+                Index = 0;
+                Pixels = PixelBlock.Dequeue();
+                for (int j = 0; j < KernelH; j++)
+                {
+                    int k = Datas[j, Index];
+                    if (k == 0)
+                        continue;
+
+                    T2 Pixel = Pixels[j];
+                    A += Pixel.A * k;
+                    R += Pixel.R * k;
+                    G += Pixel.G * k;
+                    B += Pixel.B * k;
+                }
+
+                for (Index = 1; Index < KernelW - 1; Index++)
+                {
+                    Pixels = PixelBlock.Dequeue();
+                    for (int j = 0; j < KernelH; j++)
+                    {
+                        int k = Datas[j, Index];
+                        if (k == 0)
+                            continue;
+
+                        T2 Pixel = Pixels[j];
+                        A += Pixel.A * k;
+                        R += Pixel.R * k;
+                        G += Pixel.G * k;
+                        B += Pixel.B * k;
+                    }
+
+                    PixelBlock.Enqueue(Pixels);
+                }
+
+                // Right Bound and enqueue
+                LTx = MathHelper.Clamp(X + i + KernelHW, 0, SourceWidthL);
+                for (int j = 0; j < KernelH; j++)
+                {
+                    T2 Pixel = *(pDatas[j] + LTx);
+                    Pixels[j] = Pixel;
+
+                    int k = Datas[j, Index];
+                    if (k == 0)
+                        continue;
+
+                    A += Pixel.A * k;
+                    R += Pixel.R * k;
+                    G += Pixel.G * k;
+                    B += Pixel.B * k;
+                }
+
+                PixelBlock.Enqueue(Pixels);
+
+                pDest++->Override((byte)MathHelper.Clamp((A / KernelSum) + KernelOffset, 0, 255),
+                                  (byte)MathHelper.Clamp((R / KernelSum) + KernelOffset, 0, 255),
+                                  (byte)MathHelper.Clamp((G / KernelSum) + KernelOffset, 0, 255),
+                                  (byte)MathHelper.Clamp((B / KernelSum) + KernelOffset, 0, 255));
+            }
+        }
+        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestR, byte* pDestG, byte* pDestB)
+        {
+            byte* pScan0 = (byte*)Context.Scan0;
+            int[,] Datas = Kernel.Datas;
+            int KernelW = Kernel.Width,
+                KernelH = Kernel.Height,
+                KernelHW = KernelW >> 1,
+                KernelHH = KernelH >> 1,
+                KernelSum = Kernel.FactorSum,
+                KernelOffset = Kernel.Offset,
+                SourceWidthL = Context.Width - 1,
+                SourceHeightL = Context.Width - 1,
+                Index,
+                LTx;
+
+            T*[] pDatas = new T*[KernelH];
+
+            Index = 0;
+            for (; Index < KernelHH; Index++)
+            {
+                pDatas[Index] = (T*)(pScan0 + Math.Max(Y - Index, 0) * Context.Stride);
+                pDatas[KernelH - Index - 1] = (T*)(pScan0 + Math.Min(Y - Index, SourceHeightL) * Context.Stride);
+            }
+            pDatas[Index] = (T*)(pScan0 + Y * Context.Stride);
+
+            Queue<T[]> PixelBlock = new Queue<T[]>();
+            T[] Pixels = new T[KernelH];
+
+            // Init Common Function
+            void FillPixelsByX(int Xt)
+            {
+                for (int j = 0; j < KernelH; j++)
+                    Pixels[j] = *(pDatas[j] + Xt);
+            };
+
+            //Init Block
+            Index = -KernelHW;
+            LTx = int.MaxValue;
+            for (; Index <= KernelHW; Index++)
+            {
+                int Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                if (LTx != Tx)
+                {
+                    FillPixelsByX(Tx);
+                    LTx = Tx;
+                }
+                PixelBlock.Enqueue(Pixels);
+            }
+
+            for (int i = 0; i < Length; i++)
+            {
+                int A = 0,
+                    R = 0,
+                    G = 0,
+                    B = 0;
+
+                // Left Bound and not enqueue.
+                Index = 0;
+                Pixels = PixelBlock.Dequeue();
+                for (int j = 0; j < KernelH; j++)
+                {
+                    int k = Datas[j, Index];
+                    if (k == 0)
+                        continue;
+
+                    T Pixel = Pixels[j];
+                    A += Pixel.A * k;
+                    R += Pixel.R * k;
+                    G += Pixel.G * k;
+                    B += Pixel.B * k;
+                }
+
+                for (Index = 1; Index < KernelW - 1; Index++)
+                {
+                    Pixels = PixelBlock.Dequeue();
+                    for (int j = 0; j < KernelH; j++)
+                    {
+                        int k = Datas[j, Index];
+                        if (k == 0)
+                            continue;
+
+                        T Pixel = Pixels[j];
+                        A += Pixel.A * k;
+                        R += Pixel.R * k;
+                        G += Pixel.G * k;
+                        B += Pixel.B * k;
+                    }
+
+                    PixelBlock.Enqueue(Pixels);
+                }
+
+                // Right Bound and enqueue
+                LTx = MathHelper.Clamp(X + i + KernelHW, 0, SourceWidthL);
+                for (int j = 0; j < KernelH; j++)
+                {
+                    T Pixel = *(pDatas[j] + LTx);
+                    Pixels[j] = Pixel;
+
+                    int k = Datas[j, Index];
+                    if (k == 0)
+                        continue;
+
+                    A += Pixel.A * k;
+                    R += Pixel.R * k;
+                    G += Pixel.G * k;
+                    B += Pixel.B * k;
+                }
+
+                PixelBlock.Enqueue(Pixels);
+
+                *pDestR++ = (byte)MathHelper.Clamp((R / KernelSum) + KernelOffset, 0, 255);
+                *pDestG++ = (byte)MathHelper.Clamp((G / KernelSum) + KernelOffset, 0, 255);
+                *pDestB++ = (byte)MathHelper.Clamp((B / KernelSum) + KernelOffset, 0, 255);
+            }
+        }
+        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        {
+            byte* pScan0 = (byte*)Context.Scan0;
+            int[,] Datas = Kernel.Datas;
+            int KernelW = Kernel.Width,
+                KernelH = Kernel.Height,
+                KernelHW = KernelW >> 1,
+                KernelHH = KernelH >> 1,
+                KernelSum = Kernel.FactorSum,
+                KernelOffset = Kernel.Offset,
+                SourceWidthL = Context.Width - 1,
+                SourceHeightL = Context.Width - 1,
+                Index,
+                LTx;
+
+            T*[] pDatas = new T*[KernelH];
+
+            Index = 0;
+            for (; Index < KernelHH; Index++)
+            {
+                pDatas[Index] = (T*)(pScan0 + Math.Max(Y - Index, 0) * Context.Stride);
+                pDatas[KernelH - Index - 1] = (T*)(pScan0 + Math.Min(Y - Index, SourceHeightL) * Context.Stride);
+            }
+            pDatas[Index] = (T*)(pScan0 + Y * Context.Stride);
+
+            Queue<T[]> PixelBlock = new Queue<T[]>();
+            T[] Pixels = new T[KernelH];
+
+            // Init Common Function
+            void FillPixelsByX(int Xt)
+            {
+                for (int j = 0; j < KernelH; j++)
+                    Pixels[j] = *(pDatas[j] + Xt);
+            };
+
+            //Init Block
+            Index = -KernelHW;
+            LTx = int.MaxValue;
+            for (; Index <= KernelHW; Index++)
+            {
+                int Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                if (LTx != Tx)
+                {
+                    FillPixelsByX(Tx);
+                    LTx = Tx;
+                }
+                PixelBlock.Enqueue(Pixels);
+            }
+
+            for (int i = 0; i < Length; i++)
+            {
+                int A = 0,
+                    R = 0,
+                    G = 0,
+                    B = 0;
+
+                // Left Bound and not enqueue.
+                Index = 0;
+                Pixels = PixelBlock.Dequeue();
+                for (int j = 0; j < KernelH; j++)
+                {
+                    int k = Datas[j, Index];
+                    if (k == 0)
+                        continue;
+
+                    T Pixel = Pixels[j];
+                    A += Pixel.A * k;
+                    R += Pixel.R * k;
+                    G += Pixel.G * k;
+                    B += Pixel.B * k;
+                }
+
+                for (Index = 1; Index < KernelW - 1; Index++)
+                {
+                    Pixels = PixelBlock.Dequeue();
+                    for (int j = 0; j < KernelH; j++)
+                    {
+                        int k = Datas[j, Index];
+                        if (k == 0)
+                            continue;
+
+                        T Pixel = Pixels[j];
+                        A += Pixel.A * k;
+                        R += Pixel.R * k;
+                        G += Pixel.G * k;
+                        B += Pixel.B * k;
+                    }
+
+                    PixelBlock.Enqueue(Pixels);
+                }
+
+                // Right Bound and enqueue
+                LTx = MathHelper.Clamp(X + i + KernelHW, 0, SourceWidthL);
+                for (int j = 0; j < KernelH; j++)
+                {
+                    T Pixel = *(pDatas[j] + LTx);
+                    Pixels[j] = Pixel;
+
+                    int k = Datas[j, Index];
+                    if (k == 0)
+                        continue;
+
+                    A += Pixel.A * k;
+                    R += Pixel.R * k;
+                    G += Pixel.G * k;
+                    B += Pixel.B * k;
+                }
+
+                PixelBlock.Enqueue(Pixels);
+
+                *pDestA++ = (byte)MathHelper.Clamp((A / KernelSum) + KernelOffset, 0, 255);
+                *pDestR++ = (byte)MathHelper.Clamp((R / KernelSum) + KernelOffset, 0, 255);
+                *pDestG++ = (byte)MathHelper.Clamp((G / KernelSum) + KernelOffset, 0, 255);
+                *pDestB++ = (byte)MathHelper.Clamp((B / KernelSum) + KernelOffset, 0, 255);
             }
         }
 

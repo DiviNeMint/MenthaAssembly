@@ -6,38 +6,38 @@ namespace MenthaAssembly.Media.Imaging
     public class ImagePalette<Pixel> : IImagePalette
         where Pixel : unmanaged, IPixel
     {
-        private readonly List<Pixel> Palette;
+        internal readonly List<Pixel> Datas;
 
-        public int Count => Palette.Count;
+        public int Count => Datas.Count;
 
         public int Capacity { get; }
 
-        public Pixel this[int Index] => Palette[Index];
+        public Pixel this[int Index] => Datas[Index];
         IPixel IImagePalette.this[int Index] => this[Index];
 
-        public int this[Pixel Color] => Palette.IndexOf(Color);
-        int IImagePalette.this[IPixel Color] => Palette.FindIndex(i => i.A == Color.A && i.R == Color.R && i.G == Color.G && i.B == Color.B);
+        public int this[Pixel Color] => Datas.IndexOf(Color);
+        int IImagePalette.this[IPixel Color] => Datas.FindIndex(i => i.A == Color.A && i.R == Color.R && i.G == Color.G && i.B == Color.B);
 
         public ImagePalette(int BitsPerPixel)
         {
             this.Capacity = 1 << BitsPerPixel;
-            this.Palette = new List<Pixel>(Capacity);
+            this.Datas = new List<Pixel>(Capacity);
         }
         public ImagePalette(int BitsPerPixel, IEnumerable<Pixel> Palette)
         {
             this.Capacity = 1 << BitsPerPixel;
-            this.Palette = new List<Pixel>(Palette);
+            this.Datas = new List<Pixel>(Palette);
         }
 
         public bool TryGetOrAdd(Pixel Color, out int Index)
         {
-            Index = Palette.IndexOf(Color);
+            Index = Datas.IndexOf(Color);
             if (Index != -1)
                 return true;
 
             if (this.Count < Capacity)
             {
-                Palette.Add(Color);
+                Datas.Add(Color);
                 Index = Count - 1;
                 return true;
             }
@@ -56,7 +56,7 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         public T[] Extract<T>() where T : unmanaged, IPixel
-            => Palette.Select(i => i.ToPixel<T>())
-                      .ToArray();
+            => Datas.Select(i => i.ToPixel<T>())
+                    .ToArray();
     }
 }

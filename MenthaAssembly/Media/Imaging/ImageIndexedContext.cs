@@ -2176,6 +2176,175 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Transform Processing
 
+        #region Rotate
+        public ImageContext<Pixel> Rotate(double Angle, bool Crop)
+        {
+            if (Angle % 360d == 0)
+                return Cast<Pixel>();
+
+            double Theta = Angle * MathHelper.UnitTheta,
+                   Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            int Wo = this.Width,
+                Lo = this.Height,
+                Wt, Lt;
+
+            if (Crop)
+            {
+                Wt = Wo;
+                Lt = Lo;
+            }
+            else
+            {
+                Wt = (int)(Math.Abs(Wo * Cos) + Math.Abs(Lo * Sin));
+                Lt = (int)(Math.Abs(Wo * Sin) + Math.Abs(Lo * Cos));
+            }
+
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(Wt, Lt);
+            byte* pDest0 = (byte*)Result.Scan0;
+            double MaxWt = Wt - 1,
+                   MaxLt = Lt - 1,
+                   MaxWo = Wo - 1,
+                   MaxLo = Lo - 1;
+
+            for (int j = 0; j < Lt; j++)
+            {
+                byte* pDest = pDest0 + j * Result.Stride;
+                double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
+                       FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
+
+                this.Operator.ScanLineRotateTo(0, 0, Wt, FracX, FracY, Sin, Cos, pDest);
+            }
+            return Result;
+        }
+        public ImageContext<Pixel> Rotate(double Angle, bool Crop, ParallelOptions Options)
+        {
+            if (Angle % 360d == 0)
+                return Cast<Pixel>(Options ?? DefaultParallelOptions);
+
+            double Theta = Angle * MathHelper.UnitTheta,
+                   Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            int Wo = this.Width,
+                Lo = this.Height,
+                Wt, Lt;
+
+            if (Crop)
+            {
+                Wt = Wo;
+                Lt = Lo;
+            }
+            else
+            {
+                Wt = (int)(Math.Abs(Wo * Cos) + Math.Abs(Lo * Sin));
+                Lt = (int)(Math.Abs(Wo * Sin) + Math.Abs(Lo * Cos));
+            }
+
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(Wt, Lt);
+            byte* pDest0 = (byte*)Result.Scan0;
+            double MaxWt = Wt - 1,
+                   MaxLt = Lt - 1,
+                   MaxWo = Wo - 1,
+                   MaxLo = Lo - 1;
+
+            Parallel.For(0, Lt, Options ?? DefaultParallelOptions, j =>
+            {
+                byte* pDest = pDest0 + j * Result.Stride;
+                double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
+                       FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
+
+                this.Operator.ScanLineRotateTo(0, 0, Wt, FracX, FracY, Sin, Cos, pDest);
+            });
+            return Result;
+        }
+
+        public ImageContext<T> Rotate<T>(double Angle, bool Crop) where T : unmanaged, IPixel
+        {
+            if (Angle % 360d == 0)
+                return Cast<T>();
+
+            double Theta = Angle * MathHelper.UnitTheta,
+                   Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            int Wo = this.Width,
+                Lo = this.Height,
+                Wt, Lt;
+
+            if (Crop)
+            {
+                Wt = Wo;
+                Lt = Lo;
+            }
+            else
+            {
+                Wt = (int)(Math.Abs(Wo * Cos) + Math.Abs(Lo * Sin));
+                Lt = (int)(Math.Abs(Wo * Sin) + Math.Abs(Lo * Cos));
+            }
+
+            ImageContext<T> Result = new ImageContext<T>(Wt, Lt);
+            byte* pDest0 = (byte*)Result.Scan0;
+            double MaxWt = Wt - 1,
+                   MaxLt = Lt - 1,
+                   MaxWo = Wo - 1,
+                   MaxLo = Lo - 1;
+
+            for (int j = 0; j < Lt; j++)
+            {
+                T* pDest = (T*)(pDest0 + j * Result.Stride);
+                double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
+                       FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
+
+                this.Operator.ScanLineRotateTo(0, 0, Wt, FracX, FracY, Sin, Cos, pDest);
+            }
+            return Result;
+        }
+        public ImageContext<T> Rotate<T>(double Angle, bool Crop, ParallelOptions Options) where T : unmanaged, IPixel
+        {
+            if (Angle % 360d == 0)
+                return Cast<T>(Options ?? DefaultParallelOptions);
+
+            double Theta = Angle * MathHelper.UnitTheta,
+                   Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            int Wo = this.Width,
+                Lo = this.Height,
+                Wt, Lt;
+
+            if (Crop)
+            {
+                Wt = Wo;
+                Lt = Lo;
+            }
+            else
+            {
+                Wt = (int)(Math.Abs(Wo * Cos) + Math.Abs(Lo * Sin));
+                Lt = (int)(Math.Abs(Wo * Sin) + Math.Abs(Lo * Cos));
+            }
+
+            ImageContext<T> Result = new ImageContext<T>(Wt, Lt);
+            byte* pDest0 = (byte*)Result.Scan0;
+            double MaxWt = Wt - 1,
+                   MaxLt = Lt - 1,
+                   MaxWo = Wo - 1,
+                   MaxLo = Lo - 1;
+
+            Parallel.For(0, Lt, Options ?? DefaultParallelOptions, j =>
+            {
+                T* pDest = (T*)(pDest0 + j * Result.Stride);
+                double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
+                       FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
+
+                this.Operator.ScanLineRotateTo(0, 0, Wt, FracX, FracY, Sin, Cos, pDest);
+            });
+            return Result;
+        }
+
+        #endregion
+
         #region Resize
         public ImageContext<Pixel> Resize(int Width, int Height, InterpolationTypes Interpolation)
         {
@@ -2759,361 +2928,55 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Convolute
         public ImageContext<Pixel> Convolute(ConvoluteKernel Kernel)
-            => Convolute(Kernel.Datas, Kernel.FactorSum, Kernel.Offset);
-        public ImageContext<Pixel> Convolute(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
         {
-            int KH = Kernel.GetUpperBound(0) + 1,
-                KW = Kernel.GetUpperBound(1) + 1;
-
-            if ((KW & 1) == 0)
-                throw new InvalidOperationException("Kernel width must be odd!");
-
-            if ((KH & 1) == 0)
-                throw new InvalidOperationException("Kernel height must be odd!");
-
-            KernelFactorSum = Math.Max(KernelFactorSum, 1);
-
             ImageContext<Pixel> Result = new ImageContext<Pixel>(this.Width, this.Height);
 
-            int kwh = KW >> 1;
-            int khh = KH >> 1;
-
-            // Init Common Function
-            Pixel[] GetVerticalPixels(int X, int Y)
+            for (int y = 0; y < this.Height; y++)
             {
-                Pixel[] Pixels = new Pixel[KH];
-                for (int j = 0; j < KH; j++)
-                    Pixels[j] = this.Operator.GetPixel(X, MathHelper.Clamp(Y + j - khh, 0, this.Height - 1));
-
-                return Pixels;
+                Pixel* pDest = (Pixel*)((byte*)Result.Scan0 + Result.Stride * y);
+                this.Operator.ScanLineConvolute(0, y, this.Width, Kernel, pDest);
             };
-
-            Parallel.For(0, this.Height, (y) =>
-            {
-                Queue<Pixel[]> PixelBlock = new Queue<Pixel[]>();
-
-                // Init Block
-                Pixel[] LeftBoundPixels = GetVerticalPixels(0, y);
-
-                // Repeat pixels at borders
-                for (int i = 0; i <= kwh; i++)
-                    PixelBlock.Enqueue(LeftBoundPixels);
-
-                // Fill pixels at center
-                for (int i = 1; i < kwh; i++)
-                    PixelBlock.Enqueue(GetVerticalPixels(Math.Min(i, this.Width - 1), y));
-
-                for (int x = 0; x < this.Width; x++)
-                {
-                    int A = 0,
-                        R = 0,
-                        G = 0,
-                        B = 0;
-
-                    // Left Bound and not enqueue.
-                    int KXIndex = 0;
-                    Pixel[] Pixels = PixelBlock.Dequeue();
-                    for (int j = 0; j < KH; j++)
-                    {
-                        int k = Kernel[j, KXIndex];
-                        if (k == 0)
-                            continue;
-
-                        Pixel Pixel = Pixels[j];
-                        A += Pixel.A * k;
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    for (KXIndex = 1; KXIndex < KW - 1; KXIndex++)
-                    {
-                        Pixels = PixelBlock.Dequeue();
-                        for (int j = 0; j < KH; j++)
-                        {
-                            int k = Kernel[j, KXIndex];
-                            if (k == 0)
-                                continue;
-
-                            Pixel Pixel = Pixels[j];
-                            A += Pixel.A * k;
-                            R += Pixel.R * k;
-                            G += Pixel.G * k;
-                            B += Pixel.B * k;
-                        }
-
-                        PixelBlock.Enqueue(Pixels);
-                    }
-
-                    // Right Bound and enqueue
-                    Pixels = new Pixel[KH];
-                    for (int j = 0; j < KH; j++)
-                    {
-                        Pixel Pixel = this.Operator.GetPixel(Math.Min(x + kwh, this.Width - 1), MathHelper.Clamp(y + j - khh, 0, this.Height - 1));
-                        Pixels[j] = Pixel;
-
-                        int k = Kernel[j, KXIndex];
-                        if (k == 0)
-                            continue;
-
-                        A += Pixel.A * k;
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    PixelBlock.Enqueue(Pixels);
-
-                    Result.Operator.SetPixel(x, y, PixelHelper.ToPixel<Pixel>((byte)MathHelper.Clamp((A / KernelFactorSum) + KernelOffsetSum, 0, 255),
-                                                                              (byte)MathHelper.Clamp((R / KernelFactorSum) + KernelOffsetSum, 0, 255),
-                                                                              (byte)MathHelper.Clamp((G / KernelFactorSum) + KernelOffsetSum, 0, 255),
-                                                                              (byte)MathHelper.Clamp((B / KernelFactorSum) + KernelOffsetSum, 0, 255)));
-                }
-            });
 
             return Result;
         }
-
-        public ImageContext<T> Convolute<T>(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
-            where T : unmanaged, IPixel
+        public ImageContext<Pixel> Convolute(ConvoluteKernel Kernel, ParallelOptions Options)
         {
-            int KH = Kernel.GetUpperBound(0) + 1,
-                KW = Kernel.GetUpperBound(1) + 1;
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(this.Width, this.Height);
 
-            if ((KW & 1) == 0)
-                throw new InvalidOperationException("Kernel width must be odd!");
-
-            if ((KH & 1) == 0)
-                throw new InvalidOperationException("Kernel height must be odd!");
-
-            KernelFactorSum = Math.Max(KernelFactorSum, 1);
-
-            ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
-
-            int kwh = KW >> 1;
-            int khh = KH >> 1;
-
-            // Init Common Function
-            T[] GetVerticalPixels(int X, int Y)
+            Parallel.For(0, this.Height, Options ?? DefaultParallelOptions, y =>
             {
-                T[] Pixels = new T[KH];
-                for (int j = 0; j < KH; j++)
-                    Pixels[j] = this.Operator.GetPixel(X, MathHelper.Clamp(Y + j - khh, 0, this.Height - 1)).ToPixel<T>();
-
-                return Pixels;
-            };
-
-            Parallel.For(0, this.Height, (y) =>
-            {
-                Queue<T[]> PixelBlock = new Queue<T[]>();
-
-                // Init Block
-                T[] LeftBoundPixels = GetVerticalPixels(0, y);
-
-                // Repeat pixels at borders
-                for (int i = 0; i <= kwh; i++)
-                    PixelBlock.Enqueue(LeftBoundPixels);
-
-                // Fill pixels at center
-                for (int i = 1; i < kwh; i++)
-                    PixelBlock.Enqueue(GetVerticalPixels(Math.Min(i, this.Width - 1), y));
-
-                for (int x = 0; x < this.Width; x++)
-                {
-                    int A = 0,
-                        R = 0,
-                        G = 0,
-                        B = 0;
-
-                    // Left Bound and not enqueue.
-                    int KXIndex = 0;
-                    T[] Pixels = PixelBlock.Dequeue();
-                    for (int j = 0; j < KH; j++)
-                    {
-                        int k = Kernel[j, KXIndex];
-                        if (k == 0)
-                            continue;
-
-                        T Pixel = Pixels[j];
-                        A += Pixel.A * k;
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    for (KXIndex = 1; KXIndex < KW - 1; KXIndex++)
-                    {
-                        Pixels = PixelBlock.Dequeue();
-                        for (int j = 0; j < KH; j++)
-                        {
-                            int k = Kernel[j, KXIndex];
-                            if (k == 0)
-                                continue;
-
-                            T Pixel = Pixels[j];
-                            A += Pixel.A * k;
-                            R += Pixel.R * k;
-                            G += Pixel.G * k;
-                            B += Pixel.B * k;
-                        }
-
-                        PixelBlock.Enqueue(Pixels);
-                    }
-
-                    // Right Bound and enqueue
-                    Pixels = new T[KH];
-                    for (int j = 0; j < KH; j++)
-                    {
-                        T Pixel = this.Operator.GetPixel(Math.Min(x + kwh, this.Width - 1), MathHelper.Clamp(y + j - khh, 0, this.Height - 1)).ToPixel<T>();
-                        Pixels[j] = Pixel;
-
-                        int k = Kernel[j, KXIndex];
-                        if (k == 0)
-                            continue;
-
-                        A += Pixel.A * k;
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    PixelBlock.Enqueue(Pixels);
-
-                    Result.Operator.SetPixel(x, y, PixelHelper.ToPixel<T>((byte)Math.Min(Math.Max((A / KernelFactorSum) + KernelOffsetSum, 0), 255),
-                                                                          (byte)Math.Min(Math.Max((R / KernelFactorSum) + KernelOffsetSum, 0), 255),
-                                                                          (byte)Math.Min(Math.Max((G / KernelFactorSum) + KernelOffsetSum, 0), 255),
-                                                                          (byte)Math.Min(Math.Max((B / KernelFactorSum) + KernelOffsetSum, 0), 255)));
-                }
+                Pixel* pDest = (Pixel*)((byte*)Result.Scan0 + Result.Stride * y);
+                this.Operator.ScanLineConvolute(0, y, this.Width, Kernel, pDest);
             });
 
             return Result;
         }
+
         public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel)
             where T : unmanaged, IPixel
         {
-            return Convolute<T>(Kernel.Datas, Kernel.FactorSum, Kernel.Offset);
-        }
+            ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
 
-        public ImageContext<T, U> Convolute<T, U>(int[,] Kernel, int KernelFactorSum, int KernelOffsetSum)
-            where T : unmanaged, IPixel
-            where U : unmanaged, IPixelIndexed
-        {
-            int KH = Kernel.GetUpperBound(0) + 1,
-                KW = Kernel.GetUpperBound(1) + 1;
-
-            if ((KW & 1) == 0)
-                throw new InvalidOperationException("Kernel width must be odd!");
-
-            if ((KH & 1) == 0)
-                throw new InvalidOperationException("Kernel height must be odd!");
-
-            KernelFactorSum = Math.Max(KernelFactorSum, 1);
-
-            ImageContext<T, U> Result = new ImageContext<T, U>(this.Width, this.Height);
-
-            int kwh = KW >> 1;
-            int khh = KH >> 1;
-
-            // Init Common Function
-            T[] GetVerticalPixels(int X, int Y)
+            for (int y = 0; y < this.Height; y++)
             {
-                T[] Pixels = new T[KH];
-                for (int j = 0; j < KH; j++)
-                    Pixels[j] = this.Operator.GetPixel(X, MathHelper.Clamp(Y + j - khh, 0, this.Height - 1)).ToPixel<T>();
-
-                return Pixels;
+                T* pDest = (T*)((byte*)Result.Scan0 + Result.Stride * y);
+                this.Operator.ScanLineConvolute(0, y, this.Width, Kernel, pDest);
             };
-
-            Parallel.For(0, this.Height, (y) =>
-            {
-                Queue<T[]> PixelBlock = new Queue<T[]>();
-
-                // Init Block
-                T[] LeftBoundPixels = GetVerticalPixels(0, y);
-
-                // Repeat pixels at borders
-                for (int i = 0; i <= kwh; i++)
-                    PixelBlock.Enqueue(LeftBoundPixels);
-
-                // Fill pixels at center
-                for (int i = 1; i < kwh; i++)
-                    PixelBlock.Enqueue(GetVerticalPixels(Math.Min(i, this.Width - 1), y));
-
-                for (int x = 0; x < this.Width; x++)
-                {
-                    int A = 0,
-                        R = 0,
-                        G = 0,
-                        B = 0;
-
-                    // Left Bound and not enqueue.
-                    int KXIndex = 0;
-                    T[] Pixels = PixelBlock.Dequeue();
-                    for (int j = 0; j < KH; j++)
-                    {
-                        int k = Kernel[j, KXIndex];
-                        if (k == 0)
-                            continue;
-
-                        T Pixel = Pixels[j];
-                        A += Pixel.A * k;
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    for (KXIndex = 1; KXIndex < KW - 1; KXIndex++)
-                    {
-                        Pixels = PixelBlock.Dequeue();
-                        for (int j = 0; j < KH; j++)
-                        {
-                            int k = Kernel[j, KXIndex];
-                            if (k == 0)
-                                continue;
-
-                            T Pixel = Pixels[j];
-                            A += Pixel.A * k;
-                            R += Pixel.R * k;
-                            G += Pixel.G * k;
-                            B += Pixel.B * k;
-                        }
-
-                        PixelBlock.Enqueue(Pixels);
-                    }
-
-                    // Right Bound and enqueue
-                    Pixels = new T[KH];
-                    for (int j = 0; j < KH; j++)
-                    {
-                        T Pixel = this.Operator.GetPixel(Math.Min(x + kwh, this.Width - 1), MathHelper.Clamp(y + j - khh, 0, this.Height - 1)).ToPixel<T>();
-                        Pixels[j] = Pixel;
-
-                        int k = Kernel[j, KXIndex];
-                        if (k == 0)
-                            continue;
-
-                        A += Pixel.A * k;
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    PixelBlock.Enqueue(Pixels);
-
-                    Result.Operator.SetPixel(x, y, PixelHelper.ToPixel<T>((byte)Math.Min(Math.Max((A / KernelFactorSum) + KernelOffsetSum, 0), 255),
-                                                                          (byte)Math.Min(Math.Max((R / KernelFactorSum) + KernelOffsetSum, 0), 255),
-                                                                          (byte)Math.Min(Math.Max((G / KernelFactorSum) + KernelOffsetSum, 0), 255),
-                                                                          (byte)Math.Min(Math.Max((B / KernelFactorSum) + KernelOffsetSum, 0), 255)));
-                }
-            });
 
             return Result;
         }
-        public ImageContext<T, U> Convolute<T, U>(ConvoluteKernel Kernel)
+        public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel, ParallelOptions Options)
             where T : unmanaged, IPixel
-            where U : unmanaged, IPixelIndexed
         {
-            return Convolute<T, U>(Kernel.Datas, Kernel.FactorSum, Kernel.Offset);
+            ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
+
+            Parallel.For(0, this.Height, Options ?? DefaultParallelOptions, y =>
+            {
+                T* pDest = (T*)((byte*)Result.Scan0 + Result.Stride * y);
+                this.Operator.ScanLineConvolute(0, y, this.Width, Kernel, pDest);
+            });
+
+            return Result;
         }
 
         #endregion
