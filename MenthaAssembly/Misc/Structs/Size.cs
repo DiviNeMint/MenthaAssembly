@@ -42,9 +42,9 @@ namespace MenthaAssembly
         public override string ToString()
             => $"{{Width : {this.Width}, Height : {this.Height}}}";
 
-        private static readonly Func<T, T, T> Mul, Div;
-        private static readonly Predicate<T> IsDefault;
-        private static readonly Func<T, T, bool> Equal;
+        internal static readonly Func<T, T, T> Mul, Div;
+        internal static readonly Predicate<T> IsDefault;
+        internal static readonly Func<T, T, bool> Equal;
         static Size()
         {
             Mul = ExpressionHelper<T>.CreateMul();

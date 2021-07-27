@@ -49,11 +49,11 @@ namespace MenthaAssembly
         public override string ToString()
             => $"{{X : {this.X}, Y : {this.Y}}}";
 
-        private static readonly Func<T, T> Neg;
-        private static readonly Func<T, T, T> Add, Sub, Mul, Div;
-        private static readonly Predicate<T> IsDefault;
-        private static readonly Func<T, T, bool> Equal;
-        private static readonly Func<T, double> CastDouble;
+        internal static readonly Func<T, T> Neg;
+        internal static readonly Func<T, T, T> Add, Sub, Mul, Div;
+        internal static readonly Predicate<T> IsDefault;
+        internal static readonly Func<T, T, bool> Equal;
+        internal static readonly Func<T, double> CastDouble;
         static Vector()
         {
             Neg = ExpressionHelper<T>.CreateNeg();

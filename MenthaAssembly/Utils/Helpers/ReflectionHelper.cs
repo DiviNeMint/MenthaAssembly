@@ -5,7 +5,8 @@ namespace System.Reflection
     public static class ReflectionHelper
     {
         private static readonly BindingFlags InternalFlags = BindingFlags.Instance | BindingFlags.NonPublic,
-                                             PublicFlags = BindingFlags.Instance | BindingFlags.Public;
+                                             PublicFlags = BindingFlags.Instance | BindingFlags.Public,
+                                             ConstFlags = BindingFlags.Public | BindingFlags.Static;
 
         #region Property
         public static IEnumerable<PropertyInfo> GetProperties(this Type This, params string[] PropertyNames)
@@ -139,6 +140,21 @@ namespace System.Reflection
                 Info.FieldType.IsBaseOn<T>())
             {
                 Value = (T)Info.GetValue(This);
+                return true;
+            }
+
+            Value = default;
+            return false;
+        }
+
+        #endregion
+
+        #region Constant
+        public static bool TryGetConstant<T>(this Type This, string ConstantName, out T Value)
+        {
+            if (TryGetField(This, ConstFlags, ConstantName, out FieldInfo Field))
+            {
+                Value = (T)Field.GetValue(null);
                 return true;
             }
 

@@ -15,8 +15,8 @@ namespace MenthaAssembly
         }
         public ChangedEventArgs(object OldValue, object NewValue)
         {
-            this.OldValue = (T)OldValue;
-            this.NewValue = (T)NewValue;
+            this.OldValue = OldValue is T o ? o : default;
+            this.NewValue = NewValue is T n ? n : default;
         }
     }
 }

@@ -155,135 +155,146 @@ namespace MenthaAssembly
             Radius = Distance(Px, Py, Cx, Cy);
         }
 
-        public static FloatBound CalculateLineBound(float X0, float Y0, float X1, float Y1)
-            => X1 < X0 ? (Y1 < Y0 ? new FloatBound(X1, Y1, X0, Y0) :
-                                    new FloatBound(X1, Y0, X0, Y1)) :
-                         (Y1 < Y0 ? new FloatBound(X0, Y1, X1, Y0) :
-                                    new FloatBound(X0, Y0, X1, Y1));
-        public static FloatBound CalculateArcBound(float Sx, float Sy, float Ex, float Ey, float Cx, float Cy, float Radius, bool Clockwise)
+        public static Bound<T> CalculateLineBound<T>(T X0, T Y0, T X1, T Y1)
+            where T : struct
         {
-            if (Cx < Sx)
+            Func<T, T, bool> LessThan = Bound<T>.LessThan;
+            return LessThan(X1, X0) ? (LessThan(Y1, Y0) ? new Bound<T>(X1, Y1, X0, Y0) :
+                                                          new Bound<T>(X1, Y0, X0, Y1)) :
+                                      (LessThan(Y1, Y0) ? new Bound<T>(X0, Y1, X1, Y0) :
+                                                          new Bound<T>(X0, Y0, X1, Y1));
+        }
+        public static Bound<T> CalculateArcBound<T>(T Sx, T Sy, T Ex, T Ey, T Cx, T Cy, T Radius, bool Clockwise)
+            where T : struct
+        {
+            Func<T, T, bool> LessThan = Bound<T>.LessThan;
+            Func<T, T, T> Add = Bound<T>.Add,
+                          Sub = Bound<T>.Sub;
+            if (LessThan(Cx, Sx))
             {
-                if (Cy < Sy)
+                if (LessThan(Cy, Sy))
                 {
-                    if (Cx < Ex)
+                    if (LessThan(Cx, Ex))
                     {
-                        if (Cy < Ey)
+                        if (LessThan(Cy, Ey))
                         {
-                            bool Temp = Sx < Ex;
-                            return Clockwise == Temp ? new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Cy + Radius) :
-                                                       Temp ? new FloatBound(Sx, Ey, Ex, Sy) :
-                                                              new FloatBound(Ex, Sy, Sx, Ey);
+                            bool Temp = LessThan(Sx, Ex);
+                            return Clockwise == Temp ? new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), Add(Cx, Radius), Add(Cy, Radius)) :
+                                                       Temp ? new Bound<T>(Sx, Ey, Ex, Sy) :
+                                                              new Bound<T>(Ex, Sy, Sx, Ey);
                         }
                         else
                         {
-                            return Clockwise ? new FloatBound(Cx - Radius, Cy - Radius, Sx < Ex ? Ex : Sx, Cy + Radius) :
-                                               new FloatBound(Sx < Ex ? Sx : Ex, Ey, Cx + Radius, Sy);
+                            return Clockwise ? new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), LessThan(Sx, Ex) ? Ex : Sx, Add(Cy, Radius)) :
+                                               new Bound<T>(LessThan(Sx, Ex) ? Sx : Ex, Ey, Add(Cx, Radius), Sy);
                         }
                     }
                     else
                     {
-                        return Cy < Ey ? (Clockwise ? new FloatBound(Ex, Sy < Ey ? Sy : Ey, Sx, Cy + Radius) :
-                                                      new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Sy < Ey ? Ey : Sy)) :
-                                         (Clockwise ? new FloatBound(Cx - Radius, Ey, Sx, Cy + Radius) :
-                                                      new FloatBound(Ex, Cy - Radius, Cx + Radius, Sy));
+                        return LessThan(Cy, Ey) ? (Clockwise ? new Bound<T>(Ex, LessThan(Sy, Ey) ? Sy : Ey, Sx, Add(Cy, Radius)) :
+                                                      new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), Add(Cx, Radius), LessThan(Sy, Ey) ? Ey : Sy)) :
+                                         (Clockwise ? new Bound<T>(Sub(Cx, Radius), Ey, Sx, Add(Cy, Radius)) :
+                                                      new Bound<T>(Ex, Sub(Cy, Radius), Add(Cx, Radius), Sy));
                     }
                 }
                 else
                 {
-                    if (Cx < Ex)
+                    if (LessThan(Cx, Ex))
                     {
-                        if (Cy < Ey)
+                        if (LessThan(Cy, Ey))
                         {
-                            return Clockwise ? new FloatBound(Sx < Ex ? Sx : Ex, Sy, Cx + Radius, Ey) :
-                                               new FloatBound(Cx - Radius, Cy - Radius, Sx < Ex ? Ex : Sx, Cy + Radius);
+                            return Clockwise ? new Bound<T>(LessThan(Sx, Ex) ? Sx : Ex, Sy, Add(Cx, Radius), Ey) :
+                                               new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), LessThan(Sx, Ex) ? Ex : Sx, Add(Cy, Radius));
                         }
                         else
                         {
-                            bool Temp = Sx < Ex;
-                            return Clockwise == Temp ? (Temp ? new FloatBound(Sx, Sy, Ex, Ey) :
-                                                               new FloatBound(Ex, Ey, Sx, Sy)) :
-                                                       new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Cy + Radius);
+                            bool Temp = LessThan(Sx, Ex);
+                            return Clockwise == Temp ? (Temp ? new Bound<T>(Sx, Sy, Ex, Ey) :
+                                                               new Bound<T>(Ex, Ey, Sx, Sy)) :
+                                                       new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), Add(Cx, Radius), Add(Cy, Radius));
                         }
                     }
                     else
                     {
-                        return Cy < Ey ? (Clockwise ? new FloatBound(Ex, Sy, Cx + Radius, Cy + Radius) :
-                                                      new FloatBound(Cx - Radius, Cy - Radius, Sx, Ey)) :
-                                         (Clockwise ? new FloatBound(Cx - Radius, Sy < Ey ? Sy : Ey, Cx + Radius, Cy + Radius) :
-                                                      new FloatBound(Ex, Cy - Radius, Sx, Sy < Ey ? Ey : Sy));
+                        return LessThan(Cy, Ey) ? (Clockwise ? new Bound<T>(Ex, Sy, Add(Cx, Radius), Add(Cy, Radius)) :
+                                                      new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), Sx, Ey)) :
+                                         (Clockwise ? new Bound<T>(Sub(Cx, Radius), LessThan(Sy, Ey) ? Sy : Ey, Add(Cx, Radius), Add(Cy, Radius)) :
+                                                      new Bound<T>(Ex, Sub(Cy, Radius), Sx, LessThan(Sy, Ey) ? Ey : Sy));
                     }
                 }
             }
             else
             {
-                if (Cy < Sy)
+                if (LessThan(Cy, Sy))
                 {
-                    if (Cx < Ex)
+                    if (LessThan(Cx, Ex))
                     {
-                        return Cy < Ey ? (Clockwise ? new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Sy < Ey ? Ey : Sy) :
-                                                      new FloatBound(Sx, Sy < Ey ? Sy : Ey, Ex, Cy + Radius)) :
-                                         (Clockwise ? new FloatBound(Cx - Radius, Cy - Radius, Ex, Sy) :
-                                                      new FloatBound(Sx, Ey, Cx + Radius, Cy + Radius));
+                        return LessThan(Cy, Ey) ? (Clockwise ? new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), Add(Cx, Radius), LessThan(Sy, Ey) ? Ey : Sy) :
+                                                      new Bound<T>(Sx, LessThan(Sy, Ey) ? Sy : Ey, Ex, Add(Cy, Radius))) :
+                                         (Clockwise ? new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), Ex, Sy) :
+                                                      new Bound<T>(Sx, Ey, Add(Cx, Radius), Add(Cy, Radius)));
                     }
                     else
                     {
-                        if (Cy < Ey)
+                        if (LessThan(Cy, Ey))
                         {
-                            bool Temp = Sx < Ex;
-                            return Clockwise == Temp ? new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Cy + Radius) :
-                                                       Temp ? new FloatBound(Sx, Sy, Ex, Ey) :
-                                                              new FloatBound(Ex, Ey, Sx, Sy);
+                            bool Temp = LessThan(Sx, Ex);
+                            return Clockwise == Temp ? new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), Add(Cx, Radius), Add(Cy, Radius)) :
+                                                       Temp ? new Bound<T>(Sx, Sy, Ex, Ey) :
+                                                              new Bound<T>(Ex, Ey, Sx, Sy);
                         }
                         else
                         {
-                            return Clockwise ? new FloatBound(Cx - Radius, Ey, Sx < Ex ? Ex : Sx, Sy) :
-                                               new FloatBound(Sx < Ex ? Sx : Ex, Cy - Radius, Cx + Radius, Cy + Radius);
+                            return Clockwise ? new Bound<T>(Sub(Cx, Radius), Ey, LessThan(Sx, Ex) ? Ex : Sx, Sy) :
+                                               new Bound<T>(LessThan(Sx, Ex) ? Sx : Ex, Sub(Cy, Radius), Add(Cx, Radius), Add(Cy, Radius));
                         }
                     }
                 }
                 else
                 {
-                    if (Cx < Ex)
+                    if (LessThan(Cx, Ex))
                     {
-                        return Cy < Ey ? (Clockwise ? new FloatBound(Sx, Cy - Radius, Cx + Radius, Ey) :
-                                                      new FloatBound(Cx - Radius, Sy, Ex, Cy + Radius)) :
-                                         (Clockwise ? new FloatBound(Sx, Cy - Radius, Ex, Sy < Ey ? Ey : Sy) :
-                                                      new FloatBound(Cx - Radius, Sy < Ey ? Sy : Ey, Cx + Radius, Cy + Radius));
+                        return LessThan(Cy, Ey) ? (Clockwise ? new Bound<T>(Sx, Sub(Cy, Radius), Add(Cx, Radius), Ey) :
+                                                      new Bound<T>(Sub(Cx, Radius), Sy, Ex, Add(Cy, Radius))) :
+                                         (Clockwise ? new Bound<T>(Sx, Sub(Cy, Radius), Ex, LessThan(Sy, Ey) ? Ey : Sy) :
+                                                      new Bound<T>(Sub(Cx, Radius), LessThan(Sy, Ey) ? Sy : Ey, Add(Cx, Radius), Add(Cy, Radius)));
                     }
                     else
                     {
-                        if (Cy < Ey)
+                        if (LessThan(Cy, Ey))
                         {
-                            return Clockwise ? new FloatBound(Sx < Ex ? Sx : Ex, Cy - Radius, Cx + Radius, Cy + Radius) :
-                                               new FloatBound(Cx - Radius, Sy, Sx < Ex ? Ex : Sx, Ey);
+                            return Clockwise ? new Bound<T>(LessThan(Sx, Ex) ? Sx : Ex, Sub(Cy, Radius), Add(Cx, Radius), Add(Cy, Radius)) :
+                                               new Bound<T>(Sub(Cx, Radius), Sy, LessThan(Sx, Ex) ? Ex : Sx, Ey);
                         }
                         else
                         {
-                            bool Temp = Sx < Ex;
-                            return Clockwise == Temp ? (Temp ? new FloatBound(Sx, Ey, Ex, Sy) :
-                                                               new FloatBound(Ex, Sy, Sx, Ey)) :
-                                                       new FloatBound(Cx - Radius, Cy - Radius, Cx + Radius, Cy + Radius);
+                            bool Temp = LessThan(Sx, Ex);
+                            return Clockwise == Temp ? (Temp ? new Bound<T>(Sx, Ey, Ex, Sy) :
+                                                               new Bound<T>(Ex, Sy, Sx, Ey)) :
+                                                       new Bound<T>(Sub(Cx, Radius), Sub(Cy, Radius), Add(Cx, Radius), Add(Cy, Radius));
                         }
                     }
                 }
             }
         }
-        public static FloatBound CalculatePolygonBound(IEnumerable<float> PointPairs)
+        public static Bound<T> CalculatePolygonBound<T>(IEnumerable<T> PointPairs)
+            where T : struct
         {
-            IEnumerator<float> Enumerator = PointPairs.GetEnumerator();
+            Func<T, T, bool> LessThan = Bound<T>.LessThan;
+
+            IEnumerator<T> Enumerator = PointPairs.GetEnumerator();
             if (!Enumerator.MoveNext())
-                return FloatBound.Empty;
+                return Bound<T>.Empty;
 
-            float MinX = Enumerator.Current,
-                  MaxX = MinX;
+            T MinX = Enumerator.Current,
+              MaxX = MinX;
 
             if (!Enumerator.MoveNext())
-                return FloatBound.Empty;
+                return Bound<T>.Empty;
 
-            float MinY = Enumerator.Current,
-                  MaxY = MinY,
-                  Temp;
+            T MinY = Enumerator.Current,
+              MaxY = MinY,
+              Temp;
 
             while (Enumerator.MoveNext())
             {
@@ -291,20 +302,20 @@ namespace MenthaAssembly
                 if (!Enumerator.MoveNext())
                     break;
 
-                if (Temp < MinX)
+                if (LessThan(Temp, MinX))
                     MinX = Temp;
-                else if (MaxX < Temp)
+                else if (LessThan(MaxX, Temp))
                     MaxX = Temp;
 
                 Temp = Enumerator.Current;
 
-                if (Temp < MinY)
+                if (LessThan(Temp, MinY))
                     MinY = Temp;
-                else if (MaxY < Temp)
+                else if (LessThan(MaxY, Temp))
                     MaxY = Temp;
             }
 
-            return new FloatBound(MinX, MinY, MaxX, MaxY);
+            return new Bound<T>(MinX, MinY, MaxX, MaxY);
         }
 
         public static double Distance(double Px, double Py, double Qx, double Qy)

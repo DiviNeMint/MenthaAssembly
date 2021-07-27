@@ -235,12 +235,12 @@ namespace MenthaAssembly
         public override string ToString()
             => $"{{Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom}}}";
 
-        private readonly static Func<T, T, T> Add, Sub, Mul, Div;
-        private readonly static Predicate<T> IsDefault;
-        private readonly static Func<T, double> ToDouble;
-        private readonly static Func<double, T> ToGeneric;
-        private readonly static Func<T, T, bool> Equal, GreaterThan, LessThan, GreaterThanOrEqual, LessThanOrEqual;
-        private readonly static Func<T, T, T> Min, Max;
+        internal readonly static Func<T, T, T> Add, Sub, Mul, Div;
+        internal readonly static Predicate<T> IsDefault;
+        internal readonly static Func<T, double> ToDouble;
+        internal readonly static Func<double, T> ToGeneric;
+        internal readonly static Func<T, T, bool> Equal, GreaterThan, LessThan, GreaterThanOrEqual, LessThanOrEqual;
+        internal readonly static Func<T, T, T> Min, Max;
         static Bound()
         {
             Add = ExpressionHelper<T>.CreateAdd();
