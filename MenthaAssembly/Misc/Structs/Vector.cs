@@ -28,6 +28,13 @@ namespace MenthaAssembly
             this.Y = Sub(p2.Y, p2.Y);
         }
 
+        public Vector<U> Cast<U>()
+            where U : struct
+        {
+            Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
+            return new Vector<U>(CastHandler(this.X), CastHandler(this.Y));
+        }
+
         public Vector<T> Clone()
             => new Vector<T>(X, Y);
         object ICloneable.Clone()

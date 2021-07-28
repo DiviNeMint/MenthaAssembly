@@ -21,6 +21,13 @@ namespace MenthaAssembly
             this.Height = Height;
         }
 
+        public Size<U> Cast<U>()
+            where U : struct
+        {
+            Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
+            return new Size<U>(CastHandler(this.Width), CastHandler(this.Height));
+        }
+
         public Size<T> Clone()
             => new Size<T>(Width, Height);
         object ICloneable.Clone()
