@@ -72,40 +72,23 @@ namespace MenthaAssembly
             Qx += Cx;
             Qy += Cy;
         }
+        public static void Rotate(double Px, double Py, double Cx, double Cy, double Sin, double Cos, out double Qx, out double Qy)
+        {
+            Rotate(Px - Cx, Py - Cy, Sin, Cos, out Qx, out Qy);
+            Qx += Cx;
+            Qy += Cy;
+        }
         public static void Rotate(double Px, double Py, double Theta, out double Qx, out double Qy)
         {
             double Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
+            Rotate(Px, Py, Sin, Cos, out Qx, out Qy);
+        }
+        public static void Rotate(double Px, double Py, double Sin, double Cos, out double Qx, out double Qy)
+        {
             Qx = Px * Cos - Py * Sin;
             Qy = Px * Sin + Py * Cos;
-        }
-
-        public static void RotateSize(double Width, double Height, double Theta, out double NewWidth, out double NewHeight)
-        {
-            double Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
-
-            //無條件進位
-            NewWidth = Math.Ceiling(Math.Abs(Width * Cos) + Math.Abs(Height * Sin) - 0.0001);
-            NewHeight = Math.Ceiling(Math.Abs(Width * Sin) + Math.Abs(Height * Cos) - 0.0001);
-
-            ////四捨五入
-            //NewWidth  = (int)(Math.Abs(Width * Cos) + Math.Abs(Height * Sin) + 0.5);
-            //NewHeight = (int)(Math.Abs(Width * Sin) + Math.Abs(Height * Cos) + 0.5);
-        }
-        public static void RotateSize(int Width, int Height, double Theta, out int NewWidth, out int NewHeight)
-        {
-            double Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
-
-            //無條件進位
-            NewWidth = (int)Math.Ceiling(Math.Abs(Width * Cos) + Math.Abs(Height * Sin) - 0.0001);
-            NewHeight = (int)Math.Ceiling(Math.Abs(Width * Sin) + Math.Abs(Height * Cos) - 0.0001);
-
-            ////四捨五入
-            //NewWidth  = (int)(Math.Abs(Width * Cos) + Math.Abs(Height * Sin) + 0.5);
-            //NewHeight = (int)(Math.Abs(Width * Sin) + Math.Abs(Height * Cos) + 0.5);
         }
 
         /// <summary>

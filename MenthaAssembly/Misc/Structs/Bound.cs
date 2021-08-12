@@ -21,7 +21,15 @@ namespace MenthaAssembly
 
         public T Height => Sub(this.Bottom, this.Top);
 
-        public Point<T> Center => new Point<T>(ToGeneric(ToDouble(Add(this.Left, this.Right)) * 0.5d), ToGeneric(ToDouble(Add(this.Top, this.Bottom)) * 0.5d));
+        public Point<T> Center => new Point<T>(ValueHalf(Add(this.Left, this.Right)), ValueHalf(Add(this.Top, this.Bottom)));
+
+        public Point<T> LeftTop => new Point<T>(this.Left, this.Top);
+
+        public Point<T> LeftBottom => new Point<T>(this.Left, this.Bottom);
+
+        public Point<T> RightTop => new Point<T>(this.Right, this.Top);
+
+        public Point<T> RightBottom => new Point<T>(this.Right, this.Bottom);
 
         public bool IsEmpty => IsDefault(Width) && IsDefault(Height);
 
@@ -241,12 +249,15 @@ namespace MenthaAssembly
         internal readonly static Func<double, T> ToGeneric;
         internal readonly static Func<T, T, bool> Equal, GreaterThan, LessThan, GreaterThanOrEqual, LessThanOrEqual;
         internal readonly static Func<T, T, T> Min, Max;
+        internal readonly static Func<T, T> ValueHalf;
         static Bound()
         {
             Add = ExpressionHelper<T>.CreateAdd();
             Sub = ExpressionHelper<T>.CreateSub();
             Mul = ExpressionHelper<T>.CreateMul();
             Div = ExpressionHelper<T>.CreateDiv();
+
+            ValueHalf = ExpressionHelper<T>.CreateDiv(2);
 
             IsDefault = ExpressionHelper<T>.CreateIsDefault();
             ToDouble = ExpressionHelper<T>.CreateCast<double>();

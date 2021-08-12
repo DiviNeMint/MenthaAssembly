@@ -28,6 +28,13 @@ namespace MenthaAssembly
             this.Y = ToGeneric(Ny);
         }
 
+        public Point<U> Cast<U>()
+            where U : struct
+        {
+            Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
+            return new Point<U>(CastHandler(this.X), CastHandler(this.Y));
+        }
+
         public Point<T> Clone()
             => new Point<T>(X, Y);
         object ICloneable.Clone()

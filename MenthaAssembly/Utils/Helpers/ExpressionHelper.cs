@@ -1,4 +1,6 @@
-﻿namespace System.Linq.Expressions
+﻿using System.Collections.Concurrent;
+
+namespace System.Linq.Expressions
 {
     public static class ExpressionHelper
     {
@@ -120,6 +122,109 @@
             }
 
             return _Div;
+        }
+
+        public static readonly ConcurrentDictionary<object, Func<T, T>> _Muls = new(),
+                                                                        _Divs = new();
+        public static Func<T, T> CreateMul(object Constant)
+        {
+            if (_Muls.TryGetValue(Constant, out Func<T, T> MulFunc))
+                return MulFunc;
+
+            try
+            {
+                ParameterExpression Arg1 = Expression.Parameter(t, "a");
+                if (typeof(int).Equals(t))
+                {
+                    if (Constant is not int IntConst)
+                        IntConst = Convert.ToInt32(Constant);
+
+                    if (IntConst > 1 &&
+                        (IntConst & (IntConst - 1)) == 0)
+                    {
+                        int Shift = 0;
+                        while (IntConst > 1)
+                        {
+                            IntConst >>= 1;
+                            Shift++;
+                        }
+
+                        MulFunc = Expression.Lambda<Func<T, T>>(Expression.LeftShift(Arg1, Expression.Constant(Shift)), Arg1)
+                                            .Compile();
+                    }
+                    else
+                    {
+                        MulFunc = Expression.Lambda<Func<T, T>>(Expression.Multiply(Arg1, Expression.Constant(IntConst)), Arg1)
+                                            .Compile();
+                    }
+                }
+                else
+                {
+                    if (Constant is not T TConst)
+                        TConst = (T)Convert.ChangeType(Constant, t);
+
+                    MulFunc = Expression.Lambda<Func<T, T>>(Expression.Multiply(Arg1, Expression.Constant(TConst)), Arg1)
+                                        .Compile();
+                }
+
+            }
+            catch (Exception Ex)
+            {
+                MulFunc = a => throw Ex;
+            }
+
+            _Muls.AddOrUpdate(Constant, MulFunc, (k, v) => MulFunc);
+            return MulFunc;
+        }
+        public static Func<T, T> CreateDiv(object Constant)
+        {
+            if (_Divs.TryGetValue(Constant, out Func<T, T> DivFunc))
+                return DivFunc;
+
+            try
+            {
+                ParameterExpression Arg1 = Expression.Parameter(t, "a");
+                if (typeof(int).Equals(t))
+                {
+                    if (Constant is not int IntConst)
+                        IntConst = Convert.ToInt32(Constant);
+
+                    if (IntConst > 1 &&
+                        (IntConst & (IntConst - 1)) == 0)
+                    {
+                        int Shift = 0;
+                        while (IntConst > 1)
+                        {
+                            IntConst >>= 1;
+                            Shift++;
+                        }
+
+                        DivFunc = Expression.Lambda<Func<T, T>>(Expression.RightShift(Arg1, Expression.Constant(Shift)), Arg1)
+                                            .Compile();
+                    }
+                    else
+                    {
+                        DivFunc = Expression.Lambda<Func<T, T>>(Expression.Divide(Arg1, Expression.Constant(IntConst)), Arg1)
+                                            .Compile();
+                    }
+                }
+                else
+                {
+                    if (Constant is not T TConst)
+                        TConst = (T)Convert.ChangeType(Constant, t);
+
+                    DivFunc = Expression.Lambda<Func<T, T>>(Expression.Divide(Arg1, Expression.Constant(TConst)), Arg1)
+                                        .Compile();
+                }
+
+            }
+            catch (Exception Ex)
+            {
+                DivFunc = a => throw Ex;
+            }
+
+            _Divs.AddOrUpdate(Constant, DivFunc, (k, v) => DivFunc);
+            return DivFunc;
         }
 
         private static Func<T, T, bool> _Equal, _GreaterThan, _LessThan, _GreaterThanOrEqual, _LessThanOrEqual;

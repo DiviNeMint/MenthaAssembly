@@ -361,6 +361,46 @@ namespace MenthaAssembly.Media.Imaging
 
             return Obround;
         }
+        public static ImageContour CreateFillObround(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta)
+        {
+            if (Theta % 180d == 0d)
+                return CreateFillObround(Cx, Cy, HalfWidth, HalfHeight);
+
+            if (Theta % 90d == 0d)
+                return CreateFillObround(Cx, Cy, HalfHeight, HalfWidth);
+
+            ImageContour Pen;
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            int Sx, Sy, Ex, Ey,
+                Dx, Dy;
+            if (HalfWidth < HalfHeight)
+            {
+                Pen = CreateFillEllipse(0, 0, HalfWidth, HalfWidth);
+
+                Dx = (int)Math.Round(HalfHeight * Sin);
+                Dy = (int)Math.Round(HalfHeight * Cos);
+
+                Sx = Cx - Dx;
+                Sy = Cy + Dy;
+                Ex = Cx + Dx;
+                Ey = Cy - Dy;
+            }
+            else
+            {
+                Pen = CreateFillEllipse(0, 0, HalfHeight, HalfHeight);
+                Dx = (int)Math.Round(HalfWidth * Cos);
+                Dy = (int)Math.Round(HalfWidth * Sin);
+
+                Sx = Cx - Dx;
+                Sy = Cy - Dy;
+                Ex = Cx + Dx;
+                Ey = Cy + Dy;
+            }
+
+            return CreateLineContour(Sx, Sy, Ex, Ey, Pen);
+        }
 
         public static ImageContour CreateFillDiamond(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
@@ -392,6 +432,73 @@ namespace MenthaAssembly.Media.Imaging
             return CreateFillRectangle(Cx + Dx1, Cy + Dy1, Cx + Dx2, Cy + Dy2, Cx - Dx1, Cy - Dy1, Cx - Dx2, Cy - Dy2);
         }
 
+        public static ImageContour CreateFillTriangle(int Cx, int Cy, int HalfWidth, int HalfHeight)
+        {
+            ImageContour Triangle = new ImageContour();
+
+            int Height = HalfHeight << 1;
+            GraphicAlgorithm.CalculateBresenhamLine(-HalfWidth, -Height, HalfWidth, Height, (Dx, Dy) => Triangle[Cy + HalfHeight + Dy].Datas.Add(Cx + Dx));
+            GraphicAlgorithm.CalculateBresenhamLine(HalfWidth, -Height, HalfWidth, Height, (Dx, Dy) => Triangle[Cy + HalfHeight + Dy].Datas.Add(Cx + Dx));
+
+            return Triangle;
+        }
+        public static ImageContour CreateFillTriangle(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta)
+        {
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta),
+                   XCos = HalfWidth * Cos,
+                   XSin = HalfWidth * Sin,
+                   YCos = HalfHeight * Cos,
+                   YSin = HalfHeight * Sin,
+                   X1 = -YSin,
+                   Y1 = YCos,
+                   X2 = XCos + YSin,
+                   Y2 = XSin - YCos,
+                   X3 = -XCos + YSin,
+                   Y3 = -XSin - YCos;
+
+            return CreateFillTriangle(Cx + (int)X1, Cy + (int)Y1, Cx + (int)X2, Cy + (int)Y2, Cx + (int)X3, Cy + (int)Y3);
+        }
+        public static ImageContour CreateFillTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3)
+        {
+            ImageContour Triangle = new ImageContour();
+            void AddData(int X, int Y)
+            {
+                ContourData TData = Triangle[Y];
+                if (TData.Count == 0)
+                {
+                    TData.AddLeft(X);
+                    return;
+                }
+
+                TData[X <= TData[0] ? 0 : 1] = X;
+            }
+
+            // (X1, Y1) => (X2, Y2)
+            int DeltaX = X2 - X1,
+                DeltaY = Y2 - Y1,
+                AbsDeltaX = Math.Abs(DeltaX),
+                AbsDeltaY = Math.Abs(DeltaY);
+
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+
+            // (X2, Y2) => (X3, Y3)
+            DeltaX = X3 - X2;
+            DeltaY = Y3 - Y2;
+            AbsDeltaX = Math.Abs(DeltaX);
+            AbsDeltaY = Math.Abs(DeltaY);
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X2 + Dx, Y2 + Dy));
+
+            // (X3, Y3) => (X1, Y1)
+            DeltaX = X1 - X3;
+            DeltaY = Y1 - Y3;
+            AbsDeltaX = Math.Abs(DeltaX);
+            AbsDeltaY = Math.Abs(DeltaY);
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X3 + Dx, Y3 + Dy));
+
+            return Triangle;
+        }
+
         public static ImageContour CreateFillRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
             ImageContour Rectangle = new ImageContour();
@@ -409,7 +516,7 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta)
         {
-            if (Theta == 0d)
+            if (Theta % 180d == 0d)
                 return CreateFillRectangle(Cx, Cy, HalfWidth, HalfHeight);
 
             double Sin = Math.Sin(Theta),
@@ -829,8 +936,8 @@ namespace MenthaAssembly.Media.Imaging
             ImageContour LineContour = new ImageContour();
 
             #region Pen Bound
-            int PCx = Bound.Width >> 1,
-                PCy = Bound.Height >> 1,
+            int PCx = (Bound.Left + Bound.Right) >> 1,
+                PCy = (Bound.Top + Bound.Bottom) >> 1,
                 DUx = 0,
                 DUy = 0,
                 DLx = 0,
@@ -875,10 +982,8 @@ namespace MenthaAssembly.Media.Imaging
                         }
                     }
 
-
                     LineContour[Ty + Y0].AddLeft(Tx + X0);  // StartPoint
                     LineContour[Ty + Y1].AddLeft(Tx + X1);  // EndPoint
-
                 }
 
                 // Found Right Bound
@@ -916,7 +1021,7 @@ namespace MenthaAssembly.Media.Imaging
             if (IsHollow)
             {
                 #region Line Body Bound
-                ImageContour Stroke = ImageContour.Offset(Pen, X0 - PCx, Y0 - PCy);
+                ImageContour Stroke = Offset(Pen, X0 - PCx, Y0 - PCy);
 
                 int LastDx = 0,
                     LastDy = 0;
