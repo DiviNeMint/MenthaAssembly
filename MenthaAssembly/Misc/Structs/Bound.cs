@@ -83,12 +83,14 @@ namespace MenthaAssembly
                    DR = ToDouble(this.Right),
                    DB = ToDouble(this.Bottom),
                    DOx = (DL + DR) * 0.5d,
-                   DOy = (DT + DB) * 0.5d;
+                   DOy = (DT + DB) * 0.5d,
+                   Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
 
-            MathHelper.Rotate(DL, DT, DOx, DOy, Theta, out double X0, out double Y0);
-            MathHelper.Rotate(DL, DB, DOx, DOy, Theta, out double X1, out double Y1);
-            MathHelper.Rotate(DR, DT, DOx, DOy, Theta, out double X2, out double Y2);
-            MathHelper.Rotate(DR, DB, DOx, DOy, Theta, out double X3, out double Y3);
+            MathHelper.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
+            MathHelper.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
+            MathHelper.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
+            MathHelper.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
             this.Left = ToGeneric(Min);
@@ -105,12 +107,14 @@ namespace MenthaAssembly
                    DR = ToDouble(this.Right),
                    DB = ToDouble(this.Bottom),
                    DOx = ToDouble(Ox),
-                   DOy = ToDouble(Oy);
+                   DOy = ToDouble(Oy),
+                   Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
 
-            MathHelper.Rotate(DL, DT, DOx, DOy, Theta, out double X0, out double Y0);
-            MathHelper.Rotate(DL, DB, DOx, DOy, Theta, out double X1, out double Y1);
-            MathHelper.Rotate(DR, DT, DOx, DOy, Theta, out double X2, out double Y2);
-            MathHelper.Rotate(DR, DB, DOx, DOy, Theta, out double X3, out double Y3);
+            MathHelper.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
+            MathHelper.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
+            MathHelper.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
+            MathHelper.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
             this.Left = ToGeneric(Min);
@@ -297,12 +301,14 @@ namespace MenthaAssembly
                    DR = ToDouble(Bound.Right),
                    DB = ToDouble(Bound.Bottom),
                    DOx = (DL + DR) * 0.5d,
-                   DOy = (DT + DB) * 0.5d;
+                   DOy = (DT + DB) * 0.5d,
+                   Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
 
-            MathHelper.Rotate(DL, DT, DOx, DOy, Theta, out double X0, out double Y0);
-            MathHelper.Rotate(DL, DB, DOx, DOy, Theta, out double X1, out double Y1);
-            MathHelper.Rotate(DR, DT, DOx, DOy, Theta, out double X2, out double Y2);
-            MathHelper.Rotate(DR, DB, DOx, DOy, Theta, out double X3, out double Y3);
+            MathHelper.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
+            MathHelper.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
+            MathHelper.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
+            MathHelper.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
             R.Left = ToGeneric(Min);
@@ -323,12 +329,14 @@ namespace MenthaAssembly
                    DR = ToDouble(Bound.Right),
                    DB = ToDouble(Bound.Bottom),
                    DOx = ToDouble(Ox),
-                   DOy = ToDouble(Oy);
+                   DOy = ToDouble(Oy),
+                   Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
 
-            MathHelper.Rotate(DL, DT, DOx, DOy, Theta, out double X0, out double Y0);
-            MathHelper.Rotate(DL, DB, DOx, DOy, Theta, out double X1, out double Y1);
-            MathHelper.Rotate(DR, DT, DOx, DOy, Theta, out double X2, out double Y2);
-            MathHelper.Rotate(DR, DB, DOx, DOy, Theta, out double X3, out double Y3);
+            MathHelper.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
+            MathHelper.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
+            MathHelper.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
+            MathHelper.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
             R.Left = ToGeneric(Min);
@@ -399,7 +407,7 @@ namespace MenthaAssembly
             => new Bound<T>(Div(This.Left, Factor), Div(This.Top, Factor), Div(This.Right, Factor), Div(This.Bottom, Factor));
 
         public static bool operator ==(Bound<T> This, Bound<T> Target)
-                => This.Equals(Target);
+            => This.Equals(Target);
         public static bool operator !=(Bound<T> This, Bound<T> Target)
             => !This.Equals(Target);
 

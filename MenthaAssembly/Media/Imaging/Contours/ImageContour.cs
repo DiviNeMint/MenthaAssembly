@@ -47,7 +47,7 @@ namespace MenthaAssembly.Media.Imaging
                             Bottom = Enumerator.Current.Key;
                         }
 
-                        return new Bound<int>(Left, Top, Right, Bottom);
+                        return new Bound<int>(Left, Top, Right + 1, Bottom + 1);
                     }
 
                     return Bound<int>.Empty;
@@ -317,7 +317,10 @@ namespace MenthaAssembly.Media.Imaging
                     return;
                 }
 
-                TData[X <= TData[0] ? 0 : 1] = X;
+                if (X < TData[0])
+                    TData[0] = X;
+                else if (TData[1] < X)
+                    TData[1] = X;
             });
 
             return Ellipse;
@@ -335,7 +338,10 @@ namespace MenthaAssembly.Media.Imaging
                     return;
                 }
 
-                TData[X <= TData[0] ? 0 : 1] = X;
+                if (X < TData[0])
+                    TData[0] = X;
+                else if (TData[1] < X)
+                    TData[1] = X;
             }
 
             int Length;
@@ -545,7 +551,10 @@ namespace MenthaAssembly.Media.Imaging
                     return;
                 }
 
-                TData[X <= TData[0] ? 0 : 1] = X;
+                if (X < TData[0])
+                    TData[0] = X;
+                else if (TData[1] < X)
+                    TData[1] = X;
             }
 
             // (X1, Y1) => (X2, Y2)
@@ -810,7 +819,10 @@ namespace MenthaAssembly.Media.Imaging
                     return;
                 }
 
-                TData[X <= TData[0] ? 0 : 1] = X;
+                if (X < TData[0])
+                    TData[0] = X;
+                else if (TData[1] < X)
+                    TData[1] = X;
             }
 
             double DeltaTheta = (360d / VertexNum) * MathHelper.UnitTheta,
