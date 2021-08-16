@@ -308,22 +308,6 @@ namespace MenthaAssembly
             return Math.Sqrt(Dx * Dx + Dy * Dy);
         }
 
-        public static void CrossPoint(double Lx0, double Ly0, double Lx1, double Ly1, double Px, double Py, out double Qx, out double Qy)
-            => CrossPoint(Lx0, Ly0, (Ly1 - Ly0) / (Lx1 - Lx0), Px, Py, out Qx, out Qy);
-        public static void CrossPoint(double Lx, double Ly, double M, double Px, double Py, out double Qx, out double Qy)
-        {
-            if (double.IsInfinity(M))
-            {
-                Qx = Lx;
-                Qy = Py;
-                return;
-            }
-
-            double SquareM = M * M;
-            Qx = (SquareM * Lx + M * (Py - Ly) + Px) / (SquareM + 1);
-            Qy = (SquareM * Py + M * (Px - Lx) + Ly) / (SquareM + 1);
-        }
-
         public static int Abs(this int This)
         {
             if (This >= 0)

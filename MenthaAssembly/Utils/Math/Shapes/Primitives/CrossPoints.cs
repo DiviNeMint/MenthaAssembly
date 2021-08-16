@@ -35,6 +35,9 @@ namespace MenthaAssembly
             this.Count = Points.Count();
         }
 
+        public override string ToString()
+            => IsInfinity ? "Infinity" : $"Count : {Count}";
+
         public IEnumerator<Point<T>> GetEnumerator()
             => this.Points.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator()

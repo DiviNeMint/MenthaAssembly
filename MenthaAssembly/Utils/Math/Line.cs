@@ -147,17 +147,11 @@ namespace MenthaAssembly
             if (this.IsEmpty)
                 return;
 
-            double TOx = ToDouble(Cx),
-                   TOy = ToDouble(Cy),
-                   Sin = Math.Sin(Theta),
+            double Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
             for (int i = 0; i < Points.Length; i++)
-            {
-                MathHelper.Rotate(ToDouble(this.Points[i].X), ToDouble(this.Points[i].Y), TOx, TOy, Sin, Cos, out double Px, out double Py);
-                this.Points[i].X = ToGeneric(Px);
-                this.Points[i].Y = ToGeneric(Py);
-            }
+                this.Points[i].Rotate(Cx, Cy, Sin, Cos);
         }
 
         /// <summary>
@@ -202,8 +196,7 @@ namespace MenthaAssembly
             if (this.IsEmpty)
                 return obj.IsEmpty;
 
-            return IsCollinear(this.Points[0], this.Points[1], obj.Points[0]) &&
-                   IsCollinear(this.Points[0], this.Points[1], obj.Points[1]);
+            return IsCollinear(this.Points[0], this.Points[1], obj.Points[0], obj.Points[1]);
         }
         public override bool Equals(object obj)
             => obj is Line<T> Target && Equals(Target);
@@ -517,6 +510,51 @@ namespace MenthaAssembly
 
             return IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y));
         }
+        /// <summary>
+        /// Returns a value indicating whether the points are collinear.
+        /// </summary>
+        /// <param name="Point1">The first target point.</param>
+        /// <param name="Point2">The second target point.</param>
+        /// <param name="Point3">The third target point.</param>
+        /// <param name="Point4">The fourth target point.</param>
+        public static bool IsCollinear(Point<T> Point1, Point<T> Point2, Point<T> Point3, Point<T> Point4)
+            => IsCollinear(Point1.X, Point1.Y, Point2.X, Point2.Y, Point3.X, Point3.Y, Point4.X, Point4.Y);
+        /// <summary>
+        /// Returns a value indicating whether the points are collinear.
+        /// </summary>
+        /// <param name="Px1">The x-coordinate of the first target point.</param>
+        /// <param name="Py1">The y-coordinate of the first target point.</param>
+        /// <param name="Px2">The x-coordinate of the second target point.</param>
+        /// <param name="Py2">The y-coordinate of the second target point.</param>
+        /// <param name="Px3">The x-coordinate of the third target point.</param>
+        /// <param name="Py3">The y-coordinate of the third target point.</param>
+        /// <param name="Px4">The x-coordinate of the fourth target point.</param>
+        /// <param name="Py4">The y-coordinate of the fourth target point.</param>
+        public static bool IsCollinear(T Px1, T Py1, T Px2, T Py2, T Px3, T Py3, T Px4, T Py4)
+        {
+            T v1x = Sub(Px2, Px1),
+              v1y = Sub(Py2, Py1);
+
+            if (IsDefault(v1x) && IsDefault(v1x))
+                return IsCollinear(Px2, Py2, Px3, Py3, Px4, Py4);
+
+            T v2x = Sub(Px3, Px1),
+              v2y = Sub(Py3, Py1);
+
+            if (IsDefault(v2x) && IsDefault(v2y) ||
+                IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y)))
+            {
+                v2x = Sub(Px4, Px1);
+                v2y = Sub(Py4, Py1);
+
+                if (IsDefault(v2x) && IsDefault(v2y))
+                    return true;
+
+                return IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y));
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// Calculate the cross points between two lines.
@@ -654,18 +692,15 @@ namespace MenthaAssembly
             int Length = Line.Points.Length;
             Line<T> Result = new Line<T> { Points = new Point<T>[Length] };
 
-            double TOx = ToDouble(Cx),
-                   TOy = ToDouble(Cy),
-                   Sin = Math.Sin(Theta),
+            double Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
             for (int i = 0; i < Length; i++)
             {
-                MathHelper.Rotate(ToDouble(Line.Points[i].X), ToDouble(Line.Points[i].Y), TOx, TOy, Sin, Cos, out double Px, out double Py);
-                Result.Points[i].X = ToGeneric(Px);
-                Result.Points[i].Y = ToGeneric(Py);
+                Point<T>.Rotate(Line.Points[i].X, Line.Points[i].Y, Cx, Cy, Sin, Cos, out T Px, out T Py);
+                Result.Points[i].X = Px;
+                Result.Points[i].Y = Py;
             }
-
             return Result;
         }
 
