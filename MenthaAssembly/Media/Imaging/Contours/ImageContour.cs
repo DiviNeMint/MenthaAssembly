@@ -8,7 +8,8 @@ using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public class ImageContour : IEnumerable<KeyValuePair<int, ContourData>>
+    [Serializable]
+    public class ImageContour : IEnumerable<KeyValuePair<int, ContourData>>, ICloneable
     {
         internal readonly SortedList<int, ContourData> Datas = new SortedList<int, ContourData>();
 
@@ -171,6 +172,52 @@ namespace MenthaAssembly.Media.Imaging
                     Datas.Add(Delta - Data.Key, Data.Value);
             }
         }
+        public static ImageContour Flip(ImageContour Source, int Center, FlipMode Mode)
+        {
+            ImageContour Contour = new ImageContour();
+
+            switch (Mode)
+            {
+                case FlipMode.Horizontal:
+                    {
+                        int Delta = Center << 1;
+                        foreach (KeyValuePair<int, ContourData> Data in Source.Datas)
+                        {
+                            ContourData SourData = Data.Value,
+                                        DestData = Contour[Data.Key];
+                            int Count = SourData.Count;
+                            for (int i = Count - 1; i >= 0; i--)
+                                DestData.Datas.Add(Delta - SourData.Datas[i]);
+                        }
+
+                        return Contour;
+                    }
+                case FlipMode.Vertical:
+                    {
+                        int Delta = Center << 1;
+                        foreach (KeyValuePair<int, ContourData> Data in Source.Datas)
+                            Contour[Delta - Data.Key].Datas.AddRange(Data.Value.Datas);
+
+                        return Contour;
+                    }
+                case FlipMode.Horizontal | FlipMode.Vertical:
+                    {
+                        int Delta = Center << 1;
+                        foreach (KeyValuePair<int, ContourData> Data in Source.Datas)
+                        {
+                            ContourData SourData = Data.Value,
+                                        DestData = Contour[Center - Data.Key];
+                            int Count = SourData.Count;
+                            for (int i = Count - 1; i >= 0; i--)
+                                DestData.Datas.Add(Delta - SourData.Datas[i]);
+                        }
+
+                        return Contour;
+                    }
+            }
+
+            return Source.Clone();
+        }
 
         public void Offset(int X, int Y)
         {
@@ -213,6 +260,18 @@ namespace MenthaAssembly.Media.Imaging
 
             return Result;
         }
+
+        public ImageContour Clone()
+        {
+            ImageContour Result = new ImageContour();
+
+            foreach (KeyValuePair<int, ContourData> Data in this.Datas)
+                Result[Data.Key] = Data.Value.Clone();
+
+            return Result;
+        }
+        object ICloneable.Clone()
+            => this.Clone();
 
         //public static ImageContour Rotate(ImageContour Source, int Ox, int Oy, int Angle)
         //{
@@ -313,7 +372,8 @@ namespace MenthaAssembly.Media.Imaging
                 ContourData TData = Ellipse[Y];
                 if (TData.Count == 0)
                 {
-                    TData.AddLeft(X);
+                    TData.Datas.Add(X);
+                    TData.Datas.Add(X);
                     return;
                 }
 
@@ -326,6 +386,39 @@ namespace MenthaAssembly.Media.Imaging
             return Ellipse;
         }
 
+        public static ImageContour CreateFillSector(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise)
+        {
+            ImageContour Contour = new ImageContour();
+
+            void AddData(int X, int Y)
+            {
+                ContourData TData = Contour[Y];
+                if (TData.Count == 0)
+                {
+                    TData.Datas.Add(X);
+                    TData.Datas.Add(X);
+                    return;
+                }
+
+                if (X < TData[0])
+                    TData[0] = X;
+                else if (TData[1] < X)
+                    TData[1] = X;
+            }
+
+            int DSx = Sx - Cx,
+                DSy = Sy - Cy,
+                DEx = Ex - Cx,
+                DEy = Ey - Cy;
+
+            GraphicAlgorithm.CalculateBresenhamLine(DSx, DSy, DSx.Abs(), DSy.Abs(), (Dx, Dy) => AddData(Cx + Dx, Cy + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DEx, DEy, DEx.Abs(), DEy.Abs(), (Dx, Dy) => AddData(Cx + Dx, Cy + Dy));
+
+            GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, (Dx, Dy) => AddData(Cx + Dx, Cy + Dy));
+
+            return Contour;
+        }
+
         public static ImageContour CreateFillObround(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
             ImageContour Obround = new ImageContour();
@@ -334,7 +427,8 @@ namespace MenthaAssembly.Media.Imaging
                 ContourData TData = Obround[Y];
                 if (TData.Count == 0)
                 {
-                    TData.AddLeft(X);
+                    TData.Datas.Add(X);
+                    TData.Datas.Add(X);
                     return;
                 }
 
@@ -473,11 +567,15 @@ namespace MenthaAssembly.Media.Imaging
                 ContourData TData = Triangle[Y];
                 if (TData.Count == 0)
                 {
-                    TData.AddLeft(X);
+                    TData.Datas.Add(X);
+                    TData.Datas.Add(X);
                     return;
                 }
 
-                TData[X <= TData[0] ? 0 : 1] = X;
+                if (X < TData[0])
+                    TData[0] = X;
+                else if (TData[1] < X)
+                    TData[1] = X;
             }
 
             // (X1, Y1) => (X2, Y2)
@@ -547,7 +645,8 @@ namespace MenthaAssembly.Media.Imaging
                 ContourData TData = Rectangle[Y];
                 if (TData.Count == 0)
                 {
-                    TData.AddLeft(X);
+                    TData.Datas.Add(X);
+                    TData.Datas.Add(X);
                     return;
                 }
 

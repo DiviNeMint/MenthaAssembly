@@ -308,23 +308,20 @@ namespace MenthaAssembly
             return Math.Sqrt(Dx * Dx + Dy * Dy);
         }
 
-        public static void CrossPoint(double LinePx1, double LinePy1, double LinePx2, double LinePy2, double OutsidePx, double OutsidePy, out double CrossPx, out double CrossPy)
-            => CrossPoint(LinePx1, LinePy1,
-                          (LinePy2 - LinePy1) / (LinePx2 - LinePx1),
-                          OutsidePx, OutsidePy,
-                          out CrossPx, out CrossPy);
-        public static void CrossPoint(double LinePx, double LinePy, double M, double OutsidePx, double OutsidePy, out double CrossPx, out double CrossPy)
+        public static void CrossPoint(double Lx0, double Ly0, double Lx1, double Ly1, double Px, double Py, out double Qx, out double Qy)
+            => CrossPoint(Lx0, Ly0, (Ly1 - Ly0) / (Lx1 - Lx0), Px, Py, out Qx, out Qy);
+        public static void CrossPoint(double Lx, double Ly, double M, double Px, double Py, out double Qx, out double Qy)
         {
             if (double.IsInfinity(M))
             {
-                CrossPx = LinePx;
-                CrossPy = OutsidePy;
+                Qx = Lx;
+                Qy = Py;
                 return;
             }
 
             double SquareM = M * M;
-            CrossPx = (SquareM * LinePx + M * (OutsidePy - LinePy) + OutsidePx) / (SquareM + 1);
-            CrossPy = (SquareM * OutsidePy + M * (OutsidePx - LinePx) + LinePy) / (SquareM + 1);
+            Qx = (SquareM * Lx + M * (Py - Ly) + Px) / (SquareM + 1);
+            Qy = (SquareM * Py + M * (Px - Lx) + Ly) / (SquareM + 1);
         }
 
         public static int Abs(this int This)

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    [Serializable]
     public class ContourData : IEnumerable<int>, ICloneable
     {
         internal readonly List<int> Datas;

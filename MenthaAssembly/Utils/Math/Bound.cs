@@ -245,7 +245,7 @@ namespace MenthaAssembly
         }
 
         public override string ToString()
-            => $"{{Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom}}}";
+            => $"Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom}";
 
         internal readonly static Func<T, T, T> Add, Sub, Mul, Div;
         internal readonly static Predicate<T> IsDefault;

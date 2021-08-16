@@ -47,7 +47,7 @@ namespace MenthaAssembly
         }
 
         public override string ToString()
-            => $"{{Width : {this.Width}, Height : {this.Height}}}";
+            => $"Width : {this.Width}, Height : {this.Height}";
 
         internal static readonly Func<T, T, T> Mul, Div;
         internal static readonly Predicate<T> IsDefault;

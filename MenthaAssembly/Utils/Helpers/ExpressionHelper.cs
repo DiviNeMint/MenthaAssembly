@@ -1,4 +1,6 @@
-﻿using System.Collections.Concurrent;
+﻿using MenthaAssembly;
+using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace System.Linq.Expressions
 {
@@ -53,7 +55,7 @@ namespace System.Linq.Expressions
                 try
                 {
                     _Add = Expression.Lambda<Func<T, T, T>>(Expression.Add(Arg1, Arg2), Arg1, Arg2)
-                                         .Compile();
+                                     .Compile();
                 }
                 catch (Exception Ex)
                 {
@@ -227,6 +229,49 @@ namespace System.Linq.Expressions
             return DivFunc;
         }
 
+        private static Func<T, T> _Abs;
+        public static Func<T, T> CreateAbs()
+        {
+            if (_Abs is null)
+            {
+                ParameterExpression Arg1 = Expression.Parameter(t, "a");
+
+                try
+                {
+                    if (t.Equals(typeof(int)) &&
+                        typeof(MathHelper).TryGetStaticMethod(nameof(MathHelper.Abs), out MethodInfo IntAbsMethod))
+                    {
+                        _Abs = Expression.Lambda<Func<T, T>>(Expression.Call(IntAbsMethod, Arg1), Arg1)
+                                         .Compile();
+                    }
+                    //else if (typeof(Math).TryGetStaticMethod(nameof(Math.Abs), new[] { t }, out MethodInfo CommonAbsMethod))
+                    //{
+                    //    _Abs = Expression.Lambda<Func<T, T>>(Expression.Call(CommonAbsMethod, Arg1), Arg1)
+                    //                     .Compile();
+                    //}
+                    else
+                    {
+                        LabelTarget Label = Expression.Label(t);
+                        ConstantExpression Arg2 = Expression.Constant(default(T));
+
+                        BlockExpression Body = Expression.Block(Expression.IfThenElse(Expression.GreaterThan(Arg1, Arg2),
+                                                                Expression.Return(Label, Arg1, typeof(T)),
+                                                                Expression.Return(Label, Expression.Negate(Arg1), typeof(T))),
+                                                                Expression.Label(Label, Expression.New(t)));
+
+                        _Abs = Expression.Lambda<Func<T, T>>(Body, Arg1)
+                                        .Compile();
+                    }
+                }
+                catch (Exception Ex)
+                {
+                    _Abs = T => throw Ex;
+                }
+            }
+
+            return _Abs;
+        }
+
         private static Func<T, T, bool> _Equal, _GreaterThan, _LessThan, _GreaterThanOrEqual, _LessThanOrEqual;
         public static Func<T, T, bool> CreateEqual()
         {
@@ -351,25 +396,51 @@ namespace System.Linq.Expressions
             return _IsDefault;
         }
 
+        public static readonly ConcurrentDictionary<Type, Delegate> _Casts = new();
         public static Func<T, T2> CreateCast<T2>()
         {
-            Type t = typeof(T),
-                 t2 = typeof(T2);
+            Type t2 = typeof(T2);
+            if (_Casts.TryGetValue(t2, out Delegate CacheFunc))
+                return (Func<T, T2>)CacheFunc;
+
             LabelTarget Label = Expression.Label(t2);
             ParameterExpression Arg1 = Expression.Parameter(t, "a");
 
-            if (t.Equals(t2))
-                return Expression.Lambda<Func<T, T2>>(Expression.Block(Expression.Return(Label, Arg1, t2),
-                                                                       Expression.Label(Label, Expression.New(t2))), Arg1)
-                                 .Compile();
+            Func<T, T2> CastFunc;
+            try
+            {
+                if (t.Equals(t2))
+                {
+                    CastFunc = Expression.Lambda<Func<T, T2>>(Expression.Block(Expression.Return(Label, Arg1, t2),
+                                                                               Expression.Label(Label, Expression.New(t2))), Arg1)
+                                         .Compile();
+                }
+                else if (t.IsDecimalType() && (t2.IsIntegerType() || t2.IsPositiveIntegerType()) &&
+                         typeof(Math).TryGetStaticMethod(nameof(Math.Round), new[] { typeof(double) }, out MethodInfo Method))
+                {
+                    Type Dt = typeof(double);
+                    MethodCallExpression RoundArg = Expression.Call(Method, t.Equals(Dt) ? Arg1 : Expression.Convert(Arg1, Dt));
 
-            return Expression.Lambda<Func<T, T2>>(Expression.Convert(Arg1, t2), Arg1)
-                             .Compile();
+                    CastFunc = Expression.Lambda<Func<T, T2>>(Expression.Convert(RoundArg, t2), Arg1)
+                                         .Compile();
+                }
+                else
+                {
+                    CastFunc = Expression.Lambda<Func<T, T2>>(Expression.Convert(Arg1, t2), Arg1)
+                                         .Compile();
+                }
+            }
+            catch (Exception Ex)
+            {
+                CastFunc = a => throw Ex;
+            }
+
+            _Casts.AddOrUpdate(t2, CastFunc, (k, v) => CastFunc);
+            return CastFunc;
         }
 
         public static Func<T, T, T> CreateMin()
         {
-            Type t = typeof(T);
             LabelTarget Label = Expression.Label(t);
             ParameterExpression Arg1 = Expression.Parameter(t, "a"),
                                 Arg2 = Expression.Parameter(t, "b");
@@ -382,7 +453,6 @@ namespace System.Linq.Expressions
         }
         public static Func<T, T, T> CreateMax()
         {
-            Type t = typeof(T);
             LabelTarget Label = Expression.Label(t);
             ParameterExpression Arg1 = Expression.Parameter(t, "a"),
                                 Arg2 = Expression.Parameter(t, "b");

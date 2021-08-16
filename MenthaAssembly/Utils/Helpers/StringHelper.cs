@@ -156,12 +156,13 @@ namespace System
             double Integer = 0d;
 
             char c;
-            int i = 0;
+            int i = 0,
+                Length = This.Length;
 
             bool IsNegative = false;
 
             // Integer
-            for (; i < This.Length; i++)
+            for (; i < Length; i++)
             {
                 c = This[i];
 
@@ -179,7 +180,7 @@ namespace System
 
             // Digital
             double Digital = 0d;
-            for (int j = This.Length - 1; j > i; j--)
+            for (int j = Length - 1; j > i; j--)
                 Digital = Digital * 0.1d + (This[j] - '0');
 
             return IsNegative ? -Integer - Digital * 0.1d : Integer + Digital * 0.1d;
@@ -192,22 +193,23 @@ namespace System
         {
             double Integer = 0d;
 
-            int i = 0;
             char c;
-            
+            int i = 0,
+                Length = This.Length;
+
             // Integer
-            for (; i < This.Length; i++)
+            for (; i < Length; i++)
             {
                 c = This[i];
                 if (c == '.')
                     break;
-                
+
                 Integer = Integer * 10d + (c - '0');
             }
 
             // Digital
             double Digital = 0d;
-            for (int j = This.Length - 1; j > i; j--)
+            for (int j = Length - 1; j > i; j--)
                 Digital = Digital * 0.1d + (This[i] - '0');
 
             return Integer + Digital * 0.1d;
@@ -223,12 +225,13 @@ namespace System
             float Integer = 0f;
 
             char c;
-            int i = 0;
+            int i = 0,
+                Length = This.Length;
 
             bool IsNegative = false;
 
             // Integer
-            for (; i < This.Length; i++)
+            for (; i < Length; i++)
             {
                 c = This[i];
 
@@ -246,7 +249,7 @@ namespace System
 
             // Digital
             float Digital = 0f;
-            for (int j = This.Length - 1; j > i; j--)
+            for (int j = Length - 1; j > i; j--)
                 Digital = Digital * 0.1f + (This[j] - '0');
 
             return IsNegative ? -Integer - Digital * 0.1f : Integer + Digital * 0.1f;
@@ -259,11 +262,12 @@ namespace System
         {
             float Integer = 0f;
 
-            int i = 0;
             char c;
+            int i = 0,
+                Length = This.Length;
 
             // Integer
-            for (; i < This.Length; i++)
+            for (; i < Length; i++)
             {
                 c = This[i];
                 if (c == '.')
@@ -274,7 +278,7 @@ namespace System
 
             // Digital
             float Digital = 0f;
-            for (int j = This.Length - 1; j > i; j--)
+            for (int j = Length - 1; j > i; j--)
                 Digital = Digital * 0.1f + (This[j] - '0');
 
             return Integer + Digital * 0.1f;
