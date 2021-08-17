@@ -8,15 +8,15 @@ namespace MenthaAssembly
     /// Represents a line in 2-D space.
     /// </summary>
     [Serializable]
-    public struct Line<T> : ICloneable
-        where T : struct
+    public unsafe struct Line<T> : ICloneable
+        where T : unmanaged
     {
         /// <summary>
         /// Gets a special value that represents a line with no position.
         /// </summary>
         public static Line<T> Empty => new Line<T>();
 
-        private Point<T>[] Points;
+        internal Point<T>[] Points;
 
         /// <summary>
         /// The normal vector of this line.
@@ -48,7 +48,7 @@ namespace MenthaAssembly
         {
             get
             {
-                if (Points is null || Points.Length == 0)
+                if (Points is null || Points.Length < 2)
                     return true;
 
                 return Points[0].Equals(Points[1]);
@@ -108,13 +108,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <param name="Vector">The vector to be added to this line.</param>
         public void Offset(Vector<T> Vector)
-        {
-            if (this.IsEmpty)
-                return;
-
-            for (int i = 0; i < Points.Length; i++)
-                this.Points[i].Offset(Vector);
-        }
+            => Offset(Vector.X, Vector.Y);
         /// <summary>
         /// Offsets this line's coordinates by the specified amounts.
         /// </summary>
@@ -130,14 +124,28 @@ namespace MenthaAssembly
         }
 
         /// <summary>
-        /// Rotates this line about the specified <see cref="Point{T}"/>.
+        /// Rotates this line about the origin.
+        /// </summary>
+        /// <param name="Theta">The angle to rotate specifed in radians.</param>
+        public void Rotate(double Theta)
+        {
+            if (this.IsEmpty)
+                return;
+
+            fixed (Point<T>* pPoints = &Points[0])
+            {
+                Point<T>.Rotate(pPoints, Points.Length, Theta);
+            }
+        }
+        /// <summary>
+        /// Rotates this line about the specified point.
         /// </summary>
         /// <param name="Center">The center of rotation.</param>
         /// <param name="Theta">The angle to rotate specifed in radians.</param>
         public void Rotate(Point<T> Center, double Theta)
             => Rotate(Center.X, Center.Y, Theta);
         /// <summary>
-        /// Rotates this line about the specified <see cref="Point{T}"/>(<paramref name="Cx"/>, <paramref name="Cy"/>).
+        /// Rotates this line about the specified point(<paramref name="Cx"/>, <paramref name="Cy"/>).
         /// </summary>
         /// <param name="Cx">The x-coordinate of the center of rotation.</param>
         /// <param name="Cy">The y-coordinate of the center of rotation.</param>
@@ -147,11 +155,53 @@ namespace MenthaAssembly
             if (this.IsEmpty)
                 return;
 
-            double Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
+            fixed (Point<T>* pPoints = &Points[0])
+            {
+                Point<T>.Rotate(pPoints, Points.Length, Cx, Cy, Theta);
+            }
+        }
 
-            for (int i = 0; i < Points.Length; i++)
-                this.Points[i].Rotate(Cx, Cy, Sin, Cos);
+        /// <summary>
+        /// Reflects this line over the specified line.
+        /// </summary>
+        /// <param name="Line">The projection line.</param>
+        public void Reflect(Line<T> Line)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return;
+
+            Point<T> P1 = Line.Points[0],
+                     P2 = Line.Points[1];
+
+            Reflect(P1.X, P1.Y, P2.X, P2.Y);
+            /// <summary>
+            /// Reflects this line over the specified line.
+            /// </summary>
+            /// <param name="Line">The projection line.</param>
+        }
+        /// <summary>
+        /// Reflects this line over the specified line.
+        /// </summary>
+        /// <param name="LinePoint1">The point on the projection line.</param>
+        /// <param name="LinePoint2">The another point on the projection line.</param>
+        public void Reflect(Point<T> LinePoint1, Point<T> LinePoint2)
+            => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+        /// <summary>
+        /// Reflects this line over the specified line.
+        /// </summary>
+        /// <param name="Lx1">The x-coordinate of a point on the projection line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+        public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
+        {
+            if (this.IsEmpty)
+                return;
+
+            fixed (Point<T>* pPoints = &Points[0])
+            {
+                Point<T>.Reflect(pPoints, Points.Length, Lx1, Ly1, Lx2, Ly2);
+            }
         }
 
         /// <summary>
@@ -159,7 +209,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <returns></returns>
         public Line<U> Cast<U>()
-            where U : struct
+            where U : unmanaged
         {
             if (this.IsEmpty)
                 return Line<U>.Empty;
@@ -212,21 +262,19 @@ namespace MenthaAssembly
             return $"Sx : {S.X}, Sy : {S.Y}, Ex : {E.X}, Ey : {E.Y}";
         }
 
-        internal static readonly Func<T, T> Abs, Neg;
-        internal static readonly Func<T, T, T> Add, Sub, Mul, Div;
-        internal static readonly Func<T, T> Div2;
-        internal static readonly Predicate<T> IsDefault;
-        internal static readonly Func<T, double> ToDouble;
-        internal static readonly Func<double, T> ToGeneric;
+        private static readonly Func<T, T> Abs;
+        private static readonly Func<T, T, T> Add, Sub, Mul;
+        private static readonly Func<T, T> Div2;
+        private static readonly Predicate<T> IsDefault;
+        private static readonly Func<T, double> ToDouble;
+        private static readonly Func<double, T> ToGeneric;
         static Line()
         {
             Abs = ExpressionHelper<T>.CreateAbs();
-            Neg = ExpressionHelper<T>.CreateNeg();
 
             Add = ExpressionHelper<T>.CreateAdd();
             Sub = ExpressionHelper<T>.CreateSub();
             Mul = ExpressionHelper<T>.CreateMul();
-            Div = ExpressionHelper<T>.CreateDiv();
 
             Div2 = ExpressionHelper<T>.CreateDiv(2);
 
@@ -496,19 +544,32 @@ namespace MenthaAssembly
         /// <param name="Py3">The y-coordinate of the third target point.</param>
         public static bool IsCollinear(T Px1, T Py1, T Px2, T Py2, T Px3, T Py3)
         {
-            T v1x = Sub(Px2, Px1),
-              v1y = Sub(Py2, Py1);
+            // Build line equation
+            // aX + bY + c = 0
 
-            if (IsDefault(v1x) && IsDefault(v1x))
+            T a = Sub(Py2, Py1),
+              b = Sub(Px1, Px2);
+
+            if (IsDefault(a) && IsDefault(b))
                 return true;
 
-            T v2x = Sub(Px3, Px1),
-              v2y = Sub(Py3, Py1);
+            T c = Sub(Mul(Px2, Py1), Mul(Py2, Px1));
 
-            if (IsDefault(v2x) && IsDefault(v2y))
-                return true;
+            return IsDefault(Add(Add(Mul(a, Px3), Mul(b, Py3)), c));
 
-            return IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y));
+            //T v1x = Sub(Px2, Px1),
+            //  v1y = Sub(Py2, Py1);
+
+            //if (IsDefault(v1x) && IsDefault(v1x))
+            //    return true;
+
+            //T v2x = Sub(Px3, Px1),
+            //  v2y = Sub(Py3, Py1);
+
+            //if (IsDefault(v2x) && IsDefault(v2y))
+            //    return true;
+
+            //return IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y));
         }
         /// <summary>
         /// Returns a value indicating whether the points are collinear.
@@ -532,28 +593,134 @@ namespace MenthaAssembly
         /// <param name="Py4">The y-coordinate of the fourth target point.</param>
         public static bool IsCollinear(T Px1, T Py1, T Px2, T Py2, T Px3, T Py3, T Px4, T Py4)
         {
-            T v1x = Sub(Px2, Px1),
-              v1y = Sub(Py2, Py1);
+            // Build line equation
+            // aX + bY + c = 0
 
-            if (IsDefault(v1x) && IsDefault(v1x))
+            T a = Sub(Py2, Py1),
+              b = Sub(Px1, Px2);
+
+            if (IsDefault(a) && IsDefault(b))
                 return IsCollinear(Px2, Py2, Px3, Py3, Px4, Py4);
 
-            T v2x = Sub(Px3, Px1),
-              v2y = Sub(Py3, Py1);
+            T c = Sub(Mul(Px2, Py1), Mul(Py2, Px1));
 
-            if (IsDefault(v2x) && IsDefault(v2y) ||
-                IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y)))
+            return IsDefault(Add(Add(Mul(a, Px3), Mul(b, Py3)), c)) &&
+                   IsDefault(Add(Add(Mul(a, Px4), Mul(b, Py4)), c));
+
+            //T v1x = Sub(Px2, Px1),
+            //  v1y = Sub(Py2, Py1);
+
+            //if (IsDefault(v1x) && IsDefault(v1x))
+            //    return IsCollinear(Px2, Py2, Px3, Py3, Px4, Py4);
+
+            //T v2x = Sub(Px3, Px1),
+            //  v2y = Sub(Py3, Py1);
+
+            //if (IsDefault(v2x) && IsDefault(v2y) ||
+            //    IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y)))
+            //{
+            //    v2x = Sub(Px4, Px1);
+            //    v2y = Sub(Py4, Py1);
+
+            //    if (IsDefault(v2x) && IsDefault(v2y))
+            //        return true;
+
+            //    return IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y));
+            //}
+
+            //return false;
+        }
+        /// <summary>
+        /// Returns a value indicating whether the points are collinear.
+        /// </summary>
+        /// <param name="Points">The target points.</param>
+        public static bool IsCollinear(params Point<T>[] Points)
+        {
+            int Length = Points.Length;
+            if (Length < 3)
+                return true;
+
+            // Build line equation
+            // aX + bY + c = 0
+
+            Point<T> p0 = Points[0], p1;
+            T Px1 = p0.X,
+              Py1 = p0.Y,
+              Px2, Py2, a, b;
+
+            int i = 1;
+            for (; i < Length; i++)
             {
-                v2x = Sub(Px4, Px1);
-                v2y = Sub(Py4, Py1);
+                p1 = Points[i];
+                Px2 = p1.X;
+                Py2 = p1.Y;
 
-                if (IsDefault(v2x) && IsDefault(v2y))
-                    return true;
+                a = Sub(Py2, Py1);
+                b = Sub(Px1, Px2);
 
-                return IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y));
+                if (IsDefault(a) && IsDefault(b))
+                    continue;
+
+                T c = Sub(Mul(Px2, Py1), Mul(Py2, Px1));
+
+                // Check on line
+                for (; i < Length; i++)
+                {
+                    p1 = Points[i];
+
+                    if (!IsDefault(Add(Add(Mul(a, p1.X), Mul(b, p1.Y)), c)))
+                        return false;
+                }
             }
 
-            return false;
+            return true;
+        }
+        /// <summary>
+        /// Returns a value indicating whether the points are collinear.
+        /// </summary>
+        /// <param name="PointDatas">The target points in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        public static bool IsCollinear(params T[] PointDatas)
+        {
+            // Valid Point Length
+            int Length = PointDatas.Length >> 1;
+            if (Length < 3)
+                return true;
+
+            // Data Length
+            Length <<= 1;
+
+            // Build line equation
+            // aX + bY + c = 0
+            T Px1 = PointDatas[0],
+              Py1 = PointDatas[1],
+              Px2, Py2, a, b;
+
+            int i = 2;
+            for (; i < Length; i++)
+            {
+                Px2 = PointDatas[i++];
+                Py2 = PointDatas[i];
+
+                a = Sub(Py2, Py1);
+                b = Sub(Px1, Px2);
+
+                if (IsDefault(a) && IsDefault(b))
+                    continue;
+
+                T c = Sub(Mul(Px2, Py1), Mul(Py2, Px1));
+
+                // Check on line
+                for (; i < Length; i++)
+                {
+                    Px2 = PointDatas[i++];
+                    Py2 = PointDatas[i];
+
+                    if (!IsDefault(Add(Add(Mul(a, Px2), Mul(b, Py2)), c)))
+                        return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -647,12 +814,7 @@ namespace MenthaAssembly
         /// <param name="Line">The line to be offsetted.</param>
         /// <param name="Vector">The vector to be added to this Line.</param>
         public static Line<T> Offset(Line<T> Line, Vector<T> Vector)
-        {
-            if (Line.IsEmpty)
-                return Empty;
-
-            return new Line<T>(Point<T>.Offset(Line.Points[0], Vector), Point<T>.Offset(Line.Points[1], Vector));
-        }
+            => Offset(Line, Vector.X, Vector.Y);
         /// <summary>
         /// Offsets the specified line by the specified amounts.
         /// </summary>
@@ -668,7 +830,19 @@ namespace MenthaAssembly
         }
 
         /// <summary>
-        /// Rotates the specified line about the specified <see cref="Point{T}"/>.
+        /// Rotates the specified line about the origin.
+        /// </summary>
+        /// <param name="Line">The line to be rotated.</param>
+        /// <param name="Theta">The angle to rotate specifed in radians.</param>
+        public static Line<T> Rotate(Line<T> Line, double Theta)
+        {
+            if (Line.IsEmpty)
+                return Empty;
+
+            return new Line<T> { Points = Point<T>.Rotate(Line.Points, Theta) };
+        }
+        /// <summary>
+        /// Rotates the specified line about the specified point.
         /// </summary>
         /// <param name="Line">The line to be rotated.</param>
         /// <param name="Center">The center of rotation.</param>
@@ -677,7 +851,7 @@ namespace MenthaAssembly
         public static Line<T> Rotate(Line<T> Line, Point<T> Center, double Theta)
             => Rotate(Line, Center.X, Center.Y, Theta);
         /// <summary>
-        /// Rotates the specified line about the specified <see cref="Point{T}"/>(<paramref name="Cx"/>, <paramref name="Cy"/>).
+        /// Rotates the specified line about the specified point(<paramref name="Cx"/>, <paramref name="Cy"/>).
         /// </summary>
         /// <param name="Line">The line to be rotated.</param>
         /// <param name="Cx">The x-coordinate of the center of rotation.</param>
@@ -689,19 +863,46 @@ namespace MenthaAssembly
             if (Line.IsEmpty)
                 return Empty;
 
-            int Length = Line.Points.Length;
-            Line<T> Result = new Line<T> { Points = new Point<T>[Length] };
+            return new Line<T> { Points = Point<T>.Rotate(Line.Points, Cx, Cy, Theta) };
+        }
 
-            double Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
+        /// <summary>
+        /// Reflects the specified line over the specified line.
+        /// </summary>
+        /// <param name="ProjectionLine">The line to be reflects.</param>
+        /// <param name="ProjectionLine">The projection line.</param>
+        public static Line<T> Reflect(Line<T> Line, Line<T> ProjectionLine)
+        {
+            if (ProjectionLine.Points is null || ProjectionLine.Points.Length < 2)
+                return Line.Clone();
 
-            for (int i = 0; i < Length; i++)
-            {
-                Point<T>.Rotate(Line.Points[i].X, Line.Points[i].Y, Cx, Cy, Sin, Cos, out T Px, out T Py);
-                Result.Points[i].X = Px;
-                Result.Points[i].Y = Py;
-            }
-            return Result;
+            Point<T> P1 = ProjectionLine.Points[0],
+                     P2 = ProjectionLine.Points[1];
+
+            return Reflect(Line, P1.X, P1.Y, P2.X, P2.Y);
+        }
+        /// <summary>
+        /// Reflects the specified line over the specified line.
+        /// </summary>
+        /// <param name="Line">The line to be reflects.</param>
+        /// <param name="LinePoint1">The line on the projection line.</param>
+        /// <param name="LinePoint2">The another line on the projection line.</param>
+        public static Line<T> Reflect(Line<T> Line, Point<T> LinePoint1, Point<T> LinePoint2)
+            => Reflect(Line, LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+        /// <summary>
+        /// Reflects the specified line over the specified line.
+        /// </summary>
+        /// <param name="Line">The line to be reflects.</param>
+        /// <param name="Lx1">The x-coordinate of a line on the projection line.</param>
+        /// <param name="Ly1">The y-coordinate of a line on the projection line.</param>
+        /// <param name="Lx2">The x-coordinate of a another line on the projection line.</param>
+        /// <param name="Ly2">The y-coordinate of a another line on the projection line.</param>
+        public static Line<T> Reflect(Line<T> Line, T Lx1, T Ly1, T Lx2, T Ly2)
+        {
+            if (Line.IsEmpty)
+                return Empty;
+
+            return new Line<T> { Points = Point<T>.Reflect(Line.Points, Lx1, Ly1, Lx2, Ly2) };
         }
 
         /// <summary>

@@ -1,7 +1,7 @@
 ﻿namespace MenthaAssembly
 {
     public interface IPolygonShape<T> : IShape<T>
-        where T : struct
+        where T : unmanaged
     {
         /// <summary>
         /// The points of the shape.

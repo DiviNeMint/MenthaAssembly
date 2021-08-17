@@ -5,7 +5,7 @@ using System.Linq;
 namespace MenthaAssembly
 {
     public sealed class CrossPoints<T> : IEnumerable<Point<T>>
-        where T : struct
+        where T : unmanaged
     {
         private readonly IEnumerable<Point<T>> Points;
 

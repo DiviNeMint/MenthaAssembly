@@ -8,7 +8,7 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public struct Vector<T> : ICloneable
-        where T : struct
+        where T : unmanaged
     {
         /// <summary>
         /// Gets a zero vector.
@@ -100,7 +100,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <returns></returns>
         public Vector<U> Cast<U>()
-            where U : struct
+            where U : unmanaged
         {
             Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
             return new Vector<U>(CastHandler(this.X), CastHandler(this.Y));

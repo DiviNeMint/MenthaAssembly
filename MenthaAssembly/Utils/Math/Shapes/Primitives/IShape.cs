@@ -3,7 +3,7 @@
 namespace MenthaAssembly
 {
     public interface IShape<T> : ICloneable
-        where T : struct
+        where T : unmanaged
     {
         /// <summary>
         /// The center of the shape.
@@ -106,6 +106,26 @@ namespace MenthaAssembly
         public void Rotate(T Cx, T Cy, double Theta);
 
         /// <summary>
+        /// Reflects the shape over the specified line.
+        /// </summary>
+        /// <param name="Line">The projection line.</param>
+        public void Reflect(Line<T> Line);
+        /// <summary>
+        /// Reflects the shape over the specified line.
+        /// </summary>
+        /// <param name="LinePoint1">The point on the projection line.</param>
+        /// <param name="LinePoint2">The another point on the projection line.</param>
+        public void Reflect(Point<T> LinePoint1, Point<T> LinePoint2);
+        /// <summary>
+        /// Reflects the shape over the specified line.
+        /// </summary>
+        /// <param name="Lx1">The x-coordinate of a point on the projection line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+        public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2);
+
+        /// <summary>
         /// Returns a value indicating whether this instance is equal to a specified <see cref="IShape{T}"/>
         /// </summary>
         /// <param name="obj">The obj to compare to the current instance.</param>
@@ -115,7 +135,7 @@ namespace MenthaAssembly
         /// Creates a new casted <see cref="IShape{T}"/>.
         /// </summary>
         /// <returns></returns>
-        public IShape<U> Cast<U>() where U : struct;
+        public IShape<U> Cast<U>() where U : unmanaged;
 
         /// <summary>
         /// Creates a new <see cref="IShape{T}"/> that is a copy of the current instance.

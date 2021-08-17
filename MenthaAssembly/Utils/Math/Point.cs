@@ -7,8 +7,8 @@ namespace MenthaAssembly
     /// Represents a coordinate in 2-D space.
     /// </summary>
     [Serializable]
-    public struct Point<T> : ICloneable
-        where T : struct
+    public unsafe struct Point<T> : ICloneable
+        where T : unmanaged
     {
         /// <summary>
         /// Gets the origin of coordinates.
@@ -46,10 +46,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <param name="Vector">The vector to be added to this point.</param>
         public void Offset(Vector<T> Vector)
-        {
-            X = Add(X, Vector.X);
-            Y = Add(Y, Vector.Y);
-        }
+            => Offset(Vector.X, Vector.Y);
         /// <summary>
         /// Offsets <see cref="X"/> and <see cref="Y"/> coordinates by the specified amounts.
         /// </summary>
@@ -116,11 +113,70 @@ namespace MenthaAssembly
         }
 
         /// <summary>
+        /// Reflects this point over the specified line.
+        /// </summary>
+        /// <param name="Line">The projection line.</param>
+        public void Reflect(Line<T> Line)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return;
+
+            Point<T> P1 = Line.Points[0],
+                     P2 = Line.Points[1];
+
+            Reflect(P1.X, P1.Y, P2.X, P2.Y);
+        }
+        /// <summary>
+        /// Reflects this point over the specified line.
+        /// </summary>
+        /// <param name="LinePoint1">The point on the projection line.</param>
+        /// <param name="LinePoint2">The another point on the projection line.</param>
+        public void Reflect(Point<T> LinePoint1, Point<T> LinePoint2)
+            => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+        /// <summary>
+        /// Reflects this point over the specified line.
+        /// </summary>
+        /// <param name="Lx1">The x-coordinate of a point on the projection line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+        public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
+        {
+            T v1x = Sub(Lx2, Lx1),
+              v1y = Sub(Ly2, Ly1);
+
+            if (IsDefault(v1x))
+            {
+                if (IsDefault(v1y))
+                    return;
+
+                // Over Y-Axis
+                this.X = Sub(Mul2(Lx1), this.X);
+            }
+            else if (IsDefault(v1y))
+            {
+                // Over X-Axis
+                this.Y = Sub(Mul2(Ly1), this.Y);
+            }
+            else
+            {
+                double PQx = ToDouble(v1x),
+                       PQy = ToDouble(v1y),
+                       PAx = ToDouble(Sub(this.X, Lx1)),
+                       PAy = ToDouble(Sub(this.Y, Ly1)),
+                       k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
+
+                this.X = Add(Lx1, ToGeneric(PQx * k - PAx));
+                this.Y = Add(Ly1, ToGeneric(PQy * k - PAy));
+            }
+        }
+
+        /// <summary>
         /// Creates a new casted point.
         /// </summary>
         /// <returns></returns>
         public Point<U> Cast<U>()
-            where U : struct
+            where U : unmanaged
         {
             Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
             return new Point<U>(CastHandler(this.X), CastHandler(this.Y));
@@ -154,7 +210,7 @@ namespace MenthaAssembly
         public override string ToString()
             => $"X : {this.X}, Y : {this.Y}";
 
-        internal static readonly Func<T, T> Neg;
+        internal static readonly Func<T, T> Neg, Mul2;
         internal static readonly Func<T, T, T> Add, Sub, Mul, Div;
         internal static readonly Predicate<T> IsDefault;
         internal static readonly Func<T, T, bool> Equal;
@@ -168,6 +224,8 @@ namespace MenthaAssembly
             Sub = ExpressionHelper<T>.CreateSub();
             Mul = ExpressionHelper<T>.CreateMul();
             Div = ExpressionHelper<T>.CreateDiv();
+
+            Mul2 = ExpressionHelper<T>.CreateMul(2);
 
             IsDefault = ExpressionHelper<T>.CreateIsDefault();
             Equal = ExpressionHelper<T>.CreateEqual();
@@ -211,7 +269,7 @@ namespace MenthaAssembly
         /// <param name="Point">The point to be offsetted.</param>
         /// <param name="Vector">The vector to be added to this point.</param>
         public static Point<T> Offset(Point<T> Point, Vector<T> Vector)
-            => new Point<T>(Add(Point.X, Vector.X), Add(Point.Y, Vector.Y));
+            => Offset(Point, Vector.X, Vector.Y);
         /// <summary>
         /// Offsets the specified point by the specified amounts.
         /// </summary>
@@ -294,6 +352,296 @@ namespace MenthaAssembly
         {
             Qx = ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin);
             Qy = ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos);
+        }
+        /// <summary>
+        /// Rotates the specified points about the origin.
+        /// </summary>
+        /// <param name="Points">The points to be rotated.</param>
+        /// <param name="Theta">The angle to rotate specifed in radians.</param>
+        public static Point<T>[] Rotate(Point<T>[] Points, double Theta)
+        {
+            int Length = Points.Length;
+            Point<T>[] Result = new Point<T>[Length];
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            T Px, Py;
+            Point<T> Point;
+            for (int i = 0; i < Length; i++)
+            {
+                Point = Points[i];
+                Px = Point.X;
+                Py = Point.Y;
+
+                Result[i] = new Point<T>(ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin), ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos));
+            }
+
+            return Result;
+        }
+        /// <summary>
+        /// Rotates the specified points about the origin.
+        /// </summary>
+        /// <param name="Points">The points to be rotated.</param>
+        /// <param name="Cx">The x-coordinate of the center of rotation.</param>
+        /// <param name="Cy">The y-coordinate of the center of rotation.</param>
+        /// <param name="Theta">The angle to rotate specifed in radians.</param>
+        public static Point<T>[] Rotate(Point<T>[] Points, T Cx, T Cy, double Theta)
+        {
+            int Length = Points.Length;
+            Point<T>[] Result = new Point<T>[Length];
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            T Px, Py;
+            Point<T> Point;
+            for (int i = 0; i < Length; i++)
+            {
+                Point = Points[i];
+                Px = Sub(Point.X, Cx);
+                Py = Sub(Point.Y, Cy);
+
+                Result[i] = new Point<T>(Add(ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin), Cx), Add(ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos), Cy));
+            }
+
+            return Result;
+        }
+        /// <summary>
+        /// Rotates the specified points about the origin.
+        /// </summary>
+        /// <param name="pPoints">The pointer of the points to be rotated.</param>
+        /// <param name="Length">The length of the points to be rotated.</param>
+        /// <param name="Theta">The angle to rotate specifed in radians.</param>
+        public static void Rotate(Point<T>* pPoints, int Length, double Theta)
+        {
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            T Px, Py;
+            for (int i = 0; i < Length; i++)
+            {
+                Px = pPoints->X;
+                Py = pPoints->Y;
+
+                pPoints->X = ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin);
+                pPoints->Y = ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos);
+            }
+        }
+        /// <summary>
+        /// Rotates the specified points about the specified point.
+        /// </summary>
+        /// <param name="pPoints">The pointer of the points to be rotated.</param>
+        /// <param name="Length">The length of the points to be rotated.</param>
+        /// <param name="Cx">The x-coordinate of the center of rotation.</param>
+        /// <param name="Cy">The y-coordinate of the center of rotation.</param>
+        /// <param name="Theta">The angle to rotate specifed in radians.</param>
+        public static void Rotate(Point<T>* pPoints, int Length, T Cx, T Cy, double Theta)
+        {
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+
+            T Px, Py;
+            for (int i = 0; i < Length; i++)
+            {
+                Px = Sub(pPoints->X, Cx);
+                Py = Sub(pPoints->Y, Cy);
+
+                pPoints->X = Add(ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin), Cx);
+                pPoints->Y = Add(ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos), Cy);
+            }
+        }
+
+        /// <summary>
+        /// Reflects the specified point over the specified line.
+        /// </summary>
+        /// <param name="Point">The point to be reflect.</param>
+        /// <param name="Line">The projection line.</param>
+        public static Point<T> Reflect(Point<T> Point, Line<T> Line)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return Point.Clone();
+
+            Point<T> P1 = Line.Points[0],
+                     P2 = Line.Points[1];
+
+            return Reflect(Point.X, Point.Y, P1.X, P1.Y, P2.X, P2.Y);
+        }
+        /// <summary>
+        /// Reflects the specified point over the specified line.
+        /// </summary>
+        /// <param name="Point">The point to be reflect.</param>
+        /// <param name="LinePoint1">The point on the projection line.</param>
+        /// <param name="LinePoint2">The another point on the projection line.</param>
+        public static Point<T> Reflect(Point<T> Point, Point<T> LinePoint1, Point<T> LinePoint2)
+            => Reflect(Point.X, Point.Y, LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+        /// <summary>
+        /// Reflects the specified point over the specified line.
+        /// </summary>
+        /// <param name="Point">The point to be reflect.</param>
+        /// <param name="Lx1">The x-coordinate of a point on the projection line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+        public static Point<T> Reflect(Point<T> Point, T Lx1, T Ly1, T Lx2, T Ly2)
+            => Reflect(Point.X, Point.Y, Lx1, Ly1, Lx2, Ly2);
+        /// <summary>
+        /// Reflects the specified point over the specified line.
+        /// </summary>
+        /// <param name="Px">The x-coordinate of point to be reflect.</param>
+        /// <param name="Py">The y-coordinate of point to be reflect.</param>
+        /// <param name="Lx1">The x-coordinate of a point on the projection line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+        public static Point<T> Reflect(T Px, T Py, T Lx1, T Ly1, T Lx2, T Ly2)
+        {
+            T v1x = Sub(Lx2, Lx1),
+              v1y = Sub(Ly2, Ly1);
+
+            if (IsDefault(v1x))
+            {
+                if (IsDefault(v1y))
+                    return new Point<T>(Px, Py);
+
+                // Over Y-Axis
+                return new Point<T>(Sub(Mul2(Lx1), Px), Py);
+            }
+            else if (IsDefault(v1y))
+            {
+                // Over X-Axis
+                return new Point<T>(Px, Sub(Mul2(Ly1), Py));
+            }
+            else
+            {
+                double PQx = ToDouble(v1x),
+                       PQy = ToDouble(v1y),
+                       PAx = ToDouble(Sub(Px, Lx1)),
+                       PAy = ToDouble(Sub(Py, Ly1)),
+                       k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
+
+                return new Point<T>(Add(Lx1, ToGeneric(PQx * k - PAx)), Add(Ly1, ToGeneric(PQy * k - PAy)));
+            }
+        }
+        /// <summary>
+        /// Reflects the specified points over the specified line.
+        /// </summary>
+        /// <param name="Points">The points to be reflect.</param>
+        /// <param name="Lx1">The x-coordinate of a point on the projection line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+        public static Point<T>[] Reflect(Point<T>[] Points, T Lx1, T Ly1, T Lx2, T Ly2)
+        {
+            int Length = Points.Length;
+            Point<T>[] Result = new Point<T>[Length];
+            T v1x = Sub(Lx2, Lx1),
+              v1y = Sub(Ly2, Ly1);
+
+            if (IsDefault(v1x))
+            {
+                if (IsDefault(v1y))
+                {
+                    for (int i = 0; i < Length; i++)
+                        Result[i] = Points[i];
+
+                    return Result;
+                }
+
+                // Over Y-Axis
+                Point<T> Point;
+                for (int i = 0; i < Length; i++)
+                {
+                    Point = Points[i];
+                    Result[i] = new Point<T>(Sub(Mul2(Lx1), Point.X), Point.Y);
+                }
+
+                return Result;
+            }
+            else if (IsDefault(v1y))
+            {
+                // Over X-Axis
+                Point<T> Point;
+                for (int i = 0; i < Length; i++)
+                {
+                    Point = Points[i];
+                    Result[i] = new Point<T>(Point.X, Sub(Mul2(Ly1), Point.Y));
+                }
+
+                return Result;
+            }
+            else
+            {
+                Point<T> Point;
+                double PQx = ToDouble(v1x),
+                       PQy = ToDouble(v1y);
+
+                for (int i = 0; i < Length; i++)
+                {
+                    Point = Points[i];
+                    double PAx = ToDouble(Sub(Point.X, Lx1)),
+                           PAy = ToDouble(Sub(Point.Y, Ly1)),
+                           k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
+
+                    Result[i] = new Point<T>(Add(Lx1, ToGeneric(PQx * k - PAx)), Add(Ly1, ToGeneric(PQy * k - PAy)));
+                }
+            }
+
+            return Result;
+        }
+        /// <summary>
+        /// Reflects the specified points over the specified line.
+        /// </summary>
+        /// <param name="pPoints">The pointer of the points to be reflect.</param>
+        /// <param name="Length">The length of the points to be reflect.</param>
+        /// <param name="Lx1">The x-coordinate of a point on the projection line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+        public static void Reflect(Point<T>* pPoints, int Length, T Lx1, T Ly1, T Lx2, T Ly2)
+        {
+            T v1x = Sub(Lx2, Lx1),
+              v1y = Sub(Ly2, Ly1);
+
+            if (IsDefault(v1x))
+            {
+                if (IsDefault(v1y))
+                    return;
+
+                // Over Y-Axis
+                for (int i = 0; i < Length; i++)
+                {
+                    pPoints->X = Sub(Mul2(Lx1), pPoints->X);
+                    pPoints++;
+                }
+
+                return;
+            }
+            else if (IsDefault(v1y))
+            {
+                // Over X-Axis
+                for (int i = 0; i < Length; i++)
+                {
+                    pPoints->Y = Sub(Mul2(Ly1), pPoints->Y);
+                    pPoints++;
+                }
+
+                return;
+            }
+            else
+            {
+                double PQx = ToDouble(v1x),
+                       PQy = ToDouble(v1y);
+
+                for (int i = 0; i < Length; i++)
+                {
+                    double PAx = ToDouble(Sub(pPoints->X, Lx1)),
+                           PAy = ToDouble(Sub(pPoints->Y, Ly1)),
+                           k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
+
+                    pPoints->X = Add(Lx1, ToGeneric(PQx * k - PAx));
+                    pPoints->Y = Add(Ly1, ToGeneric(PQy * k - PAy));
+                    pPoints++;
+                }
+            }
         }
 
         /// <summary>

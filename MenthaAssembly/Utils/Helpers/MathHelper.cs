@@ -139,7 +139,7 @@ namespace MenthaAssembly
         }
 
         public static Bound<T> CalculateLineBound<T>(T X0, T Y0, T X1, T Y1)
-            where T : struct
+            where T : unmanaged
         {
             Func<T, T, bool> LessThan = Bound<T>.LessThan;
             return LessThan(X1, X0) ? (LessThan(Y1, Y0) ? new Bound<T>(X1, Y1, X0, Y0) :
@@ -148,7 +148,7 @@ namespace MenthaAssembly
                                                           new Bound<T>(X0, Y0, X1, Y1));
         }
         public static Bound<T> CalculateArcBound<T>(T Sx, T Sy, T Ex, T Ey, T Cx, T Cy, T Radius, bool Clockwise)
-            where T : struct
+            where T : unmanaged
         {
             Func<T, T, bool> LessThan = Bound<T>.LessThan;
             Func<T, T, T> Add = Bound<T>.Add,
@@ -261,7 +261,7 @@ namespace MenthaAssembly
             }
         }
         public static Bound<T> CalculatePolygonBound<T>(IEnumerable<T> PointPairs)
-            where T : struct
+            where T : unmanaged
         {
             Func<T, T, bool> LessThan = Bound<T>.LessThan;
 
