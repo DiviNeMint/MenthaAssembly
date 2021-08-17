@@ -1,11 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace MenthaAssembly
 {
     public sealed class CrossPoints<T> : IEnumerable<Point<T>>
-        where T : struct
+        where T : unmanaged
     {
         private readonly IEnumerable<Point<T>> Points;
 
@@ -36,7 +37,7 @@ namespace MenthaAssembly
         }
 
         public override string ToString()
-            => IsInfinity ? "Infinity" : $"Count : {Count}";
+            => IsInfinity ? "Infinity" : string.Join(", ", Points.Select(i => $"{{{i}}}"));
 
         public IEnumerator<Point<T>> GetEnumerator()
             => this.Points.GetEnumerator();

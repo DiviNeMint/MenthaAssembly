@@ -5,7 +5,7 @@ namespace MenthaAssembly
 {
     [Serializable]
     public struct Size<T> : ICloneable
-        where T : struct
+        where T : unmanaged
     {
         public static Size<T> Empty => new Size<T>();
 
@@ -22,7 +22,7 @@ namespace MenthaAssembly
         }
 
         public Size<U> Cast<U>()
-            where U : struct
+            where U : unmanaged
         {
             Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
             return new Size<U>(CastHandler(this.Width), CastHandler(this.Height));

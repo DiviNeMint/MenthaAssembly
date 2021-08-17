@@ -7,8 +7,8 @@ using System.Text;
 namespace MenthaAssembly
 {
     [Serializable]
-    public struct Triangle<T> : IPolygonShape<T>
-        where T : struct
+    public unsafe struct Triangle<T> : IPolygonShape<T>
+        where T : unmanaged
     {
         /// <summary>
         /// Gets a special value that represents a triangle with no position or area.
@@ -184,20 +184,16 @@ namespace MenthaAssembly
         }
 
         public void Offset(Vector<T> Vector)
-        {
-            if (this.IsEmpty)
-                return;
-
-            for (int i = 0; i < Points.Length; i++)
-                this.Points[i].Offset(Vector);
-        }
+            => Offset(Vector.X, Vector.Y);
         public void Offset(T Dx, T Dy)
         {
             if (this.IsEmpty)
                 return;
 
-            for (int i = 0; i < Points.Length; i++)
-                this.Points[i].Offset(Dx, Dy);
+            fixed (Point<T>* pPoints = &Points[0])
+            {
+                Point<T>.Offset(pPoints, Points.Length, Dx, Dy);
+            }
         }
 
         public void Scale(T Scale)
@@ -212,18 +208,12 @@ namespace MenthaAssembly
             => this.Scale(Cx, Cy, Scale, Scale);
         public void Scale(T Cx, T Cy, T ScaleX, T ScaleY)
         {
-            T Dx, Dy;
-            Point<T> p;
-            for (int i = 0; i < Points.Length; i++)
+            if (this.IsEmpty)
+                return;
+
+            fixed (Point<T>* pPoints = &Points[0])
             {
-                p = Points[i];
-                Dx = Sub(p.X, Cx);
-                Dy = Sub(p.Y, Cy);
-
-                p.X = Add(Cx, Mul(Dx, ScaleX));
-                p.Y = Add(Cy, Mul(Dy, ScaleY));
-
-                Points[i] = p;
+                Vector<T>.Scale(pPoints, Points.Length, Cx, Cy, ScaleX, ScaleY);
             }
         }
 
@@ -232,11 +222,10 @@ namespace MenthaAssembly
             if (this.IsEmpty)
                 return;
 
-            double Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
-
-            for (int i = 0; i < Points.Length; i++)
-                this.Points[i].Rotate(Sin, Cos);
+            fixed (Point<T>* pPoints = &Points[0])
+            {
+                Point<T>.Rotate(pPoints, Points.Length, Theta);
+            }
         }
         public void Rotate(Point<T> Center, double Theta)
             => Rotate(Center.X, Center.Y, Theta);
@@ -245,11 +234,33 @@ namespace MenthaAssembly
             if (this.IsEmpty)
                 return;
 
-            double Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
+            fixed (Point<T>* pPoints = &Points[0])
+            {
+                Point<T>.Rotate(pPoints, Points.Length, Cx, Cy, Theta);
+            }
+        }
 
-            for (int i = 0; i < Points.Length; i++)
-                this.Points[i].Rotate(Cx, Cy, Sin, Cos);
+        public void Reflect(Line<T> Line)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return;
+
+            Point<T> P1 = Line.Points[0],
+                     P2 = Line.Points[1];
+
+            Reflect(P1.X, P1.Y, P2.X, P2.Y);
+        }
+        public void Reflect(Point<T> LinePoint1, Point<T> LinePoint2)
+            => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+        public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
+        {
+            if (this.IsEmpty)
+                return;
+
+            fixed (Point<T>* pPoints = &Points[0])
+            {
+                Point<T>.Reflect(pPoints, Points.Length, Lx1, Ly1, Lx2, Ly2);
+            }
         }
 
         /// <summary>
@@ -257,7 +268,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <returns></returns>
         public Triangle<U> Cast<U>()
-            where U : struct
+            where U : unmanaged
         {
             if (this.IsEmpty)
                 return Triangle<U>.Empty;
@@ -336,9 +347,9 @@ namespace MenthaAssembly
             }
         }
 
-        internal static readonly Func<T, T> Abs, Div3;
-        internal static readonly Func<T, T, T> Add, Sub, Mul;
-        internal static readonly Func<T, double> ToDouble;
+        private static readonly Func<T, T> Abs, Div3;
+        private static readonly Func<T, T, T> Add, Sub, Mul;
+        private static readonly Func<T, double> ToDouble;
         static Triangle()
         {
             Abs = ExpressionHelper<T>.CreateAbs();
@@ -358,18 +369,7 @@ namespace MenthaAssembly
         /// <param name="Triangle">The triangle to be offsetted.</param>
         /// <param name="Vector">The vector to be added to the specified triangle.</param>
         public static Triangle<T> Offset(Triangle<T> Triangle, Vector<T> Vector)
-        {
-            if (Triangle.IsEmpty)
-                return Empty;
-
-            int Length = Triangle.Points.Length;
-            Triangle<T> Result = new Triangle<T> { Points = new Point<T>[Length] };
-
-            for (int i = 0; i < Length; i++)
-                Result.Points[i] = Point<T>.Offset(Triangle.Points[i], Vector);
-
-            return Result;
-        }
+            => Offset(Triangle, Vector.X, Vector.Y);
         /// <summary>
         /// Offsets the specified triangle's coordinates by the specified amounts.
         /// </summary>
@@ -381,13 +381,7 @@ namespace MenthaAssembly
             if (Triangle.IsEmpty)
                 return Empty;
 
-            int Length = Triangle.Points.Length;
-            Triangle<T> Result = new Triangle<T> { Points = new Point<T>[Length] };
-
-            for (int i = 0; i < Length; i++)
-                Result.Points[i] = Point<T>.Offset(Triangle.Points[i], Dx, Dy);
-
-            return Result;
+            return new Triangle<T> { Points = Point<T>.Offset(Triangle.Points, Dx, Dy) };
         }
 
         /// <summary>
@@ -444,26 +438,21 @@ namespace MenthaAssembly
             if (Triangle.IsEmpty)
                 return Empty;
 
-            int Length = Triangle.Points.Length;
-            Triangle<T> Result = new Triangle<T> { Points = new Point<T>[Length] };
-
-            T Dx, Dy;
-            Point<T> p;
-            for (int i = 0; i < Length; i++)
-            {
-                p = Triangle.Points[i];
-                Dx = Sub(p.X, Cx);
-                Dy = Sub(p.Y, Cy);
-
-                p.X = Add(Cx, Mul(Dx, ScaleX));
-                p.Y = Add(Cy, Mul(Dy, ScaleY));
-
-                Result.Points[i] = p;
-            }
-
-            return Result;
+            return new Triangle<T> { Points = Vector<T>.Scale(Triangle.Points, Cx, Cy, ScaleX, ScaleY) };
         }
 
+        /// <summary>
+        /// Rotates the specified triangle about the origin.
+        /// </summary>
+        /// <param name="Triangle">The triangle to be rotated.</param>
+        /// <param name="Theta">The angle to rotate specifed in radians.</param>
+        public static Triangle<T> Rotate(Triangle<T> Triangle, double Theta)
+        {
+            if (Triangle.IsEmpty)
+                return Empty;
+
+            return new Triangle<T> { Points = Point<T>.Rotate(Triangle.Points, Theta) };
+        }
         /// <summary>
         /// Rotates the specified triangle about the specified point.
         /// </summary>
@@ -484,20 +473,46 @@ namespace MenthaAssembly
             if (Triangle.IsEmpty)
                 return Empty;
 
-            int Length = Triangle.Points.Length;
-            Triangle<T> Result = new Triangle<T> { Points = new Point<T>[Length] };
+            return new Triangle<T> { Points = Point<T>.Rotate(Triangle.Points, Cx, Cy, Theta) };
+        }
 
-            double Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
+        /// <summary>
+        /// Reflects the specified triangle over the specified line.
+        /// </summary>
+        /// <param name="Triangle">The triangle to be reflects.</param>
+        /// <param name="Line">The projection line.</param>
+        public static Triangle<T> Reflect(Triangle<T> Triangle, Line<T> Line)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return Triangle.Clone();
 
-            for (int i = 0; i < Length; i++)
-            {
-                Point<T>.Rotate(Triangle.Points[i].X, Triangle.Points[i].Y, Cx, Cy, Sin, Cos, out T Px, out T Py);
-                Result.Points[i].X = Px;
-                Result.Points[i].Y = Py;
-            }
+            Point<T> P1 = Line.Points[0],
+                     P2 = Line.Points[1];
 
-            return Result;
+            return Reflect(Triangle, P1.X, P1.Y, P2.X, P2.Y);
+        }
+        /// <summary>
+        /// Reflects the specified triangle over the specified line.
+        /// </summary>
+        /// <param name="Triangle">The triangle to be reflects.</param>
+        /// <param name="LinePoint1">The triangle on the projection line.</param>
+        /// <param name="LinePoint2">The another triangle on the projection line.</param>
+        public static Triangle<T> Reflect(Triangle<T> Triangle, Point<T> LinePoint1, Point<T> LinePoint2)
+            => Reflect(Triangle, LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+        /// <summary>
+        /// Reflects the specified triangle over the specified line.
+        /// </summary>
+        /// <param name="Triangle">The triangle to be reflects.</param>
+        /// <param name="Lx1">The x-coordinate of a triangle on the projection line.</param>
+        /// <param name="Ly1">The y-coordinate of a triangle on the projection line.</param>
+        /// <param name="Lx2">The x-coordinate of a another triangle on the projection line.</param>
+        /// <param name="Ly2">The y-coordinate of a another triangle on the projection line.</param>
+        public static Triangle<T> Reflect(Triangle<T> Triangle, T Lx1, T Ly1, T Lx2, T Ly2)
+        {
+            if (Triangle.IsEmpty)
+                return Empty;
+
+            return new Triangle<T> { Points = Point<T>.Reflect(Triangle.Points, Lx1, Ly1, Lx2, Ly2) };
         }
 
         /// <summary>

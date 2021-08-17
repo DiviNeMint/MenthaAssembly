@@ -7,8 +7,8 @@ namespace MenthaAssembly
     /// Represents a displacement in 2-D space.
     /// </summary>
     [Serializable]
-    public struct Vector<T> : ICloneable
-        where T : struct
+    public unsafe struct Vector<T> : ICloneable
+        where T : unmanaged
     {
         /// <summary>
         /// Gets a zero vector.
@@ -100,7 +100,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <returns></returns>
         public Vector<U> Cast<U>()
-            where U : struct
+            where U : unmanaged
         {
             Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
             return new Vector<U>(CastHandler(this.X), CastHandler(this.Y));
@@ -134,11 +134,11 @@ namespace MenthaAssembly
         public override string ToString()
             => $"X : {this.X}, Y : {this.Y}";
 
-        internal static readonly Func<T, T> Neg;
-        internal static readonly Func<T, T, T> _Add, Sub, Mul, Div;
-        internal static readonly Predicate<T> IsDefault;
-        internal static readonly Func<T, T, bool> Equal;
-        internal static readonly Func<T, double> ToDouble;
+        private static readonly Func<T, T> Neg;
+        private static readonly Func<T, T, T> _Add, Sub, Mul, Div;
+        private static readonly Predicate<T> IsDefault;
+        private static readonly Func<T, T, bool> Equal;
+        private static readonly Func<T, double> ToDouble;
         static Vector()
         {
             Neg = ExpressionHelper<T>.CreateNeg();
@@ -189,6 +189,57 @@ namespace MenthaAssembly
         /// <returns></returns>
         public static T Cross(T Dx1, T Dy1, T Dx2, T Dy2)
             => Sub(Mul(Dx1, Dy2), Mul(Dy1, Dx2));
+
+        /// <summary>
+        /// Scales the specified points around the specified point.
+        /// </summary>
+        /// <param name="Points">The points to be scaled.</param>
+        /// <param name="Cx">The x-coordinate of the center about which to scale.</param>
+        /// <param name="Cy">The y-coordinate of the center about which to scale.</param>
+        /// <param name="ScaleX">The scale factor in the x dimension.</param>
+        /// <param name="ScaleY">The scale factor in the y dimension.</param>
+        public static Point<T>[] Scale(Point<T>[] Points, T Cx, T Cy, T ScaleX, T ScaleY)
+        {
+            int Length = Points.Length;
+            Point<T>[] Result = new Point<T>[Length];
+
+            T Dx, Dy;
+            Point<T> p;
+            for (int i = 0; i < Length; i++)
+            {
+                p = Points[i];
+                Dx = Sub(p.X, Cx);
+                Dy = Sub(p.Y, Cy);
+
+                Result[i] = new Point<T>(_Add(Cx, Mul(Dx, ScaleX)), _Add(Cy, Mul(Dy, ScaleY)));
+            }
+
+            return Result;
+        }
+        /// <summary>
+        /// Scales the specified points around the specified point.
+        /// </summary>
+        /// <param name="pPoints">The pointer of the points to be scaled.</param>
+        /// <param name="Length">The length of the points to be scaled.</param>
+        /// <param name="Cx">The x-coordinate of the center about which to scale.</param>
+        /// <param name="Cy">The y-coordinate of the center about which to scale.</param>
+        /// <param name="ScaleX">The scale factor in the x dimension.</param>
+        /// <param name="ScaleY">The scale factor in the y dimension.</param>
+        public static void Scale(Point<T>* pPoints, int Length, T Cx, T Cy, T ScaleX, T ScaleY)
+        {
+            T Dx, Dy;
+            Point<T> p;
+            for (int i = 0; i < Length; i++)
+            {
+                Dx = Sub(pPoints->X, Cx);
+                Dy = Sub(pPoints->Y, Cy);
+
+                pPoints->X = _Add(Cx, Mul(Dx, ScaleX));
+                pPoints->Y = _Add(Cy, Mul(Dy, ScaleY));
+
+                pPoints++;
+            }
+        }
 
         /// <summary>
         /// Retrieves the angle, expressed in degrees, between the two specified vectors.
