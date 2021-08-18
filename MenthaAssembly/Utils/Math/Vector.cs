@@ -7,13 +7,13 @@ namespace MenthaAssembly
     /// Represents a displacement in 2-D space.
     /// </summary>
     [Serializable]
-    public unsafe struct Vector<T> : ICloneable
+    public unsafe struct Vector<T> : IMathObject<T>
         where T : unmanaged
     {
         /// <summary>
         /// Gets a zero vector.
         /// </summary>
-        public static Vector<T> Zero => new Vector<T>();
+        public static Vector<T> Zero => new();
 
         /// <summary>
         /// The delta on x-coordinate.
@@ -28,17 +28,17 @@ namespace MenthaAssembly
         /// <summary>
         /// The squared length of this Vector.
         /// </summary>
-        public T LengthSquare => _Add(Mul(X, X), Mul(Y, Y));
+        public T LengthSquare => _Add(Mul(this.X, this.X), Mul(this.Y, this.Y));
 
         /// <summary>
         /// The length of this Vector.
         /// </summary>
-        public double Length => Math.Sqrt(ToDouble(LengthSquare));
+        public double Length => Math.Sqrt(ToDouble(this.LengthSquare));
 
         /// <summary>
         ///  Gets a value indicating whether the <see cref="Vector{T}"/> is zero vector.
         /// </summary>
-        public bool IsZero => IsDefault(X) && IsDefault(Y);
+        public bool IsZero => IsDefault(this.X) && IsDefault(this.Y);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -95,6 +95,17 @@ namespace MenthaAssembly
             this.Y = Sub(Ey, Sy);
         }
 
+        void IMathObject<T>.Offset(Vector<T> Vector) { }
+        void IMathObject<T>.Offset(T Dx, T Dy) { }
+
+        void IMathObject<T>.Rotate(double Theta) { }
+        void IMathObject<T>.Rotate(Point<T> Center, double Theta) { }
+        void IMathObject<T>.Rotate(T Cx, T Cy, double Theta) { }
+
+        void IMathObject<T>.Reflect(Line<T> Line) { }
+        void IMathObject<T>.Reflect(Point<T> LinePoint1, Point<T> LinePoint2) { }
+        void IMathObject<T>.Reflect(T Lx1, T Ly1, T Lx2, T Ly2) { }
+
         /// <summary>
         /// Creates a new casted <see cref="Vector{T}"/>.
         /// </summary>
@@ -105,17 +116,21 @@ namespace MenthaAssembly
             Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
             return new Vector<U>(CastHandler(this.X), CastHandler(this.Y));
         }
+        IMathObject<U> IMathObject<T>.Cast<U>()
+            => this.Cast<U>();
 
         /// <summary>
         /// Creates a new <see cref="Vector{T}"/> that is a copy of the current instance.
         /// </summary>
         public Vector<T> Clone()
-            => new Vector<T>(X, Y);
+            => new(this.X, this.Y);
+        IMathObject<T> IMathObject<T>.Clone()
+            => this.Clone();
         object ICloneable.Clone()
             => this.Clone();
 
         public override int GetHashCode()
-            => X.GetHashCode() ^ Y.GetHashCode();
+            => this.X.GetHashCode() ^ this.Y.GetHashCode();
 
         /// <summary>
         /// Returns a value indicating whether this instance is equal to a specified <see cref="Vector{T}"/>
@@ -123,13 +138,10 @@ namespace MenthaAssembly
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Vector<T> obj)
             => Equal(this.X, obj.X) && Equal(this.Y, obj.Y);
+        bool IMathObject<T>.Equals(IMathObject<T> obj)
+            => obj is Vector<T> Target && this.Equals(Target);
         public override bool Equals(object obj)
-        {
-            if (obj is Vector<T> Target)
-                return Equals(Target);
-
-            return false;
-        }
+            => obj is Vector<T> Target && this.Equals(Target);
 
         public override string ToString()
             => $"X : {this.X}, Y : {this.Y}";
@@ -191,57 +203,6 @@ namespace MenthaAssembly
             => Sub(Mul(Dx1, Dy2), Mul(Dy1, Dx2));
 
         /// <summary>
-        /// Scales the specified points around the specified point.
-        /// </summary>
-        /// <param name="Points">The points to be scaled.</param>
-        /// <param name="Cx">The x-coordinate of the center about which to scale.</param>
-        /// <param name="Cy">The y-coordinate of the center about which to scale.</param>
-        /// <param name="ScaleX">The scale factor in the x dimension.</param>
-        /// <param name="ScaleY">The scale factor in the y dimension.</param>
-        public static Point<T>[] Scale(Point<T>[] Points, T Cx, T Cy, T ScaleX, T ScaleY)
-        {
-            int Length = Points.Length;
-            Point<T>[] Result = new Point<T>[Length];
-
-            T Dx, Dy;
-            Point<T> p;
-            for (int i = 0; i < Length; i++)
-            {
-                p = Points[i];
-                Dx = Sub(p.X, Cx);
-                Dy = Sub(p.Y, Cy);
-
-                Result[i] = new Point<T>(_Add(Cx, Mul(Dx, ScaleX)), _Add(Cy, Mul(Dy, ScaleY)));
-            }
-
-            return Result;
-        }
-        /// <summary>
-        /// Scales the specified points around the specified point.
-        /// </summary>
-        /// <param name="pPoints">The pointer of the points to be scaled.</param>
-        /// <param name="Length">The length of the points to be scaled.</param>
-        /// <param name="Cx">The x-coordinate of the center about which to scale.</param>
-        /// <param name="Cy">The y-coordinate of the center about which to scale.</param>
-        /// <param name="ScaleX">The scale factor in the x dimension.</param>
-        /// <param name="ScaleY">The scale factor in the y dimension.</param>
-        public static void Scale(Point<T>* pPoints, int Length, T Cx, T Cy, T ScaleX, T ScaleY)
-        {
-            T Dx, Dy;
-            Point<T> p;
-            for (int i = 0; i < Length; i++)
-            {
-                Dx = Sub(pPoints->X, Cx);
-                Dy = Sub(pPoints->Y, Cy);
-
-                pPoints->X = _Add(Cx, Mul(Dx, ScaleX));
-                pPoints->Y = _Add(Cy, Mul(Dy, ScaleY));
-
-                pPoints++;
-            }
-        }
-
-        /// <summary>
         /// Retrieves the angle, expressed in degrees, between the two specified vectors.
         /// </summary>
         /// <param name="Vector1">The first vector to evaluate.</param>
@@ -274,7 +235,7 @@ namespace MenthaAssembly
         /// <param name="Vector2">The second vector to add.</param>
         /// <returns></returns>
         public static Vector<T> Add(Vector<T> Vector1, Vector<T> Vector2)
-            => new Vector<T>(_Add(Vector1.X, Vector2.X), _Add(Vector1.Y, Vector2.Y));
+            => new(_Add(Vector1.X, Vector2.X), _Add(Vector1.Y, Vector2.Y));
         /// <summary>
         /// Adds two vectors and returns the result as a <see cref="Vector{T}"/> structure.
         /// </summary>
@@ -283,7 +244,7 @@ namespace MenthaAssembly
         /// <param name="Dy">The delta on y-coordinate of second vector to add.</param>
         /// <returns></returns>
         public static Vector<T> Add(Vector<T> Vector, T Dx, T Dy)
-            => new Vector<T>(_Add(Vector.X, Dx), _Add(Vector.Y, Dy));
+            => new(_Add(Vector.X, Dx), _Add(Vector.Y, Dy));
 
         /// <summary>
         /// Subtracts the specified vector from another specified vector.
@@ -292,7 +253,7 @@ namespace MenthaAssembly
         /// <param name="Vector2">The vector to subtract from Vector1.</param>
         /// <returns></returns>
         public static Vector<T> Subtract(Vector<T> Vector1, Vector<T> Vector2)
-            => new Vector<T>(Sub(Vector1.X, Vector2.X), Sub(Vector1.Y, Vector2.Y));
+            => new(Sub(Vector1.X, Vector2.X), Sub(Vector1.Y, Vector2.Y));
         /// <summary>
         /// Subtracts the specified vector from another specified vector.
         /// </summary>
@@ -301,7 +262,7 @@ namespace MenthaAssembly
         /// <param name="Dy">The delta on y-coordinate of the vector to subtract from Vector.</param>
         /// <returns></returns>
         public static Vector<T> Subtract(Vector<T> Vector, T Dx, T Dy)
-            => new Vector<T>(Sub(Vector.X, Dx), Sub(Vector.Y, Dy));
+            => new(Sub(Vector.X, Dx), Sub(Vector.Y, Dy));
 
         /// <summary>
         /// Multiplies the specified vector by the specified scalar.
@@ -310,7 +271,7 @@ namespace MenthaAssembly
         /// <param name="Scalar">The scalar to multiply.</param>
         /// <returns></returns>
         public static Vector<T> Multiply(Vector<T> Vector, T Scalar)
-            => Vector<T>.Multiply(Vector, Scalar, Scalar);
+            => Multiply(Vector, Scalar, Scalar);
         /// <summary>
         /// Multiplies the specified vector by the specified scalar.
         /// </summary>
@@ -319,7 +280,7 @@ namespace MenthaAssembly
         /// <param name="ScalarY">The scalar to multiply on y-coordinate.</param>
         /// <returns></returns>
         public static Vector<T> Multiply(Vector<T> Vector, T ScalarX, T ScalarY)
-            => new Vector<T>(Mul(Vector.X, ScalarX), Mul(Vector.Y, ScalarY));
+            => new(Mul(Vector.X, ScalarX), Mul(Vector.Y, ScalarY));
 
         /// <summary>
         /// Divides the specified vector by the specified scalar.
@@ -328,7 +289,7 @@ namespace MenthaAssembly
         /// <param name="Scalar">The scalar to divide.</param>
         /// <returns></returns>
         public static Vector<T> Divide(Vector<T> Vector, T Scalar)
-            => Vector<T>.Divide(Vector, Scalar, Scalar);
+            => Divide(Vector, Scalar, Scalar);
         /// <summary>
         /// Divides the specified vector by the specified scalar.
         /// </summary>
@@ -337,14 +298,14 @@ namespace MenthaAssembly
         /// <param name="ScalarY">The scalar to divide on y-coordinate.</param>
         /// <returns></returns>
         public static Vector<T> Divide(Vector<T> Vector, T ScalarX, T ScalarY)
-            => new Vector<T>(Div(Vector.X, ScalarX), Div(Vector.Y, ScalarY));
+            => new(Div(Vector.X, ScalarX), Div(Vector.Y, ScalarY));
 
         /// <summary>
         /// Negates this vector. The vector has the same magnitude as before, but its direction is now opposite.
         /// </summary>
         /// <param name="Vector">The vector to reverse.</param>
         public static Vector<T> Reverse(Vector<T> Vector)
-            => new Vector<T>(Neg(Vector.X), Neg(Vector.Y));
+            => new(Neg(Vector.X), Neg(Vector.Y));
 
         /// <summary>
         /// Calculates the dot product of two vectors.
@@ -394,6 +355,7 @@ namespace MenthaAssembly
         /// <returns></returns>
         public static Vector<T> operator /(Vector<T> Vector, T Scalar)
             => Divide(Vector, Scalar, Scalar);
+
         /// <summary>
         /// Compares two vectors for equality.
         /// </summary>

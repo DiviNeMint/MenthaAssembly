@@ -7,13 +7,13 @@ namespace MenthaAssembly
     /// Represents a coordinate in 2-D space.
     /// </summary>
     [Serializable]
-    public unsafe struct Point<T> : ICloneable
+    public unsafe struct Point<T> : IMathObject<T>
         where T : unmanaged
     {
         /// <summary>
         /// Gets the origin of coordinates.
         /// </summary>
-        public static Point<T> Origin => new Point<T>();
+        public static Point<T> Origin => new();
 
         /// <summary>
         /// The x-coordinate of this Point.
@@ -28,7 +28,7 @@ namespace MenthaAssembly
         /// <summary>
         ///  Gets a value indicating whether the point is the origin of coordinates.
         /// </summary>
-        public bool IsOrigin => IsDefault(X) && IsDefault(Y);
+        public bool IsOrigin => IsDefault(this.X) && IsDefault(this.Y);
 
         /// <summary>
         /// Constructor which accepts the X and Y values
@@ -41,65 +41,41 @@ namespace MenthaAssembly
             this.Y = Y;
         }
 
-        /// <summary>
-        /// Offsets <see cref="X"/> and <see cref="Y"/> coordinates by the specified vector.
-        /// </summary>
-        /// <param name="Vector">The vector to be added to this point.</param>
         public void Offset(Vector<T> Vector)
-            => Offset(Vector.X, Vector.Y);
-        /// <summary>
-        /// Offsets <see cref="X"/> and <see cref="Y"/> coordinates by the specified amounts.
-        /// </summary>
-        /// <param name="Dx">The amount to offset <see cref="X"/> coordinate.</param>
-        /// <param name="Dy">The amount to offset <see cref="Y"/> coordinate.</param>
+            => this.Offset(Vector.X, Vector.Y);
         public void Offset(T Dx, T Dy)
         {
-            X = Add(X, Dx);
-            Y = Add(Y, Dy);
+            this.X = Add(this.X, Dx);
+            this.Y = Add(this.Y, Dy);
         }
 
-        /// <summary>
-        /// Rotates this point about the origin.
-        /// </summary>
-        /// <param name="Theta">The angle to rotate specifed in radians.</param>
         public void Rotate(double Theta)
-            => Rotate(Math.Sin(Theta), Math.Cos(Theta));
+            => this.Rotate(Math.Sin(Theta), Math.Cos(Theta));
         /// <summary>
-        /// Rotates this point about the origin.
+        /// Rotates this object about the origin.
         /// </summary>
         /// <param name="Sin">The sine of the specified angle to rotate.</param>
         /// <param name="Cos">The cosine of the specified angle to rotate.</param>
         public void Rotate(double Sin, double Cos)
         {
-            Rotate(X, Y, Sin, Cos, out T Qx, out T Qy);
+            Rotate(this.X, this.Y, Sin, Cos, out T Qx, out T Qy);
             this.X = Qx;
             this.Y = Qy;
         }
-        /// <summary>
-        /// Rotates this point about the specified point.
-        /// </summary>
-        /// <param name="Center">The center of rotation.</param>
-        /// <param name="Theta">The angle to rotate specifed in radians.</param>
         public void Rotate(Point<T> Center, double Theta)
-            => Rotate(Center.X, Center.Y, Math.Sin(Theta), Math.Cos(Theta));
+            => this.Rotate(Center.X, Center.Y, Math.Sin(Theta), Math.Cos(Theta));
         /// <summary>
-        /// Rotates this point about the specified point.
+        /// Rotates this object about the specified point.
         /// </summary>
         /// <param name="Center">The center of rotation.</param>
         /// <param name="Sin">The sine of the specified angle to rotate.</param>
         /// <param name="Cos">The cosine of the specified angle to rotate.</param>
         public void Rotate(Point<T> Center, double Sin, double Cos)
-            => Rotate(Center.X, Center.Y, Sin, Cos);
-        /// <summary>
-        /// Rotates this point about the specified point.
-        /// </summary>
-        /// <param name="Cx">The x-coordinate of the center of rotation.</param>
-        /// <param name="Cy">The y-coordinate of the center of rotation.</param>
-        /// <param name="Theta">The angle to rotate specifed in radians.</param>
+            => this.Rotate(Center.X, Center.Y, Sin, Cos);
         public void Rotate(T Cx, T Cy, double Theta)
-            => Rotate(Cx, Cy, Math.Sin(Theta), Math.Cos(Theta));
+            => this.Rotate(Cx, Cy, Math.Sin(Theta), Math.Cos(Theta));
         /// <summary>
-        /// Rotates this point about the specified point.
+        /// Rotates this object about the specified point.
         /// </summary>
         /// <param name="Cx">The x-coordinate of the center of rotation.</param>
         /// <param name="Cy">The y-coordinate of the center of rotation.</param>
@@ -107,15 +83,11 @@ namespace MenthaAssembly
         /// <param name="Cos">The cosine of the specified angle to rotate.</param>
         public void Rotate(T Cx, T Cy, double Sin, double Cos)
         {
-            Rotate(X, Y, Cx, Cy, Sin, Cos, out T Qx, out T Qy);
+            Rotate(this.X, this.Y, Cx, Cy, Sin, Cos, out T Qx, out T Qy);
             this.X = Qx;
             this.Y = Qy;
         }
 
-        /// <summary>
-        /// Reflects this point over the specified line.
-        /// </summary>
-        /// <param name="Line">The projection line.</param>
         public void Reflect(Line<T> Line)
         {
             if (Line.Points is null || Line.Points.Length < 2)
@@ -124,22 +96,10 @@ namespace MenthaAssembly
             Point<T> P1 = Line.Points[0],
                      P2 = Line.Points[1];
 
-            Reflect(P1.X, P1.Y, P2.X, P2.Y);
+            this.Reflect(P1.X, P1.Y, P2.X, P2.Y);
         }
-        /// <summary>
-        /// Reflects this point over the specified line.
-        /// </summary>
-        /// <param name="LinePoint1">The point on the projection line.</param>
-        /// <param name="LinePoint2">The another point on the projection line.</param>
         public void Reflect(Point<T> LinePoint1, Point<T> LinePoint2)
-            => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
-        /// <summary>
-        /// Reflects this point over the specified line.
-        /// </summary>
-        /// <param name="Lx1">The x-coordinate of a point on the projection line.</param>
-        /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
-        /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
-        /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+            => this.Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
         public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
         {
             T v1x = Sub(Lx2, Lx1),
@@ -181,17 +141,21 @@ namespace MenthaAssembly
             Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
             return new Point<U>(CastHandler(this.X), CastHandler(this.Y));
         }
+        IMathObject<U> IMathObject<T>.Cast<U>()
+            => this.Cast<U>();
 
         /// <summary>
         /// Creates a new point that is a copy of the current instance.
         /// </summary>
         public Point<T> Clone()
-            => new Point<T>(X, Y);
+            => new(this.X, this.Y);
+        IMathObject<T> IMathObject<T>.Clone()
+            => this.Clone();
         object ICloneable.Clone()
             => this.Clone();
 
         public override int GetHashCode()
-            => X.GetHashCode() ^ Y.GetHashCode();
+            => this.X.GetHashCode() ^ this.Y.GetHashCode();
 
         /// <summary>
         /// Returns a value indicating whether this instance is equal to a specified point
@@ -199,13 +163,10 @@ namespace MenthaAssembly
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Point<T> obj)
             => Equal(this.X, obj.X) && Equal(this.Y, obj.Y);
+        bool IMathObject<T>.Equals(IMathObject<T> obj)
+            => obj is Point<T> Target && this.Equals(Target);
         public override bool Equals(object obj)
-        {
-            if (obj is Point<T> Target)
-                return Equals(Target);
-
-            return false;
-        }
+            => obj is Point<T> Target && this.Equals(Target);
 
         public override string ToString()
             => $"X : {this.X}, Y : {this.Y}";
@@ -277,7 +238,7 @@ namespace MenthaAssembly
         /// <param name="Dx">The amount to offset <see cref="X"/> coordinate.</param>
         /// <param name="Dy">The amount to offset <see cref="Y"/> coordinate.</param>
         public static Point<T> Offset(Point<T> Point, T Dx, T Dy)
-            => new Point<T>(Add(Point.X, Dx), Add(Point.Y, Dy));
+            => new(Add(Point.X, Dx), Add(Point.Y, Dy));
         /// <summary>
         /// Offsets the specified points by the specified amounts.
         /// </summary>
@@ -682,7 +643,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <param name="Point">The Point to negates.</param>
         public static Point<T> Negates(Point<T> Point)
-            => new Point<T>(Neg(Point.X), Neg(Point.Y));
+            => new(Neg(Point.X), Neg(Point.Y));
 
         /// <summary>
         /// Negates this Point. The Point has the same magnitude as before, but its quadrant is now opposite.
@@ -713,7 +674,7 @@ namespace MenthaAssembly
         /// <param name="Point2">The point to subtract from point1.</param>
         /// <returns></returns>
         public static Vector<T> operator -(Point<T> Point1, Point<T> Point2)
-            => new Vector<T>(Point2, Point1);
+            => new(Point2, Point1);
 
         /// <summary>
         /// Compares two points for equality.
