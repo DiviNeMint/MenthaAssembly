@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq.Expressions;
 
 namespace MenthaAssembly
@@ -8,23 +7,29 @@ namespace MenthaAssembly
     /// Represents a line in 2-D space.
     /// </summary>
     [Serializable]
-    public unsafe struct Line<T> : ICloneable
+    public unsafe struct Line<T> : IShape<T>
         where T : unmanaged
     {
         /// <summary>
         /// Gets a special value that represents a line with no position.
         /// </summary>
-        public static Line<T> Empty => new Line<T>();
+        public static Line<T> Empty => new();
 
         /// <summary>
         /// Gets a special value that represents X-Axis.
         /// </summary>
-        public static Line<T> XAxis => new Line<T> { Points = new[] { new Point<T>(), new Point<T>(ToGeneric(1), default) } };
+        public static Line<T> XAxis => new() { Points = new[] { new Point<T>(), new Point<T>(ToGeneric(1), default) } };
 
         /// <summary>
         /// Gets a special value that represents Y-Axis.
         /// </summary>
-        public static Line<T> YAxis => new Line<T> { Points = new[] { new Point<T>(), new Point<T>(default, ToGeneric(1)) } };
+        public static Line<T> YAxis => new() { Points = new[] { new Point<T>(), new Point<T>(default, ToGeneric(1)) } };
+
+        Point<T> IShape<T>.Center
+            => this.IsEmpty ? default : Points[0];
+
+        double IShape<T>.Area
+            => 0d;
 
         internal Point<T>[] Points;
 
@@ -38,8 +43,8 @@ namespace MenthaAssembly
                 if (this.IsEmpty)
                     return Vector<T>.Zero;
 
-                Point<T> p0 = this.Points[0],
-                         p1 = this.Points[1];
+                Point<T> p0 = Points[0],
+                         p1 = Points[1];
 
                 return new Vector<T>(p1.Y, p0.X, p0.Y, p1.X);
             }
@@ -49,21 +54,13 @@ namespace MenthaAssembly
         /// The directional vector of this line.
         /// </summary>
         public Vector<T> DirectionalVector
-            => this.IsEmpty ? Vector<T>.Zero : new Vector<T>(this.Points[0], this.Points[1]);
+            => this.IsEmpty ? Vector<T>.Zero : new Vector<T>(Points[0], Points[1]);
 
         /// <summary>
         /// Gets a value that indicates whether the shape is the empty line.
         /// </summary>
         public bool IsEmpty
-        {
-            get
-            {
-                if (Points is null || Points.Length < 2)
-                    return true;
-
-                return Points[0].Equals(Points[1]);
-            }
-        }
+            => Points is null || Points.Length < 2 || Points[0].Equals(Points[1]);
 
         /// <summary>
         /// The gradient of the line.
@@ -75,8 +72,8 @@ namespace MenthaAssembly
                 if (this.IsEmpty)
                     return double.NaN;
 
-                Point<T> p0 = this.Points[0],
-                         p1 = this.Points[1];
+                Point<T> p0 = Points[0],
+                         p1 = Points[1];
 
                 return ToDouble(Sub(p1.Y, p0.Y)) / ToDouble(Sub(p1.X, p0.X));
             }
@@ -95,7 +92,7 @@ namespace MenthaAssembly
                 return;
             }
 
-            this.Points = new[] { Point1, Point2 };
+            Points = new[] { Point1, Point2 };
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Line{T}"/> structure.
@@ -110,7 +107,7 @@ namespace MenthaAssembly
                 return;
             }
 
-            this.Points = new[] { Point, Point<T>.Offset(Point, Vector) };
+            Points = new[] { Point, Point<T>.Offset(Point, Vector) };
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Line{T}"/> structure.
@@ -127,20 +124,16 @@ namespace MenthaAssembly
                 return;
             }
 
-            this.Points = new[] { new Point<T>(Px1, Py1), new Point<T>(Px2, Py2) };
+            Points = new[] { new Point<T>(Px1, Py1), new Point<T>(Px2, Py2) };
         }
 
-        /// <summary>
-        /// Offsets this line's coordinates by the specified vector.
-        /// </summary>
-        /// <param name="Vector">The vector to be added to this line.</param>
+        public bool Contain(Point<T> Point)
+            => this.Contain(Point.X, Point.Y);
+        public bool Contain(T Px, T Py)
+            => Points is not null && IsCollinear(Points[0], Points[1], Px, Py);
+
         public void Offset(Vector<T> Vector)
-            => Offset(Vector.X, Vector.Y);
-        /// <summary>
-        /// Offsets this line's coordinates by the specified amounts.
-        /// </summary>
-        /// <param name="Dx">The amount to offset x-coordinate.</param>
-        /// <param name="Dy">The amount to offset y-coordinate.</param>
+            => this.Offset(Vector.X, Vector.Y);
         public void Offset(T Dx, T Dy)
         {
             if (this.IsEmpty)
@@ -152,10 +145,6 @@ namespace MenthaAssembly
             }
         }
 
-        /// <summary>
-        /// Rotates this line about the origin.
-        /// </summary>
-        /// <param name="Theta">The angle to rotate specifed in radians.</param>
         public void Rotate(double Theta)
         {
             if (this.IsEmpty)
@@ -166,19 +155,8 @@ namespace MenthaAssembly
                 Point<T>.Rotate(pPoints, Points.Length, Theta);
             }
         }
-        /// <summary>
-        /// Rotates this line about the specified point.
-        /// </summary>
-        /// <param name="Center">The center of rotation.</param>
-        /// <param name="Theta">The angle to rotate specifed in radians.</param>
         public void Rotate(Point<T> Center, double Theta)
-            => Rotate(Center.X, Center.Y, Theta);
-        /// <summary>
-        /// Rotates this line about the specified point(<paramref name="Cx"/>, <paramref name="Cy"/>).
-        /// </summary>
-        /// <param name="Cx">The x-coordinate of the center of rotation.</param>
-        /// <param name="Cy">The y-coordinate of the center of rotation.</param>
-        /// <param name="Theta">The angle to rotate specifed in radians.</param>
+            => this.Rotate(Center.X, Center.Y, Theta);
         public void Rotate(T Cx, T Cy, double Theta)
         {
             if (this.IsEmpty)
@@ -190,10 +168,6 @@ namespace MenthaAssembly
             }
         }
 
-        /// <summary>
-        /// Reflects this line over the specified line.
-        /// </summary>
-        /// <param name="Line">The projection line.</param>
         public void Reflect(Line<T> Line)
         {
             if (Line.Points is null || Line.Points.Length < 2)
@@ -202,26 +176,10 @@ namespace MenthaAssembly
             Point<T> P1 = Line.Points[0],
                      P2 = Line.Points[1];
 
-            Reflect(P1.X, P1.Y, P2.X, P2.Y);
-            /// <summary>
-            /// Reflects this line over the specified line.
-            /// </summary>
-            /// <param name="Line">The projection line.</param>
+            this.Reflect(P1.X, P1.Y, P2.X, P2.Y);
         }
-        /// <summary>
-        /// Reflects this line over the specified line.
-        /// </summary>
-        /// <param name="LinePoint1">The point on the projection line.</param>
-        /// <param name="LinePoint2">The another point on the projection line.</param>
         public void Reflect(Point<T> LinePoint1, Point<T> LinePoint2)
-            => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
-        /// <summary>
-        /// Reflects this line over the specified line.
-        /// </summary>
-        /// <param name="Lx1">The x-coordinate of a point on the projection line.</param>
-        /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
-        /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
-        /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+            => this.Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
         public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
         {
             if (this.IsEmpty)
@@ -233,52 +191,51 @@ namespace MenthaAssembly
             }
         }
 
+        void IShape<T>.Scale(T Scale) { }
+        void IShape<T>.Scale(T ScaleX, T ScaleY) { }
+        void IShape<T>.Scale(Point<T> Center, T Scale) { }
+        void IShape<T>.Scale(Point<T> Center, T ScaleX, T ScaleY) { }
+        void IShape<T>.Scale(T Cx, T Cy, T Scale) { }
+        void IShape<T>.Scale(T Cx, T Cy, T ScaleX, T ScaleY) { }
+
         /// <summary>
         /// Creates a new casted line.
         /// </summary>
-        /// <returns></returns>
-        public Line<U> Cast<U>()
-            where U : unmanaged
-        {
-            if (this.IsEmpty)
-                return Line<U>.Empty;
-
-            return new Line<U>(this.Points[0].Cast<U>(), this.Points[1].Cast<U>());
-        }
+        public Line<U> Cast<U>() where U : unmanaged
+            => this.IsEmpty ? Line<U>.Empty : new Line<U>(Points[0].Cast<U>(), Points[1].Cast<U>());
+        IShape<U> IShape<T>.Cast<U>()
+            => this.Cast<U>();
+        IMathObject<U> IMathObject<T>.Cast<U>()
+            => this.Cast<U>();
 
         /// <summary>
         /// Creates a new line that is a copy of the current instance.
         /// </summary>
         public Line<T> Clone()
-            => this.IsEmpty ? Empty : new Line<T>(this.Points[0], this.Points[1]);
+            => this.IsEmpty ? Empty : new Line<T>(Points[0], Points[1]);
+        IShape<T> IShape<T>.Clone()
+            => this.Clone();
+        IMathObject<T> IMathObject<T>.Clone()
+            => this.Clone();
         object ICloneable.Clone()
             => this.Clone();
 
         public override int GetHashCode()
-        {
-            if (Points is null)
-                return base.GetHashCode();
-
-            int Code = Points[0].GetHashCode();
-            for (int i = 1; i < Points.Length; i++)
-                Code ^= Points[i].GetHashCode();
-
-            return Code;
-        }
+            => (Points is null || Points.Length < 2) ? base.GetHashCode() : Points[0].GetHashCode() ^ Points[1].GetHashCode();
 
         /// <summary>
         /// Returns a value indicating whether this instance is equal to a specified <see cref="Line{T}"/>
         /// </summary>
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Line<T> obj)
-        {
-            if (this.IsEmpty)
-                return obj.IsEmpty;
-
-            return IsCollinear(this.Points[0], this.Points[1], obj.Points[0], obj.Points[1]);
-        }
+            => this.IsEmpty ? obj.IsEmpty :
+                              !obj.IsEmpty && IsCollinear(Points[0], Points[1], obj.Points[0], obj.Points[1]);
+        bool IShape<T>.Equals(IShape<T> obj)
+            => obj is Line<T> Target && this.Equals(Target);
+        bool IMathObject<T>.Equals(IMathObject<T> obj)
+            => obj is Line<T> Target && this.Equals(Target);
         public override bool Equals(object obj)
-            => obj is Line<T> Target && Equals(Target);
+            => obj is Line<T> Target && this.Equals(Target);
 
         public override string ToString()
         {
@@ -291,22 +248,22 @@ namespace MenthaAssembly
             return $"Sx : {S.X}, Sy : {S.Y}, Ex : {E.X}, Ey : {E.Y}";
         }
 
-        private static readonly Func<T, T> Abs;
         private static readonly Func<T, T, T> Add, Sub, Mul;
-        private static readonly Func<T, T> Div2;
+        private static readonly Func<T, T> Abs, Div2;
+        private static readonly Func<T, T, bool> GreaterThan;
         private static readonly Predicate<T> IsDefault;
         private static readonly Func<T, double> ToDouble;
         private static readonly Func<double, T> ToGeneric;
         static Line()
         {
-            Abs = ExpressionHelper<T>.CreateAbs();
-
             Add = ExpressionHelper<T>.CreateAdd();
             Sub = ExpressionHelper<T>.CreateSub();
             Mul = ExpressionHelper<T>.CreateMul();
 
+            Abs = ExpressionHelper<T>.CreateAbs();
             Div2 = ExpressionHelper<T>.CreateDiv(2);
 
+            GreaterThan = ExpressionHelper<T>.CreateGreaterThan();
             IsDefault = ExpressionHelper<T>.CreateIsDefault();
 
             ToDouble = ExpressionHelper<T>.CreateCast<double>();
@@ -360,7 +317,10 @@ namespace MenthaAssembly
             if (Line.Points is null || Line.Points.Length < 2)
                 return Empty;
 
-            return Perpendicular(Line.Points[0].X, Line.Points[0].Y, Line.Points[1].X, Line.Points[1].Y, Px, Py);
+            Point<T> p0 = Line.Points[0],
+                     p1 = Line.Points[1];
+
+            return Perpendicular(p0.X, p0.Y, p1.X, p1.Y, Px, Py);
         }
         /// <summary>
         /// Calculate the perpendicular from the specified point to the specified line.
@@ -372,7 +332,10 @@ namespace MenthaAssembly
             if (Line.Points is null || Line.Points.Length < 2)
                 return Empty;
 
-            return Perpendicular(Line.Points[0].X, Line.Points[0].Y, Line.Points[1].X, Line.Points[1].Y, Point.X, Point.Y);
+            Point<T> p0 = Line.Points[0],
+                     p1 = Line.Points[1];
+
+            return Perpendicular(p0.X, p0.Y, p1.X, p1.Y, Point.X, Point.Y);
         }
         /// <summary>
         /// Calculate the perpendicular from the specified point to the specified line.
@@ -405,10 +368,7 @@ namespace MenthaAssembly
             T Dx = Sub(Lx2, Lx1),
               Dy = Sub(Ly2, Ly1);
 
-            if (IsDefault(Dx) && IsDefault(Dy))
-                return Empty;
-
-            return new Line<T>(Px, Py, Sub(Px, Dy), Add(Py, Dx));
+            return IsDefault(Dx) && IsDefault(Dy) ? Empty : new Line<T>(Px, Py, Sub(Px, Dy), Add(Py, Dx));
         }
 
         /// <summary>
@@ -422,7 +382,10 @@ namespace MenthaAssembly
             if (Line.Points is null || Line.Points.Length < 2)
                 return double.NaN;
 
-            return Distance(Line.Points[0].X, Line.Points[0].Y, Line.Points[1].X, Line.Points[1].Y, Px, Py);
+            Point<T> p0 = Line.Points[0],
+                     p1 = Line.Points[1];
+
+            return Distance(p0.X, p0.Y, p1.X, p1.Y, Px, Py);
         }
         /// <summary>
         /// Calculate the distance from a point to a line.
@@ -434,7 +397,10 @@ namespace MenthaAssembly
             if (Line.Points is null || Line.Points.Length < 2)
                 return double.NaN;
 
-            return Distance(Line.Points[0].X, Line.Points[0].Y, Line.Points[1].X, Line.Points[1].Y, Point.X, Point.Y);
+            Point<T> p0 = Line.Points[0],
+                     p1 = Line.Points[1];
+
+            return Distance(p0.X, p0.Y, p1.X, p1.Y, Point.X, Point.Y);
         }
         /// <summary>
         /// Calculate the distance from a point to a line.
@@ -453,10 +419,7 @@ namespace MenthaAssembly
               v2y = Sub(Py, Ly1);
 
             double v2L = Math.Sqrt(ToDouble(Add(Mul(v2x, v2x), Mul(v2y, v2y))));
-            if (IsDefault(v1x) && IsDefault(v1y))
-                return v2L;
-
-            return ToDouble(Abs(Vector<T>.Cross(v1x, v1y, v2x, v2y))) / v2L;
+            return IsDefault(v1x) && IsDefault(v1y) ? v2L : ToDouble(Abs(Vector<T>.Cross(v1x, v1y, v2x, v2y))) / v2L;
         }
         /// <summary>
         /// Calculate the distance between two lines.
@@ -753,6 +716,187 @@ namespace MenthaAssembly
         }
 
         /// <summary>
+        /// Returns a value indicating whether the points are same side.
+        /// </summary>
+        /// <param name="Line">The target line.</param>
+        /// <param name="Px1">The x-coordinate of the first target point.</param>
+        /// <param name="Py1">The y-coordinate of the first target point.</param>
+        /// <param name="Px2">The x-coordinate of the second target point.</param>
+        /// <param name="Py2">The y-coordinate of the second target point.</param>
+        public static bool IsSameSide(Line<T> Line, T Px1, T Py1, T Px2, T Py2)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return false;
+
+            Point<T> p0 = Line.Points[0],
+                     p1 = Line.Points[1];
+
+            return IsSameSide(p0.X, p0.Y, p1.X, p1.Y, Px1, Py1, Px2, Py2);
+        }
+        /// <summary>
+        /// Returns a value indicating whether the points are same side.
+        /// </summary>
+        /// <param name="Line">The target line.</param>
+        /// <param name="Points">The target points.</param>
+        public static bool IsSameSide(Line<T> Line, params Point<T>[] Points)
+            => Line.Points is not null && Line.Points.Length > 1 && IsSameSide(Line.Points[0], Line.Points[1], Points);
+        /// <summary>
+        /// Returns a value indicating whether the points are same side.
+        /// </summary>
+        /// <param name="Line">The target line.</param>
+        /// <param name="PointDatas">The target points in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        public static bool IsSameSide(Line<T> Line, params T[] PointDatas)
+            => Line.Points is not null && Line.Points.Length > 1 && IsSameSide(Line.Points[0], Line.Points[1], PointDatas);
+        /// <summary>
+        /// Returns a value indicating whether the points are same side.
+        /// </summary>
+        /// <param name="LinePoint1">The point on the target line.</param>
+        /// <param name="LinePoint2">The another point on the target line.</param>
+        /// <param name="Px1">The x-coordinate of the first target point.</param>
+        /// <param name="Py1">The y-coordinate of the first target point.</param>
+        /// <param name="Px2">The x-coordinate of the second target point.</param>
+        /// <param name="Py2">The y-coordinate of the second target point.</param>
+        public static bool IsSameSide(Point<T> LinePoint1, Point<T> LinePoint2, T Px1, T Py1, T Px2, T Py2)
+            => IsSameSide(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y, Px1, Py1, Px2, Py2);
+        /// <summary>
+        /// Returns a value indicating whether the points are same side.
+        /// </summary>
+        /// <param name="LinePoint1">The point on the target line.</param>
+        /// <param name="LinePoint2">The another point on the target line.</param>
+        /// <param name="Points">The target points.</param>
+        public static bool IsSameSide(Point<T> LinePoint1, Point<T> LinePoint2, params Point<T>[] Points)
+        {
+            // Valid Point Length
+            int Length = Points.Length;
+            if (Length < 2)
+                return true;
+
+            // Build line equation
+            // aX + bY + c = 0
+
+            T Lx1 = LinePoint1.X,
+              Ly1 = LinePoint1.Y,
+              Lx2 = LinePoint2.X,
+              Ly2 = LinePoint2.Y;
+
+            T a = Sub(Ly2, Ly1),
+              b = Sub(Lx1, Lx2);
+
+            if (IsDefault(a) && IsDefault(b))
+                return false;
+
+            Point<T> p = Points[0];
+            T c = Sub(Mul(Lx2, Ly1), Mul(Ly2, Lx1)),
+              D = Add(Add(Mul(a, p.X), Mul(b, p.Y)), c);
+
+            if (IsDefault(D))
+                return false;
+
+            T Zero = default;
+
+            bool Predict = GreaterThan(D, Zero);
+            for (int i = 1; i < Length; i++)
+            {
+                p = Points[i];
+                D = Add(Add(Mul(a, p.X), Mul(b, p.Y)), c);
+
+                if (Predict != GreaterThan(D, Zero))
+                    return false;
+            }
+
+            return true;
+        }
+        /// <summary>
+        /// Returns a value indicating whether the points are same side.
+        /// </summary>
+        /// <param name="LinePoint1">The point on the target line.</param>
+        /// <param name="LinePoint2">The another point on the target line.</param>
+        /// <param name="PointDatas">The target points in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        public static bool IsSameSide(Point<T> LinePoint1, Point<T> LinePoint2, params T[] PointDatas)
+            => IsSameSide(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y, PointDatas);
+        /// <summary>
+        /// Returns a value indicating whether the points are same side.
+        /// </summary>
+        /// <param name="Lx1">The x-coordinate of a point on the target line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the target line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the target line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the target line.</param>
+        /// <param name="Px1">The x-coordinate of the first target point.</param>
+        /// <param name="Py1">The y-coordinate of the first target point.</param>
+        /// <param name="Px2">The x-coordinate of the second target point.</param>
+        /// <param name="Py2">The y-coordinate of the second target point.</param>
+        public static bool IsSameSide(T Lx1, T Ly1, T Lx2, T Ly2, T Px1, T Py1, T Px2, T Py2)
+        {
+            // Build line equation
+            // aX + bY + c = 0
+
+            T a = Sub(Ly2, Ly1),
+              b = Sub(Lx1, Lx2);
+
+            if (IsDefault(a) && IsDefault(b))
+                return false;
+
+            T c = Sub(Mul(Lx2, Ly1), Mul(Ly2, Lx1)),
+              F0 = Add(Add(Mul(a, Px1), Mul(b, Py1)), c);
+
+            if (IsDefault(F0))
+                return false;
+
+            T F1 = Add(Add(Mul(a, Px2), Mul(b, Py2)), c);
+            if (IsDefault(F1))
+                return false;
+
+            T Zero = default;
+            return GreaterThan(F0, Zero) == GreaterThan(F1, Zero);
+        }
+        /// <summary>
+        /// Returns a value indicating whether the points are same side.
+        /// </summary>
+        /// <param name="Lx1">The x-coordinate of a point on the target line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the target line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the target line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the target line.</param>
+        /// <param name="PointDatas">The target points in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        public static bool IsSameSide(T Lx1, T Ly1, T Lx2, T Ly2, params T[] PointDatas)
+        {
+            // Valid Point Length
+            int Length = PointDatas.Length >> 1;
+            if (Length < 2)
+                return true;
+
+            // Data Length
+            Length <<= 1;
+
+            // Build line equation
+            // aX + bY + c = 0
+
+            T a = Sub(Ly2, Ly1),
+              b = Sub(Lx1, Lx2);
+
+            if (IsDefault(a) && IsDefault(b))
+                return false;
+
+            T c = Sub(Mul(Lx2, Ly1), Mul(Ly2, Lx1)),
+              D = Add(Add(Mul(a, PointDatas[0]), Mul(b, PointDatas[1])), c);
+
+            if (IsDefault(D))
+                return false;
+
+            T Zero = default;
+            bool Predict = GreaterThan(D, Zero);
+
+            for (int i = 2; i < Length; i++)
+            {
+                D = Add(Add(Mul(a, PointDatas[i++]), Mul(b, PointDatas[i])), c);
+
+                if (Predict != GreaterThan(D, Zero))
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Calculate the cross points between two lines.
         /// </summary>
         /// <param name="Line1">The first target line.</param>
@@ -851,12 +995,7 @@ namespace MenthaAssembly
         /// <param name="Dx">The amount to offset x-coordinate.</param>
         /// <param name="Dy">The amount to offset y-coordinate.</param>
         public static Line<T> Offset(Line<T> Line, T Dx, T Dy)
-        {
-            if (Line.IsEmpty)
-                return Empty;
-
-            return new Line<T> { Points = Point<T>.Offset(Line.Points, Dx, Dy) };
-        }
+            => Line.IsEmpty ? Empty : new Line<T> { Points = Point<T>.Offset(Line.Points, Dx, Dy) };
 
         /// <summary>
         /// Rotates the specified line about the origin.
@@ -864,19 +1003,13 @@ namespace MenthaAssembly
         /// <param name="Line">The line to be rotated.</param>
         /// <param name="Theta">The angle to rotate specifed in radians.</param>
         public static Line<T> Rotate(Line<T> Line, double Theta)
-        {
-            if (Line.IsEmpty)
-                return Empty;
-
-            return new Line<T> { Points = Point<T>.Rotate(Line.Points, Theta) };
-        }
+            => Line.IsEmpty ? Empty : new Line<T> { Points = Point<T>.Rotate(Line.Points, Theta) };
         /// <summary>
         /// Rotates the specified line about the specified point.
         /// </summary>
         /// <param name="Line">The line to be rotated.</param>
         /// <param name="Center">The center of rotation.</param>
         /// <param name="Theta">The angle to rotate specifed in radians.</param>
-        /// <returns></returns>
         public static Line<T> Rotate(Line<T> Line, Point<T> Center, double Theta)
             => Rotate(Line, Center.X, Center.Y, Theta);
         /// <summary>
@@ -886,19 +1019,13 @@ namespace MenthaAssembly
         /// <param name="Cx">The x-coordinate of the center of rotation.</param>
         /// <param name="Cy">The y-coordinate of the center of rotation.</param>
         /// <param name="Theta">The angle to rotate specifed in radians.</param>
-        /// <returns></returns>
         public static Line<T> Rotate(Line<T> Line, T Cx, T Cy, double Theta)
-        {
-            if (Line.IsEmpty)
-                return Empty;
-
-            return new Line<T> { Points = Point<T>.Rotate(Line.Points, Cx, Cy, Theta) };
-        }
+            => Line.IsEmpty ? Empty : new Line<T> { Points = Point<T>.Rotate(Line.Points, Cx, Cy, Theta) };
 
         /// <summary>
         /// Reflects the specified line over the specified line.
         /// </summary>
-        /// <param name="ProjectionLine">The line to be reflects.</param>
+        /// <param name="Line">The line to be reflects.</param>
         /// <param name="ProjectionLine">The projection line.</param>
         public static Line<T> Reflect(Line<T> Line, Line<T> ProjectionLine)
         {
@@ -927,12 +1054,7 @@ namespace MenthaAssembly
         /// <param name="Lx2">The x-coordinate of a another line on the projection line.</param>
         /// <param name="Ly2">The y-coordinate of a another line on the projection line.</param>
         public static Line<T> Reflect(Line<T> Line, T Lx1, T Ly1, T Lx2, T Ly2)
-        {
-            if (Line.IsEmpty)
-                return Empty;
-
-            return new Line<T> { Points = Point<T>.Reflect(Line.Points, Lx1, Ly1, Lx2, Ly2) };
-        }
+            => Line.IsEmpty ? Empty : new Line<T> { Points = Point<T>.Reflect(Line.Points, Lx1, Ly1, Lx2, Ly2) };
 
         /// <summary>
         /// Adds the specified vector to the specified line.
@@ -964,72 +1086,5 @@ namespace MenthaAssembly
         public static bool operator !=(Line<T> Line1, Line<T> Line2)
             => !Line1.Equals(Line2);
 
-        #region Segment func
-
-        //public double Length
-        //    => Point<T>.Distance(this.Start, this.End);
-
-        //public void Scale(T Scale)
-        //    => this.Scale(Scale, Scale);
-        //public void Scale(T ScaleX, T ScaleY)
-        //{
-        //    if (this.IsEmpty)
-        //        return;
-
-        //    Point<T> p0 = this.Points[0],
-        //             p1 = this.Points[1];
-        //    T X0 = p0.X,
-        //      Y0 = p0.Y,
-        //      Dx = Sub(p1.X, X0),
-        //      Dy = Sub(p1.Y, Y0);
-
-        //    p1.X = Add(X0, Mul(Dx, ScaleX));
-        //    p1.Y = Add(Y0, Mul(Dy, ScaleY));
-
-        //    this.Points[1] = p1;
-        //}
-
-
-        //public static Line<T> Scale(Line<T> Line, T Scale)
-        //    => Line<T>.Scale(Line, Scale, Scale);
-        //public static Line<T> Scale(Line<T> Line, T ScaleX, T ScaleY)
-        //{
-        //    if (Line.IsEmpty)
-        //        return Empty;
-
-        //    Point<T> p0 = Line.Points[0],
-        //             p1 = Line.Points[1];
-        //    T X0 = p0.X,
-        //      Y0 = p0.Y,
-        //      Dx = Sub(p1.X, X0),
-        //      Dy = Sub(p1.Y, Y0);
-
-        //    p1.X = Add(X0, Mul(Dx, ScaleX));
-        //    p1.Y = Add(Y0, Mul(Dy, ScaleY));
-
-        //    return new Line<T>(p0, p1);
-        //}
-
-        //public static Line<T> operator *(Line<T> This, T Factor)
-        //    => Scale(This, Factor, Factor);
-        //public static Line<T> operator /(Line<T> This, T Factor)
-        //{
-        //    if (This.IsEmpty)
-        //        return Empty;
-
-        //    Point<T> p0 = This.Points[0],
-        //             p1 = This.Points[1];
-        //    T X0 = p0.X,
-        //      Y0 = p0.Y,
-        //      Dx = Sub(p1.X, X0),
-        //      Dy = Sub(p1.Y, Y0);
-
-        //    p1.X = Add(X0, Div(Dx, Factor));
-        //    p1.Y = Add(Y0, Div(Dy, Factor));
-
-        //    return new Line<T>(p0, p1);
-        //}
-
-        #endregion
     }
 }
