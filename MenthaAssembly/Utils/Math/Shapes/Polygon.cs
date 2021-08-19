@@ -78,7 +78,22 @@ namespace MenthaAssembly
         /// Initializes a new instance of the <see cref="Polygon{T}"/> structure.
         /// </summary>
         /// <param name="PointDatas">The target points in x and y pairs that the new polygon must contain, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
-        public Polygon(params T[] PointDatas)
+        public Polygon(params T[] PointDatas) : this(false, PointDatas)
+        {
+        }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Polygon{T}"/> structure.
+        /// </summary>
+        /// <param name="Points">The points that the new polygon must contain.</param>
+        public Polygon(params Point<T>[] Points) : this(false, Points)
+        {
+        }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Polygon{T}"/> structure.
+        /// </summary>
+        /// <param name="Sort">Decides whether the sort the points.</param>
+        /// <param name="PointDatas">The target points in x and y pairs that the new polygon must contain, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
+        public Polygon(bool Sort, params T[] PointDatas)
         {
             int Length = PointDatas.Length >> 1;
             if (Length < 3 || Line<T>.IsCollinear(PointDatas))
@@ -96,20 +111,38 @@ namespace MenthaAssembly
                 this.Points[j] = new Point<T>(PointDatas[i++], PointDatas[i]);
                 j++;
             }
+
+            if (Sort)
+            {
+                fixed (Point<T>* pPoints = &this.Points[0])
+                {
+                    Point<T>.Sort(pPoints, Length);
+                }
+            }
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Polygon{T}"/> structure.
         /// </summary>
+        /// <param name="Sort">Decides whether the sort the points.</param>
         /// <param name="Points">The points that the new polygon must contain.</param>
-        public Polygon(params Point<T>[] Points)
+        public Polygon(bool Sort, params Point<T>[] Points)
         {
-            if (Points.Length < 3 || Line<T>.IsCollinear(Points))
+            int Length = Points.Length;
+            if (Length < 3 || Line<T>.IsCollinear(Points))
             {
                 this = Empty;
                 return;
             }
 
             this.Points = Points;
+
+            if (Sort)
+            {
+                fixed (Point<T>* pPoints = &this.Points[0])
+                {
+                    Point<T>.Sort(pPoints, Length);
+                }
+            }
         }
 
         public bool Contain(Point<T> Point)

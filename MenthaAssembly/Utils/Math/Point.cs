@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace MenthaAssembly
@@ -174,7 +175,7 @@ namespace MenthaAssembly
         private static readonly Func<T, T> Neg, Mul2;
         private static readonly Func<T, T, T> Add, Sub, Mul, Div;
         private static readonly Predicate<T> IsDefault;
-        private static readonly Func<T, T, bool> Equal;
+        private static readonly Func<T, T, bool> Equal, GreaterThan;
         private static readonly Func<T, double> ToDouble;
         private static readonly Func<double, T> ToGeneric;
         static Point()
@@ -189,7 +190,9 @@ namespace MenthaAssembly
             Mul2 = ExpressionHelper<T>.CreateMul(2);
 
             IsDefault = ExpressionHelper<T>.CreateIsDefault();
+
             Equal = ExpressionHelper<T>.CreateEqual();
+            GreaterThan = ExpressionHelper<T>.CreateGreaterThan();
 
             ToDouble = ExpressionHelper<T>.CreateCast<double>();
             ToGeneric = ExpressionHelper<double>.CreateCast<T>();
@@ -634,6 +637,148 @@ namespace MenthaAssembly
                     pPoints->X = Add(Lx1, ToGeneric(PQx * k - PAx));
                     pPoints->Y = Add(Ly1, ToGeneric(PQy * k - PAy));
                     pPoints++;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sorts the specified points around the specified point.
+        /// </summary>
+        /// <param name="Points">The points to be sorted.</param>
+        public static Point<T>[] Sort(params Point<T>[] Points)
+        {
+            Point<T> p = Points[0];
+            T Cx = p.X,
+              Cy = p.Y;
+
+            int Length = Points.Length;
+            for (int i = 1; i < Length; i++)
+            {
+                p = Points[i];
+                Cx = Add(Cx, p.X);
+                Cy = Add(Cy, p.Y);
+            }
+
+            return Sort(Points, ToGeneric(ToDouble(Cx) / Length), ToGeneric(ToDouble(Cy) / Length));
+        }
+        /// <summary>
+        /// Sorts the specified points around the specified point.
+        /// </summary>
+        /// <param name="Points">The points to be sorted.</param>
+        /// <param name="Cx">The x-coordinate of the center of the points.</param>
+        /// <param name="Cy">The y-coordinate of the center of the points.</param>
+        public static Point<T>[] Sort(Point<T>[] Points, T Cx, T Cy)
+        {
+            T Zero = default;
+            bool PointCmp(Point<T> P1, Point<T> P2)
+            {
+                T Px1 = P1.X,
+                  Px2 = P2.X;
+
+                if (!GreaterThan(Zero, Px1) && GreaterThan(Zero, Px2))
+                    return true;
+
+                T Py1 = P1.Y,
+                  Py2 = P2.Y;
+                if (IsDefault(Px1) && IsDefault(Px2))
+                    return GreaterThan(Py1, Py2);
+
+                T v1x = Sub(Px1, Cx),
+                  v1y = Sub(Py1, Cy),
+                  v2x = Sub(Px2, Cx),
+                  v2y = Sub(Py2, Cy),
+                  D = Vector<T>.Cross(v1x, v1y, v2x, v2y);
+
+                return IsDefault(D) ? GreaterThan(Vector<T>.Dot(v1x, v1y, v1x, v1y), Vector<T>.Dot(v2x, v2y, v2x, v2y)) :
+                                      GreaterThan(Zero, D);
+            }
+
+            int Length = Points.Length,
+                Ti;
+            Point<T>[] Sorted = Points.ToArray();
+            Point<T> p;
+            for (int i = 0; i < Length - 1; i++)
+            {
+                for (int j = 0; j < Length - i - 1; j++)
+                {
+                    Ti = j + 1;
+                    if (PointCmp(Sorted[j], Sorted[Ti]))
+                    {
+                        p = Sorted[j];
+                        Sorted[j] = Sorted[j + 1];
+                        Sorted[j + 1] = p;
+                    }
+                }
+            }
+
+            return Sorted;
+        }
+        /// <summary>
+        /// Sorts the specified points around the specified point.
+        /// </summary>
+        /// <param name="pPoints">The pointer of the points to be sorted.</param>
+        /// <param name="Length">The length of the points to be sorted.</param>
+        public static void Sort(Point<T>* pPoints, int Length)
+        {
+            Point<T>* pTemp = pPoints;
+            Point<T> p = *pTemp++;
+            T Cx = p.X,
+              Cy = p.Y;
+
+            for (int i = 1; i < Length; i++)
+            {
+                p = *pTemp++;
+                Cx = Add(Cx, p.X);
+                Cy = Add(Cy, p.Y);
+            }
+
+            Sort(pPoints, Length, ToGeneric(ToDouble(Cx) / Length), ToGeneric(ToDouble(Cy) / Length));
+        }
+        /// <summary>
+        /// Sorts the specified points around the specified point.
+        /// </summary>
+        /// <param name="pPoints">The pointer of the points to be sorted.</param>
+        /// <param name="Length">The length of the points to be sorted.</param>
+        /// <param name="Cx">The x-coordinate of the center of the points.</param>
+        /// <param name="Cy">The y-coordinate of the center of the points.</param>
+        public static void Sort(Point<T>* pPoints, int Length, T Cx, T Cy)
+        {
+            T Zero = default;
+            bool PointCmp(Point<T>* P1, Point<T>* P2)
+            {
+                T Px1 = P1->X,
+                  Px2 = P2->X;
+
+                if (!GreaterThan(Zero, Px1) && GreaterThan(Zero, Px2))
+                    return true;
+
+                T Py1 = P1->Y,
+                  Py2 = P2->Y;
+                if (IsDefault(Px1) && IsDefault(Px2))
+                    return GreaterThan(Py1, Py2);
+
+                T v1x = Sub(Px1, Cx),
+                  v1y = Sub(Py1, Cy),
+                  v2x = Sub(Px2, Cx),
+                  v2y = Sub(Py2, Cy),
+                  D = Vector<T>.Cross(v1x, v1y, v2x, v2y);
+
+                return IsDefault(D) ? GreaterThan(Vector<T>.Dot(v1x, v1y, v1x, v1y), Vector<T>.Dot(v2x, v2y, v2x, v2y)) :
+                                      GreaterThan(Zero, D);
+            }
+
+            Point<T>* pNextPoint = pPoints + 1;
+            Point<T> p;
+            for (int i = 0; i < Length - 1; i++)
+            {
+                for (int j = 0; j < Length - i - 1; j++, pPoints++, pNextPoint++)
+                {
+                    if (PointCmp(pPoints, pNextPoint))
+                    {
+                        p = *pPoints;
+                        *pPoints = *pNextPoint;
+                        *pNextPoint = p;
+                    }
                 }
             }
         }

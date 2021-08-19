@@ -346,31 +346,31 @@ namespace MenthaAssembly
         /// <summary>
         /// Indicates whether the line segment contains the specified x-coordinate and y-coordinate.
         /// </summary>
-        /// <param name="LineSegment">The target line segment.</param>
+        /// <param name="Segment">The target line segment.</param>
         /// <param name="Px">The x-coordinate of the point to check.</param>
         /// <param name="Py">The y-coordinate of the point to check.</param>
-        public static bool Contain(LineSegment<T> LineSegment, T Px, T Py)
+        public static bool Contain(LineSegment<T> Segment, T Px, T Py)
         {
-            if (LineSegment.IsEmpty)
+            if (Segment.IsEmpty)
                 return false;
 
-            Point<T> p0 = LineSegment.Points[0],
-                     p1 = LineSegment.Points[1];
+            Point<T> p0 = Segment.Points[0],
+                     p1 = Segment.Points[1];
 
             return Contain(p0.X, p0.Y, p1.X, p1.Y, Px, Py);
         }
         /// <summary>
         /// Indicates whether the line segment contains the specified point.
         /// </summary>
-        /// <param name="LineSegment">The target line segment.</param>
+        /// <param name="Segment">The target line segment.</param>
         /// <param name="Point">The point to check.</param>
-        public static bool Contain(LineSegment<T> LineSegment, Point<T> Point)
+        public static bool Contain(LineSegment<T> Segment, Point<T> Point)
         {
-            if (LineSegment.IsEmpty)
+            if (Segment.IsEmpty)
                 return false;
 
-            Point<T> p0 = LineSegment.Points[0],
-                     p1 = LineSegment.Points[1];
+            Point<T> p0 = Segment.Points[0],
+                     p1 = Segment.Points[1];
 
             return Contain(p0.X, p0.Y, p1.X, p1.Y, Point.X, Point.Y);
         }
@@ -443,43 +443,43 @@ namespace MenthaAssembly
         }
 
         /// <summary>
-        /// Calculate the cross points between two lines segment.
+        /// Calculate the cross points between two line segments.
         /// </summary>
-        /// <param name="LineSegment1">The first target line segment.</param>
-        /// <param name="LineSegment2">the second target line segment.</param>
-        public static CrossPoints<T> CrossPoint(LineSegment<T> LineSegment1, LineSegment<T> LineSegment2)
+        /// <param name="Segment1">The first target line segment.</param>
+        /// <param name="Segment2">the second target line segment.</param>
+        public static CrossPoints<T> CrossPoint(LineSegment<T> Segment1, LineSegment<T> Segment2)
         {
-            if (LineSegment1.Points is null || LineSegment1.Points.Length < 2 ||
-                LineSegment2.Points is null || LineSegment2.Points.Length < 2)
+            if (Segment1.Points is null || Segment1.Points.Length < 2 ||
+                Segment2.Points is null || Segment2.Points.Length < 2)
                 return new CrossPoints<T>(false);
 
-            Point<T> p1 = LineSegment1.Points[0],
-                     p2 = LineSegment1.Points[1],
-                     p3 = LineSegment2.Points[0],
-                     p4 = LineSegment2.Points[1];
+            Point<T> p1 = Segment1.Points[0],
+                     p2 = Segment1.Points[1],
+                     p3 = Segment2.Points[0],
+                     p4 = Segment2.Points[1];
 
             return CrossPoint(p1.X, p1.Y, p2.X, p2.Y, p3.X, p3.Y, p4.X, p4.Y);
         }
         /// <summary>
-        /// Calculate the cross points between two lines segment.
+        /// Calculate the cross points between two line segments.
         /// </summary>
-        /// <param name="LineSegment">The first target line segment.</param>
+        /// <param name="Segment">The first target line segment.</param>
         /// <param name="Lx1">The x-coordinate of a point on the second target line segment.</param>
         /// <param name="Ly1">The y-coordinate of a point on the second target line segment.</param>
         /// <param name="Lx2">The x-coordinate of a another point on the second target line segment.</param>
         /// <param name="Ly2">The y-coordinate of a another point on the second target line segment.</param>
-        public static CrossPoints<T> CrossPoint(LineSegment<T> LineSegment, T Lx1, T Ly1, T Lx2, T Ly2)
+        public static CrossPoints<T> CrossPoint(LineSegment<T> Segment, T Lx1, T Ly1, T Lx2, T Ly2)
         {
-            if (LineSegment.Points is null || LineSegment.Points.Length < 2)
+            if (Segment.Points is null || Segment.Points.Length < 2)
                 return new CrossPoints<T>(false);
 
-            Point<T> p1 = LineSegment.Points[0],
-                     p2 = LineSegment.Points[1];
+            Point<T> p1 = Segment.Points[0],
+                     p2 = Segment.Points[1];
 
             return CrossPoint(p1.X, p1.Y, p2.X, p2.Y, Lx1, Ly1, Lx2, Ly2);
         }
         /// <summary>
-        /// Calculate the cross points between two lines segment.
+        /// Calculate the cross points between two line segments.
         /// </summary>
         /// <param name="L1P1">The point on the first target line segment.</param>
         /// <param name="L1P2">The another point on the first target line segment.</param>
@@ -488,7 +488,7 @@ namespace MenthaAssembly
         public static CrossPoints<T> CrossPoint(Point<T> L1P1, Point<T> L1P2, Point<T> L2P1, Point<T> L2P2)
             => CrossPoint(L1P1.X, L1P1.Y, L1P2.X, L1P2.Y, L2P1.X, L2P1.Y, L2P2.X, L2P2.Y);
         /// <summary>
-        /// Calculate the cross points between two lines segment.
+        /// Calculate the cross points between two line segments.
         /// </summary>
         /// <param name="L1x1">The x-coordinate of a point on the first target line segment.</param>
         /// <param name="L1y1">The y-coordinate of a point on the first target line segment.</param>
@@ -507,14 +507,14 @@ namespace MenthaAssembly
                 return Contain(L1x1, L1y1, L2x1, L2y1, L2x2, L2y2) ? new CrossPoints<T>(new Point<T>(L1x1, L1y1)) : new CrossPoints<T>(false);
 
             T v2x = Sub(L2x2, L2x1),
-              v2y = Sub(L2y2, L2y1),
-              v3x = Sub(L2x1, L1x1),
-              v3y = Sub(L2y1, L1y1);
+              v2y = Sub(L2y2, L2y1);
 
             if (IsDefault(v2x) && IsDefault(v2y))
                 return Contain(L1x1, L1y1, L1x2, L1y2, L2x1, L2y1) ? new CrossPoints<T>(new Point<T>(L2x1, L2y1)) : new CrossPoints<T>(false);
 
-            T C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
+            T v3x = Sub(L2x1, L1x1),
+              v3y = Sub(L2y1, L1y1),
+              C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
               C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
 
             if (IsDefault(C1))
@@ -534,58 +534,130 @@ namespace MenthaAssembly
 
             return OnSegment(L1x1, L1y1, L1x2, L1y2, X, Y) && OnSegment(L2x1, L2y1, L2x2, L2y2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : new CrossPoints<T>(false);
         }
+        /// <summary>
+        /// Calculate the cross points between the specified line segment and the specified line.
+        /// </summary>
+        /// <param name="Segment">The target line segment.</param>
+        /// <param name="Line">the target line.</param>
+        public static CrossPoints<T> CrossPoint(LineSegment<T> Segment, Line<T> Line)
+        {
+            if (Segment.Points is null || Segment.Points.Length < 2)
+                return new CrossPoints<T>(false);
+
+            Point<T> p1 = Segment.Points[0],
+                     p2 = Segment.Points[1];
+
+            return CrossPoint(p1.X, p1.Y, p2.X, p2.Y, Line);
+        }
+        /// <summary>
+        /// Calculate the cross points between the specified line segment and the specified line.
+        /// </summary>
+        /// <param name="SegmentPoint1">The point on the target line segment.</param>
+        /// <param name="SegmentPoint2">The another point on the target line segment.</param>
+        /// <param name="Line">the target line.</param>
+        public static CrossPoints<T> CrossPoint(Point<T> SegmentPoint1, Point<T> SegmentPoint2, Line<T> Line)
+            => CrossPoint(SegmentPoint1.X, SegmentPoint1.Y, SegmentPoint2.X, SegmentPoint2.Y, Line);
+        /// <summary>
+        /// Calculate the cross points between the specified line segment and the specified line.
+        /// </summary>
+        /// <param name="Sx1">The x-coordinate of a point on the target line segment.</param>
+        /// <param name="Sy1">The y-coordinate of a point on the target line segment.</param>
+        /// <param name="Sx2">The x-coordinate of a another point on the target line segment.</param>
+        /// <param name="Sy2">The y-coordinate of a another point on the target line segment.</param>
+        /// <param name="Line">the target line.</param>
+        public static CrossPoints<T> CrossPoint(T Sx1, T Sy1, T Sx2, T Sy2, Line<T> Line)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return new CrossPoints<T>(false);
+
+            Point<T> Lp1 = Line.Points[0],
+                     Lp2 = Line.Points[1];
+
+            T Lx1 = Lp1.X,
+              Ly1 = Lp1.Y,
+              Lx2 = Lp2.X,
+              Ly2 = Lp2.Y,
+              v1x = Sub(Sx2, Sx1),
+              v1y = Sub(Sy2, Sy1);
+
+            if (IsDefault(v1x) && IsDefault(v1y))
+                return Line<T>.IsCollinear(Sx1, Sy1, Lx1, Ly1, Lx2, Ly2) ? new CrossPoints<T>(new Point<T>(Sx1, Sy1)) : new CrossPoints<T>(false);
+
+            T v2x = Sub(Lx2, Lx1),
+              v2y = Sub(Ly2, Ly1);
+
+            if (IsDefault(v2x) && IsDefault(v2y))
+                return Line<T>.IsCollinear(Sx1, Sy1, Sx2, Sy2, Lx1, Ly1) ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : new CrossPoints<T>(false);
+
+            T v3x = Sub(Lx1, Sx1),
+              v3y = Sub(Ly1, Sy1),
+              C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
+              C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
+
+            if (IsDefault(C1))
+                return new CrossPoints<T>(IsDefault(C2));
+
+            double t = ToDouble(C2) / ToDouble(C1);
+            if (t < 0)
+                t = -t;
+
+            T X = Add(Sx1, ToGeneric(ToDouble(v1x) * t)),
+              Y = Add(Sy1, ToGeneric(ToDouble(v1y) * t));
+
+            return OnSegment(Sx1, Sy1, Sx2, Sy2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : new CrossPoints<T>(false);
+        }
 
         /// <summary>
         /// Scales the specified line segment around the origin.
         /// </summary>
-        /// <param name="LineSegment">The line segment to be scaled.</param>
+        /// <param name="Segment">The line segment to be scaled.</param>
         /// <param name="Scale">The scale factor.</param>
-        public static LineSegment<T> Scale(LineSegment<T> LineSegment, T Scale)
-            => LineSegment<T>.Scale(LineSegment, LineSegment.Center, Scale);
+        public static LineSegment<T> Scale(LineSegment<T> Segment, T Scale)
+            => LineSegment<T>.Scale(Segment, Segment.Center, Scale);
         /// <summary>
         /// Scales the specified line segment around the origin.
         /// </summary>
-        /// <param name="LineSegment">The line segment to be scaled.</param>
+        /// <param name="Segment">The line segment to be scaled.</param>
         /// <param name="ScaleX">The scale factor in the x dimension.</param>
         /// <param name="ScaleY">The scale factor in the y dimension.</param>
-        public static LineSegment<T> Scale(LineSegment<T> LineSegment, T ScaleX, T ScaleY)
-            => Scale(LineSegment, LineSegment.Center, ScaleX, ScaleY);
+        public static LineSegment<T> Scale(LineSegment<T> Segment, T ScaleX, T ScaleY)
+            => Scale(Segment, Segment.Center, ScaleX, ScaleY);
         /// <summary>
         /// Scales the specified line segment around the specified point.
         /// </summary>
-        /// <param name="LineSegment">The line segment to be scaled.</param>
+        /// <param name="Segment">The line segment to be scaled.</param>
         /// <param name="Center">The center about which to scale.</param>
         /// <param name="Scale">The scale factor.</param>
-        public static LineSegment<T> Scale(LineSegment<T> LineSegment, Point<T> Center, T Scale)
-            => LineSegment<T>.Scale(LineSegment, Center.X, Center.Y, Scale, Scale);
+        public static LineSegment<T> Scale(LineSegment<T> Segment, Point<T> Center, T Scale)
+            => LineSegment<T>.Scale(Segment, Center.X, Center.Y, Scale, Scale);
         /// <summary>
         /// Scales the specified line segment around the specified point.
         /// </summary>
-        /// <param name="LineSegment">The line segment to be scaled.</param>
+        /// <param name="Segment">The line segment to be scaled.</param>
         /// <param name="Center">The center about which to scale.</param>
         /// <param name="ScaleX">The scale factor in the x dimension.</param>
         /// <param name="ScaleY">The scale factor in the y dimension.</param>
-        public static LineSegment<T> Scale(LineSegment<T> LineSegment, Point<T> Center, T ScaleX, T ScaleY)
-            => Scale(LineSegment, Center.X, Center.Y, ScaleX, ScaleY);
+        public static LineSegment<T> Scale(LineSegment<T> Segment, Point<T> Center, T ScaleX, T ScaleY)
+            => Scale(Segment, Center.X, Center.Y, ScaleX, ScaleY);
         /// <summary>
         /// Scales the specified line segment around the specified point.
         /// </summary>
-        /// <param name="LineSegment">The line segment to be scaled.</param>
+        /// <param name="Segment">The line segment to be scaled.</param>
         /// <param name="Cx">The x-coordinate of the center about which to scale.</param>
         /// <param name="Cy">The y-coordinate of the center about which to scale.</param>
         /// <param name="Scale">The scale factor.</param>
-        public static LineSegment<T> Scale(LineSegment<T> LineSegment, T Cx, T Cy, T Scale)
-            => LineSegment<T>.Scale(LineSegment, Cx, Cy, Scale, Scale);
+        public static LineSegment<T> Scale(LineSegment<T> Segment, T Cx, T Cy, T Scale)
+            => LineSegment<T>.Scale(Segment, Cx, Cy, Scale, Scale);
         /// <summary>
         /// Scales the specified line segment around the specified point.
         /// </summary>
-        /// <param name="LineSegment">The line segment to be scaled.</param>
+        /// <param name="Segment">The line segment to be scaled.</param>
         /// <param name="Cx">The x-coordinate of the center about which to scale.</param>
         /// <param name="Cy">The y-coordinate of the center about which to scale.</param>
         /// <param name="ScaleX">The scale factor in the x dimension.</param>
         /// <param name="ScaleY">The scale factor in the y dimension.</param>
-        public static LineSegment<T> Scale(LineSegment<T> LineSegment, T Cx, T Cy, T ScaleX, T ScaleY)
-            => LineSegment.IsEmpty ? Empty : new LineSegment<T> { Points = Scale(LineSegment.Points, Cx, Cy, ScaleX, ScaleY) };
+        public static LineSegment<T> Scale(LineSegment<T> Segment, T Cx, T Cy, T ScaleX, T ScaleY)
+            => Segment.IsEmpty ? Empty : new LineSegment<T> { Points = Scale(Segment.Points, Cx, Cy, ScaleX, ScaleY) };
         /// <summary>
         /// Scales the specified points around the specified point.
         /// </summary>
@@ -639,113 +711,113 @@ namespace MenthaAssembly
         /// <summary>
         /// Offsets the specified line segment by the specified vector.
         /// </summary>
-        /// <param name="LineSegment">The line to be offsetted.</param>
+        /// <param name="Segment">The line to be offsetted.</param>
         /// <param name="Vector">The vector to be added to this LineSegment.</param>
-        public static LineSegment<T> Offset(LineSegment<T> LineSegment, Vector<T> Vector)
-            => Offset(LineSegment, Vector.X, Vector.Y);
+        public static LineSegment<T> Offset(LineSegment<T> Segment, Vector<T> Vector)
+            => Offset(Segment, Vector.X, Vector.Y);
         /// <summary>
         /// Offsets the specified line segment by the specified amounts.
         /// </summary>
-        /// <param name="LineSegment">The line to be offsetted.</param>
+        /// <param name="Segment">The line to be offsetted.</param>
         /// <param name="Dx">The amount to offset x-coordinate.</param>
         /// <param name="Dy">The amount to offset y-coordinate.</param>
-        public static LineSegment<T> Offset(LineSegment<T> LineSegment, T Dx, T Dy)
-            => LineSegment.IsEmpty ? Empty : new LineSegment<T> { Points = Point<T>.Offset(LineSegment.Points, Dx, Dy) };
+        public static LineSegment<T> Offset(LineSegment<T> Segment, T Dx, T Dy)
+            => Segment.IsEmpty ? Empty : new LineSegment<T> { Points = Point<T>.Offset(Segment.Points, Dx, Dy) };
 
         /// <summary>
         /// Rotates the specified line segment about the origin.
         /// </summary>
-        /// <param name="LineSegment">The line to be rotated.</param>
+        /// <param name="Segment">The line to be rotated.</param>
         /// <param name="Theta">The angle to rotate specifed in radians.</param>
-        public static LineSegment<T> Rotate(LineSegment<T> LineSegment, double Theta)
-            => LineSegment.IsEmpty ? Empty : new LineSegment<T> { Points = Point<T>.Rotate(LineSegment.Points, Theta) };
+        public static LineSegment<T> Rotate(LineSegment<T> Segment, double Theta)
+            => Segment.IsEmpty ? Empty : new LineSegment<T> { Points = Point<T>.Rotate(Segment.Points, Theta) };
         /// <summary>
         /// Rotates the specified line segment about the specified point.
         /// </summary>
-        /// <param name="LineSegment">The line to be rotated.</param>
+        /// <param name="Segment">The line to be rotated.</param>
         /// <param name="Center">The center of rotation.</param>
         /// <param name="Theta">The angle to rotate specifed in radians.</param>
-        public static LineSegment<T> Rotate(LineSegment<T> LineSegment, Point<T> Center, double Theta)
-            => Rotate(LineSegment, Center.X, Center.Y, Theta);
+        public static LineSegment<T> Rotate(LineSegment<T> Segment, Point<T> Center, double Theta)
+            => Rotate(Segment, Center.X, Center.Y, Theta);
         /// <summary>
         /// Rotates the specified line segment about the specified point(<paramref name="Cx"/>, <paramref name="Cy"/>).
         /// </summary>
-        /// <param name="LineSegment">The line to be rotated.</param>
+        /// <param name="Segment">The line to be rotated.</param>
         /// <param name="Cx">The x-coordinate of the center of rotation.</param>
         /// <param name="Cy">The y-coordinate of the center of rotation.</param>
         /// <param name="Theta">The angle to rotate specifed in radians.</param>
-        public static LineSegment<T> Rotate(LineSegment<T> LineSegment, T Cx, T Cy, double Theta)
-            => LineSegment.IsEmpty ? Empty : new LineSegment<T> { Points = Point<T>.Rotate(LineSegment.Points, Cx, Cy, Theta) };
+        public static LineSegment<T> Rotate(LineSegment<T> Segment, T Cx, T Cy, double Theta)
+            => Segment.IsEmpty ? Empty : new LineSegment<T> { Points = Point<T>.Rotate(Segment.Points, Cx, Cy, Theta) };
 
         /// <summary>
         /// Reflects the specified line segment over the specified line.
         /// </summary>
-        /// <param name="LineSegment">The line to be reflects.</param>
+        /// <param name="Segment">The line to be reflects.</param>
         /// <param name="ProjectionLine">The projection line.</param>
-        public static LineSegment<T> Reflect(LineSegment<T> LineSegment, Line<T> ProjectionLine)
+        public static LineSegment<T> Reflect(LineSegment<T> Segment, Line<T> ProjectionLine)
         {
             if (ProjectionLine.Points is null || ProjectionLine.Points.Length < 2)
-                return LineSegment.Clone();
+                return Segment.Clone();
 
             Point<T> P1 = ProjectionLine.Points[0],
                      P2 = ProjectionLine.Points[1];
 
-            return Reflect(LineSegment, P1.X, P1.Y, P2.X, P2.Y);
+            return Reflect(Segment, P1.X, P1.Y, P2.X, P2.Y);
         }
         /// <summary>
         /// Reflects the specified line segment over the specified line.
         /// </summary>
-        /// <param name="LineSegment">The line to be reflects.</param>
+        /// <param name="Segment">The line to be reflects.</param>
         /// <param name="LinePoint1">The line on the projection line.</param>
         /// <param name="LinePoint2">The another line on the projection line.</param>
-        public static LineSegment<T> Reflect(LineSegment<T> LineSegment, Point<T> LinePoint1, Point<T> LinePoint2)
-            => Reflect(LineSegment, LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+        public static LineSegment<T> Reflect(LineSegment<T> Segment, Point<T> LinePoint1, Point<T> LinePoint2)
+            => Reflect(Segment, LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
         /// <summary>
         /// Reflects the specified line segment over the specified line.
         /// </summary>
-        /// <param name="LineSegment">The line to be reflects.</param>
+        /// <param name="Segment">The line to be reflects.</param>
         /// <param name="Lx1">The x-coordinate of a line on the projection line.</param>
         /// <param name="Ly1">The y-coordinate of a line on the projection line.</param>
         /// <param name="Lx2">The x-coordinate of a another line on the projection line.</param>
         /// <param name="Ly2">The y-coordinate of a another line on the projection line.</param>
-        public static LineSegment<T> Reflect(LineSegment<T> LineSegment, T Lx1, T Ly1, T Lx2, T Ly2)
-            => LineSegment.IsEmpty ? Empty : new LineSegment<T> { Points = Point<T>.Reflect(LineSegment.Points, Lx1, Ly1, Lx2, Ly2) };
+        public static LineSegment<T> Reflect(LineSegment<T> Segment, T Lx1, T Ly1, T Lx2, T Ly2)
+            => Segment.IsEmpty ? Empty : new LineSegment<T> { Points = Point<T>.Reflect(Segment.Points, Lx1, Ly1, Lx2, Ly2) };
 
         /// <summary>
         /// Adds the specified vector to the specified line segment.
         /// </summary>
-        /// <param name="LineSegment">The line structure to add.</param>
+        /// <param name="Segment">The line structure to add.</param>
         /// <param name="Vector">The vector structure to add.</param>
-        public static LineSegment<T> operator +(LineSegment<T> LineSegment, Vector<T> Vector)
-            => Offset(LineSegment, Vector);
+        public static LineSegment<T> operator +(LineSegment<T> Segment, Vector<T> Vector)
+            => Offset(Segment, Vector);
         /// <summary>
         /// Subtracts the specified vector from the specified line segment.
         /// </summary>
-        /// <param name="LineSegment">The line from which vector is subtracted.</param>
+        /// <param name="Segment">The line from which vector is subtracted.</param>
         /// <param name="Vector">The vector to subtract from line.</param>
-        public static LineSegment<T> operator -(LineSegment<T> LineSegment, Vector<T> Vector)
-            => Offset(LineSegment, -Vector);
+        public static LineSegment<T> operator -(LineSegment<T> Segment, Vector<T> Vector)
+            => Offset(Segment, -Vector);
 
         /// <summary>
         /// Multiplies the specified line segment by the specified scalar.
         /// </summary>
-        /// <param name="LineSegment">The line segment to multiply.</param>
+        /// <param name="Segment">The line segment to multiply.</param>
         /// <param name="Scale">The scale factor.</param>
-        public static LineSegment<T> operator *(LineSegment<T> LineSegment, T Scale)
-            => LineSegment<T>.Scale(LineSegment, Scale, Scale);
+        public static LineSegment<T> operator *(LineSegment<T> Segment, T Scale)
+            => LineSegment<T>.Scale(Segment, Scale, Scale);
         /// <summary>
         /// Divides the specified line Segment by the specified scalar.
         /// </summary>
-        /// <param name="LineSegment">The line segment to divide.</param>
+        /// <param name="Segment">The line segment to divide.</param>
         /// <param name="Scale">The scalar to divide.</param>
         /// <returns></returns>
-        public static LineSegment<T> operator /(LineSegment<T> LineSegment, T Scale)
+        public static LineSegment<T> operator /(LineSegment<T> Segment, T Scale)
         {
-            if (LineSegment.IsEmpty)
+            if (Segment.IsEmpty)
                 return Empty;
 
-            Point<T> p0 = LineSegment.Points[0],
-                     p1 = LineSegment.Points[1];
+            Point<T> p0 = Segment.Points[0],
+                     p1 = Segment.Points[1];
             T X0 = p0.X,
               Y0 = p0.Y,
               Dx = Sub(p1.X, X0),
@@ -760,17 +832,17 @@ namespace MenthaAssembly
         /// <summary>
         /// Compares two points for equality.
         /// </summary>
-        /// <param name="LineSegment1">The first line to compare.</param>
-        /// <param name="LineSegment2">The second line to compare.</param>
-        public static bool operator ==(LineSegment<T> LineSegment1, LineSegment<T> LineSegment2)
-            => LineSegment1.Equals(LineSegment2);
+        /// <param name="Segment1">The first line to compare.</param>
+        /// <param name="Segment2">The second line to compare.</param>
+        public static bool operator ==(LineSegment<T> Segment1, LineSegment<T> Segment2)
+            => Segment1.Equals(Segment2);
         /// <summary>
         /// Compares two points for inequality.
         /// </summary>
-        /// <param name="LineSegment1">The first line to compare.</param>
-        /// <param name="LineSegment2">The second line to compare.</param>
-        public static bool operator !=(LineSegment<T> LineSegment1, LineSegment<T> LineSegment2)
-            => !LineSegment1.Equals(LineSegment2);
+        /// <param name="Segment1">The first line to compare.</param>
+        /// <param name="Segment2">The second line to compare.</param>
+        public static bool operator !=(LineSegment<T> Segment1, LineSegment<T> Segment2)
+            => !Segment1.Equals(Segment2);
 
     }
 }

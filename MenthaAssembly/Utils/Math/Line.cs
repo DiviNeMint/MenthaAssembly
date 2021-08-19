@@ -980,6 +980,78 @@ namespace MenthaAssembly
 
             return new CrossPoints<T>(new Point<T>(Add(L1x1, ToGeneric(ToDouble(v1x) * t)), Add(L1y1, ToGeneric(ToDouble(v1y) * t))));
         }
+        /// <summary>
+        /// Calculate the cross points between the specified line and the specified line segment.
+        /// </summary>
+        /// <param name="Line">the target line.</param>
+        /// <param name="Segment">The target line segment.</param>
+        public static CrossPoints<T> CrossPoint(Line<T> Line, LineSegment<T> Segment)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return new CrossPoints<T>(false);
+
+            Point<T> p1 = Line.Points[0],
+                     p2 = Line.Points[1];
+
+            return CrossPoint(p1.X, p1.Y, p2.X, p2.Y, Segment);
+        }
+        /// <summary>
+        /// Calculate the cross points between the specified line and the specified line segment.
+        /// </summary>
+        /// <param name="LinePoint1">The point on the target line.</param>
+        /// <param name="LinePoint2">The another point on the target line.</param>
+        /// <param name="Segment">the target line segment.</param>
+        public static CrossPoints<T> CrossPoint(Point<T> LinePoint1, Point<T> LinePoint2, LineSegment<T> Segment)
+            => CrossPoint(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y, Segment);
+        /// <summary>
+        /// Calculate the cross points between the specified line and the specified line segment.
+        /// </summary>
+        /// <param name="Lx1">The x-coordinate of a point on the target line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the target line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the target line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the target line.</param>
+        /// <param name="Segment">the target line segment.</param>
+        public static CrossPoints<T> CrossPoint(T Lx1, T Ly1, T Lx2, T Ly2, LineSegment<T> Segment)
+        {
+            if (Segment.Points is null || Segment.Points.Length < 2)
+                return new CrossPoints<T>(false);
+
+            Point<T> Sp1 = Segment.Points[0],
+                     Sp2 = Segment.Points[1];
+
+            T Sx1 = Sp1.X,
+              Sy1 = Sp1.Y,
+              Sx2 = Sp2.X,
+              Sy2 = Sp2.Y,
+              v1x = Sub(Lx2, Lx1),
+              v1y = Sub(Ly2, Ly1);
+
+            if (IsDefault(v1x) && IsDefault(v1y))
+                return LineSegment<T>.Contain(Sx1, Sy1, Sx2, Sy2, Lx1, Ly1) ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : new CrossPoints<T>(false);
+
+            T v2x = Sub(Sx2, Sx1),
+              v2y = Sub(Sy2, Sy1);
+
+            if (IsDefault(v2x) && IsDefault(v2y))
+                return IsCollinear(Lx1, Ly1, Lx2, Ly2, Sx1, Sy1) ? new CrossPoints<T>(new Point<T>(Sx1, Sy1)) : new CrossPoints<T>(false);
+
+            T v3x = Sub(Sx1, Lx1),
+              v3y = Sub(Sy1, Ly1),
+              C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
+              C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
+
+            if (IsDefault(C1))
+                return new CrossPoints<T>(IsDefault(C2));
+
+            double t = ToDouble(C2) / ToDouble(C1);
+            if (t < 0)
+                t = -t;
+
+            T X = Add(Lx1, ToGeneric(ToDouble(v1x) * t)),
+              Y = Add(Ly1, ToGeneric(ToDouble(v1y) * t));
+
+            return LineSegment<T>.OnSegment(Sx1, Sy1, Sx2, Sy2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : new CrossPoints<T>(false);
+        }
 
         /// <summary>
         /// Offsets the specified line by the specified vector.
