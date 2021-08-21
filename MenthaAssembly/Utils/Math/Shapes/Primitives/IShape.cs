@@ -90,5 +90,4 @@
         public new IShape<T> Clone();
 
     }
-
 }
