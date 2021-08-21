@@ -73,7 +73,7 @@ namespace MenthaAssembly.Win32.Primitives
             const int BUFFER_SIZE = 0x1000;
 
             // Process Handle
-            IntPtr hProcess = OpenProcess(ProcessRights.AllAccess, false, ProcessId);
+            IntPtr hProcess = OpenProcess(ProcessRight.AllAccess, false, ProcessId);
             if (hProcess == IntPtr.Zero)
             {
                 Debug.Assert(false);
@@ -186,7 +186,7 @@ namespace MenthaAssembly.Win32.Primitives
             const int BUFFER_SIZE = 0x1000;
 
             // Process Handle
-            IntPtr hProcess = OpenProcess(ProcessRights.AllAccess, false, ProcessId);
+            IntPtr hProcess = OpenProcess(ProcessRight.AllAccess, false, ProcessId);
             if (hProcess == IntPtr.Zero)
             {
                 Debug.Assert(false);

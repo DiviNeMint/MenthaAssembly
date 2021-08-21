@@ -3,7 +3,7 @@
 namespace MenthaAssembly.Win32
 {
     [Flags]
-    internal enum ProcessRights : uint
+    internal enum ProcessRight : uint
     {
         AllAccess = Standard_Rights_Required | Synchronize | 0xFFF,
 

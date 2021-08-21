@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Win32
 {
-    internal enum SystemParameterInfoFlags : uint
+    internal enum SystemParameterInfoFlag : uint
     {
         None = 0x00,
 

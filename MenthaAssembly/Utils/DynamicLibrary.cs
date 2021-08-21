@@ -69,6 +69,20 @@ namespace MenthaAssembly
         }
         public static bool TryLoad(string Path, out DynamicLibrary DynamicLibrary)
         {
+            //// If 64-bit process, load 64-bit DLL
+            //bool is64bit = System.Environment.Is64BitProcess;
+
+            //string prefix = "Win32";
+
+            //if (is64bit)
+            //{
+            //    prefix = "x64";
+            //}
+
+            //var lib1 = prefix + @"\" + Path;
+
+
+
             if (!File.Exists(Path))
             {
                 DynamicLibrary = null;
