@@ -42,6 +42,9 @@
                                 (B * A + this.Gray * rA) / 255 * 11 + 50) / 100);
         }
 
+        public override string ToString()
+            => $"R : {this.R}, G : {this.G}, B : {this.B}";
+
         public static implicit operator Gray8(RGB Target) => new Gray8(Target.R, Target.G, Target.B);
         public static implicit operator Gray8(BGR Target) => new Gray8(Target.R, Target.G, Target.B);
         public static implicit operator Gray8(ARGB Target) => new Gray8(Target.R, Target.G, Target.B);

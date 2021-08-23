@@ -38,7 +38,7 @@
         }
 
         public override string ToString()
-            => $"{{ B : {this.B}, G : {this.G}, R : {this.R}}}";
+            => $"B : {this.B}, G : {this.G}, R : {this.R}";
 
         public static implicit operator BGR(RGB Target) => new BGR(Target.B, Target.G, Target.R);
         public static implicit operator BGR(ABGR Target) => new BGR(Target.B, Target.G, Target.R);

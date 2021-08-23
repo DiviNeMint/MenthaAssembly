@@ -124,7 +124,7 @@ namespace MenthaAssembly.Media.Imaging
             this(Width, Height, Scan0, Width)
         {
         }
-        public ImageContext(int Width, int Height, IntPtr Scan0, int Stride) : this()
+        public ImageContext(int Width, int Height, IntPtr Scan0, long Stride) : this()
         {
             this.Width = Width;
             this.Height = Height;
@@ -144,7 +144,7 @@ namespace MenthaAssembly.Media.Imaging
             this(Width, Height, ScanR, ScanG, ScanB, Width)
         {
         }
-        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride) : this()
+        public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, long Stride) : this()
         {
             this.Width = Width;
             this.Height = Height;
@@ -166,7 +166,7 @@ namespace MenthaAssembly.Media.Imaging
             this(Width, Height, ScanA, ScanR, ScanG, ScanB, Width)
         {
         }
-        public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, int Stride) : this()
+        public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, long Stride) : this()
         {
             this.Width = Width;
             this.Height = Height;
