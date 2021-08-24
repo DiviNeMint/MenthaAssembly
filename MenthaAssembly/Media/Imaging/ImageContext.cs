@@ -100,13 +100,13 @@ namespace MenthaAssembly.Media.Imaging
             {
                 if (Environment.Is64BitProcess)
                 {
-                    GetScan0 = () => throw new OutOfMemoryException("Can't allocate buffer more than 2GB in 32bit process.");
-                }
-                else
-                {
                     UnmanagedScan0 = new HGlobalIntPtr(Size);
                     this._Scan0 = UnmanagedScan0.DangerousGetHandle();
                     GetScan0 = () => this._Scan0;
+                }
+                else
+                {
+                    GetScan0 = () => throw new OutOfMemoryException("Can't allocate buffer more than 2GB in 32bit process.");
                 }
             }
             else
