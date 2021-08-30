@@ -22,7 +22,6 @@ namespace System.Linq
                 yield return Result;
             }
         }
-
         public static IEnumerable<TResult> TrySelectMany<TSource, TResult>(this IEnumerable<TSource> Source, Func<TSource, IEnumerable<TResult>> Selector)
         {
             IEnumerable<TResult> Results;
@@ -91,12 +90,6 @@ namespace System.Linq
             return false;
         }
 
-        public static void Add<T>(this ICollection<T> Collection, IEnumerable<T> Items)
-        {
-            foreach (T i in Items)
-                Collection.Add(i);
-        }
-
         public static int IndexOf(this IEnumerable Source, object Item)
         {
             int Index = 0;
@@ -110,7 +103,32 @@ namespace System.Linq
 
             return -1;
         }
+        public static int IndexOf(this IEnumerable Source, Func<object, bool> Predicate)
+        {
+            int Index = 0;
+            foreach (object i in Source)
+            {
+                if (Predicate(i))
+                    return Index;
+                Index++;
+            }
 
+            return -1;
+        }
+
+        public static IEnumerable Where(this IEnumerable Source, Func<object, bool> Predicate)
+        {
+            foreach (object Item in Source)
+                if (Predicate(Item))
+                    yield return Item;
+        }
+
+
+        public static IEnumerable<TResult> Select<TResult>(this IEnumerable Source, Func<object, TResult> Selector)
+        {
+            foreach (object Item in Source)
+                yield return Selector.Invoke(Item);
+        }
         public static IEnumerable<TResult> TrySelect<TResult>(this IEnumerable Source, Func<object, TResult> Selector)
         {
             TResult Result;
@@ -127,6 +145,12 @@ namespace System.Linq
                 }
                 yield return Result;
             }
+        }
+
+        public static object FirstOrNull(this IEnumerable Source)
+        {
+            IEnumerator Enumerator = Source.GetEnumerator();
+            return Enumerator.MoveNext() ? Enumerator.Current : null;
         }
 
     }

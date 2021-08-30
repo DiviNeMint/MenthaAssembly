@@ -1,6 +1,8 @@
 ﻿using MenthaAssembly;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 
 namespace System.Linq.Expressions
 {
@@ -18,6 +20,276 @@ namespace System.Linq.Expressions
                              .Compile()
                              .Invoke();
         }
+
+        public static Func<object, object> CreateExtractor(Type ParentType, string Path)
+        {
+            Type t = typeof(object);
+            StringBuilder Builder = new StringBuilder(128);
+
+            try
+            {
+                int Length = Path.Length;
+                char c;
+                ConstantExpression NullArg = Expression.Constant(null);
+                ParameterExpression Arg = Expression.Parameter(t, "a");
+                Expression Body = Expression.Convert(Arg, ParentType);
+                for (int i = 0; i < Length; i++)
+                {
+                    c = Path[i];
+
+                    // Property
+                    if (c.Equals('.'))
+                    {
+                        string PropertyName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (string.IsNullOrEmpty(PropertyName))
+                            continue;
+
+                        if (ParentType.GetProperty(PropertyName) is PropertyInfo Property)
+                        {
+                            ParentType = Property.PropertyType;
+                            Body = Expression.Property(Body, Property);
+                            continue;
+                        }
+
+                        Debug.WriteLine($"[Parse]Unknown Property : {PropertyName}, Path : {Path}.");
+                        return null;
+                    }
+
+                    // Method
+                    if (c.Equals('('))
+                    {
+                        c = Path[++i];
+
+                        if (!c.Equals(')'))
+                        {
+                            Debug.WriteLine($"[Parse]Unknown format path : {Path}.");
+                            return null;
+                        }
+
+                        string MethodName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (string.IsNullOrEmpty(MethodName))
+                            continue;
+
+                        if (ParentType.GetMethod(MethodName, new Type[0]) is MethodInfo Method)
+                        {
+                            ParentType = Method.ReturnType;
+                            Body = Expression.Call(Body, Method);
+                            continue;
+                        }
+
+                        Debug.WriteLine($"[Parse]Unknown Method : {MethodName}, Path : {Path}.");
+                        return null;
+                    }
+
+                    // Indexer
+                    if (c.Equals('['))
+                    {
+                        string PropertyName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (!ParentType.TryGetProperty(string.IsNullOrEmpty(PropertyName) ? "Item" : PropertyName, out PropertyInfo Property))
+                        {
+                            Debug.WriteLine($"[Parse]Unknown Property : {PropertyName}, Path : {Path}.");
+                            return null;
+                        }
+
+                        i++;
+                        bool IsNumber = true;
+                        for (; i < Length; i++)
+                        {
+                            c = Path[i];
+                            if (c.Equals(']'))
+                                break;
+
+                            if (!char.IsNumber(c))
+                            {
+                                IsNumber = false;
+
+                                if (c.Equals(@""""))
+                                    continue;
+                            }
+
+                            Builder.Append(c);
+                        }
+
+                        string Data = Builder.ToString();
+                        Builder.Clear();
+
+                        ParentType = Property.PropertyType;
+                        Body = IsNumber ? Expression.Property(Body, Property, Expression.Constant(Data.ToInt32Fast())) :
+                                          Expression.Property(Body, Property, Expression.Constant(Data));
+
+                        continue;
+                    }
+
+                    Builder.Append(c);
+                }
+
+                string LastPropertyName = Builder.ToString();
+                Builder.Clear();
+
+                if (!string.IsNullOrEmpty(LastPropertyName) &&
+                    ParentType.GetProperty(LastPropertyName) is PropertyInfo LastProperty)
+                {
+                    ParentType = LastProperty.PropertyType;
+                    Body = Expression.Property(Body, LastProperty);
+                }
+
+                return Expression.Lambda<Func<object, object>>(Expression.Convert(Body, t), Arg)
+                                 .Compile();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
+        public static Func<object, T> CreateExtractor<T>(Type ParentType, string Path)
+        {
+            Type t = typeof(object);
+            StringBuilder Builder = new StringBuilder(128);
+
+            try
+            {
+                int Length = Path.Length;
+                char c;
+                ConstantExpression NullArg = Expression.Constant(null);
+                ParameterExpression Arg = Expression.Parameter(t, "a");
+                Expression Body = Expression.Convert(Arg, ParentType);
+                for (int i = 0; i < Length; i++)
+                {
+                    c = Path[i];
+
+                    // Property
+                    if (c.Equals('.'))
+                    {
+                        string PropertyName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (string.IsNullOrEmpty(PropertyName))
+                            continue;
+
+                        if (ParentType.GetProperty(PropertyName) is PropertyInfo Property)
+                        {
+                            ParentType = Property.PropertyType;
+                            Body = Expression.Property(Body, Property);
+                            continue;
+                        }
+
+                        Debug.WriteLine($"[Parse]Unknown Property : {PropertyName}, Path : {Path}.");
+                        return null;
+                    }
+
+                    // Method
+                    if (c.Equals('('))
+                    {
+                        c = Path[++i];
+
+                        if (!c.Equals(')'))
+                        {
+                            Debug.WriteLine($"[Parse]Unknown format path : {Path}.");
+                            return null;
+                        }
+
+                        string MethodName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (string.IsNullOrEmpty(MethodName))
+                            continue;
+
+                        if (ParentType.GetMethod(MethodName, new Type[0]) is MethodInfo Method)
+                        {
+                            ParentType = Method.ReturnType;
+                            Body = Expression.Call(Body, Method);
+                            continue;
+                        }
+
+                        Debug.WriteLine($"[Parse]Unknown Method : {MethodName}, Path : {Path}.");
+                        return null;
+                    }
+
+                    // Indexer
+                    if (c.Equals('['))
+                    {
+                        string PropertyName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (!ParentType.TryGetProperty(string.IsNullOrEmpty(PropertyName) ? "Item" : PropertyName, out PropertyInfo Property))
+                        {
+                            Debug.WriteLine($"[Parse]Unknown Property : {PropertyName}, Path : {Path}.");
+                            return null;
+                        }
+
+                        i++;
+                        bool IsNumber = true;
+                        for (; i < Length; i++)
+                        {
+                            c = Path[i];
+                            if (c.Equals(']'))
+                                break;
+
+                            if (!char.IsNumber(c))
+                            {
+                                IsNumber = false;
+
+                                if (c.Equals(@""""))
+                                    continue;
+                            }
+
+                            Builder.Append(c);
+                        }
+
+                        string Data = Builder.ToString();
+                        Builder.Clear();
+
+                        ParentType = Property.PropertyType;
+                        Body = IsNumber ? Expression.Property(Body, Property, Expression.Constant(Data.ToInt32Fast())) :
+                                          Expression.Property(Body, Property, Expression.Constant(Data));
+
+                        continue;
+                    }
+
+                    Builder.Append(c);
+                }
+
+                string LastPropertyName = Builder.ToString();
+                Builder.Clear();
+
+                if (!string.IsNullOrEmpty(LastPropertyName) &&
+                    ParentType.GetProperty(LastPropertyName) is PropertyInfo LastProperty)
+                {
+                    ParentType = LastProperty.PropertyType;
+                    Body = Expression.Property(Body, LastProperty);
+                }
+
+                Type ReturnType = typeof(T);
+
+                if (!ParentType.Equals(ReturnType))
+                {
+                    if ((ReturnType.IsIntegerType() || ReturnType.IsDecimalType()) &&
+                        (ParentType.IsIntegerType() || ParentType.IsDecimalType()))
+                        Body = Expression.Convert(Body, ReturnType);
+                    else
+                    {
+                        if (typeof(Convert).TryGetStaticMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) }, out MethodInfo Method))
+                            Body = Expression.Call(Method, Body, Expression.Constant(ReturnType));
+
+                        Body = Expression.Convert(Body, ReturnType);
+                    }
+                }
+
+                return Expression.Lambda<Func<object, T>>(Body, Arg)
+                                 .Compile();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
+
     }
 
     public static class ExpressionHelper<T>
@@ -462,6 +734,261 @@ namespace System.Linq.Expressions
 
             return Expression.Lambda<Func<T, T, T>>(Body, Arg1, Arg2)
                              .Compile();
+        }
+
+        public static Func<T, object> CreateExtractor(string Path)
+        {
+            Type ReturnType = typeof(object),
+                 ParentType = typeof(T);
+            StringBuilder Builder = new StringBuilder(128);
+
+            try
+            {
+                int Length = Path.Length;
+                char c;
+                ConstantExpression NullArg = Expression.Constant(null);
+                ParameterExpression Arg = Expression.Parameter(ParentType, "a");
+                Expression Body = Arg;
+                for (int i = 0; i < Length; i++)
+                {
+                    c = Path[i];
+
+                    // Property
+                    if (c.Equals('.'))
+                    {
+                        string PropertyName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (string.IsNullOrEmpty(PropertyName))
+                            continue;
+
+                        if (ParentType.GetProperty(PropertyName) is PropertyInfo Property)
+                        {
+                            ParentType = Property.PropertyType;
+                            Body = Expression.Property(Body, Property);
+                            continue;
+                        }
+
+                        Debug.WriteLine($"[Parse]Unknown Property : {PropertyName}, Path : {Path}.");
+                        return null;
+                    }
+
+                    // Method
+                    if (c.Equals('('))
+                    {
+                        c = Path[++i];
+
+                        if (!c.Equals(')'))
+                        {
+                            Debug.WriteLine($"[Parse]Unknown format path : {Path}.");
+                            return null;
+                        }
+
+                        string MethodName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (string.IsNullOrEmpty(MethodName))
+                            continue;
+
+                        if (ParentType.GetMethod(MethodName, new Type[0]) is MethodInfo Method)
+                        {
+                            ParentType = Method.ReturnType;
+                            Body = Expression.Call(Body, Method);
+                            continue;
+                        }
+
+                        Debug.WriteLine($"[Parse]Unknown Method : {MethodName}, Path : {Path}.");
+                        return null;
+                    }
+
+                    // Indexer
+                    if (c.Equals('['))
+                    {
+                        string PropertyName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (!ParentType.TryGetProperty(string.IsNullOrEmpty(PropertyName) ? "Item" : PropertyName, out PropertyInfo Property))
+                        {
+                            Debug.WriteLine($"[Parse]Unknown Property : {PropertyName}, Path : {Path}.");
+                            return null;
+                        }
+
+                        i++;
+                        bool IsNumber = true;
+                        for (; i < Length; i++)
+                        {
+                            c = Path[i];
+                            if (c.Equals(']'))
+                                break;
+
+                            if (!char.IsNumber(c))
+                            {
+                                IsNumber = false;
+
+                                if (c.Equals(@""""))
+                                    continue;
+                            }
+
+                            Builder.Append(c);
+                        }
+
+                        string Data = Builder.ToString();
+                        Builder.Clear();
+
+                        ParentType = Property.PropertyType;
+                        Body = IsNumber ? Expression.Property(Body, Property, Expression.Constant(Data.ToInt32Fast())) :
+                                          Expression.Property(Body, Property, Expression.Constant(Data));
+
+                        continue;
+                    }
+
+                    Builder.Append(c);
+                }
+
+                string LastPropertyName = Builder.ToString();
+                Builder.Clear();
+
+                if (!string.IsNullOrEmpty(LastPropertyName) &&
+                    ParentType.GetProperty(LastPropertyName) is PropertyInfo LastProperty)
+                {
+                    ParentType = LastProperty.PropertyType;
+                    Body = Expression.Property(Body, LastProperty);
+                }
+
+                return Expression.Lambda<Func<T, object>>(Expression.Convert(Body, ReturnType), Arg)
+                                 .Compile();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
+        public static Func<T, T2> CreateExtractor<T2>(string Path)
+        {
+            Type ReturnType = typeof(object),
+                 ParentType = typeof(T);
+            StringBuilder Builder = new StringBuilder(128);
+
+            try
+            {
+                int Length = Path.Length;
+                char c;
+                ConstantExpression NullArg = Expression.Constant(null);
+                ParameterExpression Arg = Expression.Parameter(ParentType, "a");
+                Expression Body = Arg;
+                for (int i = 0; i < Length; i++)
+                {
+                    c = Path[i];
+
+                    // Property
+                    if (c.Equals('.'))
+                    {
+                        string PropertyName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (string.IsNullOrEmpty(PropertyName))
+                            continue;
+
+                        if (ParentType.GetProperty(PropertyName) is PropertyInfo Property)
+                        {
+                            ParentType = Property.PropertyType;
+                            Body = Expression.Property(Body, Property);
+                            continue;
+                        }
+
+                        Debug.WriteLine($"[Parse]Unknown Property : {PropertyName}, Path : {Path}.");
+                        return null;
+                    }
+
+                    // Method
+                    if (c.Equals('('))
+                    {
+                        c = Path[++i];
+
+                        if (!c.Equals(')'))
+                        {
+                            Debug.WriteLine($"[Parse]Unknown format path : {Path}.");
+                            return null;
+                        }
+
+                        string MethodName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (string.IsNullOrEmpty(MethodName))
+                            continue;
+
+                        if (ParentType.GetMethod(MethodName, new Type[0]) is MethodInfo Method)
+                        {
+                            ParentType = Method.ReturnType;
+                            Body = Expression.Call(Body, Method);
+                            continue;
+                        }
+
+                        Debug.WriteLine($"[Parse]Unknown Method : {MethodName}, Path : {Path}.");
+                        return null;
+                    }
+
+                    // Indexer
+                    if (c.Equals('['))
+                    {
+                        string PropertyName = Builder.ToString();
+                        Builder.Clear();
+
+                        if (!ParentType.TryGetProperty(string.IsNullOrEmpty(PropertyName) ? "Item" : PropertyName, out PropertyInfo Property))
+                        {
+                            Debug.WriteLine($"[Parse]Unknown Property : {PropertyName}, Path : {Path}.");
+                            return null;
+                        }
+
+                        i++;
+                        bool IsNumber = true;
+                        for (; i < Length; i++)
+                        {
+                            c = Path[i];
+                            if (c.Equals(']'))
+                                break;
+
+                            if (!char.IsNumber(c))
+                            {
+                                IsNumber = false;
+
+                                if (c.Equals(@""""))
+                                    continue;
+                            }
+
+                            Builder.Append(c);
+                        }
+
+                        string Data = Builder.ToString();
+                        Builder.Clear();
+
+                        ParentType = Property.PropertyType;
+                        Body = IsNumber ? Expression.Property(Body, Property, Expression.Constant(Data.ToInt32Fast())) :
+                                          Expression.Property(Body, Property, Expression.Constant(Data));
+
+                        continue;
+                    }
+
+                    Builder.Append(c);
+                }
+
+                string LastPropertyName = Builder.ToString();
+                Builder.Clear();
+
+                if (!string.IsNullOrEmpty(LastPropertyName) &&
+                    ParentType.GetProperty(LastPropertyName) is PropertyInfo LastProperty)
+                {
+                    ParentType = LastProperty.PropertyType;
+                    Body = Expression.Property(Body, LastProperty);
+                }
+
+                return Expression.Lambda<Func<T, T2>>(ParentType.Equals(ReturnType) ? Body : Expression.Convert(Body, ReturnType), Arg)
+                                 .Compile();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
         }
 
     }
