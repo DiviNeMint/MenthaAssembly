@@ -549,10 +549,10 @@ namespace MenthaAssembly
 
             return IsDefault(Add(Add(Mul(a, Px3), Mul(b, Py3)), c));
 
-            //T v1x = Sub(Px2, Px1),
-            //  v1y = Sub(Py2, Py1);
+            //T Dx = Sub(Px2, Px1),
+            //  Dy = Sub(Py2, Py1);
 
-            //if (IsDefault(v1x) && IsDefault(v1x))
+            //if (IsDefault(Dx) && IsDefault(Dx))
             //    return true;
 
             //T v2x = Sub(Px3, Px1),
@@ -561,7 +561,7 @@ namespace MenthaAssembly
             //if (IsDefault(v2x) && IsDefault(v2y))
             //    return true;
 
-            //return IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y));
+            //return IsDefault(Vector<T>.Cross(Dx, Dy, v2x, v2y));
         }
         /// <summary>
         /// Returns a value indicating whether the points are collinear.
@@ -599,17 +599,17 @@ namespace MenthaAssembly
             return IsDefault(Add(Add(Mul(a, Px3), Mul(b, Py3)), c)) &&
                    IsDefault(Add(Add(Mul(a, Px4), Mul(b, Py4)), c));
 
-            //T v1x = Sub(Px2, Px1),
-            //  v1y = Sub(Py2, Py1);
+            //T Dx = Sub(Px2, Px1),
+            //  Dy = Sub(Py2, Py1);
 
-            //if (IsDefault(v1x) && IsDefault(v1x))
+            //if (IsDefault(Dx) && IsDefault(Dx))
             //    return IsCollinear(Px2, Py2, Px3, Py3, Px4, Py4);
 
             //T v2x = Sub(Px3, Px1),
             //  v2y = Sub(Py3, Py1);
 
             //if (IsDefault(v2x) && IsDefault(v2y) ||
-            //    IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y)))
+            //    IsDefault(Vector<T>.Cross(Dx, Dy, v2x, v2y)))
             //{
             //    v2x = Sub(Px4, Px1);
             //    v2y = Sub(Py4, Py1);
@@ -617,7 +617,7 @@ namespace MenthaAssembly
             //    if (IsDefault(v2x) && IsDefault(v2y))
             //        return true;
 
-            //    return IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y));
+            //    return IsDefault(Vector<T>.Cross(Dx, Dy, v2x, v2y));
             //}
 
             //return false;
@@ -1051,6 +1051,83 @@ namespace MenthaAssembly
               Y = Add(Ly1, ToGeneric(ToDouble(v1y) * t));
 
             return LineSegment<T>.OnSegment(Sx1, Sy1, Sx2, Sy2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : new CrossPoints<T>(false);
+        }
+        /// <summary>
+        /// Calculate the cross points between the specified line and the specified circle.
+        /// </summary>
+        /// <param name="Line">the target line.</param>
+        /// <param name="Circle">The target circle.</param>
+        public static CrossPoints<T> CrossPoint(Line<T> Line, Circle<T> Circle)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return new CrossPoints<T>(false);
+
+            Point<T> p1 = Line.Points[0],
+                     p2 = Line.Points[1];
+
+            return CrossPoint(p1.X, p1.Y, p2.X, p2.Y, Circle);
+        }
+        /// <summary>
+        /// Calculate the cross points between the specified line and the specified circle.
+        /// </summary>
+        /// <param name="LinePoint1">The point on the target line.</param>
+        /// <param name="LinePoint2">The another point on the target line.</param>
+        /// <param name="Circle">the target circle.</param>
+        public static CrossPoints<T> CrossPoint(Point<T> LinePoint1, Point<T> LinePoint2, Circle<T> Circle)
+            => CrossPoint(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y, Circle);
+        /// <summary>
+        /// Calculate the cross points between the specified line and the specified circle.
+        /// </summary>
+        /// <param name="Lx1">The x-coordinate of a point on the target line.</param>
+        /// <param name="Ly1">The y-coordinate of a point on the target line.</param>
+        /// <param name="Lx2">The x-coordinate of a another point on the target line.</param>
+        /// <param name="Ly2">The y-coordinate of a another point on the target line.</param>
+        /// <param name="Circle">the target circle.</param>
+        public static CrossPoints<T> CrossPoint(T Lx1, T Ly1, T Lx2, T Ly2, Circle<T> Circle)
+        {
+            if (Circle.IsEmpty)
+                return new CrossPoints<T>(false);
+
+            double Dx = ToDouble(Sub(Lx2, Lx1)),
+                   Dy = ToDouble(Sub(Ly2, Ly1));
+
+            if (Dx is 0d && Dy is 0d)
+                return new CrossPoints<T>(false);
+
+            // Lx' = Lx1 + Dx * t
+            // Ly' = Ly1 + Dy * t
+
+            // Circle Equation
+            // X ^ 2 + Y ^ 2 = R ^ 2
+            double R = Circle.Radius,
+                   DLx = ToDouble(Lx1),
+                   DLy = ToDouble(Ly1),
+                   a = Dx * Dx + Dy * Dy,
+                   b = DLx * Dx + DLy * Dy,
+                   c = DLx * DLx + DLy * DLy - R * R,
+                   D = b * b - a * c;
+
+            if (D < 0)
+                return new CrossPoints<T>(false);
+
+            double t;
+            if (D == 0)
+            {
+                t = -b / a;
+                return new CrossPoints<T>(new Point<T>(ToGeneric(DLx + Dx * t), ToGeneric(DLy + Dy * t)));
+            }
+
+            Point<T>[] Crosses = new Point<T>[2];
+
+            double SqrD = Math.Sqrt(D);
+
+            t = (-b + SqrD) / a;
+            Crosses[0] = new Point<T>(ToGeneric(DLx + Dx * t), ToGeneric(DLy + Dy * t));
+
+            t = (-b - SqrD) / a;
+            Crosses[1] = new Point<T>(ToGeneric(DLx + Dx * t), ToGeneric(DLy + Dy * t));
+
+            return new CrossPoints<T>(Crosses);
         }
 
         /// <summary>

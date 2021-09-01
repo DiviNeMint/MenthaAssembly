@@ -95,16 +95,16 @@ namespace MenthaAssembly
             this.Y = Sub(Ey, Sy);
         }
 
-        void IMathObject<T>.Offset(Vector<T> Vector) { }
-        void IMathObject<T>.Offset(T Dx, T Dy) { }
+        void IMathObject<T>.Offset(Vector<T> Vector) => throw new NotSupportedException();
+        void IMathObject<T>.Offset(T Dx, T Dy) => throw new NotSupportedException();
 
-        void IMathObject<T>.Rotate(double Theta) { }
-        void IMathObject<T>.Rotate(Point<T> Center, double Theta) { }
-        void IMathObject<T>.Rotate(T Cx, T Cy, double Theta) { }
+        void IMathObject<T>.Rotate(double Theta) => throw new NotSupportedException();
+        void IMathObject<T>.Rotate(Point<T> Center, double Theta) => throw new NotSupportedException();
+        void IMathObject<T>.Rotate(T Cx, T Cy, double Theta) => throw new NotSupportedException();
 
-        void IMathObject<T>.Reflect(Line<T> Line) { }
-        void IMathObject<T>.Reflect(Point<T> LinePoint1, Point<T> LinePoint2) { }
-        void IMathObject<T>.Reflect(T Lx1, T Ly1, T Lx2, T Ly2) { }
+        void IMathObject<T>.Reflect(Line<T> Line) => throw new NotSupportedException();
+        void IMathObject<T>.Reflect(Point<T> LinePoint1, Point<T> LinePoint2) => throw new NotSupportedException();
+        void IMathObject<T>.Reflect(T Lx1, T Ly1, T Lx2, T Ly2) => throw new NotSupportedException();
 
         /// <summary>
         /// Creates a new casted <see cref="Vector{T}"/>.
