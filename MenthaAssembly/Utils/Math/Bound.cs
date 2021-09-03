@@ -87,10 +87,10 @@ namespace MenthaAssembly
                    Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
-            MathHelper.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
-            MathHelper.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
-            MathHelper.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
-            MathHelper.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
+            Point<double>.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
+            Point<double>.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
+            Point<double>.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
+            Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
             this.Left = ToGeneric(Min);
@@ -111,10 +111,10 @@ namespace MenthaAssembly
                    Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
-            MathHelper.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
-            MathHelper.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
-            MathHelper.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
-            MathHelper.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
+            Point<double>.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
+            Point<double>.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
+            Point<double>.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
+            Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
             this.Left = ToGeneric(Min);
@@ -305,10 +305,10 @@ namespace MenthaAssembly
                    Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
-            MathHelper.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
-            MathHelper.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
-            MathHelper.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
-            MathHelper.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
+            Point<double>.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
+            Point<double>.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
+            Point<double>.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
+            Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
             R.Left = ToGeneric(Min);
@@ -333,10 +333,10 @@ namespace MenthaAssembly
                    Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
-            MathHelper.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
-            MathHelper.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
-            MathHelper.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
-            MathHelper.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
+            Point<double>.Rotate(DL, DT, DOx, DOy, Sin, Cos, out double X0, out double Y0);
+            Point<double>.Rotate(DL, DB, DOx, DOy, Sin, Cos, out double X1, out double Y1);
+            Point<double>.Rotate(DR, DT, DOx, DOy, Sin, Cos, out double X2, out double Y2);
+            Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
             R.Left = ToGeneric(Min);

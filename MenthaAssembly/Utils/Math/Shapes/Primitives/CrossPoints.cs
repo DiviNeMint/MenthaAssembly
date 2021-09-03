@@ -12,6 +12,16 @@ namespace MenthaAssembly
     public sealed class CrossPoints<T> : IEnumerable<Point<T>>
         where T : unmanaged
     {
+        /// <summary>
+        /// Gets a special value that represents no cross point.
+        /// </summary>
+        public static CrossPoints<T> None => new(false);
+
+        /// <summary>
+        /// Gets a special value that represents infinity cross point.
+        /// </summary>
+        public static CrossPoints<T> Infinity => new(true);
+
         private readonly IEnumerable<Point<T>> Points;
 
         /// <summary>
@@ -24,16 +34,11 @@ namespace MenthaAssembly
         /// </summary>
         public bool IsInfinity { get; }
 
-        internal CrossPoints(bool IsInfinity)
+        private CrossPoints(bool IsInfinity)
         {
             Points = new Point<T>[0];
             this.IsInfinity = IsInfinity;
             this.Count = IsInfinity ? int.MaxValue : 0;
-        }
-        internal CrossPoints(Point<T> Point)
-        {
-            Points = new[] { Point };
-            this.Count = 1;
         }
         internal CrossPoints(params Point<T>[] Points)
         {

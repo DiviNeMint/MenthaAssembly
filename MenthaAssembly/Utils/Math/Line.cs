@@ -405,6 +405,23 @@ namespace MenthaAssembly
         /// <summary>
         /// Calculate the distance from a point to a line.
         /// </summary>
+        /// <param name="LinePoint1">The point on the target line.</param>
+        /// <param name="LinePoint2">The another point on the target line.</param>
+        /// <param name="Px">The x-coordinate of the target point.</param>
+        /// <param name="Py">The y-coordinate of the target point.</param>
+        public static double Distance(Point<T> LinePoint1, Point<T> LinePoint2, T Px, T Py)
+            => Distance(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y, Px, Py);
+        /// <summary>
+        /// Calculate the distance from a point to a line.
+        /// </summary>
+        /// <param name="LinePoint1">The point on the target line.</param>
+        /// <param name="LinePoint2">The another point on the target line.</param>
+        /// <param name="Point">The target point.</param>
+        public static double Distance(Point<T> LinePoint1, Point<T> LinePoint2, Point<T> Point)
+            => Distance(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y, Point.X, Point.Y);
+        /// <summary>
+        /// Calculate the distance from a point to a line.
+        /// </summary>
         /// <param name="Lx1">The x-coordinate of a point on the line.</param>
         /// <param name="Ly1">The y-coordinate of a point on the line.</param>
         /// <param name="Lx2">The x-coordinate of a another point on the line.</param>
@@ -905,7 +922,7 @@ namespace MenthaAssembly
         {
             if (Line1.Points is null || Line1.Points.Length < 2 ||
                 Line2.Points is null || Line2.Points.Length < 2)
-                return new CrossPoints<T>(false);
+                return CrossPoints<T>.None;
 
             Point<T> p1 = Line1.Points[0],
                      p2 = Line1.Points[1],
@@ -925,7 +942,7 @@ namespace MenthaAssembly
         public static CrossPoints<T> CrossPoint(Line<T> Line, T Lx1, T Ly1, T Lx2, T Ly2)
         {
             if (Line.Points is null || Line.Points.Length < 2)
-                return new CrossPoints<T>(false);
+                return CrossPoints<T>.None;
 
             Point<T> p1 = Line.Points[0],
                      p2 = Line.Points[1];
@@ -958,7 +975,7 @@ namespace MenthaAssembly
               v1y = Sub(L1y2, L1y1);
 
             if (IsDefault(v1x) && IsDefault(v1y))
-                return IsCollinear(L1x1, L1y1, L2x1, L2y1, L2x2, L2y2) ? new CrossPoints<T>(new Point<T>(L1x1, L1y1)) : new CrossPoints<T>(false);
+                return IsCollinear(L1x1, L1y1, L2x1, L2y1, L2x2, L2y2) ? new CrossPoints<T>(new Point<T>(L1x1, L1y1)) : CrossPoints<T>.None;
 
             T v2x = Sub(L2x2, L2x1),
               v2y = Sub(L2y2, L2y1),
@@ -966,13 +983,13 @@ namespace MenthaAssembly
               v3y = Sub(L2y1, L1y1);
 
             if (IsDefault(v2x) && IsDefault(v2y))
-                return (IsDefault(v3x) && IsDefault(v3x)) || IsDefault(Vector<T>.Cross(v1x, v1y, v3x, v3y)) ? new CrossPoints<T>(new Point<T>(L2x1, L2y1)) : new CrossPoints<T>(false);
+                return (IsDefault(v3x) && IsDefault(v3x)) || IsDefault(Vector<T>.Cross(v1x, v1y, v3x, v3y)) ? new CrossPoints<T>(new Point<T>(L2x1, L2y1)) : CrossPoints<T>.None;
 
             T C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
               C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
 
             if (IsDefault(C1))
-                return new CrossPoints<T>(IsDefault(C2));
+                return IsDefault(C2) ? CrossPoints<T>.Infinity : CrossPoints<T>.None;
 
             double t = ToDouble(C2) / ToDouble(C1);
             if (t < 0)
@@ -988,7 +1005,7 @@ namespace MenthaAssembly
         public static CrossPoints<T> CrossPoint(Line<T> Line, LineSegment<T> Segment)
         {
             if (Line.Points is null || Line.Points.Length < 2)
-                return new CrossPoints<T>(false);
+                return CrossPoints<T>.None;
 
             Point<T> p1 = Line.Points[0],
                      p2 = Line.Points[1];
@@ -1014,7 +1031,7 @@ namespace MenthaAssembly
         public static CrossPoints<T> CrossPoint(T Lx1, T Ly1, T Lx2, T Ly2, LineSegment<T> Segment)
         {
             if (Segment.Points is null || Segment.Points.Length < 2)
-                return new CrossPoints<T>(false);
+                return CrossPoints<T>.None;
 
             Point<T> Sp1 = Segment.Points[0],
                      Sp2 = Segment.Points[1];
@@ -1027,13 +1044,13 @@ namespace MenthaAssembly
               v1y = Sub(Ly2, Ly1);
 
             if (IsDefault(v1x) && IsDefault(v1y))
-                return LineSegment<T>.Contain(Sx1, Sy1, Sx2, Sy2, Lx1, Ly1) ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : new CrossPoints<T>(false);
+                return LineSegment<T>.Contain(Sx1, Sy1, Sx2, Sy2, Lx1, Ly1) ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
 
             T v2x = Sub(Sx2, Sx1),
               v2y = Sub(Sy2, Sy1);
 
             if (IsDefault(v2x) && IsDefault(v2y))
-                return IsCollinear(Lx1, Ly1, Lx2, Ly2, Sx1, Sy1) ? new CrossPoints<T>(new Point<T>(Sx1, Sy1)) : new CrossPoints<T>(false);
+                return IsCollinear(Lx1, Ly1, Lx2, Ly2, Sx1, Sy1) ? new CrossPoints<T>(new Point<T>(Sx1, Sy1)) : CrossPoints<T>.None;
 
             T v3x = Sub(Sx1, Lx1),
               v3y = Sub(Sy1, Ly1),
@@ -1041,7 +1058,7 @@ namespace MenthaAssembly
               C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
 
             if (IsDefault(C1))
-                return new CrossPoints<T>(IsDefault(C2));
+                return IsDefault(C2) ? CrossPoints<T>.Infinity : CrossPoints<T>.None;
 
             double t = ToDouble(C2) / ToDouble(C1);
             if (t < 0)
@@ -1050,7 +1067,7 @@ namespace MenthaAssembly
             T X = Add(Lx1, ToGeneric(ToDouble(v1x) * t)),
               Y = Add(Ly1, ToGeneric(ToDouble(v1y) * t));
 
-            return LineSegment<T>.OnSegment(Sx1, Sy1, Sx2, Sy2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : new CrossPoints<T>(false);
+            return LineSegment<T>.OnSegment(Sx1, Sy1, Sx2, Sy2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : CrossPoints<T>.None;
         }
         /// <summary>
         /// Calculate the cross points between the specified line and the specified circle.
@@ -1060,7 +1077,7 @@ namespace MenthaAssembly
         public static CrossPoints<T> CrossPoint(Line<T> Line, Circle<T> Circle)
         {
             if (Line.Points is null || Line.Points.Length < 2)
-                return new CrossPoints<T>(false);
+                return CrossPoints<T>.None;
 
             Point<T> p1 = Line.Points[0],
                      p2 = Line.Points[1];
@@ -1086,13 +1103,13 @@ namespace MenthaAssembly
         public static CrossPoints<T> CrossPoint(T Lx1, T Ly1, T Lx2, T Ly2, Circle<T> Circle)
         {
             if (Circle.IsEmpty)
-                return new CrossPoints<T>(false);
+                return CrossPoints<T>.None;
 
             double Dx = ToDouble(Sub(Lx2, Lx1)),
                    Dy = ToDouble(Sub(Ly2, Ly1));
 
             if (Dx is 0d && Dy is 0d)
-                return new CrossPoints<T>(false);
+                return CrossPoints<T>.None;
 
             // Lx' = Lx1 + Dx * t
             // Ly' = Ly1 + Dy * t
@@ -1108,7 +1125,7 @@ namespace MenthaAssembly
                    D = b * b - a * c;
 
             if (D < 0)
-                return new CrossPoints<T>(false);
+                return CrossPoints<T>.None;
 
             double t;
             if (D == 0)
