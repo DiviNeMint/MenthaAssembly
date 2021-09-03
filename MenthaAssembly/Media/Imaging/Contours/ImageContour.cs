@@ -746,7 +746,7 @@ namespace MenthaAssembly.Media.Imaging
                 LastRadius = CornerRadius1;
                 Corner = CreateFillEllipse(0, 0, CornerRadius1, CornerRadius1);
 
-                Rectangle += ImageContour.Offset(Corner, Left + CornerRadius1, Y1);
+                Rectangle.Union(Offset(Corner, Left + CornerRadius1, Y1));
             }
 
             // Right & Top
@@ -758,7 +758,7 @@ namespace MenthaAssembly.Media.Imaging
                     Corner = CreateFillEllipse(0, 0, CornerRadius2, CornerRadius2);
                     LastRadius = CornerRadius2;
                 }
-                Rectangle += ImageContour.Offset(Corner, Right - CornerRadius2, Y2);
+                Rectangle.Union(Offset(Corner, Right - CornerRadius2, Y2));
             }
 
             // Right & Bottom
@@ -770,7 +770,7 @@ namespace MenthaAssembly.Media.Imaging
                     Corner = CreateFillEllipse(0, 0, CornerRadius3, CornerRadius3);
                     LastRadius = CornerRadius3;
                 }
-                Rectangle += ImageContour.Offset(Corner, Right - CornerRadius3, Y3);
+                Rectangle.Union(Offset(Corner, Right - CornerRadius3, Y3));
             }
 
             // Left & Bottom
@@ -780,7 +780,7 @@ namespace MenthaAssembly.Media.Imaging
                 if (CornerRadius4 != LastRadius)
                     Corner = CreateFillEllipse(0, 0, CornerRadius4, CornerRadius4);
 
-                Rectangle += ImageContour.Offset(Corner, Left + CornerRadius4, Y4);
+                Rectangle.Union(Offset(Corner, Left + CornerRadius4, Y4));
             }
 
             for (int j = Y1; j <= Y4; j++)
@@ -1196,7 +1196,6 @@ namespace MenthaAssembly.Media.Imaging
 
             return Graphic.CreateTextContour(X, Y, Text, Font);
         }
-
 
         public static ImageContour operator +(ImageContour This, ImageContour Contour)
         {
