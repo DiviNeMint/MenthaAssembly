@@ -11,6 +11,11 @@ namespace MenthaAssembly
         public const double UnitTheta = Math.PI / 180d;
 
         /// <summary>
+        /// π / 2
+        /// </summary>
+        public const double HalfPI = Math.PI / 2d;
+
+        /// <summary>
         /// 2π
         /// </summary>
         public const double TwoPI = Math.PI * 2d;

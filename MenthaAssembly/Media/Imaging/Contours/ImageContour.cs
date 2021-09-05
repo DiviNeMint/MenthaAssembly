@@ -4,7 +4,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -265,7 +264,7 @@ namespace MenthaAssembly.Media.Imaging
         {
             ImageContour Result = new ImageContour();
 
-            foreach (KeyValuePair<int, ContourData> Data in this.Datas)
+            foreach (KeyValuePair<int, ContourData> Data in Datas)
                 Result[Data.Key] = Data.Value.Clone();
 
             return Result;
@@ -316,7 +315,7 @@ namespace MenthaAssembly.Media.Imaging
         public IEnumerator<KeyValuePair<int, ContourData>> GetEnumerator()
             => Datas.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator()
-            => GetEnumerator();
+            => this.GetEnumerator();
 
         public static ImageContour ParsePenContour(IImageContext Stroke, out IPixel StrokeColor)
         {
@@ -463,10 +462,12 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillObround(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta)
         {
-            if (Theta % 180d == 0d)
+            double Alpth = Theta % Math.PI;
+
+            if (Math.Round(Alpth, 5) == 0d)
                 return CreateFillObround(Cx, Cy, HalfWidth, HalfHeight);
 
-            if (Theta % 90d == 0d)
+            if (Math.Round(Alpth % MathHelper.HalfPI, 5) == 0d)
                 return CreateFillObround(Cx, Cy, HalfHeight, HalfWidth);
 
             ImageContour Pen;
@@ -479,6 +480,7 @@ namespace MenthaAssembly.Media.Imaging
             {
                 Pen = CreateFillEllipse(0, 0, HalfWidth, HalfWidth);
 
+                HalfHeight -= HalfWidth;
                 Dx = (int)Math.Round(HalfHeight * Sin);
                 Dy = (int)Math.Round(HalfHeight * Cos);
 
@@ -490,6 +492,8 @@ namespace MenthaAssembly.Media.Imaging
             else
             {
                 Pen = CreateFillEllipse(0, 0, HalfHeight, HalfHeight);
+
+                HalfWidth -= HalfHeight;
                 Dx = (int)Math.Round(HalfWidth * Cos);
                 Dy = (int)Math.Round(HalfWidth * Sin);
 
@@ -518,7 +522,7 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillDiamond(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta)
         {
-            if (Theta == 0d)
+            if (Math.Round(Theta % MathHelper.TwoPI, 5) == 0d)
                 return CreateFillDiamond(Cx, Cy, HalfWidth, HalfHeight);
 
             double Sin = Math.Sin(Theta),
@@ -580,25 +584,18 @@ namespace MenthaAssembly.Media.Imaging
 
             // (X1, Y1) => (X2, Y2)
             int DeltaX = X2 - X1,
-                DeltaY = Y2 - Y1,
-                AbsDeltaX = Math.Abs(DeltaX),
-                AbsDeltaY = Math.Abs(DeltaY);
-
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+                DeltaY = Y2 - Y1;
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
 
             // (X2, Y2) => (X3, Y3)
             DeltaX = X3 - X2;
             DeltaY = Y3 - Y2;
-            AbsDeltaX = Math.Abs(DeltaX);
-            AbsDeltaY = Math.Abs(DeltaY);
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X2 + Dx, Y2 + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X2 + Dx, Y2 + Dy));
 
             // (X3, Y3) => (X1, Y1)
             DeltaX = X1 - X3;
             DeltaY = Y1 - Y3;
-            AbsDeltaX = Math.Abs(DeltaX);
-            AbsDeltaY = Math.Abs(DeltaY);
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X3 + Dx, Y3 + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X3 + Dx, Y3 + Dy));
 
             return Triangle;
         }
@@ -620,8 +617,13 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta)
         {
-            if (Theta % 180d == 0d)
+            double Alpth = Theta % Math.PI;
+
+            if (Math.Round(Alpth, 5) == 0d)
                 return CreateFillRectangle(Cx, Cy, HalfWidth, HalfHeight);
+
+            if (Math.Round(Alpth % MathHelper.HalfPI, 5) == 0d)
+                return CreateFillRectangle(Cx, Cy, HalfHeight, HalfWidth);
 
             double Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta),
@@ -658,32 +660,24 @@ namespace MenthaAssembly.Media.Imaging
 
             // (X1, Y1) => (X2, Y2)
             int DeltaX = X2 - X1,
-                DeltaY = Y2 - Y1,
-                AbsDeltaX = Math.Abs(DeltaX),
-                AbsDeltaY = Math.Abs(DeltaY);
+                DeltaY = Y2 - Y1;
 
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X1 + Dx, Y1 + Dy));
 
             // (X2, Y2) => (X3, Y3)
             DeltaX = X3 - X2;
             DeltaY = Y3 - Y2;
-            AbsDeltaX = Math.Abs(DeltaX);
-            AbsDeltaY = Math.Abs(DeltaY);
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X2 + Dx, Y2 + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X2 + Dx, Y2 + Dy));
 
             // (X3, Y3) => (X4, Y4)
             DeltaX = X4 - X3;
             DeltaY = Y4 - Y3;
-            AbsDeltaX = Math.Abs(DeltaX);
-            AbsDeltaY = Math.Abs(DeltaY);
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X3 + Dx, Y3 + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X3 + Dx, Y3 + Dy));
 
             // (X4, Y4) => (X1, Y1)
             DeltaX = X1 - X4;
             DeltaY = Y1 - Y4;
-            AbsDeltaX = Math.Abs(DeltaX);
-            AbsDeltaY = Math.Abs(DeltaY);
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, AbsDeltaX, AbsDeltaY, (Dx, Dy) => AddData(X4 + Dx, Y4 + Dy));
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X4 + Dx, Y4 + Dy));
 
             return Rectangle;
         }
@@ -733,8 +727,6 @@ namespace MenthaAssembly.Media.Imaging
                 Top = Cy - HalfHeight,
                 Bottom = Cy + HalfHeight,
                 Y1, Y2, Y3, Y4;
-
-            //GraphicAlgorithm.CalculateBresenhamEllipse
 
             ImageContour Corner = null;
             int LastRadius = -1;
@@ -817,88 +809,132 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillRoundedRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta, int CornerRadius1, int CornerRadius2, int CornerRadius3, int CornerRadius4)
         {
-            if (Theta == 0d)
+            if (Math.Round(Theta % MathHelper.HalfPI, 5) == 0d)
                 return CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, CornerRadius1, CornerRadius2, CornerRadius3, CornerRadius4);
 
             ImageContour Rectangle = new ImageContour();
+            double Sin = Math.Sin(Theta),
+                   Cos = Math.Cos(Theta);
+            int X1 = Cx - HalfWidth,
+                X2 = X1 + CornerRadius1,
+                X4 = Cx + HalfWidth,
+                X3 = X4 - CornerRadius2,
+                X5 = X4,
+                X6 = X4 - CornerRadius3,
+                X7 = X1 + CornerRadius4,
+                X8 = X1,
+                Y2 = Cy - HalfHeight,
+                Y1 = Y2 + CornerRadius1,
+                Y3 = Y2,
+                Y4 = Y2 + CornerRadius2,
+                Y6 = Cy + HalfHeight,
+                Y5 = Y6 - CornerRadius3,
+                Y7 = Y6,
+                Y8 = Y6 - CornerRadius4;
 
-            //int Left = Cx - HalfWidth,
-            //    Right = Cx + HalfWidth,
-            //    Top = Cy - HalfHeight,
-            //    Bottom = Cy + HalfHeight,
-            //    Y1, Y2, Y3, Y4;
+            ImageContour Corner = null;
+            int LastRadius = -1;
 
-            ////GraphicAlgorithm.CalculateBresenhamEllipse
+            // Left & Top
+            if (CornerRadius1 > 0)
+            {
+                LastRadius = CornerRadius1;
+                Corner = CreateFillEllipse(0, 0, CornerRadius1, CornerRadius1);
 
-            //ImageContour Corner = null;
-            //int LastRadius = -1;
+                Point<int>.Rotate(X2, Y1, Sin, Cos, out int Tx, out int Ty);
+                Rectangle.Union(Offset(Corner, Tx, Ty));
+            }
 
-            //// Left & Top
-            //Y1 = Top + CornerRadius1;
-            //if (CornerRadius1 > 0)
-            //{
-            //    LastRadius = CornerRadius1;
-            //    Corner = CreateFillEllipse(0, 0, CornerRadius1, CornerRadius1);
+            // Right & Top
+            if (CornerRadius2 > 0)
+            {
+                if (CornerRadius2 != LastRadius)
+                {
+                    Corner = CreateFillEllipse(0, 0, CornerRadius2, CornerRadius2);
+                    LastRadius = CornerRadius2;
+                }
 
-            //    Rectangle += ImageContour.Offset(Corner, Left + CornerRadius1, Y1);
-            //}
+                Point<int>.Rotate(X3, Y4, Sin, Cos, out int Tx, out int Ty);
+                Rectangle.Union(Offset(Corner, Tx, Ty));
+            }
 
-            //// Right & Top
-            //Y2 = Top + CornerRadius2;
-            //if (CornerRadius2 > 0)
-            //{
-            //    if (CornerRadius2 != LastRadius)
-            //    {
-            //        Corner = CreateFillEllipse(0, 0, CornerRadius2, CornerRadius2);
-            //        LastRadius = CornerRadius2;
-            //    }
-            //    Rectangle += ImageContour.Offset(Corner, Right - CornerRadius2, Y2);
-            //}
+            // Right & Bottom
+            if (CornerRadius3 > 0)
+            {
+                if (CornerRadius3 != LastRadius)
+                {
+                    Corner = CreateFillEllipse(0, 0, CornerRadius3, CornerRadius3);
+                    LastRadius = CornerRadius3;
+                }
 
-            //// Right & Bottom
-            //Y3 = Bottom - CornerRadius3;
-            //if (CornerRadius3 > 0)
-            //{
-            //    if (CornerRadius3 != LastRadius)
-            //    {
-            //        Corner = CreateFillEllipse(0, 0, CornerRadius3, CornerRadius3);
-            //        LastRadius = CornerRadius3;
-            //    }
-            //    Rectangle += ImageContour.Offset(Corner, Right - CornerRadius3, Y3);
-            //}
+                Point<int>.Rotate(X6, Y5, Sin, Cos, out int Tx, out int Ty);
+                Rectangle.Union(Offset(Corner, Tx, Ty));
+            }
 
-            //// Left & Bottom
-            //Y4 = Bottom - CornerRadius4;
-            //if (CornerRadius4 > 0)
-            //{
-            //    if (CornerRadius4 != LastRadius)
-            //        Corner = CreateFillEllipse(0, 0, CornerRadius4, CornerRadius4);
+            // Left & Bottom
+            if (CornerRadius4 > 0)
+            {
+                if (CornerRadius4 != LastRadius)
+                    Corner = CreateFillEllipse(0, 0, CornerRadius4, CornerRadius4);
 
-            //    Rectangle += ImageContour.Offset(Corner, Left + CornerRadius4, Y4);
-            //}
+                Point<int>.Rotate(X7, Y8, Sin, Cos, out int Tx, out int Ty);
+                Rectangle.Union(Offset(Corner, Tx, Ty));
+            }
 
-            //for (int j = Y1; j <= Y4; j++)
-            //    Rectangle[j].AddLeft(Left);
+            // Filter
+            foreach (KeyValuePair<int, ContourData> Item in Rectangle.Datas)
+            {
+                ContourData TData = Item.Value;
+                int Length = TData.Count;
+                for (int i = 2; i < Length; i++)
+                    TData.Datas.RemoveAt(1);
+            }
 
-            //for (int j = Y2; j <= Y3; j++)
-            //    Rectangle[j].AddRight(Right);
+            void AddData(int X, int Y)
+            {
+                ContourData TData = Rectangle[Y];
+                if (TData.Count == 0)
+                {
+                    TData.Datas.Add(X);
+                    TData.Datas.Add(X);
+                    return;
+                }
 
-            //foreach (int j in Rectangle.Datas.Keys.ToArray())
-            //{
-            //    if (j < Top || Bottom < j)
-            //    {
-            //        Rectangle.Datas.Remove(j);
-            //        continue;
-            //    }
+                if (X < TData[0])
+                    TData[0] = X;
+                else if (TData[1] < X)
+                    TData[1] = X;
+            }
 
-            //    int Length = Rectangle.Datas[j].Count;
-            //    if (Length > 2)
-            //    {
-            //        Length--;
-            //        for (int i = 1; i < Length; i++)
-            //            Rectangle.Datas[j].Datas.RemoveAt(1);
-            //    }
-            //}
+            // Rotate
+            Point<int>.Rotate(X1, Y1, Sin, Cos, out X1, out Y1);
+            Point<int>.Rotate(X2, Y2, Sin, Cos, out X2, out Y2);
+            Point<int>.Rotate(X4, Y4, Sin, Cos, out X4, out Y4);
+            Point<int>.Rotate(X3, Y3, Sin, Cos, out X3, out Y3);
+            Point<int>.Rotate(X5, Y5, Sin, Cos, out X5, out Y5);
+            Point<int>.Rotate(X6, Y6, Sin, Cos, out X6, out Y6);
+            Point<int>.Rotate(X7, Y7, Sin, Cos, out X7, out Y7);
+            Point<int>.Rotate(X8, Y8, Sin, Cos, out X8, out Y8);
+
+            // (X8, Y8) => (X1, Y1)
+            int DeltaX = X1 - X8,
+                DeltaY = Y1 - Y8;
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X8 + Dx, Y8 + Dy));
+
+            // (X2, Y2) => (X3, Y3)
+            DeltaX = X3 - X2;
+            DeltaY = Y3 - Y2;
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X2 + Dx, Y2 + Dy));
+
+            // (X4, Y4) => (X5, Y5)
+            DeltaX = X5 - X4;
+            DeltaY = Y5 - Y4;
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X4 + Dx, Y4 + Dy));
+
+            // (X6, Y6) => (X7, Y7)
+            DeltaX = X7 - X6;
+            DeltaY = Y7 - Y6;
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX.Abs(), DeltaY.Abs(), (Dx, Dy) => AddData(X6 + Dx, Y6 + Dy));
 
             return Rectangle;
         }
@@ -924,7 +960,7 @@ namespace MenthaAssembly.Media.Imaging
                     TData[1] = X;
             }
 
-            double DeltaTheta = (360d / VertexNum) * MathHelper.UnitTheta,
+            double DeltaTheta = 360d / VertexNum * MathHelper.UnitTheta,
                    LastTheta = StartTheta;
 
             int P0x = (int)Math.Ceiling(Radius * Math.Cos(LastTheta)),
@@ -1041,7 +1077,7 @@ namespace MenthaAssembly.Media.Imaging
             }
             int DeltaX = X1 - X0,
                 DeltaY = Y1 - Y0,
-                AbsDeltaY = Math.Abs(DeltaY);
+                AbsDeltaY = DeltaY.Abs();
 
             bool IsHollow = false;
             ImageContour LineContour = new ImageContour();
