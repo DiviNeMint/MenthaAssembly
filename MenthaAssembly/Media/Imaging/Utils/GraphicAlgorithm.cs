@@ -767,6 +767,434 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
 
         /// <summary>
+        /// Crop the specified polygon by the specified rectangle. (By Sutherland-Hodgman Algorithm)
+        /// </summary>
+        /// <param name="Polygon">The specified polygon be cropped.</param>
+        /// <param name="MinX">The left of the specified rectangle to crop.</param>
+        /// <param name="MinY">The top of the specified rectangle to crop.</param>
+        /// <param name="MaxX">The right of the specified rectangle to crop.</param>
+        /// <param name="MaxY">The bottom of the specified rectangle to crop.</param>
+        public static IList<int> CropPolygon(IList<int> Polygon, int MinX, int MinY, int MaxX, int MaxY)
+        {
+            if (Polygon.Count < 6)
+                throw new ArgumentException($"The polygons passed in must have at least 3 points: subject={Polygon.Count >> 1}");
+
+            List<int> Output = Polygon.ToList(),
+                      Input;
+
+            int Sx, Sy, Ex, Ey, Dx, Dy, Tx, Ty, Length;
+
+            // Left
+            {
+                Input = Output;
+                Output = new List<int>();
+
+                Length = Input.Count;
+                Sx = Input[Length - 2];
+                Sy = Input[Length - 1];
+
+                for (int i = 0; i < Length; i++)
+                {
+                    Ex = Input[i++];
+                    Ey = Input[i];
+
+                    if (MinX <= Ex)
+                    {
+                        if (Sx < MinX)
+                        {
+                            Dx = Ex - Sx;
+                            Dy = Ey - Sy;
+                            Tx = MinX - Sx;
+
+                            Output.Add(MinX);
+                            Output.Add(Sy + Dy * Tx / Dx);
+                        }
+
+                        Output.Add(Ex);
+                        Output.Add(Ey);
+                    }
+                    else if (MinX <= Sx)
+                    {
+                        Dx = Ex - Sx;
+                        Dy = Ey - Sy;
+                        Tx = MinX - Sx;
+
+                        Output.Add(MinX);
+                        Output.Add(Sy + Dy * Tx / Dx);
+                    }
+
+                    Sx = Ex;
+                    Sy = Ey;
+                }
+
+            }
+
+            // Top
+            {
+                if (Output.Count == 0)
+                    return new int[0];
+
+                Input = Output;
+                Output = new List<int>();
+
+                Length = Input.Count;
+                Sx = Input[Length - 2];
+                Sy = Input[Length - 1];
+
+                for (int i = 0; i < Length; i++)
+                {
+                    Ex = Input[i++];
+                    Ey = Input[i];
+
+                    if (MinY <= Ey)
+                    {
+                        if (Sy < MinY)
+                        {
+                            Dx = Ex - Sx;
+                            Dy = Ey - Sy;
+                            Ty = MinY - Sy;
+
+                            Output.Add(Sx + Dx * Ty / Dy);
+                            Output.Add(MinY);
+                        }
+
+                        Output.Add(Ex);
+                        Output.Add(Ey);
+                    }
+                    else if (MinY <= Sy)
+                    {
+                        Dx = Ex - Sx;
+                        Dy = Ey - Sy;
+                        Ty = MinY - Sy;
+
+                        Output.Add(Sx + Dx * Ty / Dy);
+                        Output.Add(MinY);
+                    }
+
+                    Sx = Ex;
+                    Sy = Ey;
+                }
+
+            }
+
+            // Right
+            {
+                if (Output.Count == 0)
+                    return new int[0];
+
+                Input = Output;
+                Output = new List<int>();
+
+                Length = Input.Count;
+                Sx = Input[Length - 2];
+                Sy = Input[Length - 1];
+
+                for (int i = 0; i < Length; i++)
+                {
+                    Ex = Input[i++];
+                    Ey = Input[i];
+
+                    if (Ex <= MaxX)
+                    {
+                        if (MaxX < Sx)
+                        {
+                            Dx = Ex - Sx;
+                            Dy = Ey - Sy;
+                            Tx = MaxX - Sx;
+
+                            Output.Add(MaxX);
+                            Output.Add(Sy + Dy * Tx / Dx);
+                        }
+
+                        Output.Add(Ex);
+                        Output.Add(Ey);
+                    }
+                    else if (Sx <= MaxX)
+                    {
+                        Dx = Ex - Sx;
+                        Dy = Ey - Sy;
+                        Tx = MaxX - Sx;
+
+                        Output.Add(MaxX);
+                        Output.Add(Sy + Dy * Tx / Dx);
+                    }
+
+                    Sx = Ex;
+                    Sy = Ey;
+                }
+
+            }
+
+            // Bottom
+            {
+                if (Output.Count == 0)
+                    return new int[0];
+
+                Input = Output;
+                Output = new List<int>();
+
+                Length = Input.Count;
+                Sx = Input[Length - 2];
+                Sy = Input[Length - 1];
+
+                for (int i = 0; i < Length; i++)
+                {
+                    Ex = Input[i++];
+                    Ey = Input[i];
+
+                    if (Ey <= MaxY)
+                    {
+                        if (MaxY < Sy)
+                        {
+                            Dx = Ex - Sx;
+                            Dy = Ey - Sy;
+                            Ty = MaxY - Sy;
+
+                            Output.Add(Sx + Dx * Ty / Dy);
+                            Output.Add(MaxY);
+                        }
+
+                        Output.Add(Ex);
+                        Output.Add(Ey);
+                    }
+                    else if (Sy <= MaxY)
+                    {
+                        Dx = Ex - Sx;
+                        Dy = Ey - Sy;
+                        Ty = MaxY - Sy;
+
+                        Output.Add(Sx + Dx * Ty / Dy);
+                        Output.Add(MaxY);
+                    }
+
+                    Sx = Ex;
+                    Sy = Ey;
+                }
+
+            }
+
+            return Output;
+        }
+        /// <summary>
+        /// Crop the specified polygon by the specified rectangle. (By Sutherland-Hodgman Algorithm)
+        /// </summary>
+        /// <param name="Polygon">The specified polygon be cropped.</param>
+        /// <param name="MinX">The left of the specified rectangle to crop.</param>
+        /// <param name="MinY">The top of the specified rectangle to crop.</param>
+        /// <param name="MaxX">The right of the specified rectangle to crop.</param>
+        /// <param name="MaxY">The bottom of the specified rectangle to crop.</param>
+        public static IList<Point<int>> CropPolygon(IList<Point<int>> Polygon, int MinX, int MinY, int MaxX, int MaxY)
+        {
+            if (Polygon.Count < 3)
+                throw new ArgumentException($"The polygons passed in must have at least 3 points: subject={Polygon.Count}");
+
+            List<Point<int>> Output = Polygon.ToList(),
+                        Input;
+
+            Point<int> S, E;
+            int Sx, Sy, Ex, Ey, Dx, Dy, Tx, Ty, Length;
+
+            // Left
+            {
+                Input = Output;
+                Output = new List<Point<int>>();
+
+                Length = Input.Count;
+                S = Input[Length - 1];
+                Sx = S.X;
+                Sy = S.Y;
+
+                for (int i = 0; i < Length; i++)
+                {
+                    E = Input[i];
+                    Ex = E.X;
+                    Ey = E.Y;
+
+                    if (MinX <= Ex)
+                    {
+                        if (Sx < MinX)
+                        {
+                            Dx = Ex - Sx;
+                            Dy = Ey - Sy;
+                            Tx = MinX - Sx;
+
+                            int Cy = Sy + Dy * Tx / Dx;
+
+                            Output.Add(new Point<int>(MinX, Cy));
+                        }
+
+                        Output.Add(E);
+                    }
+                    else if (MinX <= Sx)
+                    {
+                        Dx = Ex - Sx;
+                        Dy = Ey - Sy;
+                        Tx = MinX - Sx;
+
+                        int Cy = Sy + Dy * Tx / Dx;
+
+                        Output.Add(new Point<int>(MinX, Cy));
+                    }
+
+                    Sx = Ex;
+                    Sy = Ey;
+                }
+
+            }
+
+            // Top
+            {
+                if (Output.Count == 0)
+                    return new Point<int>[0];
+
+                Input = Output;
+                Output = new List<Point<int>>();
+
+                Length = Input.Count;
+                S = Input[Length - 1];
+                Sx = S.X;
+                Sy = S.Y;
+
+                for (int i = 0; i < Length; i++)
+                {
+                    E = Input[i];
+                    Ex = E.X;
+                    Ey = E.Y;
+
+                    if (MinY <= Ey)
+                    {
+                        if (Sy < MinY)
+                        {
+                            Dx = Ex - Sx;
+                            Dy = Ey - Sy;
+                            Ty = MinY - Sy;
+
+                            int Cx = Sx + Dx * Ty / Dy;
+                            Output.Add(new Point<int>(Cx, MinY));
+                        }
+
+                        Output.Add(E);
+                    }
+                    else if (MinY <= Sy)
+                    {
+                        Dx = Ex - Sx;
+                        Dy = Ey - Sy;
+                        Ty = MinY - Sy;
+
+                        int Cx = Sx + Dx * Ty / Dy;
+                        Output.Add(new Point<int>(Cx, MinY));
+                    }
+
+                    Sx = Ex;
+                    Sy = Ey;
+                }
+
+            }
+
+            // Right
+            {
+                if (Output.Count == 0)
+                    return new Point<int>[0];
+
+                Input = Output;
+                Output = new List<Point<int>>();
+
+                Length = Input.Count;
+                S = Input[Length - 1];
+                Sx = S.X;
+                Sy = S.Y;
+
+                for (int i = 0; i < Length; i++)
+                {
+                    E = Input[i];
+                    Ex = E.X;
+                    Ey = E.Y;
+
+                    if (Ex <= MaxX)
+                    {
+                        if (MaxX < Sx)
+                        {
+                            Dx = Ex - Sx;
+                            Dy = Ey - Sy;
+                            Tx = MaxX - Sx;
+
+                            int Cy = Sy + Dy * Tx / Dx;
+
+                            Output.Add(new Point<int>(MaxX, Cy));
+                        }
+
+                        Output.Add(E);
+                    }
+                    else if (Sx <= MaxX)
+                    {
+                        Dx = Ex - Sx;
+                        Dy = Ey - Sy;
+                        Tx = MaxX - Sx;
+
+                        int Cy = Sy + Dy * Tx / Dx;
+
+                        Output.Add(new Point<int>(MaxX, Cy));
+                    }
+
+                    Sx = Ex;
+                    Sy = Ey;
+                }
+
+            }
+
+            // Bottom
+            {
+                if (Output.Count == 0)
+                    return new Point<int>[0];
+
+                Input = Output;
+                Output = new List<Point<int>>();
+
+                Length = Input.Count;
+                S = Input[Length - 1];
+                Sx = S.X;
+                Sy = S.Y;
+
+                for (int i = 0; i < Length; i++)
+                {
+                    E = Input[i];
+                    Ex = E.X;
+                    Ey = E.Y;
+
+                    if (Ey <= MaxY)
+                    {
+                        if (MaxY < Sy)
+                        {
+                            Dx = Ex - Sx;
+                            Dy = Ey - Sy;
+                            Ty = MaxY - Sy;
+
+                            int Cx = Sx + Dx * Ty / Dy;
+                            Output.Add(new Point<int>(Cx, MaxY));
+                        }
+
+                        Output.Add(E);
+                    }
+                    else if (Sy <= MaxY)
+                    {
+                        Dx = Ex - Sx;
+                        Dy = Ey - Sy;
+                        Ty = MaxY - Sy;
+
+                        int Cx = Sx + Dx * Ty / Dy;
+                        Output.Add(new Point<int>(Cx, MaxY));
+                    }
+
+                    Sx = Ex;
+                    Sy = Ey;
+                }
+
+            }
+
+            return Output;
+        }
+
+        /// <summary>
         /// This clips the subject polygon against the clip polygon (gets the intersection of the two polygons)
         /// </summary>
         /// <remarks>
