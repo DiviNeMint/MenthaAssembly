@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
@@ -764,5 +766,124 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
+        /// <summary>
+        /// This clips the subject polygon against the clip polygon (gets the intersection of the two polygons)
+        /// </summary>
+        /// <remarks>
+        /// Based on the psuedocode from:
+        /// http://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman
+        /// </remarks>
+        /// <param name="Polygon">Can be concave or convex</param>
+        /// <param name="ClipPolygon">Must be convex</param>
+        /// <returns>The intersection of the two polygons (or null)</returns>
+        public static int[] CalculateSutherlandHodgmanPolygon(int[] Polygon, int[] ClipPolygon)
+        {
+            if (Polygon.Length < 6 || ClipPolygon.Length < 6)
+                throw new ArgumentException($"The polygons passed in must have at least 3 points: subject={Polygon.Length >> 1}, clip={ClipPolygon.Length >> 1}");
+
+            List<int> Output = ClockwisePolygon(Polygon).ToList();
+            int[] Clip = ClockwisePolygon(ClipPolygon).ToArray();
+
+            int ClipLength = Clip.Length,
+                LCx = Clip[ClipLength - 2],
+                LCy = Clip[ClipLength - 1];
+
+            for (int i = 0; i < ClipLength; i++)
+            {
+                //	Sometimes when the polygons don't intersect, this list goes to zero.  Jump out to avoid an index out of range exception
+                if (Output.Count == 0)
+                    break;
+
+                List<int> Input = Output;
+                Output = new List<int>();
+
+                int InputLength = Input.Count,
+                    Sx = Input[InputLength - 2],
+                    Sy = Input[InputLength - 1],
+                    Cx = Clip[i++],
+                    Cy = Clip[i],
+                    Dx = Cx - LCx,
+                    Dy = Cy - LCy;
+
+                for (int j = 0; j < InputLength; j++)
+                {
+                    int Ex = Input[j++],
+                        Ey = Input[j];
+
+                    if (Vector<int>.Cross(Dx, Dy, Ex - Cx, Ey - Cy) <= 0)
+                    {
+                        if (Vector<int>.Cross(Dx, Dy, Sx - Cx, Sy - Cy) > 0)
+                        {
+                            if (LineSegment<int>.CrossPoint(Sx, Sy, Ex, Ey, LCx, LCy, Cx, Cy).FirstOrNull() is not Point<int> Cross)
+                                throw new ApplicationException("Line segments don't intersect or may be colinear.");
+
+                            Output.Add(Cross.X);
+                            Output.Add(Cross.Y);
+                        }
+
+                        Output.Add(Ex);
+                        Output.Add(Ey);
+                    }
+                    else if (Vector<int>.Cross(Dx, Dy, Sx - Cx, Sy - Cy) <= 0)
+                    {
+                        if (LineSegment<int>.CrossPoint(Sx, Sy, Ex, Ey, LCx, LCy, Cx, Cy).FirstOrNull() is not Point<int> Cross)
+                            throw new ApplicationException("Line segments don't intersect or may be colinear.");
+
+                        Output.Add(Cross.X);
+                        Output.Add(Cross.Y);
+                    }
+
+                    Sx = Ex;
+                    Sy = Ey;
+                }
+
+                LCx = Cx;
+                LCy = Cy;
+            }
+
+            //	Exit Function
+            return Output.ToArray();
+        }
+
+        private static IEnumerable<int> ClockwisePolygon(int[] Polygon)
+        {
+            if (IsClockwise(Polygon))
+            {
+                foreach (int Data in Polygon)
+                    yield return Data;
+            }
+            else
+            {
+                int Y;
+                for (int i = Polygon.Length - 1; i >= 0; i--)
+                {
+                    Y = Polygon[i--];
+                    yield return Polygon[i];
+                    yield return Y;
+                }
+            }
+        }
+        private static bool IsClockwise(int[] Polygon)
+        {
+            int Ex = Polygon[2],
+                Ey = Polygon[3],
+                Dx = Ex - Polygon[0],
+                Dy = Ey - Polygon[1];
+
+            for (int i = 4; i < Polygon.Length; i++)
+            {
+                int Tx = Polygon[i++],
+                    Ty = Polygon[i];
+
+                int Cross = Vector<int>.Cross(Dx, Dy, Tx - Ex, Ty - Ey);
+                if (Cross == 0)
+                    continue;
+
+                return Cross < 0;
+            }
+
+            throw new ArgumentException("All the points in the polygon are colinear");
+        }
     }
+
 }
