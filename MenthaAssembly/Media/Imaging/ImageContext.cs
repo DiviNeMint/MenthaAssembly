@@ -2017,23 +2017,27 @@ namespace MenthaAssembly.Media.Imaging
 
         public void FillPolygon(IList<Point<int>> Vertices, Pixel Fill, int OffsetX, int OffsetY)
         {
+            Vertices = GraphicAlgorithm.CropPolygon(Vertices, -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
+
             int Length = Vertices.Count;
             int[] intersectionsX = new int[Length];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
-            int yMin = Height;
-            int yMax = 0;
+            int yMin = Height,
+                yMax = 0;
             for (int i = 1; i < Length; i++)
             {
                 int py = Vertices[i].Y + OffsetY;
                 if (py < yMin)
                     yMin = py;
+
                 if (py > yMax)
                     yMax = py;
             }
 
             if (yMin < 0)
                 yMin = 0;
+
             if (yMax >= Height)
                 yMax = Height - 1;
 
@@ -2104,25 +2108,29 @@ namespace MenthaAssembly.Media.Imaging
         }
         public void FillPolygon(IList<int> VerticeDatas, Pixel Fill, int OffsetX, int OffsetY)
         {
+            VerticeDatas = GraphicAlgorithm.CropPolygon(VerticeDatas, -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
+
             int pn = VerticeDatas.Count,
                 pnh = VerticeDatas.Count >> 1;
 
             int[] intersectionsX = new int[pnh];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
-            int yMin = Height;
-            int yMax = 0;
+            int yMin = Height,
+                yMax = 0;
             for (int i = 1; i < pn; i += 2)
             {
                 int py = VerticeDatas[i] + OffsetY;
                 if (py < yMin)
                     yMin = py;
+
                 if (py > yMax)
                     yMax = py;
             }
 
             if (yMin < 0)
                 yMin = 0;
+
             if (yMax >= Height)
                 yMax = Height - 1;
 

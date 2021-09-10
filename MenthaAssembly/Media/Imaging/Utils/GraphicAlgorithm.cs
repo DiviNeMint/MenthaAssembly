@@ -973,6 +973,22 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             }
 
+            // Check Close Region
+            if (Output.Count > 0)
+            {
+                Length = Output.Count;
+                Sx = Output[Length - 2];
+                Sy = Output[Length - 1];
+                Ex = Output[0];
+                Ey = Output[1];
+
+                if (!Sx.Equals(Ex) | !Sy.Equals(Ey))
+                {
+                    Output.Add(Ex);
+                    Output.Add(Ey);
+                }
+            }
+
             return Output;
         }
         /// <summary>
@@ -1191,6 +1207,17 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             }
 
+            // Check Close Region
+            if (Output.Count > 0)
+            {
+                Length = Output.Count;
+                S = Output[Length - 1];
+                E = Output[0];
+
+                if (!S.Equals(E))
+                    Output.Add(E);
+            }
+
             return Output;
         }
 
@@ -1220,7 +1247,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             {
                 //	Sometimes when the polygons don't intersect, this list goes to zero.  Jump out to avoid an index out of range exception
                 if (Output.Count == 0)
-                    break;
+                    return new int[0];
 
                 List<int> Input = Output;
                 Output = new List<int>();
@@ -1269,7 +1296,22 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 LCy = Cy;
             }
 
-            //	Exit Function
+            // Check Close Region
+            if (Output.Count > 0)
+            {
+                int Length = Output.Count,
+                    Sx = Output[Length - 2],
+                    Sy = Output[Length - 1],
+                    Ex = Output[0],
+                    Ey = Output[1];
+
+                if (!Sx.Equals(Ex) | !Sy.Equals(Ey))
+                {
+                    Output.Add(Ex);
+                    Output.Add(Ey);
+                }
+            }
+
             return Output.ToArray();
         }
 
