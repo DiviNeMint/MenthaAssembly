@@ -2,50 +2,8 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public class ConvoluteKernel
+    public class ConvoluteKernel : ImageFilter
     {
-        internal readonly int[,] Datas;
-
-        public int FactorSum { get; }
-
-        public int Offset { get; }
-
-        public int Height { get; }
-
-        public int Width { get; }
-
-        public int this[int X, int Y]
-            => Datas[Y, X];
-
-        public ConvoluteKernel(int[,] Datas, int KernelOffsetSum)
-        {
-            this.Datas = Datas;
-
-            int HL = Datas.GetUpperBound(0) + 1,
-                WL = Datas.GetUpperBound(1) + 1;
-
-            if ((WL & 1) == 0)
-                throw new InvalidOperationException("Kernel width must be odd!");
-
-            if ((HL & 1) == 0)
-                throw new InvalidOperationException("Kernel height must be odd!");
-
-            int Sum = 0;
-            for (int j = 0; j < HL; j++)
-                for (int i = 0; i < WL; i++)
-                    Sum += Datas[j, i];
-
-            this.FactorSum = Math.Max(Sum, 1);
-            this.Offset = KernelOffsetSum;
-
-            this.Height = HL;
-            this.Width = WL;
-        }
-        public ConvoluteKernel(int[,] Datas) : this(Datas, 0)
-        {
-
-        }
-
         #region Edge Detection
         /// <summary>
         /// {-1,-1,-1}<para/>
@@ -218,7 +176,125 @@ namespace MenthaAssembly.Media.Imaging
                                                 {-1, 1, 1},
                                                 { 0, 1, 2}});
 
+
         #endregion
+
+        public int[,] Kernel { get; }
+
+        public int KernelSum { get; }
+
+        public int Offset { get; }
+
+        public ConvoluteKernel(int[,] Datas, int KernelOffsetSum) : base(Datas.GetUpperBound(1) + 1, Datas.GetUpperBound(0) + 1)
+        {
+            this.Kernel = Datas;
+
+            if ((this.KernelWidth & 1) == 0)
+                throw new InvalidOperationException("Kernel width must be odd!");
+
+            if ((this.KernelHeight & 1) == 0)
+                throw new InvalidOperationException("Kernel height must be odd!");
+
+            int Sum = 0;
+            for (int j = 0; j < this.KernelHeight; j++)
+                for (int i = 0; i < this.KernelWidth; i++)
+                    Sum += Datas[j, i];
+
+            this.KernelSum = Math.Max(Sum, 1);
+            this.Offset = KernelOffsetSum;
+
+        }
+        public ConvoluteKernel(int[,] Datas) : this(Datas, 0)
+        {
+
+        }
+
+        public override void Filter<T>(T[][] Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
+        {
+            int Ta = 0,
+                Tr = 0,
+                Tg = 0,
+                Tb = 0;
+            for (int i = 0; i < this.KernelWidth; i++)
+            {
+                T[] Temp = Patch[i];
+                for (int j = 0; j < this.KernelHeight; j++)
+                {
+                    int k = this.Kernel[j, i];
+                    if (k == 0)
+                        continue;
+
+                    T Pixel = Temp[j];
+
+                    Ta += Pixel.A * k;
+                    Tr += Pixel.R * k;
+                    Tg += Pixel.G * k;
+                    Tb += Pixel.B * k;
+                }
+            }
+
+            A = (byte)MathHelper.Clamp(Ta / this.KernelSum + this.Offset, 0, 255);
+            R = (byte)MathHelper.Clamp(Tr / this.KernelSum + this.Offset, 0, 255);
+            G = (byte)MathHelper.Clamp(Tg / this.KernelSum + this.Offset, 0, 255);
+            B = (byte)MathHelper.Clamp(Tb / this.KernelSum + this.Offset, 0, 255);
+        }
+        public override void Filter3<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
+        {
+            int Tr = 0,
+                Tg = 0,
+                Tb = 0;
+            for (int i = 0; i < this.KernelWidth; i++)
+            {
+                byte[] TempR = Patch.DataR[i],
+                       TempG = Patch.DataG[i],
+                       TempB = Patch.DataB[i];
+                for (int j = 0; j < this.KernelHeight; j++)
+                {
+                    int k = this.Kernel[j, i];
+                    if (k == 0)
+                        continue;
+
+                    Tr += TempR[j] * k;
+                    Tg += TempG[j] * k;
+                    Tb += TempB[j] * k;
+                }
+            }
+
+            A = byte.MaxValue;
+            R = (byte)MathHelper.Clamp(Tr / this.KernelSum + this.Offset, 0, 255);
+            G = (byte)MathHelper.Clamp(Tg / this.KernelSum + this.Offset, 0, 255);
+            B = (byte)MathHelper.Clamp(Tb / this.KernelSum + this.Offset, 0, 255);
+        }
+        public override void Filter4<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
+        {
+            int Ta = 0,
+                Tr = 0,
+                Tg = 0,
+                Tb = 0;
+            for (int i = 0; i < this.KernelWidth; i++)
+            {
+                byte[] TempA = Patch.DataA[i],
+                       TempR = Patch.DataR[i],
+                       TempG = Patch.DataG[i],
+                       TempB = Patch.DataB[i];
+                for (int j = 0; j < this.KernelHeight; j++)
+                {
+                    int k = this.Kernel[j, i];
+                    if (k == 0)
+                        continue;
+
+                    Ta += TempA[j] * k;
+                    Tr += TempR[j] * k;
+                    Tg += TempG[j] * k;
+                    Tb += TempB[j] * k;
+                }
+            }
+
+            A = (byte)MathHelper.Clamp(Ta / this.KernelSum + this.Offset, 0, 255);
+            R = (byte)MathHelper.Clamp(Tr / this.KernelSum + this.Offset, 0, 255);
+            G = (byte)MathHelper.Clamp(Tg / this.KernelSum + this.Offset, 0, 255);
+            B = (byte)MathHelper.Clamp(Tb / this.KernelSum + this.Offset, 0, 255);
+        }
 
     }
 }

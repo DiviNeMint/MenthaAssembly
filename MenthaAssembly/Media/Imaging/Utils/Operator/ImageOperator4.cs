@@ -1024,12 +1024,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
                   pScanG = (byte*)Context.ScanG,
                   pScanB = (byte*)Context.ScanB;
 
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
@@ -1157,12 +1157,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
                   pScanG = (byte*)Context.ScanG,
                   pScanB = (byte*)Context.ScanB;
 
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
@@ -1282,12 +1282,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
                   pScanG = (byte*)Context.ScanG,
                   pScanB = (byte*)Context.ScanB;
 
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,

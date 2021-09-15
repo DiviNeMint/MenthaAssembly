@@ -816,17 +816,211 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
+        public void ScanLineFilter(int X, int Y, int Length, ImageFilter Filter, byte* pDest)
+            => ScanLineFilter(X, Y, Length, Filter, (T*)pDest);
+        public void ScanLineFilter<T2>(int X, int Y, int Length, ImageFilter Filter, T2* pDest) where T2 : unmanaged, IPixel
+        {
+            byte* pScan0 = (byte*)Context.Scan0;
+            int KernelW = Filter.KernelWidth,
+                KernelH = Filter.KernelHeight,
+                KernelHW = KernelW >> 1,
+                KernelHH = KernelH >> 1,
+                SourceWidthL = Context.Width - 1,
+                SourceHeightL = Context.Width - 1,
+                Index,
+                Tx, LTx;
+
+            T2*[] pDatas = new T2*[KernelH];
+
+            Index = 0;
+            for (; Index < KernelHH; Index++)
+            {
+                pDatas[Index] = (T2*)(pScan0 + Math.Max(Y - Index, 0) * Context.Stride);
+                pDatas[KernelH - Index - 1] = (T2*)(pScan0 + Math.Min(Y - Index, SourceHeightL) * Context.Stride);
+            }
+            pDatas[Index] = (T2*)(pScan0 + Y * Context.Stride);
+
+            ImagePatch<T2> Patch = new ImagePatch<T2>(KernelW, KernelH);
+            T2[] Pixels = new T2[KernelH];
+
+            // Init Common Function
+            void FillPixelsByX(int Xt)
+            {
+                for (int j = 0; j < KernelH; j++)
+                    Pixels[j] = *(pDatas[j] + Xt);
+            };
+
+            //Init Block
+            Index = -KernelHW;
+            LTx = int.MaxValue;
+            for (; Index < KernelHW; Index++)
+            {
+                Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                if (LTx != Tx)
+                {
+                    FillPixelsByX(Tx);
+                    LTx = Tx;
+                }
+                Patch.Enqueue(Pixels);
+            }
+
+            Tx = X + KernelHW;
+            ImageFilterArgs Arg = new ImageFilterArgs();
+            byte A, R, G, B;
+            for (int i = 0; i < Length; i++, Tx++)
+            {
+                // Next & Enqueue
+                FillPixelsByX(MathHelper.Clamp(Tx, 0, SourceWidthL));
+                Patch.Enqueue(Pixels);
+
+                // Filter
+                Filter.Filter(Patch.Data0, Arg, out A, out R, out G, out B);
+
+                // Override
+                pDest++->Override(A, R, G, B);
+            }
+        }
+        public void ScanLineFilter(int X, int Y, int Length, ImageFilter Filter, byte* pDestR, byte* pDestG, byte* pDestB)
+        {
+            byte* pScan0 = (byte*)Context.Scan0;
+            int KernelW = Filter.KernelWidth,
+                KernelH = Filter.KernelHeight,
+                KernelHW = KernelW >> 1,
+                KernelHH = KernelH >> 1,
+                SourceWidthL = Context.Width - 1,
+                SourceHeightL = Context.Width - 1,
+                Index,
+                Tx, LTx;
+
+            T*[] pDatas = new T*[KernelH];
+
+            Index = 0;
+            for (; Index < KernelHH; Index++)
+            {
+                pDatas[Index] = (T*)(pScan0 + Math.Max(Y - Index, 0) * Context.Stride);
+                pDatas[KernelH - Index - 1] = (T*)(pScan0 + Math.Min(Y - Index, SourceHeightL) * Context.Stride);
+            }
+            pDatas[Index] = (T*)(pScan0 + Y * Context.Stride);
+
+            ImagePatch<T> Patch = new ImagePatch<T>(KernelW, KernelH);
+            T[] Pixels = new T[KernelH];
+
+            // Init Common Function
+            void FillPixelsByX(int Xt)
+            {
+                for (int j = 0; j < KernelH; j++)
+                    Pixels[j] = *(pDatas[j] + Xt);
+            };
+
+            //Init Block
+            Index = -KernelHW;
+            LTx = int.MaxValue;
+            for (; Index < KernelHW; Index++)
+            {
+                Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                if (LTx != Tx)
+                {
+                    FillPixelsByX(Tx);
+                    LTx = Tx;
+                }
+                Patch.Enqueue(Pixels);
+            }
+
+            Tx = X + KernelHW;
+            ImageFilterArgs Arg = new ImageFilterArgs();
+            byte A, R, G, B;
+            for (int i = 0; i < Length; i++, Tx++)
+            {
+                // Next & Enqueue
+                FillPixelsByX(MathHelper.Clamp(Tx, 0, SourceWidthL));
+                Patch.Enqueue(Pixels);
+
+                // Filter
+                Filter.Filter(Patch.Data0, Arg, out A, out R, out G, out B);
+
+                // Override
+                *pDestR++ = R;
+                *pDestG++ = G;
+                *pDestB++ = B;
+            }
+        }
+        public void ScanLineFilter(int X, int Y, int Length, ImageFilter Filter, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        {
+            byte* pScan0 = (byte*)Context.Scan0;
+            int KernelW = Filter.KernelWidth,
+                KernelH = Filter.KernelHeight,
+                KernelHW = KernelW >> 1,
+                KernelHH = KernelH >> 1,
+                SourceWidthL = Context.Width - 1,
+                SourceHeightL = Context.Width - 1,
+                Index,
+                Tx, LTx;
+
+            T*[] pDatas = new T*[KernelH];
+
+            Index = 0;
+            for (; Index < KernelHH; Index++)
+            {
+                pDatas[Index] = (T*)(pScan0 + Math.Max(Y - Index, 0) * Context.Stride);
+                pDatas[KernelH - Index - 1] = (T*)(pScan0 + Math.Min(Y - Index, SourceHeightL) * Context.Stride);
+            }
+            pDatas[Index] = (T*)(pScan0 + Y * Context.Stride);
+
+            ImagePatch<T> Patch = new ImagePatch<T>(KernelW, KernelH);
+            T[] Pixels = new T[KernelH];
+
+            // Init Common Function
+            void FillPixelsByX(int Xt)
+            {
+                for (int j = 0; j < KernelH; j++)
+                    Pixels[j] = *(pDatas[j] + Xt);
+            };
+
+            //Init Block
+            Index = -KernelHW;
+            LTx = int.MaxValue;
+            for (; Index < KernelHW; Index++)
+            {
+                Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                if (LTx != Tx)
+                {
+                    FillPixelsByX(Tx);
+                    LTx = Tx;
+                }
+                Patch.Enqueue(Pixels);
+            }
+
+            Tx = X + KernelHW;
+            ImageFilterArgs Arg = new ImageFilterArgs();
+            byte A, R, G, B;
+            for (int i = 0; i < Length; i++, Tx++)
+            {
+                // Next & Enqueue
+                FillPixelsByX(MathHelper.Clamp(Tx, 0, SourceWidthL));
+                Patch.Enqueue(Pixels);
+
+                // Filter
+                Filter.Filter(Patch.Data0, Arg, out A, out R, out G, out B);
+
+                // Override
+                *pDestA++ = A;
+                *pDestR++ = R;
+                *pDestG++ = G;
+                *pDestB++ = B;
+            }
+        }
+
         public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDest)
             => ScanLineConvolute(X, Y, Length, Kernel, (T*)pDest);
         public void ScanLineConvolute<T2>(int X, int Y, int Length, ConvoluteKernel Kernel, T2* pDest) where T2 : unmanaged, IPixel
         {
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
@@ -937,12 +1131,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestR, byte* pDestG, byte* pDestB)
         {
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
@@ -1052,12 +1246,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,

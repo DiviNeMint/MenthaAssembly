@@ -1295,12 +1295,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             T* pDestT = (T*)pDest;
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
@@ -1421,12 +1421,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public void ScanLineConvolute<T2>(int X, int Y, int Length, ConvoluteKernel Kernel, T2* pDest) where T2 : unmanaged, IPixel
         {
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
@@ -1547,12 +1547,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestR, byte* pDestG, byte* pDestB)
         {
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
@@ -1668,12 +1668,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Datas;
-            int KernelW = Kernel.Width,
-                KernelH = Kernel.Height,
+            int[,] Datas = Kernel.Kernel;
+            int KernelW = Kernel.KernelWidth,
+                KernelH = Kernel.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.FactorSum,
+                KernelSum = Kernel.KernelSum,
                 KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
