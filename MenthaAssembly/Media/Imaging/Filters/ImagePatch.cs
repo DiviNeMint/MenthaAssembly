@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Media.Imaging
 {
-    public class ImagePatch<T>
+    public unsafe class ImagePatch<T>
         where T : unmanaged, IPixel
     {
         public T[][] Data0 { private set; get; }
@@ -26,38 +26,38 @@
         private int Index = 0;
         internal void Enqueue(T[] Data)
         {
-            if (this.Data0 is null)
+            if (Data0 is null)
             {
-                this.Data0 = new T[this.Width][];
-                this.Data0[Index++] = Data;
+                Data0 = new T[Width][];
+                Data0[Index++] = (Data);
                 return;
             }
 
-            if (Index < this.Width)
+            if (Index < Width)
             {
-                this.Data0[Index++] = Data;
+                Data0[Index++] = Data;
             }
             else
             {
-                int Last = this.Width - 1,
+                int Last = Width - 1,
                     j;
                 for (int i = 0; i < Last;)
                 {
                     j = i + 1;
-                    this.Data0[i] = this.Data0[j];
+                    Data0[i] = Data0[j];
                     i = j;
                 }
 
-                this.Data0[Last] = Data;
+                Data0[Last] = Data;
             }
         }
         internal void Enqueue(byte[] DataR, byte[] DataG, byte[] DataB)
         {
             if (this.DataR is null)
             {
-                this.DataR = new byte[this.Width][];
-                this.DataG = new byte[this.Width][];
-                this.DataB = new byte[this.Width][];
+                this.DataR = new byte[Width][];
+                this.DataG = new byte[Width][];
+                this.DataB = new byte[Width][];
 
                 this.DataR[Index] = DataR;
                 this.DataG[Index] = DataG;
@@ -65,7 +65,7 @@
 
                 Index++;
             }
-            else if (Index < this.Width)
+            else if (Index < Width)
             {
                 this.DataR[Index] = DataR;
                 this.DataG[Index] = DataG;
@@ -75,7 +75,7 @@
             }
             else
             {
-                int Last = this.Width - 1,
+                int Last = Width - 1,
                     j;
                 for (int i = 0; i < Last;)
                 {
@@ -96,10 +96,10 @@
         {
             if (this.DataA is null)
             {
-                this.DataA = new byte[this.Width][];
-                this.DataR = new byte[this.Width][];
-                this.DataG = new byte[this.Width][];
-                this.DataB = new byte[this.Width][];
+                this.DataA = new byte[Width][];
+                this.DataR = new byte[Width][];
+                this.DataG = new byte[Width][];
+                this.DataB = new byte[Width][];
 
                 this.DataA[Index] = DataA;
                 this.DataR[Index] = DataR;
@@ -108,7 +108,7 @@
 
                 Index++;
             }
-            else if (Index < this.Width)
+            else if (Index < Width)
             {
                 this.DataA[Index] = DataA;
                 this.DataR[Index] = DataR;
@@ -119,7 +119,7 @@
             }
             else
             {
-                int Last = this.Width - 1,
+                int Last = Width - 1,
                     j;
                 for (int i = 0; i < Last;)
                 {

@@ -2,15 +2,9 @@
 {
     public abstract class ImageFilter
     {
-        public int KernelWidth { get; }
+        public abstract int KernelWidth { get; }
 
-        public int KernelHeight { get; }
-
-        protected ImageFilter(int KernelWidth, int KernelHeight)
-        {
-            this.KernelWidth = KernelWidth;
-            this.KernelHeight = KernelHeight;
-        }
+        public abstract int KernelHeight { get; }
 
         public abstract void Filter<T>(T[][] Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
             where T : unmanaged, IPixel;
@@ -66,7 +60,7 @@
                 for (int j = 0; j < H; j++)
                     Temp[j] = PixelHelper.ToPixel<T>(TempA[j], TempR[j], TempG[j], TempB[j]);
 
-                Block[i] = Temp; 
+                Block[i] = Temp;
             }
 
             this.Filter(Block, Args, out A, out R, out G, out B);

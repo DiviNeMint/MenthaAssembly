@@ -908,19 +908,37 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Convolute
         /// <summary>
-        /// Creates a new filtered <see cref="ImageContext{T}"/>.
+        /// Creates a new convoluted <see cref="ImageContext{T}"/>.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="Kernel">The kernel used for convolution.</param>
         public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel) where T : unmanaged, IPixel;
         /// <summary>
-        /// Creates a new filtered <see cref="ImageContext{T}"/>.
+        /// Creates a new convoluted <see cref="ImageContext{T}"/>.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="Kernel">The kernel used for convolution.</param>
         /// <param name="Options">An object that configures the behavior of this operation.<para/>
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel, ParallelOptions Options) where T : unmanaged, IPixel;
+
+        #endregion
+
+        #region Filter
+        /// <summary>
+        /// Creates a new filtered <see cref="ImageContext{T}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Filter">The kernel used for filtering.</param>
+        public ImageContext<T> Filter<T>(ImageFilter Filter) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Creates a new filtered <see cref="ImageContext{T}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Filter">The kernel used for filtering.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T> Filter<T>(ImageFilter Filter, ParallelOptions Options) where T : unmanaged, IPixel;
 
         #endregion
 
@@ -2556,17 +2574,35 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Convolute
         /// <summary>
-        /// Creates a new filtered <see cref="ImageContext{Pixel}"/>.
+        /// Creates a new convoluted <see cref="ImageContext{Pixel}"/>.
         /// </summary>
         /// <param name="Kernel">The kernel used for convolution.</param>
         public ImageContext<Pixel> Convolute(ConvoluteKernel Kernel);
         /// <summary>
-        /// Creates a new filtered <see cref="ImageContext{Pixel}"/>.
+        /// Creates a new convoluted <see cref="ImageContext{Pixel}"/>.
         /// </summary>
         /// <param name="Kernel">The kernel used for convolution.</param>
         /// <param name="Options">An object that configures the behavior of this operation.<para/>
         /// If it is null, the function will run with default options. </param>
         public ImageContext<Pixel> Convolute(ConvoluteKernel Kernel, ParallelOptions Options);
+
+        #endregion
+
+        #region Filter
+        /// <summary>
+        /// Creates a new filtered <see cref="ImageContext{Pixel}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Filter">The kernel used for filtering.</param>
+        public ImageContext<Pixel> Filter(ImageFilter Filter);
+        /// <summary>
+        /// Creates a new filtered <see cref="ImageContext{Pixel}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Filter">The kernel used for filtering.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<Pixel> Filter(ImageFilter Filter, ParallelOptions Options);
 
         #endregion
 

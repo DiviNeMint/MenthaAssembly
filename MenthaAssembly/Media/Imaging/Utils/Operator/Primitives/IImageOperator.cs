@@ -4,8 +4,6 @@
 
     internal unsafe interface IImageOperator
     {
-        public IImageContext Context { get; }
-
         public IPixel GetPixel(int X, int Y);
         public void SetPixel(int X, int Y, IPixel Pixel);
 
@@ -42,10 +40,10 @@
         public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, byte* pDestR, byte* pDestG, byte* pDestB);
         public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB);
 
-        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDest);
-        public void ScanLineConvolute<T>(int X, int Y, int Length, ConvoluteKernel Kernel, T* pDest) where T : unmanaged, IPixel;
-        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestR, byte* pDestG, byte* pDestB);
-        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB);
+        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, byte* pDest);
+        public void ScanLineFilterTo<T>(int X, int Y, int Length, ImageFilter Filter, T* pDest) where T : unmanaged, IPixel;
+        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, byte* pDestR, byte* pDestG, byte* pDestB);
+        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB);
 
         public void ContourOverlay(ImageContour Contour, IPixel Color, int OffsetX, int OffsetY);
 
@@ -58,8 +56,6 @@
     internal unsafe interface IImageOperator<T> : IImageOperator
         where T : unmanaged, IPixel
     {
-        public new IImageContext<T> Context { get; }
-
         public new T GetPixel(int X, int Y);
         public void SetPixel(int X, int Y, T Pixel);
 
@@ -74,8 +70,6 @@
         where T : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
-        public new IImageContext<T, Struct> Context { get; }
-
         public new T GetPixel(int X, int Y);
         public void SetPixel(int X, int Y, T Pixel);
 
