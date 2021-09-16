@@ -3044,44 +3044,59 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Convolute
         public ImageContext<Pixel> Convolute(ConvoluteKernel Kernel)
-        {
-            ImageContext<Pixel> Result = new ImageContext<Pixel>(this.Width, this.Height);
-
-            for (int y = 0; y < this.Height; y++)
-            {
-                Pixel* pDest = (Pixel*)((byte*)Result.Scan0 + Result.Stride * y);
-                this.Operator.ScanLineConvolute(0, y, this.Width, Kernel, pDest);
-            };
-
-            return Result;
-        }
+            => this.Filter(Kernel);
         public ImageContext<Pixel> Convolute(ConvoluteKernel Kernel, ParallelOptions Options)
-        {
-            ImageContext<Pixel> Result = new ImageContext<Pixel>(this.Width, this.Height);
-
-            Parallel.For(0, this.Height, Options ?? DefaultParallelOptions, y =>
-             {
-                 Pixel* pDest = (Pixel*)((byte*)Result.Scan0 + Result.Stride * y);
-                 this.Operator.ScanLineConvolute(0, y, this.Width, Kernel, pDest);
-             });
-
-            return Result;
-        }
+            => this.Filter(Kernel, Options);
 
         public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel)
             where T : unmanaged, IPixel
+            => this.Filter<T>(Kernel);
+        public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel, ParallelOptions Options)
+            where T : unmanaged, IPixel
+            => this.Filter<T>(Kernel, Options);
+
+        #endregion
+
+        #region Filter
+        public ImageContext<Pixel> Filter(ImageFilter Filter)
+        {
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(this.Width, this.Height);
+
+            for (int y = 0; y < this.Height; y++)
+            {
+                byte* pDest = (byte*)Result.Scan0 + Result.Stride * y;
+                this.Operator.ScanLineFilterTo(0, y, this.Width, Filter, pDest);
+            };
+
+            return Result;
+        }
+        public ImageContext<Pixel> Filter(ImageFilter Filter, ParallelOptions Options)
+        {
+            ImageContext<Pixel> Result = new ImageContext<Pixel>(this.Width, this.Height);
+
+            Parallel.For(0, this.Height, Options ?? DefaultParallelOptions, y =>
+            {
+                byte* pDest = (byte*)Result.Scan0 + Result.Stride * y;
+                this.Operator.ScanLineFilterTo(0, y, this.Width, Filter, pDest);
+            });
+
+            return Result;
+        }
+
+        public ImageContext<T> Filter<T>(ImageFilter Filter)
+            where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
 
             for (int y = 0; y < this.Height; y++)
             {
                 T* pDest = (T*)((byte*)Result.Scan0 + Result.Stride * y);
-                this.Operator.ScanLineConvolute(0, y, this.Width, Kernel, pDest);
+                this.Operator.ScanLineFilterTo(0, y, this.Width, Filter, pDest);
             };
 
             return Result;
         }
-        public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel, ParallelOptions Options)
+        public ImageContext<T> Filter<T>(ImageFilter Filter, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
@@ -3089,7 +3104,7 @@ namespace MenthaAssembly.Media.Imaging
             Parallel.For(0, this.Height, Options ?? DefaultParallelOptions, y =>
             {
                 T* pDest = (T*)((byte*)Result.Scan0 + Result.Stride * y);
-                this.Operator.ScanLineConvolute(0, y, this.Width, Kernel, pDest);
+                this.Operator.ScanLineFilterTo(0, y, this.Width, Filter, pDest);
             });
 
             return Result;

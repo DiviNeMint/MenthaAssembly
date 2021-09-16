@@ -8,7 +8,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where Struct : unmanaged, IPixelIndexed
     {
         public IImageContext<T, Struct> Context { get; }
-        IImageContext IImageOperator.Context => this.Context;
 
         public T GetPixel(int X, int Y)
         {
@@ -1291,20 +1290,17 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDest)
+        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, byte* pDest)
         {
             T* pDestT = (T*)pDest;
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Kernel;
-            int KernelW = Kernel.KernelWidth,
-                KernelH = Kernel.KernelHeight,
+            int KernelW = Filter.KernelWidth,
+                KernelH = Filter.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.KernelSum,
-                KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
-                Index, LTx, XBits, Offset;
+                Index, Tx, LTx, XBits, Offset;
 
             Struct*[] pDatas = new Struct*[KernelH];
 
@@ -1319,7 +1315,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             int IndexLength = pDatas[0]->Length;
 
             List<T> Palette = Context.Palette.Datas;
-            Queue<T[]> PixelBlock = new Queue<T[]>();
+            ImagePatch<T> Patch = new ImagePatch<T>(KernelW, KernelH);
             T[] Pixels = new T[KernelH];
 
             // Init Common Function
@@ -1336,101 +1332,42 @@ namespace MenthaAssembly.Media.Imaging.Utils
             //Init Block
             Index = -KernelHW;
             LTx = int.MaxValue;
-            for (; Index <= KernelHW; Index++)
+            for (; Index < KernelHW; Index++)
             {
-                int Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
                 if (LTx != Tx)
                 {
                     FillPixelsByX(Tx);
                     LTx = Tx;
                 }
-                PixelBlock.Enqueue(Pixels);
+                Patch.Enqueue(Pixels);
             }
 
-            for (int i = 0; i < Length; i++)
+            Tx = X + KernelHW;
+            ImageFilterArgs Arg = new ImageFilterArgs();
+            for (int i = 0; i < Length; i++, Tx++)
             {
-                int A = 0,
-                    R = 0,
-                    G = 0,
-                    B = 0;
+                // Next & Enqueue
+                FillPixelsByX(MathHelper.Clamp(Tx, 0, SourceWidthL));
+                Patch.Enqueue(Pixels);
 
-                // Left Bound and not enqueue.
-                Index = 0;
-                Pixels = PixelBlock.Dequeue();
-                for (int j = 0; j < KernelH; j++)
-                {
-                    int k = Datas[j, Index];
-                    if (k == 0)
-                        continue;
+                // Filter
+                Filter.Filter(Patch.Data0, Arg, out byte A, out byte R, out byte G, out byte B);
 
-                    T Pixel = Pixels[j];
-                    A += Pixel.A * k;
-                    R += Pixel.R * k;
-                    G += Pixel.G * k;
-                    B += Pixel.B * k;
-                }
-
-                for (Index = 1; Index < KernelW - 1; Index++)
-                {
-                    Pixels = PixelBlock.Dequeue();
-                    for (int j = 0; j < KernelH; j++)
-                    {
-                        int k = Datas[j, Index];
-                        if (k == 0)
-                            continue;
-
-                        T Pixel = Pixels[j];
-                        A += Pixel.A * k;
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    PixelBlock.Enqueue(Pixels);
-                }
-
-                // Right Bound and enqueue
-                LTx = MathHelper.Clamp(X + i + KernelHW, 0, SourceWidthL);
-
-                XBits = LTx * Context.BitsPerPixel;
-                Offset = XBits >> 3;
-                XBits %= IndexLength;
-                for (int j = 0; j < KernelH; j++)
-                {
-                    T Pixel = Palette[(*(pDatas[j] + Offset))[XBits]];
-                    Pixels[j] = Pixel;
-
-                    int k = Datas[j, Index];
-                    if (k == 0)
-                        continue;
-
-                    A += Pixel.A * k;
-                    R += Pixel.R * k;
-                    G += Pixel.G * k;
-                    B += Pixel.B * k;
-                }
-
-                PixelBlock.Enqueue(Pixels);
-
-                pDestT++->Override((byte)MathHelper.Clamp((A / KernelSum) + KernelOffset, 0, 255),
-                                   (byte)MathHelper.Clamp((R / KernelSum) + KernelOffset, 0, 255),
-                                   (byte)MathHelper.Clamp((G / KernelSum) + KernelOffset, 0, 255),
-                                   (byte)MathHelper.Clamp((B / KernelSum) + KernelOffset, 0, 255));
+                // Override
+                pDestT++->Override(A, R, G, B);
             }
         }
-        public void ScanLineConvolute<T2>(int X, int Y, int Length, ConvoluteKernel Kernel, T2* pDest) where T2 : unmanaged, IPixel
+        public void ScanLineFilterTo<T2>(int X, int Y, int Length, ImageFilter Filter, T2* pDest) where T2 : unmanaged, IPixel
         {
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Kernel;
-            int KernelW = Kernel.KernelWidth,
-                KernelH = Kernel.KernelHeight,
+            int KernelW = Filter.KernelWidth,
+                KernelH = Filter.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.KernelSum,
-                KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
-                Index, LTx, XBits, Offset;
+                Index, Tx, LTx, XBits, Offset;
 
             Struct*[] pDatas = new Struct*[KernelH];
 
@@ -1444,9 +1381,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             int IndexLength = pDatas[0]->Length;
 
-            T2[] Palette = Context.Palette.Extract<T2>();
-            Queue<T2[]> PixelBlock = new Queue<T2[]>();
-            T2[] Pixels = new T2[KernelH];
+            T2[] Palette = Context.Palette.Extract<T2>(),
+                 Pixels = new T2[KernelH];
+            ImagePatch<T2> Patch = new ImagePatch<T2>(KernelW, KernelH);
 
             // Init Common Function
             void FillPixelsByX(int Xt)
@@ -1462,101 +1399,42 @@ namespace MenthaAssembly.Media.Imaging.Utils
             //Init Block
             Index = -KernelHW;
             LTx = int.MaxValue;
-            for (; Index <= KernelHW; Index++)
+            for (; Index < KernelHW; Index++)
             {
-                int Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
                 if (LTx != Tx)
                 {
                     FillPixelsByX(Tx);
                     LTx = Tx;
                 }
-                PixelBlock.Enqueue(Pixels);
+                Patch.Enqueue(Pixels);
             }
 
-            for (int i = 0; i < Length; i++)
+            Tx = X + KernelHW;
+            ImageFilterArgs Arg = new ImageFilterArgs();
+            for (int i = 0; i < Length; i++, Tx++)
             {
-                int A = 0,
-                    R = 0,
-                    G = 0,
-                    B = 0;
+                // Next & Enqueue
+                FillPixelsByX(MathHelper.Clamp(Tx, 0, SourceWidthL));
+                Patch.Enqueue(Pixels);
 
-                // Left Bound and not enqueue.
-                Index = 0;
-                Pixels = PixelBlock.Dequeue();
-                for (int j = 0; j < KernelH; j++)
-                {
-                    int k = Datas[j, Index];
-                    if (k == 0)
-                        continue;
+                // Filter
+                Filter.Filter(Patch.Data0, Arg, out byte A, out byte R, out byte G, out byte B);
 
-                    T2 Pixel = Pixels[j];
-                    A += Pixel.A * k;
-                    R += Pixel.R * k;
-                    G += Pixel.G * k;
-                    B += Pixel.B * k;
-                }
-
-                for (Index = 1; Index < KernelW - 1; Index++)
-                {
-                    Pixels = PixelBlock.Dequeue();
-                    for (int j = 0; j < KernelH; j++)
-                    {
-                        int k = Datas[j, Index];
-                        if (k == 0)
-                            continue;
-
-                        T2 Pixel = Pixels[j];
-                        A += Pixel.A * k;
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    PixelBlock.Enqueue(Pixels);
-                }
-
-                // Right Bound and enqueue
-                LTx = MathHelper.Clamp(X + i + KernelHW, 0, SourceWidthL);
-
-                XBits = LTx * Context.BitsPerPixel;
-                Offset = XBits >> 3;
-                XBits %= IndexLength;
-                for (int j = 0; j < KernelH; j++)
-                {
-                    T2 Pixel = Palette[(*(pDatas[j] + Offset))[XBits]];
-                    Pixels[j] = Pixel;
-
-                    int k = Datas[j, Index];
-                    if (k == 0)
-                        continue;
-
-                    A += Pixel.A * k;
-                    R += Pixel.R * k;
-                    G += Pixel.G * k;
-                    B += Pixel.B * k;
-                }
-
-                PixelBlock.Enqueue(Pixels);
-
-                pDest++->Override((byte)MathHelper.Clamp((A / KernelSum) + KernelOffset, 0, 255),
-                                  (byte)MathHelper.Clamp((R / KernelSum) + KernelOffset, 0, 255),
-                                  (byte)MathHelper.Clamp((G / KernelSum) + KernelOffset, 0, 255),
-                                  (byte)MathHelper.Clamp((B / KernelSum) + KernelOffset, 0, 255));
+                // Override
+                pDest++->Override(A, R, G, B);
             }
         }
-        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, byte* pDestR, byte* pDestG, byte* pDestB)
         {
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Kernel;
-            int KernelW = Kernel.KernelWidth,
-                KernelH = Kernel.KernelHeight,
+            int KernelW = Filter.KernelWidth,
+                KernelH = Filter.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.KernelSum,
-                KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
-                Index, LTx, XBits, Offset;
+                Index, Tx, LTx, XBits, Offset;
 
             Struct*[] pDatas = new Struct*[KernelH];
 
@@ -1571,7 +1449,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             int IndexLength = pDatas[0]->Length;
 
             List<T> Palette = Context.Palette.Datas;
-            Queue<T[]> PixelBlock = new Queue<T[]>();
+            ImagePatch<T> Patch = new ImagePatch<T>(KernelW, KernelH);
             T[] Pixels = new T[KernelH];
 
             // Init Common Function
@@ -1588,96 +1466,44 @@ namespace MenthaAssembly.Media.Imaging.Utils
             //Init Block
             Index = -KernelHW;
             LTx = int.MaxValue;
-            for (; Index <= KernelHW; Index++)
+            for (; Index < KernelHW; Index++)
             {
-                int Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
                 if (LTx != Tx)
                 {
                     FillPixelsByX(Tx);
                     LTx = Tx;
                 }
-                PixelBlock.Enqueue(Pixels);
+                Patch.Enqueue(Pixels);
             }
 
-            for (int i = 0; i < Length; i++)
+            Tx = X + KernelHW;
+            ImageFilterArgs Arg = new ImageFilterArgs();
+            for (int i = 0; i < Length; i++, Tx++)
             {
-                int R = 0,
-                    G = 0,
-                    B = 0;
+                // Next & Enqueue
+                FillPixelsByX(MathHelper.Clamp(Tx, 0, SourceWidthL));
+                Patch.Enqueue(Pixels);
 
-                // Left Bound and not enqueue.
-                Index = 0;
-                Pixels = PixelBlock.Dequeue();
-                for (int j = 0; j < KernelH; j++)
-                {
-                    int k = Datas[j, Index];
-                    if (k == 0)
-                        continue;
+                // Filter
+                Filter.Filter(Patch.Data0, Arg, out _, out byte R, out byte G, out byte B);
 
-                    T Pixel = Pixels[j];
-                    R += Pixel.R * k;
-                    G += Pixel.G * k;
-                    B += Pixel.B * k;
-                }
-
-                for (Index = 1; Index < KernelW - 1; Index++)
-                {
-                    Pixels = PixelBlock.Dequeue();
-                    for (int j = 0; j < KernelH; j++)
-                    {
-                        int k = Datas[j, Index];
-                        if (k == 0)
-                            continue;
-
-                        T Pixel = Pixels[j];
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    PixelBlock.Enqueue(Pixels);
-                }
-
-                // Right Bound and enqueue
-                LTx = MathHelper.Clamp(X + i + KernelHW, 0, SourceWidthL);
-
-                XBits = LTx * Context.BitsPerPixel;
-                Offset = XBits >> 3;
-                XBits %= IndexLength;
-                for (int j = 0; j < KernelH; j++)
-                {
-                    T Pixel = Palette[(*(pDatas[j] + Offset))[XBits]];
-                    Pixels[j] = Pixel;
-
-                    int k = Datas[j, Index];
-                    if (k == 0)
-                        continue;
-
-                    R += Pixel.R * k;
-                    G += Pixel.G * k;
-                    B += Pixel.B * k;
-                }
-
-                PixelBlock.Enqueue(Pixels);
-
-                *pDestR++ = (byte)MathHelper.Clamp((R / KernelSum) + KernelOffset, 0, 255);
-                *pDestG++ = (byte)MathHelper.Clamp((G / KernelSum) + KernelOffset, 0, 255);
-                *pDestB++ = (byte)MathHelper.Clamp((B / KernelSum) + KernelOffset, 0, 255);
+                // Override
+                *pDestR++ = R;
+                *pDestG++ = G;
+                *pDestB++ = B;
             }
         }
-        public void ScanLineConvolute(int X, int Y, int Length, ConvoluteKernel Kernel, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
+        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, byte* pDestA, byte* pDestR, byte* pDestG, byte* pDestB)
         {
             byte* pScan0 = (byte*)Context.Scan0;
-            int[,] Datas = Kernel.Kernel;
-            int KernelW = Kernel.KernelWidth,
-                KernelH = Kernel.KernelHeight,
+            int KernelW = Filter.KernelWidth,
+                KernelH = Filter.KernelHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
-                KernelSum = Kernel.KernelSum,
-                KernelOffset = Kernel.Offset,
                 SourceWidthL = Context.Width - 1,
                 SourceHeightL = Context.Width - 1,
-                Index, LTx, XBits, Offset;
+                Index, Tx, LTx, XBits, Offset;
 
             Struct*[] pDatas = new Struct*[KernelH];
 
@@ -1692,7 +1518,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             int IndexLength = pDatas[0]->Length;
 
             List<T> Palette = Context.Palette.Datas;
-            Queue<T[]> PixelBlock = new Queue<T[]>();
+            ImagePatch<T> Patch = new ImagePatch<T>(KernelW, KernelH);
             T[] Pixels = new T[KernelH];
 
             // Init Common Function
@@ -1709,86 +1535,33 @@ namespace MenthaAssembly.Media.Imaging.Utils
             //Init Block
             Index = -KernelHW;
             LTx = int.MaxValue;
-            for (; Index <= KernelHW; Index++)
+            for (; Index < KernelHW; Index++)
             {
-                int Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
+                Tx = MathHelper.Clamp(X + Index, 0, SourceWidthL);
                 if (LTx != Tx)
                 {
                     FillPixelsByX(Tx);
                     LTx = Tx;
                 }
-                PixelBlock.Enqueue(Pixels);
+                Patch.Enqueue(Pixels);
             }
 
-            for (int i = 0; i < Length; i++)
+            Tx = X + KernelHW;
+            ImageFilterArgs Arg = new ImageFilterArgs();
+            for (int i = 0; i < Length; i++, Tx++)
             {
-                int A = 0,
-                    R = 0,
-                    G = 0,
-                    B = 0;
+                // Next & Enqueue
+                FillPixelsByX(MathHelper.Clamp(Tx, 0, SourceWidthL));
+                Patch.Enqueue(Pixels);
 
-                // Left Bound and not enqueue.
-                Index = 0;
-                Pixels = PixelBlock.Dequeue();
-                for (int j = 0; j < KernelH; j++)
-                {
-                    int k = Datas[j, Index];
-                    if (k == 0)
-                        continue;
+                // Filter
+                Filter.Filter(Patch.Data0, Arg, out byte A, out byte R, out byte G, out byte B);
 
-                    T Pixel = Pixels[j];
-                    A += Pixel.A * k;
-                    R += Pixel.R * k;
-                    G += Pixel.G * k;
-                    B += Pixel.B * k;
-                }
-
-                for (Index = 1; Index < KernelW - 1; Index++)
-                {
-                    Pixels = PixelBlock.Dequeue();
-                    for (int j = 0; j < KernelH; j++)
-                    {
-                        int k = Datas[j, Index];
-                        if (k == 0)
-                            continue;
-
-                        T Pixel = Pixels[j];
-                        A += Pixel.A * k;
-                        R += Pixel.R * k;
-                        G += Pixel.G * k;
-                        B += Pixel.B * k;
-                    }
-
-                    PixelBlock.Enqueue(Pixels);
-                }
-
-                // Right Bound and enqueue
-                LTx = MathHelper.Clamp(X + i + KernelHW, 0, SourceWidthL);
-
-                XBits = LTx * Context.BitsPerPixel;
-                Offset = XBits >> 3;
-                XBits %= IndexLength;
-                for (int j = 0; j < KernelH; j++)
-                {
-                    T Pixel = Palette[(*(pDatas[j] + Offset))[XBits]];
-                    Pixels[j] = Pixel;
-
-                    int k = Datas[j, Index];
-                    if (k == 0)
-                        continue;
-
-                    A += Pixel.A * k;
-                    R += Pixel.R * k;
-                    G += Pixel.G * k;
-                    B += Pixel.B * k;
-                }
-
-                PixelBlock.Enqueue(Pixels);
-
-                *pDestA++ = (byte)MathHelper.Clamp((A / KernelSum) + KernelOffset, 0, 255);
-                *pDestR++ = (byte)MathHelper.Clamp((R / KernelSum) + KernelOffset, 0, 255);
-                *pDestG++ = (byte)MathHelper.Clamp((G / KernelSum) + KernelOffset, 0, 255);
-                *pDestB++ = (byte)MathHelper.Clamp((B / KernelSum) + KernelOffset, 0, 255);
+                // Override
+                *pDestA++ = A;
+                *pDestR++ = R;
+                *pDestG++ = G;
+                *pDestB++ = B;
             }
         }
 
