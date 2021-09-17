@@ -1097,7 +1097,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Patch.Enqueue(PixelsA, PixelsR, PixelsG, PixelsB);
 
                 // Filter
-                Filter.Filter(Patch.Data0, Arg, out byte A, out byte R, out byte G, out byte B);
+                Filter.Filter4(Patch, Arg, out byte A, out byte R, out byte G, out byte B);
 
                 // Override
                 pDest++->Override(A, R, G, B);
@@ -1179,7 +1179,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Patch.Enqueue(PixelsR, PixelsG, PixelsB);
 
                 // Filter
-                Filter.Filter(Patch.Data0, Arg, out _, out byte R, out byte G, out byte B);
+                Filter.Filter4(Patch, Arg, out _, out byte R, out byte G, out byte B);
 
                 // Override
                 *pDestR++ = R;
@@ -1269,7 +1269,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Patch.Enqueue(PixelsA, PixelsR, PixelsG, PixelsB);
 
                 // Filter
-                Filter.Filter(Patch.Data0, Arg, out byte A, out byte R, out byte G, out byte B);
+                Filter.Filter4(Patch, Arg, out byte A, out byte R, out byte G, out byte B);
 
                 // Override
                 *pDestA++ = A;

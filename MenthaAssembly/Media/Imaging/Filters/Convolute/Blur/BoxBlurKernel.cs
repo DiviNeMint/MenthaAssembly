@@ -31,6 +31,8 @@ namespace MenthaAssembly.Media.Imaging
             KernelWidth = L;
             KernelHeight = L;
             KernelSum = L * L;
+            HalfWidth = Level;
+            HalfHeight = Level;
         }
 
         public override void Filter<T>(T[][] Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
@@ -98,7 +100,7 @@ namespace MenthaAssembly.Media.Imaging
                 Tb += Lb;
             }
 
-            A = Patch[KernelWidth >> 1][KernelHeight >> 1].A;
+            A = Patch[HalfWidth][HalfHeight].A;
             R = (byte)MathHelper.Clamp(Tr / KernelSum, 0, 255);
             G = (byte)MathHelper.Clamp(Tg / KernelSum, 0, 255);
             B = (byte)MathHelper.Clamp(Tb / KernelSum, 0, 255);
@@ -250,7 +252,7 @@ namespace MenthaAssembly.Media.Imaging
                 Tb += Lb;
             }
 
-            A = Patch.DataA[KernelWidth >> 1][KernelHeight >> 1];
+            A = Patch.DataA[HalfWidth][HalfHeight];
             R = (byte)MathHelper.Clamp(Tr / KernelSum, 0, 255);
             G = (byte)MathHelper.Clamp(Tg / KernelSum, 0, 255);
             B = (byte)MathHelper.Clamp(Tb / KernelSum, 0, 255);
