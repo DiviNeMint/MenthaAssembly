@@ -37,6 +37,8 @@ namespace MenthaAssembly.Media.Imaging
             KernelHeight = L;
             Temp = 1 << (Level << 1);
             KernelSum = Temp * Temp;
+            HalfWidth = Level;
+            HalfHeight = Level;
         }
 
         private int[] GetPascalRow(int Row)
@@ -51,5 +53,6 @@ namespace MenthaAssembly.Media.Imaging
 
             return Data;
         }
+
     }
 }

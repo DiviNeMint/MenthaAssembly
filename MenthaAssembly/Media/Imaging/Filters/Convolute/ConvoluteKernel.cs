@@ -10,7 +10,7 @@ namespace MenthaAssembly.Media.Imaging
         /// {-1, 8,-1}<para/>
         /// {-1,-1,-1}
         /// </summary>
-        public static ConvoluteKernel EdgeDetection
+        public static ConvoluteKernel Edge_Detection
            => new ConvoluteKernel(new int[,] {{-1,-1,-1},
                                               {-1, 8,-1},
                                               {-1,-1,-1}});
@@ -20,47 +20,35 @@ namespace MenthaAssembly.Media.Imaging
         /// { 0, 0, 0}<para/>
         /// {-1,-2,-1}
         /// </summary>
-        public static ConvoluteKernel EdgeDetection_Sobel_Top
-           => new ConvoluteKernel(new int[,] {{ 1, 2, 1},
-                                              { 0, 0, 0},
-                                              {-1,-2,-1}});
+        public static SobelEdgeKernel Edge_Sobel_Top { get; } = new SobelEdgeKernel(1, Sides.Top);
 
         /// <summary>
         /// { 1, 0,-1}<para/>
         /// { 2, 0,-2}<para/>
         /// { 1, 0,-1}
         /// </summary>
-        public static ConvoluteKernel EdgeDetection_Sobel_Left
-           => new ConvoluteKernel(new int[,] {{ 1, 0,-1},
-                                              { 2, 0,-2},
-                                              { 1, 0,-1}});
+        public static SobelEdgeKernel Edge_Sobel_Left { get; } = new SobelEdgeKernel(1, Sides.Left);
 
         /// <summary>
         /// {-1,-2,-1}<para/>
         /// { 0, 0, 0}<para/>
         /// { 1, 2, 1}
         /// </summary>
-        public static ConvoluteKernel EdgeDetection_Sobel_Bottom
-           => new ConvoluteKernel(new int[,] {{-1,-2,-1},
-                                              { 0, 0, 0},
-                                              { 1, 2, 1}});
+        public static SobelEdgeKernel Edge_Sobel_Bottom { get; } = new SobelEdgeKernel(1, Sides.Bottom);
 
         /// <summary>
         /// {-1, 0, 1}<para/>
         /// {-2, 0, 2}<para/>
         /// {-1, 0, 1}
         /// </summary>
-        public static ConvoluteKernel EdgeDetection_Sobel_Right
-           => new ConvoluteKernel(new int[,] {{-1, 0, 1},
-                                              {-2, 0, 2},
-                                              {-1, 0, 1}});
+        public static SobelEdgeKernel Edge_Sobel_Right { get; } = new SobelEdgeKernel(1, Sides.Right);
 
         /// <summary>
         /// {0,-1,0}<para/>
         /// {-1, 4,-1}<para/>
         /// {0,-1,0}
         /// </summary>
-        public static ConvoluteKernel EdgeDetection_Laplacian3x3
+        public static ConvoluteKernel Edge_Laplacian3x3
              => new ConvoluteKernel(new int[,] {{ 0,-1, 0},
                                                 {-1, 4,-1},
                                                 { 0,-1, 0}});
@@ -72,7 +60,7 @@ namespace MenthaAssembly.Media.Imaging
         /// { 0,-1,-2,-1, 0}<para/>
         /// { 0, 0,-1, 0, 0}
         /// </summary>
-        public static ConvoluteKernel EdgeDetection_Laplacian5x5
+        public static ConvoluteKernel Edge_Laplacian5x5
              => new ConvoluteKernel(new int[,] {{ 0, 0,-1, 0, 0},
                                                 { 0,-1,-2,-1, 0},
                                                 {-1,-2,16,-2,-1},
@@ -169,6 +157,8 @@ namespace MenthaAssembly.Media.Imaging
 
         public virtual int Offset { get; }
 
+        protected int HalfWidth, HalfHeight;
+
         protected ConvoluteKernel() { }
         public ConvoluteKernel(int[,] Datas, int Offset)
         {
@@ -191,7 +181,8 @@ namespace MenthaAssembly.Media.Imaging
             KernelHeight = H;
             KernelSum = Math.Max(Sum, 1);
             this.Offset = Offset;
-
+            HalfWidth = W >> 1;
+            HalfHeight = H >> 1;
         }
         public ConvoluteKernel(int[,] Datas) : this(Datas, 0)
         {
@@ -221,7 +212,7 @@ namespace MenthaAssembly.Media.Imaging
                 }
             }
 
-            A = Patch[KernelWidth >> 1][KernelHeight >> 1].A;
+            A = Patch[HalfWidth][HalfHeight].A;
             R = (byte)MathHelper.Clamp(Tr / KernelSum + Offset, 0, 255);
             G = (byte)MathHelper.Clamp(Tg / KernelSum + Offset, 0, 255);
             B = (byte)MathHelper.Clamp(Tb / KernelSum + Offset, 0, 255);
@@ -279,7 +270,7 @@ namespace MenthaAssembly.Media.Imaging
                 }
             }
 
-            A = Patch.DataA[KernelWidth >> 1][KernelHeight >> 1];
+            A = Patch.DataA[HalfWidth][HalfHeight];
             R = (byte)MathHelper.Clamp(Tr / KernelSum + Offset, 0, 255);
             G = (byte)MathHelper.Clamp(Tg / KernelSum + Offset, 0, 255);
             B = (byte)MathHelper.Clamp(Tb / KernelSum + Offset, 0, 255);
