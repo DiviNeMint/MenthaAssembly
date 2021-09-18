@@ -4,14 +4,10 @@ namespace MenthaAssembly.Media.Imaging
 {
     public class SobelEdgeKernel : ConvoluteKernel
     {
-        public override int[,] Kernel { get; }
-
-        public override int KernelWidth { get; }
-
-        public override int KernelHeight { get; }
+        public override float[,] Matrix { get; }
 
         /// <summary>
-        /// Initializes a kernel of size (n * n) where n =2 * <paramref name="Level"/> + 1.
+        /// Initializes a kernel of size(n* n) where n = 2 * < paramref name="Level"/> + 1.
         /// </summary>
         public SobelEdgeKernel(int Level, Sides Side)
         {
@@ -20,10 +16,10 @@ namespace MenthaAssembly.Media.Imaging
 
             int L = (Level << 1) + 1,
                 k = 1,
-                Tx, T;
+                Tx;
 
             for (int i = 2; i <= Level; i++)
-                k = k * i / GCD(k, i);
+                k = k * i / MathHelper.GCD(k, i);
 
             k <<= 1;
 
@@ -31,15 +27,12 @@ namespace MenthaAssembly.Media.Imaging
             {
                 Tx = i * i;
                 for (int j = 1; j < i; j++)
-                {
-                    T = j * j + Tx;
-                    k = k * T / GCD(k, T);
-                }
+                    k = MathHelper.LCM(k, j * j + Tx);
             }
 
-            int[,] Kernel = new int[L, L];
+            float[,] Kernel = new float[L, L];
 
-            Action<int, int, int> AddValue = null;
+            Action<int, int, float> AddValue = null;
             switch (Side)
             {
                 case Sides.Left:
@@ -68,21 +61,19 @@ namespace MenthaAssembly.Media.Imaging
                 }
             }
 
-            this.Kernel = Kernel;
-            KernelWidth = L;
-            KernelHeight = L;
+            Matrix = Kernel;
+            base.PatchWidth = L;
+            base.PatchHeight = L;
             HalfWidth = Level;
             HalfHeight = Level;
         }
 
-        private static int GCD(int a, int b)
-        {
-            if (a < b)
-                MathHelper.Swap(ref a, ref b);
-
-            int t = a % b;
-            return t > 0 ? GCD(b, t) : b;
-        }
+        protected override byte CalculateR(float FactorR)
+            => (byte)MathHelper.Clamp(FactorR, 0d, 255d);
+        protected override byte CalculateG(float FactorG)
+            => (byte)MathHelper.Clamp(FactorG, 0d, 255d);
+        protected override byte CalculateB(float FactorB)
+            => (byte)MathHelper.Clamp(FactorB, 0d, 255d);
 
     }
 }

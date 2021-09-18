@@ -11,9 +11,9 @@ namespace MenthaAssembly.Media.Imaging
         /// {-1,-1,-1}
         /// </summary>
         public static ConvoluteKernel Edge_Detection
-           => new ConvoluteKernel(new int[,] {{-1,-1,-1},
-                                              {-1, 8,-1},
-                                              {-1,-1,-1}});
+            => new ConvoluteKernel(new float[,] {{-1,-1,-1},
+                                                 {-1, 8,-1},
+                                                 {-1,-1,-1}});
 
         /// <summary>
         /// { 1, 2, 1}<para/>
@@ -48,24 +48,7 @@ namespace MenthaAssembly.Media.Imaging
         /// {-1, 4,-1}<para/>
         /// {0,-1,0}
         /// </summary>
-        public static ConvoluteKernel Edge_Laplacian3x3
-             => new ConvoluteKernel(new int[,] {{ 0,-1, 0},
-                                                {-1, 4,-1},
-                                                { 0,-1, 0}});
-
-        /// <summary>
-        /// { 0, 0,-1, 0, 0}<para/>
-        /// { 0,-1,-2,-1, 0}<para/>
-        /// {-1,-2,16,-2,-1}<para/>
-        /// { 0,-1,-2,-1, 0}<para/>
-        /// { 0, 0,-1, 0, 0}
-        /// </summary>
-        public static ConvoluteKernel Edge_Laplacian5x5
-             => new ConvoluteKernel(new int[,] {{ 0, 0,-1, 0, 0},
-                                                { 0,-1,-2,-1, 0},
-                                                {-1,-2,16,-2,-1},
-                                                { 0,-1,-2,-1, 0},
-                                                { 0, 0,-1, 0, 0}});
+        public static LaplacianEdgeKernel Edge_Laplacian { get; } = new LaplacianEdgeKernel(1);
 
         #endregion
 
@@ -93,9 +76,9 @@ namespace MenthaAssembly.Media.Imaging
         /// { 0,-1, 0}
         /// </summary>
         public static ConvoluteKernel Sharpen_3x3_1
-             => new ConvoluteKernel(new int[,] {{ 0,-1, 0},
-                                                {-1, 5,-1},
-                                                { 0,-1, 0}});
+             => new ConvoluteKernel(new float[,] {{ 0,-1, 0},
+                                                  {-1, 5,-1},
+                                                  { 0,-1, 0}});
 
         /// <summary>
         /// {-1,-1,-1}<para/>
@@ -103,9 +86,9 @@ namespace MenthaAssembly.Media.Imaging
         /// {-1,-1,-1}
         /// </summary>
         public static ConvoluteKernel Sharpen_3x3_2
-             => new ConvoluteKernel(new int[,] {{-1,-1,-1},
-                                                {-1, 9,-1},
-                                                {-1,-1,-1}});
+             => new ConvoluteKernel(new float[,] {{-1,-1,-1},
+                                                  {-1, 9,-1},
+                                                  {-1,-1,-1}});
 
         /// <summary>
         /// {1, 1, 1}<para/>
@@ -113,9 +96,9 @@ namespace MenthaAssembly.Media.Imaging
         /// {1, 1, 1}
         /// </summary>
         public static ConvoluteKernel Sharpen_3x3_3
-             => new ConvoluteKernel(new int[,] {{1, 1, 1},
-                                                {1,-7, 1},
-                                                {1, 1, 1}});
+             => new ConvoluteKernel(new float[,] {{1, 1, 1},
+                                                  {1,-7, 1},
+                                                  {1, 1, 1}});
 
         /// <summary>
         /// {-1,-1,-1,-1,-1}<para/>
@@ -125,11 +108,11 @@ namespace MenthaAssembly.Media.Imaging
         /// {-1,-1,-1,-1,-1}
         /// </summary>
         public static ConvoluteKernel Sharpen_5x5
-             => new ConvoluteKernel(new int[,] {{-1,-1,-1,-1,-1},
-                                                {-1, 2, 2, 2,-1},
-                                                {-1, 2, 8, 2,-1},
-                                                {-1, 2, 2, 2,-1},
-                                                {-1,-1,-1,-1,-1}});
+             => new ConvoluteKernel(new float[,] {{-1,-1,-1,-1,-1},
+                                                  {-1, 2, 2, 2,-1},
+                                                  {-1, 2, 8, 2,-1},
+                                                  {-1, 2, 2, 2,-1},
+                                                  {-1,-1,-1,-1,-1}});
 
         #endregion
 
@@ -140,27 +123,35 @@ namespace MenthaAssembly.Media.Imaging
         /// { 0, 1, 2}
         /// </summary>
         public static ConvoluteKernel Emboss
-             => new ConvoluteKernel(new int[,] {{-2,-1, 0},
-                                                {-1, 1, 1},
-                                                { 0, 1, 2}});
+             => new ConvoluteKernel(new float[,] {{-2,-1, 0},
+                                                  {-1, 1, 1},
+                                                  { 0, 1, 2}});
 
 
         #endregion
 
-        public virtual int[,] Kernel { get; }
+        public virtual float[,] Matrix { get; }
 
-        public override int KernelWidth { get; }
+        public int Width => base.PatchWidth;
 
-        public override int KernelHeight { get; }
+        public int Height => base.PatchHeight;
 
-        public virtual int KernelSum { get; }
-
-        public virtual int Offset { get; }
-
+        protected float KernelSum;
         protected int HalfWidth, HalfHeight;
 
-        protected ConvoluteKernel() { }
-        public ConvoluteKernel(int[,] Datas, int Offset)
+        internal ConvoluteKernel() { }
+        protected ConvoluteKernel(int Width, int Height)
+        {
+            if ((Width & 1) == 0)
+                throw new InvalidOperationException("Kernel width must be odd!");
+
+            if ((Height & 1) == 0)
+                throw new InvalidOperationException("Kernel height must be odd!");
+
+            base.PatchWidth = Width;
+            base.PatchHeight = Height;
+        }
+        public ConvoluteKernel(float[,] Datas)
         {
             int W = Datas.GetUpperBound(1) + 1,
                 H = Datas.GetUpperBound(0) + 1;
@@ -171,36 +162,31 @@ namespace MenthaAssembly.Media.Imaging
             if ((H & 1) == 0)
                 throw new InvalidOperationException("Kernel height must be odd!");
 
-            int Sum = 0;
-            for (int j = 0; j < KernelHeight; j++)
-                for (int i = 0; i < KernelWidth; i++)
+            float Sum = 0;
+            for (int j = 0; j < Height; j++)
+                for (int i = 0; i < Width; i++)
                     Sum += Datas[j, i];
 
-            Kernel = Datas;
-            KernelWidth = W;
-            KernelHeight = H;
-            KernelSum = Math.Max(Sum, 1);
-            this.Offset = Offset;
+            Matrix = Datas;
+            base.PatchWidth = W;
+            base.PatchHeight = H;
+            KernelSum = Sum == 0d ? 1 : Sum;
             HalfWidth = W >> 1;
             HalfHeight = H >> 1;
-        }
-        public ConvoluteKernel(int[,] Datas) : this(Datas, 0)
-        {
-
         }
 
         public override void Filter<T>(T[][] Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
         {
-            int Tr = 0,
-                Tg = 0,
-                Tb = 0;
+            float Tr = 0,
+                   Tg = 0,
+                   Tb = 0;
             T[] Data;
-            for (int i = 0; i < KernelWidth; i++)
+            for (int i = 0; i < Width; i++)
             {
                 Data = Patch[i];
-                for (int j = 0; j < KernelHeight; j++)
+                for (int j = 0; j < Height; j++)
                 {
-                    int k = Kernel[j, i];
+                    float k = Matrix[j, i];
                     if (k == 0)
                         continue;
 
@@ -213,25 +199,25 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             A = Patch[HalfWidth][HalfHeight].A;
-            R = (byte)MathHelper.Clamp(Tr / KernelSum + Offset, 0, 255);
-            G = (byte)MathHelper.Clamp(Tg / KernelSum + Offset, 0, 255);
-            B = (byte)MathHelper.Clamp(Tb / KernelSum + Offset, 0, 255);
+            R = CalculateR(Tr);
+            G = CalculateG(Tg);
+            B = CalculateB(Tb);
         }
         public override void Filter3<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
         {
-            int Tr = 0,
-                Tg = 0,
-                Tb = 0;
+            float Tr = 0,
+                   Tg = 0,
+                   Tb = 0;
 
             byte[] DataR, DataG, DataB;
-            for (int i = 0; i < KernelWidth; i++)
+            for (int i = 0; i < Width; i++)
             {
                 DataR = Patch.DataR[i];
                 DataG = Patch.DataG[i];
                 DataB = Patch.DataB[i];
-                for (int j = 0; j < KernelHeight; j++)
+                for (int j = 0; j < Height; j++)
                 {
-                    int k = Kernel[j, i];
+                    float k = Matrix[j, i];
                     if (k == 0)
                         continue;
 
@@ -242,26 +228,26 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             A = byte.MaxValue;
-            R = (byte)MathHelper.Clamp(Tr / KernelSum + Offset, 0, 255);
-            G = (byte)MathHelper.Clamp(Tg / KernelSum + Offset, 0, 255);
-            B = (byte)MathHelper.Clamp(Tb / KernelSum + Offset, 0, 255);
+            R = CalculateR(Tr);
+            G = CalculateG(Tg);
+            B = CalculateB(Tb);
         }
         public override void Filter4<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
         {
-            int Tr = 0,
-                Tg = 0,
-                Tb = 0;
+            float Tr = 0,
+                   Tg = 0,
+                   Tb = 0;
 
             byte[] DataR, DataG, DataB;
-            for (int i = 0; i < KernelWidth; i++)
+            for (int i = 0; i < Width; i++)
             {
                 DataR = Patch.DataR[i];
                 DataG = Patch.DataG[i];
                 DataB = Patch.DataB[i];
-                for (int j = 0; j < KernelHeight; j++)
+                for (int j = 0; j < Height; j++)
                 {
-                    int k = Kernel[j, i];
-                    if (k == 0)
+                    float k = Matrix[j, i];
+                    if (k == 0d)
                         continue;
 
                     Tr += DataR[j] * k;
@@ -271,10 +257,17 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             A = Patch.DataA[HalfWidth][HalfHeight];
-            R = (byte)MathHelper.Clamp(Tr / KernelSum + Offset, 0, 255);
-            G = (byte)MathHelper.Clamp(Tg / KernelSum + Offset, 0, 255);
-            B = (byte)MathHelper.Clamp(Tb / KernelSum + Offset, 0, 255);
+            R = CalculateR(Tr);
+            G = CalculateG(Tg);
+            B = CalculateB(Tb);
         }
+
+        protected virtual byte CalculateR(float FactorR)
+            => (byte)MathHelper.Clamp(FactorR / KernelSum, 0d, 255d);
+        protected virtual byte CalculateG(float FactorG)
+            => (byte)MathHelper.Clamp(FactorG / KernelSum, 0d, 255d);
+        protected virtual byte CalculateB(float FactorB)
+            => (byte)MathHelper.Clamp(FactorB / KernelSum, 0d, 255d);
 
     }
 }

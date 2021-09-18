@@ -2,9 +2,19 @@
 {
     public abstract class ImageFilter
     {
-        public abstract int KernelWidth { get; }
+        internal int PatchWidth { set; get; }
 
-        public abstract int KernelHeight { get; }
+        internal int PatchHeight { set; get; }
+
+        internal ImageFilter()
+        {
+
+        }
+        protected ImageFilter(int PatchWidth, int PatchHeight)
+        {
+            this.PatchHeight = PatchHeight;
+            this.PatchWidth = PatchWidth;
+        }
 
         public abstract void Filter<T>(T[][] Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
             where T : unmanaged, IPixel;

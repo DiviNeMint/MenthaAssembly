@@ -4,16 +4,10 @@ namespace MenthaAssembly.Media.Imaging
 {
     public class BoxBlurKernel : ConvoluteKernel
     {
-        public override int[,] Kernel { get; }
-
-        public override int KernelWidth { get; }
-
-        public override int KernelHeight { get; }
-
-        public override int KernelSum { get; }
+        public override float[,] Matrix { get; }
 
         /// <summary>
-        /// Initializes a kernel of size (n * n) where n =2 * <paramref name="Level"/> + 1.
+        /// Initializes a kernel of size (n * n) where n = 2 * <paramref name="Level"/> + 1.
         /// </summary>
         public BoxBlurKernel(int Level)
         {
@@ -22,14 +16,14 @@ namespace MenthaAssembly.Media.Imaging
 
             int L = (Level << 1) + 1;
 
-            int[,] Kernel = new int[L, L];
+            float[,] Kernel = new float[L, L];
             for (int i = 0; i < L; i++)
                 for (int j = 0; j < L; j++)
-                    Kernel[j, i] = 1;
+                    Kernel[j, i] = 1f;
 
-            this.Kernel = Kernel;
-            KernelWidth = L;
-            KernelHeight = L;
+            Matrix = Kernel;
+            base.PatchWidth = L;
+            base.PatchHeight = L;
             KernelSum = L * L;
             HalfWidth = Level;
             HalfHeight = Level;
@@ -37,8 +31,8 @@ namespace MenthaAssembly.Media.Imaging
 
         public override void Filter<T>(T[][] Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
         {
-            int Tr, Tg, Tb,
-                Lr, Lg, Lb;
+            float Tr, Tg, Tb,
+                  Lr, Lg, Lb;
 
             T[] Data;
 
@@ -46,7 +40,7 @@ namespace MenthaAssembly.Media.Imaging
             Lr = Lg = Lb = 0;
 
             Data = Patch[0];
-            for (int j = 0; j < KernelHeight; j++)
+            for (int j = 0; j < Height; j++)
             {
                 Lr += Data[j].R;
                 Lg += Data[j].G;
@@ -60,9 +54,9 @@ namespace MenthaAssembly.Media.Imaging
                 Tg = Args.TokenG;
                 Tb = Args.TokenB;
 
-                int Index = KernelWidth - 1;
+                int Index = Width - 1;
                 Data = Patch[Index];
-                for (int j = 0; j < KernelHeight; j++)
+                for (int j = 0; j < Height; j++)
                 {
                     Tr += Data[j].R;
                     Tg += Data[j].G;
@@ -77,10 +71,10 @@ namespace MenthaAssembly.Media.Imaging
             else
             {
                 Tr = Tg = Tb = 0;
-                for (int i = 1; i < KernelWidth; i++)
+                for (int i = 1; i < Width; i++)
                 {
                     Data = Patch[i];
-                    for (int j = 0; j < KernelHeight; j++)
+                    for (int j = 0; j < Height; j++)
                     {
                         Tr += Data[j].R;
                         Tg += Data[j].G;
@@ -101,14 +95,14 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             A = Patch[HalfWidth][HalfHeight].A;
-            R = (byte)MathHelper.Clamp(Tr / KernelSum, 0, 255);
-            G = (byte)MathHelper.Clamp(Tg / KernelSum, 0, 255);
-            B = (byte)MathHelper.Clamp(Tb / KernelSum, 0, 255);
+            R = (byte)(Tr / KernelSum);
+            G = (byte)(Tg / KernelSum);
+            B = (byte)(Tb / KernelSum);
         }
         public override void Filter3<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
         {
-            int Tr, Tg, Tb,
-                Lr, Lg, Lb;
+            float Tr, Tg, Tb,
+                  Lr, Lg, Lb;
 
             byte[] DataR, DataG, DataB;
 
@@ -118,7 +112,7 @@ namespace MenthaAssembly.Media.Imaging
             DataR = Patch.DataR[0];
             DataG = Patch.DataG[0];
             DataB = Patch.DataB[0];
-            for (int j = 0; j < KernelHeight; j++)
+            for (int j = 0; j < Height; j++)
             {
                 Lr += DataR[j];
                 Lg += DataG[j];
@@ -132,11 +126,11 @@ namespace MenthaAssembly.Media.Imaging
                 Tg = Args.TokenG;
                 Tb = Args.TokenB;
 
-                int Index = KernelWidth - 1;
+                int Index = Width - 1;
                 DataR = Patch.DataR[Index];
                 DataG = Patch.DataG[Index];
                 DataB = Patch.DataB[Index];
-                for (int j = 0; j < KernelHeight; j++)
+                for (int j = 0; j < Height; j++)
                 {
                     Tr += DataR[j];
                     Tg += DataG[j];
@@ -151,12 +145,12 @@ namespace MenthaAssembly.Media.Imaging
             else
             {
                 Tr = Tg = Tb = 0;
-                for (int i = 1; i < KernelWidth; i++)
+                for (int i = 1; i < Width; i++)
                 {
                     DataR = Patch.DataR[i];
                     DataG = Patch.DataG[i];
                     DataB = Patch.DataB[i];
-                    for (int j = 0; j < KernelHeight; j++)
+                    for (int j = 0; j < Height; j++)
                     {
                         Tr += DataR[j];
                         Tg += DataG[j];
@@ -177,14 +171,14 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             A = byte.MaxValue;
-            R = (byte)MathHelper.Clamp(Tr / KernelSum, 0, 255);
-            G = (byte)MathHelper.Clamp(Tg / KernelSum, 0, 255);
-            B = (byte)MathHelper.Clamp(Tb / KernelSum, 0, 255);
+            R = (byte)(Tr / KernelSum);
+            G = (byte)(Tg / KernelSum);
+            B = (byte)(Tb / KernelSum);
         }
         public override void Filter4<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
         {
-            int Tr, Tg, Tb,
-                Lr, Lg, Lb;
+            float Tr, Tg, Tb,
+                  Lr, Lg, Lb;
 
             byte[] DataR, DataG, DataB;
 
@@ -194,7 +188,7 @@ namespace MenthaAssembly.Media.Imaging
             DataR = Patch.DataR[0];
             DataG = Patch.DataG[0];
             DataB = Patch.DataB[0];
-            for (int j = 0; j < KernelHeight; j++)
+            for (int j = 0; j < Height; j++)
             {
                 Lr += DataR[j];
                 Lg += DataG[j];
@@ -208,11 +202,11 @@ namespace MenthaAssembly.Media.Imaging
                 Tg = Args.TokenG;
                 Tb = Args.TokenB;
 
-                int Index = KernelWidth - 1;
+                int Index = Width - 1;
                 DataR = Patch.DataR[Index];
                 DataG = Patch.DataG[Index];
                 DataB = Patch.DataB[Index];
-                for (int j = 0; j < KernelHeight; j++)
+                for (int j = 0; j < Height; j++)
                 {
                     Tr += DataR[j];
                     Tg += DataG[j];
@@ -227,12 +221,12 @@ namespace MenthaAssembly.Media.Imaging
             else
             {
                 Tr = Tg = Tb = 0;
-                for (int i = 1; i < KernelWidth; i++)
+                for (int i = 1; i < Width; i++)
                 {
                     DataR = Patch.DataR[i];
                     DataG = Patch.DataG[i];
                     DataB = Patch.DataB[i];
-                    for (int j = 0; j < KernelHeight; j++)
+                    for (int j = 0; j < Height; j++)
                     {
                         Tr += DataR[j];
                         Tg += DataG[j];
@@ -253,9 +247,9 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             A = Patch.DataA[HalfWidth][HalfHeight];
-            R = (byte)MathHelper.Clamp(Tr / KernelSum, 0, 255);
-            G = (byte)MathHelper.Clamp(Tg / KernelSum, 0, 255);
-            B = (byte)MathHelper.Clamp(Tb / KernelSum, 0, 255);
+            R = (byte)(Tr / KernelSum);
+            G = (byte)(Tg / KernelSum);
+            B = (byte)(Tb / KernelSum);
         }
 
     }

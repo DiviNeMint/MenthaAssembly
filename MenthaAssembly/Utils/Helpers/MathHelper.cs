@@ -100,6 +100,67 @@ namespace MenthaAssembly
             return Theta;
         }
 
+        /// <summary>
+        /// C(n,k)
+        /// </summary>
+        /// <returns>n! / k! * (n - k)!</returns>
+        public static long Combination(int n, int k)
+        {
+            if (k > (n >> 1))
+                k = n - k;
+
+            if (k == 0)
+                return 1;
+
+            if (k == 1)
+                return n;
+
+            long t = 1;
+            for (int i = 2; i <= k; i++)
+                t *= i;
+
+            long s = n--;
+            for (int i = 1; i < k; i++, n--)
+                s *= n;
+
+            return s / t;
+        }
+
+        /// <summary>
+        /// P(n,k)
+        /// </summary>
+        /// <returns>n! / (n - k)!</returns>
+        public static int Permutation(int n, int k)
+        {
+            int s = n--;
+            for (int i = 1; i < k; i++, n--)
+                s *= n;
+
+            return s;
+        }
+
+        /// <summary>
+        /// Greatest Common Divisor
+        /// </summary>
+        public static int GCD(int a, int b)
+        {
+            int t;
+            if (a < b)
+            {
+                t = b % a;
+                return t > 0 ? GCD(a, t) : a;
+            }
+
+            t = a % b;
+            return t > 0 ? GCD(b, t) : b;
+        }
+
+        /// <summary>
+        /// Least Common Multiple
+        /// </summary>
+        public static int LCM(int a, int b)
+            => a * b / GCD(a, b);
+
         public static int Abs(this int This)
         {
             if (This >= 0)

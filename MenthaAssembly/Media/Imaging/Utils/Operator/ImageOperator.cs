@@ -821,8 +821,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             byte* pScan0 = (byte*)Context.Scan0;
             long SourceStride = Context.Stride;
-            int KernelW = Filter.KernelWidth,
-                KernelH = Filter.KernelHeight,
+            int KernelW = Filter.PatchWidth,
+                KernelH = Filter.PatchHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
                 SourceWidthL = Context.Width - 1,
@@ -884,8 +884,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             byte* pScan0 = (byte*)Context.Scan0;
             long SourceStride = Context.Stride;
-            int KernelW = Filter.KernelWidth,
-                KernelH = Filter.KernelHeight,
+            int KernelW = Filter.PatchWidth,
+                KernelH = Filter.PatchHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
                 SourceWidthL = Context.Width - 1,
@@ -949,8 +949,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             byte* pScan0 = (byte*)Context.Scan0;
             long SourceStride = Context.Stride;
-            int KernelW = Filter.KernelWidth,
-                KernelH = Filter.KernelHeight,
+            int KernelW = Filter.PatchWidth,
+                KernelH = Filter.PatchHeight,
                 KernelHW = KernelW >> 1,
                 KernelHH = KernelH >> 1,
                 SourceWidthL = Context.Width - 1,
