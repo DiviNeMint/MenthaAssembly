@@ -774,10 +774,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// <param name="MinY">The top of the specified rectangle to crop.</param>
         /// <param name="MaxX">The right of the specified rectangle to crop.</param>
         /// <param name="MaxY">The bottom of the specified rectangle to crop.</param>
-        public static IList<int> CropPolygon(IList<int> Polygon, int MinX, int MinY, int MaxX, int MaxY)
+        public static int[] CropPolygon(int[] Polygon, int MinX, int MinY, int MaxX, int MaxY)
         {
-            if (Polygon.Count < 6)
-                throw new ArgumentException($"The polygons passed in must have at least 3 points: subject={Polygon.Count >> 1}");
+            if (Polygon.Length < 6)
+                throw new ArgumentException($"The polygons passed in must have at least 3 points: subject={Polygon.Length >> 1}");
 
             List<int> Output = Polygon.ToList(),
                       Input;
@@ -989,7 +989,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
 
-            return Output;
+            return Output.ToArray();
         }
         /// <summary>
         /// Crop the specified polygon by the specified rectangle. (By Sutherland-Hodgman Algorithm)
@@ -999,10 +999,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// <param name="MinY">The top of the specified rectangle to crop.</param>
         /// <param name="MaxX">The right of the specified rectangle to crop.</param>
         /// <param name="MaxY">The bottom of the specified rectangle to crop.</param>
-        public static IList<Point<int>> CropPolygon(IList<Point<int>> Polygon, int MinX, int MinY, int MaxX, int MaxY)
+        public static Point<int>[] CropPolygon(Point<int>[] Polygon, int MinX, int MinY, int MaxX, int MaxY)
         {
-            if (Polygon.Count < 3)
-                throw new ArgumentException($"The polygons passed in must have at least 3 points: subject={Polygon.Count}");
+            if (Polygon.Length < 3)
+                throw new ArgumentException($"The polygons passed in must have at least 3 points: subject={Polygon.Length}");
 
             List<Point<int>> Output = Polygon.ToList(),
                         Input;
@@ -1218,7 +1218,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     Output.Add(E);
             }
 
-            return Output;
+            return Output.ToArray();
         }
 
         /// <summary>

@@ -714,7 +714,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IList<Point<int>> Vertices, IPixel Fill, int OffsetX, int OffsetY);
+        public void FillPolygon(IEnumerable<Point<int>> Vertices, IPixel Fill, int OffsetX, int OffsetY);
         /// <summary>
         /// Fill a polygon.
         /// </summary>
@@ -722,7 +722,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IList<int> VerticeDatas, IPixel Fill, int OffsetX, int OffsetY);
+        public void FillPolygon(IEnumerable<int> VerticeDatas, IPixel Fill, int OffsetX, int OffsetY);
 
         #endregion
 
@@ -2442,7 +2442,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IList<Point<int>> Vertices, Pixel Fill, int OffsetX, int OffsetY);
+        public void FillPolygon(IEnumerable<Point<int>> Vertices, Pixel Fill, int OffsetX, int OffsetY);
         /// <summary>
         /// Fill a polygon.
         /// </summary>
@@ -2450,7 +2450,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IList<int> VerticeDatas, Pixel Fill, int OffsetX, int OffsetY);
+        public void FillPolygon(IEnumerable<int> VerticeDatas, Pixel Fill, int OffsetX, int OffsetY);
 
         #endregion
 

@@ -2004,19 +2004,19 @@ namespace MenthaAssembly.Media.Imaging
         void IImageContext.DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle)
             => this.DrawRegularPolygon(Cx, Cy, Radius, VertexNum, Contour, Fill.ToPixel<Pixel>(), StartAngle);
 
-        public void FillPolygon(IList<Point<int>> Vertices, Pixel Fill, int OffsetX, int OffsetY)
+        public void FillPolygon(IEnumerable<Point<int>> Vertices, Pixel Fill, int OffsetX, int OffsetY)
         {
-            Vertices = GraphicAlgorithm.CropPolygon(Vertices, -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
+            Point<int>[] Datas = GraphicAlgorithm.CropPolygon(Vertices is Point<int>[] TArray ? TArray : Vertices.ToArray(), -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
 
-            int Length = Vertices.Count;
-            int[] intersectionsX = new int[Length];
+            int Length = Datas.Length;
+            int[] intersectionsX = new int[Length - 1];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
             int yMin = Height,
                 yMax = 0;
             for (int i = 1; i < Length; i++)
             {
-                int py = Vertices[i].Y + OffsetY;
+                int py = Datas[i].Y + OffsetY;
                 if (py < yMin)
                     yMin = py;
 
@@ -2034,7 +2034,7 @@ namespace MenthaAssembly.Media.Imaging
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                Point<int> P0 = Vertices[0];
+                Point<int> P0 = Datas[0];
                 float vxi = P0.X + OffsetX,
                       vyi = P0.Y + OffsetY;
 
@@ -2044,7 +2044,7 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 1; i < Length; i++)
                 {
                     // Next point x, y
-                    Point<int> P1 = Vertices[i];
+                    Point<int> P1 = Datas[i];
                     float vxj = P1.X + OffsetX,
                           vyj = P1.Y + OffsetY;
 
@@ -2095,21 +2095,21 @@ namespace MenthaAssembly.Media.Imaging
                 }
             }
         }
-        public void FillPolygon(IList<int> VerticeDatas, Pixel Fill, int OffsetX, int OffsetY)
+        public void FillPolygon(IEnumerable<int> VerticeDatas, Pixel Fill, int OffsetX, int OffsetY)
         {
-            VerticeDatas = GraphicAlgorithm.CropPolygon(VerticeDatas, -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
+            int[] Datas = GraphicAlgorithm.CropPolygon(VerticeDatas is int[] TArray ? TArray : VerticeDatas.ToArray(), -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
 
-            int pn = VerticeDatas.Count,
-                pnh = VerticeDatas.Count >> 1;
+            int pn = Datas.Length,
+                pnh = pn >> 1;
 
-            int[] intersectionsX = new int[pnh];
+            int[] intersectionsX = new int[pnh - 1];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
             int yMin = Height,
                 yMax = 0;
             for (int i = 1; i < pn; i += 2)
             {
-                int py = VerticeDatas[i] + OffsetY;
+                int py = Datas[i] + OffsetY;
                 if (py < yMin)
                     yMin = py;
 
@@ -2127,8 +2127,8 @@ namespace MenthaAssembly.Media.Imaging
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                float vxi = VerticeDatas[0] + OffsetX,
-                      vyi = VerticeDatas[1] + OffsetY;
+                float vxi = Datas[0] + OffsetX,
+                      vyi = Datas[1] + OffsetY;
 
                 // Find all intersections
                 // Based on http://alienryderflex.com/polygon_fill/
@@ -2136,8 +2136,8 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 2; i < pn; i += 2)
                 {
                     // Next point x, y
-                    float vxj = VerticeDatas[i] + OffsetX,
-                          vyj = VerticeDatas[i + 1] + OffsetY;
+                    float vxj = Datas[i] + OffsetX,
+                          vyj = Datas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
                     if (vyi < y && vyj >= y ||
@@ -2187,9 +2187,9 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        void IImageContext.FillPolygon(IList<Point<int>> Vertices, IPixel Fill, int OffsetX, int OffsetY)
+        void IImageContext.FillPolygon(IEnumerable<Point<int>> Vertices, IPixel Fill, int OffsetX, int OffsetY)
             => this.FillPolygon(Vertices, Fill.ToPixel<Pixel>(), OffsetX, OffsetY);
-        void IImageContext.FillPolygon(IList<int> VerticeDatas, IPixel Fill, int OffsetX, int OffsetY)
+        void IImageContext.FillPolygon(IEnumerable<int> VerticeDatas, IPixel Fill, int OffsetX, int OffsetY)
             => this.FillPolygon(VerticeDatas, Fill.ToPixel<Pixel>(), OffsetX, OffsetY);
 
         #endregion

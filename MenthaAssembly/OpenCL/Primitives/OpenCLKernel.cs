@@ -31,9 +31,13 @@ namespace MenthaAssembly.OpenCL
             => Invoke(Program.Context.Devices.FirstOrDefault(), Arguments.Select(i => i is OpenCLKernelArgument Arg ? Arg : new OpenCLKernelArgument(i)).ToArray());
         public void Invoke(params OpenCLKernelArgument[] Arguments)
             => Invoke(Program.Context.Devices.FirstOrDefault(), Arguments);
+        public void Invoke(long[] GlobalWorkOffset, long[] GlobalWorkSize, long[] LocalWorkSize, params OpenCLKernelArgument[] Arguments)
+            => Invoke(Program.Context.Devices.FirstOrDefault(), GlobalWorkOffset, GlobalWorkSize, LocalWorkSize, Arguments);
         public void Invoke(OpenCLDevice Device, params object[] Arguments)
             => Invoke(Device, Arguments.Select(i => i is OpenCLKernelArgument Arg ? Arg : new OpenCLKernelArgument(i)).ToArray());
-        public unsafe void Invoke(OpenCLDevice Device, params OpenCLKernelArgument[] Arguments)
+        public void Invoke(OpenCLDevice Device, params OpenCLKernelArgument[] Arguments)
+            => Invoke(Device, null, new long[] { Arguments.FirstOrDefault(i => i.IsArray).ArrayLength }, null, Arguments);
+        public unsafe void Invoke(OpenCLDevice Device, long[] GlobalWorkOffset, long[] GlobalWorkSize, long[] LocalWorkSize, params OpenCLKernelArgument[] Arguments)
         {
             if (Device is null)
                 throw new ArgumentNullException(nameof(Device));
@@ -70,7 +74,7 @@ namespace MenthaAssembly.OpenCL
             try
             {
                 // Execute
-                Commands.Execute(this, null, new long[] { Arguments.FirstOrDefault(i => i.IsArray).ArrayLength }, null);
+                Commands.Execute(this, GlobalWorkOffset, GlobalWorkSize, LocalWorkSize);
 
                 // Read Result
                 for (int i = 0; i < Arguments.Length; i++)
@@ -119,18 +123,41 @@ namespace MenthaAssembly.OpenCL
         //        throw new OpenCLException(ResultCode);
         //}
 
+
+
+        //private bool IsDisposed;
+        //public void Dispose()
+        //{
+        //    if (IsDisposed)
+        //        return;
+
+        //    OpenCLErrorCode Code = OpenCLCore.ReleaseKernel(Handle);
+        //    if (Code != OpenCLErrorCode.Success)
+        //        Debug.WriteLine($"{nameof(OpenCLKernel)} Release fail.\r\n" +
+        //                        $"ErrorCode : {Code}");
+
+        //    IsDisposed = true;
+        //}
+
         private bool IsDisposed;
         public void Dispose()
         {
-            if (IsDisposed)
-                return;
+            try
+            {
+                if (IsDisposed)
+                    return;
 
-            OpenCLErrorCode Code = OpenCLCore.ReleaseKernel(Handle);
-            if (Code != OpenCLErrorCode.Success)
-                Debug.WriteLine($"{nameof(OpenCLKernel)} Release fail.\r\n" +
-                                $"ErrorCode : {Code}");
+                OpenCLErrorCode Code = OpenCLCore.ReleaseKernel(Handle);
+                if (Code != OpenCLErrorCode.Success)
+                    Debug.WriteLine($"{nameof(OpenCLKernel)} Release fail.\r\n" +
+                                    $"ErrorCode : {Code}");
 
-            IsDisposed = true;
+                IsDisposed = true;
+            }
+            finally
+            {
+                GC.SuppressFinalize(this);
+            }
         }
 
         ~OpenCLKernel()

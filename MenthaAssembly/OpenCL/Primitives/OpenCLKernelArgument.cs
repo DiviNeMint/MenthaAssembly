@@ -48,7 +48,7 @@ namespace MenthaAssembly.OpenCL
                 if ((IOMode & OpenCLArgumentIOMode.Out) > 0)
                     throw new ArgumentException($"{nameof(IOMode)} can't include {nameof(OpenCLArgumentIOMode)}.{nameof(OpenCLArgumentIOMode.Out)}.");
 
-                this.Size = Marshal.SizeOf(Argument.GetType());
+                this.Size = Marshal.SizeOf(Argument);
                 this.ArrayLength = -1;
                 this.IsArray = false;
                 this.IOMode = IOMode;
