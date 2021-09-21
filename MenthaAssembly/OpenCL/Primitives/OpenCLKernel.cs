@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace MenthaAssembly.OpenCL
 {
@@ -27,6 +28,8 @@ namespace MenthaAssembly.OpenCL
             return Encoding.ASCII.GetString(Buffer, 0, ReadSize).Trim('\0');
         }
 
+        private object LockObject = new object();
+
         public void Invoke(params object[] Arguments)
             => Invoke(Program.Context.Devices.FirstOrDefault(), Arguments.Select(i => i is OpenCLKernelArgument Arg ? Arg : new OpenCLKernelArgument(i)).ToArray());
         public void Invoke(params OpenCLKernelArgument[] Arguments)
@@ -47,35 +50,50 @@ namespace MenthaAssembly.OpenCL
 
             // SerArguments
             OpenCLMemory[] Memories = new OpenCLMemory[Arguments.Length];
-            for (int i = 0; i < Arguments.Length; i++)
-            {
-                OpenCLKernelArgument Arg = Arguments[i];
+            OpenCLCommandQueue Commands;
 
-                OpenCLErrorCode ResultCode;
-                if (Arg.IsArray || (Arg.IOMode & OpenCLArgumentIOMode.Out) > 0)
-                {
-                    OpenCLMemoryFlags MemFlags = OpenCLMemoryFlags.ReadWrite | ((Arg.IOMode & OpenCLArgumentIOMode.In) > 0 ? OpenCLMemoryFlags.CopyHostPointer : OpenCLMemoryFlags.AllocateHostPointer);
-                    OpenCLMemory Memory = Program.Context.CreateBuffer(MemFlags, Arg.pArgument, Arg.Size);
-
-                    IntPtr pMemory = Memory.Handle;
-                    Memories[i] = Memory;
-                    ResultCode = OpenCLCore.SetKernelArg(this.Handle, i, new IntPtr(sizeof(IntPtr)), ref pMemory);
-                }
-                else
-                {
-                    ResultCode = OpenCLCore.SetKernelArg(this.Handle, i, new IntPtr(Arg.Size), Arg.pArgument);
-                }
-
-                if (ResultCode != OpenCLErrorCode.Success)
-                    throw new OpenCLException(ResultCode);
-            }
-
-            OpenCLCommandQueue Commands = Program.Context.CreateCommandQueue(Device, OpenCLCommandQueueFlags.None);
+            bool Token = false;
             try
             {
+                Monitor.Enter(LockObject, ref Token);
+
+                for (int i = 0; i < Arguments.Length; i++)
+                {
+                    OpenCLKernelArgument Arg = Arguments[i];
+
+                    OpenCLErrorCode ResultCode;
+                    if (Arg.IsArray || (Arg.IOMode & OpenCLArgumentIOMode.Out) > 0)
+                    {
+                        OpenCLMemoryFlags MemFlags = OpenCLMemoryFlags.ReadWrite | ((Arg.IOMode & OpenCLArgumentIOMode.In) > 0 ? OpenCLMemoryFlags.CopyHostPointer : OpenCLMemoryFlags.AllocateHostPointer);
+                        OpenCLMemory Memory = Program.Context.CreateBuffer(MemFlags, Arg.pArgument, Arg.Size);
+
+                        IntPtr pMemory = Memory.Handle;
+                        Memories[i] = Memory;
+                        ResultCode = OpenCLCore.SetKernelArg(this.Handle, i, new IntPtr(sizeof(IntPtr)), ref pMemory);
+                    }
+                    else
+                    {
+                        ResultCode = OpenCLCore.SetKernelArg(this.Handle, i, new IntPtr(Arg.Size), Arg.pArgument);
+                    }
+
+                    if (ResultCode != OpenCLErrorCode.Success)
+                        throw new OpenCLException(ResultCode);
+                }
+
+                Commands = Program.Context.CreateCommandQueue(Device, OpenCLCommandQueueFlags.None);
+
                 // Execute
                 Commands.Execute(this, GlobalWorkOffset, GlobalWorkSize, LocalWorkSize);
 
+            }
+            finally
+            {
+                if (Token)
+                    Monitor.Exit(LockObject);
+            }
+
+            try
+            {
                 // Read Result
                 for (int i = 0; i < Arguments.Length; i++)
                 {
@@ -85,6 +103,7 @@ namespace MenthaAssembly.OpenCL
                         Commands.ReadFromMemory(Memories[i], Arg.pArgument, 0, Arg.Size, true);
 
                     Memories[i]?.Dispose();
+                    Arg.Dispose();
                 }
 
             }

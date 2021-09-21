@@ -3,11 +3,13 @@ using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.OpenCL
 {
-    public class OpenCLKernelArgument
+    public class OpenCLKernelArgument : IDisposable
     {
         public OpenCLArgumentIOMode IOMode { get; }
 
         public object Argument { get; }
+
+        private GCHandle GCHandle;
 
 #pragma warning disable IDE1006 // 命名樣式
         public IntPtr pArgument
@@ -18,7 +20,10 @@ namespace MenthaAssembly.OpenCL
                 if (Argument is IntPtr pArg)
                     return pArg;
 
-                return GCHandle.Alloc(Argument, GCHandleType.Pinned).AddrOfPinnedObject();
+                if (!GCHandle.IsAllocated)
+                    GCHandle = GCHandle.Alloc(Argument, GCHandleType.Pinned);
+
+                return GCHandle.AddrOfPinnedObject();
             }
         }
 
@@ -38,9 +43,9 @@ namespace MenthaAssembly.OpenCL
 
             if (Argument is Array ArrayArg)
             {
-                this.Size = Marshal.SizeOf(ArrayArg.GetValue(0).GetType()) * ArrayArg.Length;
-                this.ArrayLength = ArrayArg.Length;
-                this.IsArray = true;
+                Size = Marshal.SizeOf(ArrayArg.GetValue(0).GetType()) * ArrayArg.Length;
+                ArrayLength = ArrayArg.Length;
+                IsArray = true;
                 this.IOMode = IOMode;
             }
             else
@@ -48,20 +53,38 @@ namespace MenthaAssembly.OpenCL
                 if ((IOMode & OpenCLArgumentIOMode.Out) > 0)
                     throw new ArgumentException($"{nameof(IOMode)} can't include {nameof(OpenCLArgumentIOMode)}.{nameof(OpenCLArgumentIOMode.Out)}.");
 
-                this.Size = Marshal.SizeOf(Argument);
-                this.ArrayLength = -1;
-                this.IsArray = false;
+                Size = Marshal.SizeOf(Argument);
+                ArrayLength = -1;
+                IsArray = false;
                 this.IOMode = IOMode;
             }
         }
         public OpenCLKernelArgument(IntPtr pArgument, long Size, OpenCLArgumentIOMode IOMode)
         {
-            this.Argument = pArgument;
+            Argument = pArgument;
             this.Size = Size;
-            this.ArrayLength = -1;
-            this.IsArray = false;
+            ArrayLength = -1;
+            IsArray = false;
             this.IOMode = IOMode;
         }
 
+        private bool IsDisposed;
+        public void Dispose()
+        {
+            try
+            {
+                if (IsDisposed)
+                    return;
+
+                if (GCHandle.IsAllocated)
+                    GCHandle.Free();
+
+                IsDisposed = true;
+            }
+            finally
+            {
+                GC.SuppressFinalize(this);
+            }
+        }
     }
 }

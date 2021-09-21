@@ -1,6 +1,4 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
-using MenthaAssembly.OpenCL;
-using MenthaAssembly.OpenCL.Primitives;
 using MenthaAssembly.Win32;
 using System;
 using System.Collections;
@@ -993,71 +991,6 @@ namespace MenthaAssembly.Media.Imaging
             return Polygon;
         }
 
-        private static OpenCLKernel CalculatePolygonIntersectionsKernel
-        {
-            get
-            {
-                if (OpenCLCore.Platforms.SelectMany(i => i.Devices)
-                                        .FirstOrDefault(i => i.Type == OpenCLDeviceTypes.GPU) is OpenCLDevice Device)
-                {
-                    string Code = @"#ifdef cl_khr_fp64                                                                                           
-                                    #pragma OPENCL EXTENSION cl_khr_fp64 : enable                                                                
-                                    #endif                                                                                                       
-                                    #define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))                                                              
-                                    __kernel void PolygonIntersections(global int* Datas, const int DatasCount,                                  
-                                                                       const int Sy, const int OffsetX, const int OffsetY,                       
-                                                                       global int* Intersections, const int IntersectionsStride)                 
-                                    {                                                                                                            
-                                    	int y = get_global_id(0),                                                                                
-                                            Index0 = IntersectionsStride * y,                                                                    
-                                            Index1 = Index0 + 1;                                                                                 
-                                                                                                                                                 
-                                        y += Sy;                                                                                                 
-                                                                                                                                                 
-                                        float vxi = Datas[0] + OffsetX,                                                                          
-                                              vyi = Datas[1] + OffsetY;                                                                          
-                                                                                                                                                 
-                                        int IntersectionCount = 0;                                                                               
-                                        for (int i = 2; i < DatasCount; i += 2)                                                                  
-                                        {                                                                                                        
-                                            float vxj = Datas[i] + OffsetX,                                                                      
-                                                  vyj = Datas[i + 1] + OffsetY;                                                                  
-                                                                                                                                                 
-                                            if (vyi < y && y <=vyj ||                                                                            
-                                                vyj < y && y <=vyi)                                                                              
-                                                Intersections[Index1 + IntersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
-                                                                                                                                                 
-                                            vxi = vxj;                                                                                           
-                                            vyi = vyj;                                                                                           
-                                        }                                                                                                        
-                                                                                                                                                 
-                                        Intersections[Index0] = IntersectionCount;                                                               
-                                                                                                                                                 
-                                        int t, j, Index2;                                                                                        
-                                        for (int i = 1; i < IntersectionCount; i++)                                                              
-                                        {                                                                                                        
-                                            t = Intersections[Index1 + i];                                                                       
-                                            j = i;                                                                                               
-                                            Index2 = Index1 + j;                                                                                 
-                                            while (j > 0 && Intersections[Index2 - 1] > t)                                                       
-                                            {                                                                                                    
-                                                Intersections[Index2] = Intersections[Index2 - 1];                                               
-                                                j--;                                                                                             
-                                                Index2--;                                                                                        
-                                            }                                                                                                    
-                                            Intersections[Index2] = t;                                                                           
-                                        }                                                                                                        
-                                    }";
-
-                    OpenCLCompiler Compiler = new OpenCLCompiler(Device);
-                    OpenCLKernel[] Kernels = Compiler.Compile(Code);
-
-                    return Kernels.FirstOrDefault(i => i.FunctionName.Equals("PolygonIntersections"));
-                }
-
-                return null;
-            }
-        }
         public static ImageContour CreateFillPolygon(IEnumerable<int> VerticeDatas, int OffsetX, int OffsetY)
         {
             ImageContour Polygon = new ImageContour();
@@ -1077,88 +1010,55 @@ namespace MenthaAssembly.Media.Imaging
                     yMax = py;
             }
 
-            if (CalculatePolygonIntersectionsKernel is OpenCLKernel Kernel)
-            {
-                int Height = yMax - yMin + 1;
-                int[] Intersections = new int[Height * pnh];
+            int[] intersectionsX = new int[pnh - 1];
 
-                Kernel.Invoke(GlobalWorkOffset: null, new long[] { Height }, null,
-                              new OpenCLKernelArgument(Datas, OpenCLArgumentIOMode.In),
-                              new OpenCLKernelArgument(Datas.Length, OpenCLArgumentIOMode.In),
-                              new OpenCLKernelArgument(yMin, OpenCLArgumentIOMode.In),
-                              new OpenCLKernelArgument(OffsetX, OpenCLArgumentIOMode.In),
-                              new OpenCLKernelArgument(OffsetY, OpenCLArgumentIOMode.In),
-                              new OpenCLKernelArgument(Intersections, OpenCLArgumentIOMode.InOut),
-                              new OpenCLKernelArgument(pnh, OpenCLArgumentIOMode.In));
+            // Scan line from min to max
+            for (int y = yMin; y <= yMax; y++)
+            {
+                // Initial point x, y
+                float vxi = Datas[0] + OffsetX,
+                      vyi = Datas[1] + OffsetY;
+
+                // Find all intersections
+                // Based on http://alienryderflex.com/polygon_fill/
+                int intersectionCount = 0;
+                for (int i = 2; i < pn; i += 2)
+                {
+                    // Next point x, y
+                    float vxj = Datas[i] + OffsetX,
+                          vyj = Datas[i + 1] + OffsetY;
+
+                    // Is the scanline between the two points
+                    if (vyi < y && y <= vyj ||
+                        vyj < y && y <= vyi)
+                    {
+                        // Compute the intersection of the scanline with the edge (line between two points)
+                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
+                    }
+                    vxi = vxj;
+                    vyi = vyj;
+                }
+
+                // Sort the intersections from left to right using Insertion sort 
+                // It's faster than Array.Sort for this small data set
+                int t, j;
+                for (int i = 1; i < intersectionCount; i++)
+                {
+                    t = intersectionsX[i];
+                    j = i;
+                    while (j > 0 && intersectionsX[j - 1] > t)
+                    {
+                        intersectionsX[j] = intersectionsX[j - 1];
+                        j -= 1;
+                    }
+                    intersectionsX[j] = t;
+                }
 
                 // Add Datas
-                int y, Index, Length;
-                for (int j = 0; j < Height; j++)
+                for (int i = 0; i < intersectionCount - 1;)
                 {
-                    y = yMin + j;
-                    Index = j * pnh;
-                    Length = Intersections[Index++] - 1;
-
-                    for (int i = 0; i < Length; i++)
-                    {
-                        Polygon[y].Datas.Add(Intersections[Index++]);
-                        Polygon[y].Datas.Add(Intersections[Index++]);
-                        i++;
-                    }
-                }
-            }
-            else
-            {
-                int[] intersectionsX = new int[pnh - 1];
-
-                // Scan line from min to max
-                for (int y = yMin; y <= yMax; y++)
-                {
-                    // Initial point x, y
-                    float vxi = Datas[0] + OffsetX,
-                          vyi = Datas[1] + OffsetY;
-
-                    // Find all intersections
-                    // Based on http://alienryderflex.com/polygon_fill/
-                    int intersectionCount = 0;
-                    for (int i = 2; i < pn; i += 2)
-                    {
-                        // Next point x, y
-                        float vxj = Datas[i] + OffsetX,
-                              vyj = Datas[i + 1] + OffsetY;
-
-                        // Is the scanline between the two points
-                        if (vyi < y && y <= vyj ||
-                            vyj < y && y <= vyi)
-                        {
-                            // Compute the intersection of the scanline with the edge (line between two points)
-                            intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
-                        }
-                        vxi = vxj;
-                        vyi = vyj;
-                    }
-
-                    // Sort the intersections from left to right using Insertion sort 
-                    // It's faster than Array.Sort for this small data set
-                    int t, j;
-                    for (int i = 1; i < intersectionCount; i++)
-                    {
-                        t = intersectionsX[i];
-                        j = i;
-                        while (j > 0 && intersectionsX[j - 1] > t)
-                        {
-                            intersectionsX[j] = intersectionsX[j - 1];
-                            j -= 1;
-                        }
-                        intersectionsX[j] = t;
-                    }
-
-                    // Add Datas
-                    for (int i = 0; i < intersectionCount - 1;)
-                    {
-                        Polygon[y].Datas.Add(intersectionsX[i++]);
-                        Polygon[y].Datas.Add(intersectionsX[i++]);
-                    }
+                    Polygon[y].Datas.Add(intersectionsX[i++]);
+                    Polygon[y].Datas.Add(intersectionsX[i++]);
                 }
             }
 

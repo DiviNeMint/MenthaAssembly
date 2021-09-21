@@ -107,15 +107,24 @@ namespace MenthaAssembly.OpenCL
         private bool IsDisposed;
         public void Dispose()
         {
-            if (IsDisposed)
-                return;
+            try
+            {
+                if (IsDisposed)
+                    return;
 
-            OpenCLErrorCode Code = OpenCLCore.ReleaseProgram(Handle);
-            if (Code != OpenCLErrorCode.Success)
-                Debug.WriteLine($"{nameof(OpenCLProgram)} Release fail.\r\n" +
-                                $"ErrorCode : {Code}");
+                Context.Dispose();
 
-            IsDisposed = true;
+                OpenCLErrorCode Code = OpenCLCore.ReleaseProgram(Handle);
+                if (Code != OpenCLErrorCode.Success)
+                    Debug.WriteLine($"{nameof(OpenCLProgram)} Release fail.\r\n" +
+                                    $"ErrorCode : {Code}");
+
+                IsDisposed = true;
+            }
+            finally
+            {
+                GC.SuppressFinalize(this);
+            }
         }
 
         ~OpenCLProgram()
