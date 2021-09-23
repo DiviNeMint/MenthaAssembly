@@ -1909,7 +1909,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public void FillPolygon(IEnumerable<Point<int>> Vertices, Pixel Fill, int OffsetX, int OffsetY)
         {
-            Point<int>[] Datas = GraphicAlgorithm.CropPolygon(Vertices is Point<int>[] TArray ? TArray : Vertices.ToArray(), -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
+            Point<int>[] Datas = GraphicAlgorithm.CropPolygon(Vertices, -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
 
             int Length = Datas.Length;
             int[] intersectionsX = new int[Length - 1];
@@ -2000,7 +2000,7 @@ namespace MenthaAssembly.Media.Imaging
         }
         public void FillPolygon(IEnumerable<int> VerticeDatas, Pixel Fill, int OffsetX, int OffsetY)
         {
-            int[] Datas = GraphicAlgorithm.CropPolygon(VerticeDatas is int[] TArray ? TArray : VerticeDatas.ToArray(), -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
+            int[] Datas = GraphicAlgorithm.CropPolygon(VerticeDatas, -OffsetX - 1, -OffsetY - 1, this.Width - OffsetX, this.Height - OffsetY);
 
             int pn = Datas.Length,
                 pnh = pn >> 1;
