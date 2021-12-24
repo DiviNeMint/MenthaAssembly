@@ -607,7 +607,7 @@ namespace MenthaAssembly.Media.Imaging
             int Left = Cx - HalfWidth,
                 Right = Cx + HalfWidth;
 
-            for (int i = 0; i < HalfHeight; i++)
+            for (int i = 0; i <= HalfHeight; i++)
             {
                 Rectangle[Cy - i] = new ContourData(Left, Right);
                 Rectangle[Cy + i] = new ContourData(Left, Right);
