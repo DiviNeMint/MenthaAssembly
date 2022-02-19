@@ -1,4 +1,6 @@
-﻿namespace MenthaAssembly.Media.Imaging
+﻿using System.Collections.Generic;
+
+namespace MenthaAssembly.Media.Imaging
 {
     public class ImageFilterArgs
     {
@@ -16,13 +18,13 @@
         // Need List :
         // Gaussian
 
-        //public object TokenA { set; get; }
+        public List<byte> ByteListA { set; get; }
 
-        //public object TokenR { set; get; }
+        public List<byte> ByteListR { set; get; }
 
-        //public object TokenG { set; get; }
+        public List<byte> ByteListG { set; get; }
 
-        //public object TokenB { set; get; }
+        public List<byte> ByteListB { set; get; }
 
     }
 }

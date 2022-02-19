@@ -40,10 +40,10 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         protected override byte CalculateR(float FactorR)
-            => (byte)MathHelper.Clamp(FactorR, 0d, 255d);
+            => (byte)MathHelper.Clamp(FactorR, 0f, 255f);
         protected override byte CalculateG(float FactorG)
-            => (byte)MathHelper.Clamp(FactorG, 0d, 255d);
+            => (byte)MathHelper.Clamp(FactorG, 0f, 255f);
         protected override byte CalculateB(float FactorB)
-            => (byte)MathHelper.Clamp(FactorB, 0d, 255d);
+            => (byte)MathHelper.Clamp(FactorB, 0f, 255f);
     }
 }
