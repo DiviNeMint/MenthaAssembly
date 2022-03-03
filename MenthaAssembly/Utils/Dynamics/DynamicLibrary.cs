@@ -305,6 +305,9 @@ namespace MenthaAssembly
             s.Seek(FileHeaderPosition + 18, SeekOrigin.Begin);
 
             FileCharFlags FileFlags = s.Read<FileCharFlags>();
+            if ((FileFlags & FileCharFlags.Dll)  == 0)
+                return LibraryType.Unknown;
+
             FilePlatform p = s.Read<FilePlatform>();
 
             LibraryType r;

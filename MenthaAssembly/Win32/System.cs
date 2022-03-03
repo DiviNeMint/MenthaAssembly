@@ -76,7 +76,7 @@ namespace MenthaAssembly.Win32
         /// <param name="Protect">The memory protection for the region of pages to be allocated.</param>
         /// <returns></returns>
         [DllImport("Kernel32.dll", SetLastError = true)]
-        internal static extern IntPtr VirtualAlloc(IntPtr lpAddress, int Size, MemAllocType AllocationType, MemProtectType Protect);
+        internal static extern IntPtr VirtualAlloc(IntPtr lpAddress, uint Size, MemAllocType AllocationType, MemProtectType Protect);
 
         /// <summary>
         /// Reserves, commits, or changes the state of a region of memory within the virtual address space of a specified process.<para/>
