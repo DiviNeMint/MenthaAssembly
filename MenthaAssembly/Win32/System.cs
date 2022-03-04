@@ -55,6 +55,12 @@ namespace MenthaAssembly.Win32
         [DllImport("kernel32.dll", SetLastError = true)]
         internal static extern bool FreeLibrary(IntPtr hModule);
 
+        [DllImport("kernel32.dll", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
+        internal static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        internal static extern IntPtr GetProcAddress(IntPtr module, IntPtr ordinal);
+
         #endregion
 
         #region Windows API (Memory)
@@ -117,6 +123,9 @@ namespace MenthaAssembly.Win32
         [DllImport("Kernel32.dll", SetLastError = true)]
         internal static extern bool VirtualProtect(IntPtr lpAddress, int Size, MemProtectType flNewProtect, out IntPtr lpflOldProtect);
 
+        [DllImport("Kernel32.dll", SetLastError = true)]
+        internal static extern bool VirtualProtect(IntPtr lpAddress, uint Size, MemProtectType flNewProtect, out IntPtr lpflOldProtect);
+
         /// <summary>
         /// Releases, decommits, or releases and decommits a region of pages within the virtual address space of the calling process.
         /// </summary>
@@ -131,7 +140,10 @@ namespace MenthaAssembly.Win32
         ///                    After that, the entire region is in the reserved state.</param>
         /// <param name="FreeType">The type of free operation.</param>
         [DllImport("Kernel32.dll")]
-        internal static extern bool VirtualFree(IntPtr lpAddress, int Size, MemFreeType FreeType);
+        internal static extern bool VirtualFree(IntPtr lpAddress, uint Size, MemFreeType FreeType);
+
+        [DllImport("Kernel32.dll")]
+        internal static extern bool VirtualFree(UIntPtr lpAddress, uint Size, MemFreeType FreeType);
 
         /// <summary>
         /// Releases, decommits, or releases and decommits a region of memory within the virtual address space of a specified process.
