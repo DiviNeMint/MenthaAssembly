@@ -8,6 +8,8 @@ using static MenthaAssembly.Win32.System;
 
 namespace MenthaAssembly
 {
+    // https://github.com/dretax/DynamicDllLoader/blob/master/DynamicDLLLoader/DynamicDllLoader.cs
+    // https://github.com/fancycode/MemoryModule/blob/master/MemoryModule.c
     public sealed unsafe partial class UnmanagedLibrary : DynamicLibrary
     {
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
