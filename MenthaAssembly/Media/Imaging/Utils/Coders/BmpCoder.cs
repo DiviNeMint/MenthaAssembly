@@ -195,8 +195,8 @@ namespace MenthaAssembly.Media.Imaging
 
             // Datas
             byte[] ImageDatas = new byte[Stride];
-            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ?
-                                         new Action<int>((j) => Image.ScanLineCopy<BGRA>(0, j, Image.Width, ImageDatas, 0)) :
+            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ? new Action<int>((j) => Image.ScanLineCopy<BGRA>(0, j, Image.Width, ImageDatas, 0)) :
+                                         Image.BitsPerPixel == 8 ? (y) => Image.ScanLineCopy(0, y, Image.Width, ImageDatas, 0) :
                                          (y) => Image.ScanLineCopy<BGR>(0, y, Image.Width, ImageDatas, 0);
 
             for (int j = Image.Height - 1; j >= 0; j--)
