@@ -1,6 +1,5 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Devices
@@ -181,7 +180,7 @@ namespace MenthaAssembly.Devices
                 IsCapturing = false;
             }
         }
-        private unsafe static int KeyboardHookProc(int nCode, int wParam, IntPtr lParam)
+        private static unsafe int KeyboardHookProc(int nCode, int wParam, IntPtr lParam)
         {
             if (nCode >= 0)
             {
@@ -225,7 +224,6 @@ namespace MenthaAssembly.Devices
             int ScanCode = MapVirtualKey((uint)Key, MapType.VirtualKey_To_ScanCode);
             keybd_event(Key, (byte)ScanCode, KeyboardFlag.ExtendedKey | KeyboardFlag.KeyUp, 0);
         }
-
 
     }
 }
