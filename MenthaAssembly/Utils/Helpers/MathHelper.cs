@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MenthaAssembly
 {
@@ -173,6 +174,23 @@ namespace MenthaAssembly
 
             return This;
         }
+
+        /// <summary>
+        /// Returns the largest number of specified numbers.
+        /// </summary>
+        /// <typeparam name="T">The type of number.</typeparam>
+        /// <param name="Source">The specified numbers.</param>
+        public static T Max<T>(params T[] Source)
+            where T : IComparable<T>
+            => Source.Max();
+        /// <summary>
+        /// Returns the lowest number of specified numbers.
+        /// </summary>
+        /// <typeparam name="T">The type of number.</typeparam>
+        /// <param name="Source">The specified numbers.</param>
+        public static T Min<T>(params T[] Source)
+            where T : IComparable<T>
+            => Source.Min();
 
         /// <summary>
         /// Returns the largest and the lowest number of specified numbers.
