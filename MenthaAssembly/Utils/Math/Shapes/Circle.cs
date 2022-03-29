@@ -71,19 +71,8 @@ namespace MenthaAssembly
                 return;
             }
 
-            T Lp = Add(Mul(Px1, Px1), Mul(Py1, Py1)),
-              Lq = Add(Mul(Px2, Px2), Mul(Py2, Py2)),
-              Lr = Add(Mul(Px3, Px3), Mul(Py3, Py3)),
-              Xrq = Sub(Px2, Px3),
-              Yrq = Sub(Py2, Py3),
-              Xqp = Sub(Px1, Px2),
-              Yqp = Sub(Py1, Py2),
-              Xpr = Sub(Px3, Px1),
-              Ypr = Sub(Py3, Py1);
-
-            T Cx = ToGeneric(ToDouble(Add(Add(Mul(Lp, Yrq), Mul(Lq, Ypr)), Mul(Lr, Yqp))) / (2d * ToDouble(Add(Add(Mul(Px1, Yrq), Mul(Px2, Ypr)), Mul(Px3, Yqp))))),
-              Cy = ToGeneric(ToDouble(Add(Add(Mul(Lp, Xrq), Mul(Lq, Xpr)), Mul(Lr, Xqp))) / (2d * ToDouble(Add(Add(Mul(Py1, Xrq), Mul(Py2, Xpr)), Mul(Py3, Xqp)))));
-
+            CalculateCenter(Px1, Py1, Px2, Py2, Px3, Py3, out T Cx, out T Cy);
+                                       
             this.Center = new Point<T>(Cx, Cy);
             this.Radius = Point<T>.Distance(Px1, Py1, Cx, Cy);
         }
@@ -240,6 +229,22 @@ namespace MenthaAssembly
 
             ToDouble = ExpressionHelper<T>.CreateCast<double>();
             ToGeneric = ExpressionHelper<double>.CreateCast<T>();
+        }
+
+        public static void CalculateCenter(T Px1, T Py1, T Px2, T Py2, T Px3, T Py3, out T Cx, out T Cy)
+        {
+            T Lp = Add(Mul(Px1, Px1), Mul(Py1, Py1)),
+              Lq = Add(Mul(Px2, Px2), Mul(Py2, Py2)),
+              Lr = Add(Mul(Px3, Px3), Mul(Py3, Py3)),
+              Xrq = Sub(Px2, Px3),
+              Yrq = Sub(Py2, Py3),
+              Xqp = Sub(Px1, Px2),
+              Yqp = Sub(Py1, Py2),
+              Xpr = Sub(Px3, Px1),
+              Ypr = Sub(Py3, Py1);
+
+            Cx = ToGeneric(ToDouble(Add(Add(Mul(Lp, Yrq), Mul(Lq, Ypr)), Mul(Lr, Yqp))) / (2d * ToDouble(Add(Add(Mul(Px1, Yrq), Mul(Px2, Ypr)), Mul(Px3, Yqp)))));
+            Cy = ToGeneric(ToDouble(Add(Add(Mul(Lp, Xrq), Mul(Lq, Xpr)), Mul(Lr, Xqp))) / (2d * ToDouble(Add(Add(Mul(Py1, Xrq), Mul(Py2, Xpr)), Mul(Py3, Xqp)))));
         }
 
         /// <summary>

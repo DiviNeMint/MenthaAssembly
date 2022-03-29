@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using System.Linq.Expressions;
 
 namespace MenthaAssembly
@@ -33,6 +34,7 @@ namespace MenthaAssembly
         private readonly static Func<T, T> Neg;
         private readonly static Func<T, T, T> Add, Sub, Mul, Div;
         private readonly static Func<T, T, bool> Equal, GreaterThan, LessThan, GreaterThanOrEqual, LessThanOrEqual;
+        private readonly static Func<int, T> Cast;
         static Operatorable()
         {
             Neg = ExpressionHelper<T>.CreateNeg();
@@ -47,6 +49,50 @@ namespace MenthaAssembly
             LessThan = ExpressionHelper<T>.CreateLessThan();
             GreaterThanOrEqual = ExpressionHelper<T>.CreateGreaterThanOrEqual();
             LessThanOrEqual = ExpressionHelper<T>.CreateLessThanOrEqual();
+
+            Cast = ExpressionHelper<int>.CreateCast<T>();
+        }
+
+        private static bool HasMinValue = false;
+        private static T _MinValue;
+        public static T MinValue
+        {
+            get
+            {
+                if (!HasMinValue)
+                {
+                    _MinValue = typeof(T).TryGetConstant(nameof(MinValue), out T Value) ? Value : default;
+                    HasMinValue = true;
+                }
+
+                return _MinValue;
+            }
+        }
+
+        private static bool HasMaxValue = false;
+        private static T _MaxValue;
+        public static T MaxValue
+        {
+            get
+            {
+                if (!HasMaxValue)
+                {
+                    _MaxValue = typeof(T).TryGetConstant(nameof(MaxValue), out T Value) ? Value : default;
+                    HasMaxValue = true;
+                }
+
+                return _MaxValue;
+            }
+        }
+
+        public static bool TryGetConstant(string Name, out T Value)
+            => typeof(T).TryGetConstant(Name, out Value);
+        public static T GetConstant(string Name)
+        {
+            if (typeof(T).TryGetConstant(Name, out T Value))
+                return Value;
+
+            throw new NotSupportedException();
         }
 
         public static Operatorable<T> operator -(Operatorable<T> This)
@@ -59,6 +105,17 @@ namespace MenthaAssembly
             => new Operatorable<T>(Mul(This.Value, Target.Value));
         public static Operatorable<T> operator /(Operatorable<T> This, Operatorable<T> Target)
             => new Operatorable<T>(Div(This.Value, Target.Value));
+
+        public static Operatorable<T> operator ++(Operatorable<T> This)
+        {
+            This.Value = Add(This.Value, Cast(1));
+            return This;
+        }
+        public static Operatorable<T> operator --(Operatorable<T> This)
+        {
+            This.Value = Sub(This.Value, Cast(1));
+            return This;
+        }
 
         public static bool operator ==(Operatorable<T> This, Operatorable<T> Target)
             => Equal(This.Value, Target.Value);

@@ -59,7 +59,7 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             int Index = RightIndexWithLessThanOrEqual(Left, out bool Equal);
-            if (Index == this.Datas.Count - 1)
+            if (Index == Datas.Count - 1)
             {
                 if (!Equal)
                 {
@@ -69,21 +69,21 @@ namespace MenthaAssembly.Media.Imaging
             }
             else if (Index < 0)
             {
-                if (Left < this.Datas[0])
-                    this.Datas[0] = Left;
+                if (Left < Datas[0])
+                    Datas[0] = Left;
             }
             else
             {
                 if (Equal)
                 {
-                    this.Datas.RemoveRange(Index, 2);
+                    Datas.RemoveRange(Index, 2);
                     return;
                 }
 
                 // Nearest Left
                 Index++;
-                if (Left < this.Datas[Index])
-                    this.Datas[Index] = Left;
+                if (Left < Datas[Index])
+                    Datas[Index] = Left;
             }
         }
         public void AddRight(int Right)
@@ -113,24 +113,24 @@ namespace MenthaAssembly.Media.Imaging
                 return;
             }
 
-            int LastIndexOfDatas = this.Datas.Count - 1;
+            int LastIndexOfDatas = Datas.Count - 1;
             if (Index < 0)
             {
-                if (this.Datas[LastIndexOfDatas] < Right)
-                    this.Datas[LastIndexOfDatas] = Right;
+                if (Datas[LastIndexOfDatas] < Right)
+                    Datas[LastIndexOfDatas] = Right;
             }
             else
             {
                 Index--;
                 if (Equal)
                 {
-                    this.Datas.RemoveRange(Index, 2);
+                    Datas.RemoveRange(Index, 2);
                     return;
                 }
 
                 // Nearest Right
-                if (this.Datas[Index] < Right)
-                    this.Datas[Index] = Right;
+                if (Datas[Index] < Right)
+                    Datas[Index] = Right;
             }
         }
 
@@ -144,7 +144,7 @@ namespace MenthaAssembly.Media.Imaging
 
             int Index = 0;
             for (int i = 0; i < Info.Datas.Count;)
-                this.HandleUnion(Info.Datas[i++], Info.Datas[i++], ref Index);
+                HandleUnion(Info.Datas[i++], Info.Datas[i++], ref Index);
         }
         public void Union(int Left, int Right)
         {
@@ -159,7 +159,7 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             int Index = 0;
-            this.HandleUnion(Left, Right, ref Index);
+            HandleUnion(Left, Right, ref Index);
         }
         public static ContourData Union(ContourData Data, int Left, int Right)
         {
@@ -181,7 +181,7 @@ namespace MenthaAssembly.Media.Imaging
 
             int Index = 0;
             for (int i = 0; i < Info.Datas.Count;)
-                this.HandleDifference(Info.Datas[i++], Info.Datas[i++], ref Index);
+                HandleDifference(Info.Datas[i++], Info.Datas[i++], ref Index);
         }
         public void Difference(int Left, int Right)
         {
@@ -192,7 +192,7 @@ namespace MenthaAssembly.Media.Imaging
                 MathHelper.Swap(ref Left, ref Right);
 
             int Index = 0;
-            this.HandleDifference(Left, Right, ref Index);
+            HandleDifference(Left, Right, ref Index);
         }
         public static ContourData Difference(ContourData Data, int Left, int Right)
         {
@@ -230,9 +230,9 @@ namespace MenthaAssembly.Media.Imaging
             => GetEnumerator();
 
         public ContourData Clone()
-            => new ContourData(this.Datas);
+            => new ContourData(Datas);
         object ICloneable.Clone()
-            => this.Clone();
+            => Clone();
 
         public override string ToString()
             => $"{{{string.Join(", ", Datas)}}}";
@@ -589,9 +589,9 @@ namespace MenthaAssembly.Media.Imaging
             => LeftIndexWithMoreThanOrEqual(Right, 0, out Equal);
         private int LeftIndexWithMoreThanOrEqual(int Right, int MinLeftIndex, out bool Equal)
         {
-            for (int j = MinLeftIndex; j < this.Datas.Count; j += 2)
+            for (int j = MinLeftIndex; j < Datas.Count; j += 2)
             {
-                int tData = this.Datas[j];
+                int tData = Datas[j];
                 if (Right == tData)
                 {
                     Equal = true;
@@ -612,9 +612,9 @@ namespace MenthaAssembly.Media.Imaging
             => RightIndexWithLessThanOrEqual(Left, 0, out Equal);
         private int RightIndexWithLessThanOrEqual(int Left, int MinRightIndex, out bool Equal)
         {
-            for (int j = this.Datas.Count - 1; j >= MinRightIndex; j -= 2)
+            for (int j = Datas.Count - 1; j >= MinRightIndex; j -= 2)
             {
-                int tData = this.Datas[j];
+                int tData = Datas[j];
                 if (Left == tData)
                 {
                     Equal = true;

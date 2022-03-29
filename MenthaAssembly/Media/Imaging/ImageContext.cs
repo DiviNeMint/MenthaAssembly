@@ -3107,7 +3107,10 @@ namespace MenthaAssembly.Media.Imaging
         {
             ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
 
-            this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
+            if (typeof(Pixel).Equals(typeof(T)))
+                this.BlockCopy(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
+            else
+                this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride);
 
             return Result;
         }
@@ -3115,7 +3118,12 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(this.Width, this.Height);
-            this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride, Options);
+
+            if (typeof(Pixel).Equals(typeof(T)))
+                this.BlockCopy(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride, Options);
+            else
+                this.BlockCopy<T>(0, 0, this.Width, this.Height, (byte*)Result.Scan0, Result.Stride, Options);
+
             return Result;
         }
 
@@ -3622,10 +3630,11 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
-        object ICloneable.Clone()
-            => this.Clone();
         public ImageContext<Pixel> Clone()
             => this.Cast<Pixel>();
+
+        object ICloneable.Clone()
+            => this.Clone();
 
     }
 }

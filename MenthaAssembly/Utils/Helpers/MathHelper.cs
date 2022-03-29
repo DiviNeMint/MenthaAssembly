@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace MenthaAssembly
 {
@@ -97,63 +98,133 @@ namespace MenthaAssembly
         /// <summary>
         /// Returns the smallest interval number that is greater than or equal to the specified interval number.
         /// </summary>
-        /// <param name="This">A double-precision floating-point number.</param>
+        /// <param name="Value">A double-precision floating-point number.</param>
         /// <param name="Interval">The interval number.</param>
-        public static double Ceiling(this double This, double Interval)
-            => Math.Ceiling(This / Interval) * Interval;
+        public static double Ceiling(double Value, double Interval)
+            => Math.Ceiling(Value / Interval) * Interval;
         /// <summary>
         /// Returns the smallest interval number that is greater than or equal to the specified interval number.
         /// </summary>
-        /// <param name="This">A decimal number.</param>
+        /// <param name="Value">A decimal number.</param>
         /// <param name="Interval">The interval number.</param>
-        public static decimal Ceiling(this decimal This, decimal Interval)
-            => Math.Ceiling(This / Interval) * Interval;
+        public static decimal Ceiling(decimal Value, decimal Interval)
+            => Math.Ceiling(Value / Interval) * Interval;
+        /// <summary>
+        /// Returns the smallest interval number that is greater than or equal to the specified interval number.
+        /// </summary>
+        /// <typeparam name="T">The type of number.</typeparam>
+        /// <param name="Value">A number.</param>
+        public static T Ceiling<T>(T Value)
+            => ExpressionHelper<double>.CreateCast<T>()(Math.Ceiling(ExpressionHelper<T>.CreateCast<double>()(Value)));
+        /// <summary>
+        /// Returns the smallest interval number that is greater than or equal to the specified interval number.
+        /// </summary>
+        /// <typeparam name="T">The type of number.</typeparam>
+        /// <param name="Value">A number.</param>
+        /// <param name="Interval">The interval number.</param>
+        public static T Ceiling<T>(T Value, T Interval)
+        {
+            Func<T, double> Cast0 = ExpressionHelper<T>.CreateCast<double>();
+            double DInterval = Cast0(Interval);
+            return ExpressionHelper<double>.CreateCast<T>()(Math.Ceiling(Cast0(Value) / DInterval) * DInterval);
+        }
 
         /// <summary>
         /// Returns the largest interval number less than or equal to the specified interval number.
         /// </summary>
-        /// <param name="This">A double-precision floating-point number.</param>
+        /// <param name="Value">A double-precision floating-point number.</param>
         /// <param name="Interval">The interval number.</param>
-        public static double Floor(this double This, double Interval)
-            => Math.Floor(This / Interval) * Interval;
+        public static double Floor(double Value, double Interval)
+            => Math.Floor(Value / Interval) * Interval;
         /// <summary>
         /// Returns the largest interval number less than or equal to the specified interval number.
         /// </summary>
-        /// <param name="This">A decimal number.</param>
+        /// <param name="Value">A decimal number.</param>
         /// <param name="Interval">The interval number.</param>
-        public static decimal Floor(this decimal This, decimal Interval)
-            => Math.Floor(This / Interval) * Interval;
+        public static decimal Floor(decimal Value, decimal Interval)
+            => Math.Floor(Value / Interval) * Interval;
+        /// <summary>
+        /// Returns the largest interval number less than or equal to the specified interval number.
+        /// </summary>
+        /// <typeparam name="T">The type of number.</typeparam>
+        /// <param name="Value">A number.</param>
+        public static T Floor<T>(T Value)
+            => ExpressionHelper<double>.CreateCast<T>()(Math.Floor(ExpressionHelper<T>.CreateCast<double>()(Value)));
+        /// <summary>
+        /// Returns the largest interval number less than or equal to the specified interval number.
+        /// </summary>
+        /// <typeparam name="T">The type of number.</typeparam>
+        /// <param name="Value">A number.</param>
+        /// <param name="Interval">The interval number.</param>
+        public static T Floor<T>(T Value, T Interval)
+        {
+            Func<T, double> Cast0 = ExpressionHelper<T>.CreateCast<double>();
+            double DInterval = Cast0(Interval);
+            return ExpressionHelper<double>.CreateCast<T>()(Math.Floor(Cast0(Value) / DInterval) * DInterval);
+        }
 
         /// <summary>
         /// Rounds a value to the nearest interval number.
         /// </summary>
-        /// <param name="This">A double-precision floating-point number to be rounded.</param>
+        /// <param name="Value">A double-precision floating-point number to be rounded.</param>
         /// <param name="Interval">The interval number.</param>
-        public static double Round(this double This, double Interval)
-            => Math.Round(This / Interval) * Interval;
+        public static double Round(double Value, double Interval)
+            => Math.Round(Value / Interval) * Interval;
         /// <summary>
         /// Rounds a value to the nearest interval number.
         /// </summary>
-        /// <param name="This">A double-precision floating-point number to be rounded.</param>
+        /// <param name="Value">A double-precision floating-point number to be rounded.</param>
         /// <param name="Interval">The interval number.</param>
         /// <param name="Mode">Specification for how to round d if it is midway between two other numbers.</param>
-        public static double Round(this double This, double Interval, MidpointRounding Mode)
-            => Math.Round(This / Interval, Mode) * Interval;
+        public static double Round(double Value, double Interval, MidpointRounding Mode)
+            => Math.Round(Value / Interval, Mode) * Interval;
         /// <summary>
         /// Rounds a value to the nearest interval number.
         /// </summary>
-        /// <param name="This">A decimal number to be rounded.</param>
+        /// <param name="Value">A decimal number to be rounded.</param>
         /// <param name="Interval">The interval number.</param>
-        public static decimal Round(this decimal This, decimal Interval)
-            => Math.Round(This / Interval) * Interval;
+        public static decimal Round(decimal Value, decimal Interval)
+            => Math.Round(Value / Interval) * Interval;
         /// <summary>
         /// Rounds a value to the nearest interval number.
         /// </summary>
-        /// <param name="This">A decimal number to be rounded.</param>
+        /// <param name="Value">A decimal number to be rounded.</param>
         /// <param name="Interval">The interval number.</param>
         /// <param name="Mode">Specification for how to round d if it is midway between two other numbers.</param>
-        public static decimal Round(this decimal This, decimal Interval, MidpointRounding Mode)
-            => Math.Round(This / Interval, Mode) * Interval;
+        public static decimal Round(decimal Value, decimal Interval, MidpointRounding Mode)
+            => Math.Round(Value / Interval, Mode) * Interval;
+        /// <summary>
+        /// Rounds a value to the nearest interval number.
+        /// </summary>
+        /// <typeparam name="T">The type of number.</typeparam>
+        /// <param name="Value">A number to be rounded.</param>
+        public static T Round<T>(T Value)
+            => ExpressionHelper<double>.CreateCast<T>()(Math.Round(ExpressionHelper<T>.CreateCast<double>()(Value)));
+        /// <summary>
+        /// Rounds a value to the nearest interval number.
+        /// </summary>
+        /// <typeparam name="T">The type of number.</typeparam>
+        /// <param name="Value">A number to be rounded.</param>
+        /// <param name="Interval">The interval number.</param>
+        public static T Round<T>(T Value, T Interval)
+        {
+            Func<T, double> Cast0 = ExpressionHelper<T>.CreateCast<double>();
+            double DInterval = Cast0(Interval);
+            return ExpressionHelper<double>.CreateCast<T>()(Math.Round(Cast0(Value) / DInterval) * DInterval);
+        }
+        /// <summary>
+        /// Rounds a value to the nearest interval number.
+        /// </summary>
+        /// <typeparam name="T">The type of number.</typeparam>
+        /// <param name="Value">A number to be rounded.</param>
+        /// <param name="Interval">The interval number.</param>
+        /// <param name="Mode">Specification for how to round d if it is midway between two other numbers.</param>
+        public static T Round<T>(T Value, T Interval, MidpointRounding Mode)
+        {
+            Func<T, double> Cast0 = ExpressionHelper<T>.CreateCast<double>();
+            double DInterval = Cast0(Interval);
+            return ExpressionHelper<double>.CreateCast<T>()(Math.Round(Cast0(Value) / DInterval, Mode) * DInterval);
+        }
 
         /// <summary>
         /// Returns value clamped to the inclusive range of Min and Max.
@@ -164,7 +235,7 @@ namespace MenthaAssembly
         /// <param name="Max">The upper bound of the result.</param>
         /// <returns></returns>
         public static T Clamp<T>(this T This, T Min, T Max)
-            where T : IComparable<T>
+            where T : IComparable
         {
             if (This.CompareTo(Min) < 0)
                 return Min;
@@ -181,7 +252,7 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Source">The specified numbers.</param>
         public static T Max<T>(params T[] Source)
-            where T : IComparable<T>
+            where T : IComparable
             => Source.Max();
         /// <summary>
         /// Returns the lowest number of specified numbers.
@@ -189,7 +260,7 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Source">The specified numbers.</param>
         public static T Min<T>(params T[] Source)
-            where T : IComparable<T>
+            where T : IComparable
             => Source.Min();
 
         /// <summary>
@@ -200,10 +271,8 @@ namespace MenthaAssembly
         /// <param name="Max">The largest number.</param>
         /// <param name="Source">The specified numbers.</param>
         public static void MinAndMax<T>(out T Min, out T Max, params T[] Source)
-            where T : IComparable<T>
-        {
-            Source.MinAndMax(out Min, out Max);
-        }
+            where T : IComparable
+            => Source.MinAndMax(out Min, out Max);
         /// <summary>
         /// Returns the largest and the lowest number of specified numbers.
         /// </summary>
@@ -212,7 +281,7 @@ namespace MenthaAssembly
         /// <param name="Min">The lowest number.</param>
         /// <param name="Max">The largest number.</param>
         public static void MinAndMax<T>(this IEnumerable<T> Source, out T Min, out T Max)
-            where T : IComparable<T>
+            where T : IComparable
         {
             IEnumerator<T> Enumerator = Source.GetEnumerator();
 
@@ -349,6 +418,15 @@ namespace MenthaAssembly
             X ^= Y;
             Y ^= X;
             X ^= Y;
+        }
+        /// <summary>
+        /// Swap the Datas.
+        /// </summary>
+        public static void Swap<T>(ref T X, ref T Y)
+        {
+            T Temp = Y;
+            X = Y;
+            Y = Temp;
         }
 
         /// <summary>
