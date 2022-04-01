@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -67,7 +68,7 @@ namespace MenthaAssembly
         }
 
         /// <summary>
-        /// The circle center point of this arc segment.
+        /// The equivalent circle center point of this arc segment.
         /// </summary>
         public Point<T> Center
         {
@@ -281,8 +282,6 @@ namespace MenthaAssembly
         }
 
         private static readonly Func<T, T, T> Add, Sub, Mul;
-        private static readonly Func<T, T> Abs, Div2;
-        private static readonly Func<T, T, bool> GreaterThan;
         private static readonly Predicate<T> IsDefault;
         private static readonly Func<T, double> ToDouble;
         private static readonly Func<double, T> ToGeneric;
@@ -292,10 +291,6 @@ namespace MenthaAssembly
             Sub = ExpressionHelper<T>.CreateSub();
             Mul = ExpressionHelper<T>.CreateMul();
 
-            Abs = ExpressionHelper<T>.CreateAbs();
-            Div2 = ExpressionHelper<T>.CreateDiv(2);
-
-            GreaterThan = ExpressionHelper<T>.CreateGreaterThan();
             IsDefault = ExpressionHelper<T>.CreateIsDefault();
 
             ToDouble = ExpressionHelper<T>.CreateCast<double>();
@@ -309,6 +304,35 @@ namespace MenthaAssembly
             double Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Px1)), ToDouble(Sub(Cy, Py1))),
                    Theta2 = MathHelper.Atan(ToDouble(Sub(Cx, Px2)), ToDouble(Sub(Cy, Py2))),
                    Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Px3)), ToDouble(Sub(Cy, Py3)));
+
+            if (Theta2 < Theta1)
+            {
+                MathHelper.Swap(ref Px1, ref Px2);
+                MathHelper.Swap(ref Py1, ref Py2);
+                MathHelper.Swap(ref Theta1, ref Theta2);
+            }
+
+            if (Theta3 < Theta1)
+            {
+                MathHelper.Swap(ref Px1, ref Px3);
+                MathHelper.Swap(ref Py1, ref Py3);
+                MathHelper.Swap(ref Theta1, ref Theta3);
+            }
+
+            if (Theta3 < Theta2)
+            {
+                MathHelper.Swap(ref Px2, ref Px3);
+                MathHelper.Swap(ref Py2, ref Py3);
+                MathHelper.Swap(ref Theta2, ref Theta3);
+            }
+        }
+        private static void SortPoints(ref T Px1, ref T Py1, ref T Px2, ref T Py2, ref T Px3, ref T Py3, out T Cx, out T Cy, out double Theta1, out double Theta2, out double Theta3)
+        {
+            Circle<T>.CalculateCenter(Px1, Py1, Px2, Py2, Px3, Py3, out Cx, out Cy);
+
+            Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Px1)), ToDouble(Sub(Cy, Py1)));
+            Theta2 = MathHelper.Atan(ToDouble(Sub(Cx, Px2)), ToDouble(Sub(Cy, Py2)));
+            Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Px3)), ToDouble(Sub(Cy, Py3)));
 
             if (Theta2 < Theta1)
             {
@@ -453,244 +477,328 @@ namespace MenthaAssembly
             return Theta1 <= Alpha && Alpha <= Theta3;
         }
 
-        ///// <summary>
-        ///// Calculate the cross points between the specified Arc Segment and the specified Line.
-        ///// </summary>
-        ///// <param name="ArcSegment">The target ArcSegment.</param>
-        ///// <param name="Line">The target Line.</param>
-        //public static CrossPoints<T> CrossPoint(ArcSegment<T> ArcSegment, Line<T> Line)
-        //{
-        //    if (ArcSegment.Points is null || ArcSegment.Points.Length < 2 ||
-        //        Line.Points is null || Line.Points.Length < 2)
-        //        return CrossPoints<T>.None;
+        /// <summary>
+        /// Calculate the cross points between the specified Arc Segment and the specified Line.
+        /// </summary>
+        /// <param name="ArcSegment">The target ArcSegment.</param>
+        /// <param name="Line">The target Line.</param>
+        public static CrossPoints<T> CrossPoint(ArcSegment<T> ArcSegment, Line<T> Line)
+        {
+            if (ArcSegment.Points is null || ArcSegment.Points.Length < 2 ||
+                Line.Points is null || Line.Points.Length < 2)
+                return CrossPoints<T>.None;
 
-        //    Point<T> p1 = ArcSegment.Points[0],
-        //             p2 = ArcSegment.Points[1],
-        //             p3 = ArcSegment.Points[2],
-        //             p4 = Line.Points[0],
-        //             p5 = Line.Points[1];
+            Point<T> Ap1 = ArcSegment.Points[0],
+                     Ap2 = ArcSegment.Points[1],
+                     Ap3 = ArcSegment.Points[2],
+                     Lp1 = Line.Points[0],
+                     Lp2 = Line.Points[1];
 
-        //    return CrossPoint(p1.X, p1.Y, p2.X, p2.Y, p3.X, p3.Y, p4.X, p4.Y, p5.X, p5.Y);
-        //}
-        ///// <summary>
-        ///// Calculate the cross points between the specified Arc Segment and the specified Line.
-        ///// </summary>
-        ///// <param name="ArcSegment">The target ArcSegment.</param>
-        ///// <param name="Lx1">The x-coordinate of a point on the second target Line.</param>
-        ///// <param name="Ly1">The y-coordinate of a point on the second target Line.</param>
-        ///// <param name="Lx2">The x-coordinate of a another point on the second target Line.</param>
-        ///// <param name="Ly2">The y-coordinate of a another point on the second target Line.</param>
-        //public static CrossPoints<T> CrossPoint(ArcSegment<T> ArcSegment, T Lx1, T Ly1, T Lx2, T Ly2)
-        //{
-        //    if (ArcSegment.Points is null || ArcSegment.Points.Length < 2)
-        //        return CrossPoints<T>.None;
+            T Ax1 = Ap1.X,
+              Ay1 = Ap1.Y,
+              Ax2 = Ap2.X,
+              Ay2 = Ap2.Y,
+              Ax3 = Ap3.X,
+              Ay3 = Ap3.Y,
+              Lx1 = Lp1.X,
+              Ly1 = Lp1.Y,
+              Lx2 = Lp2.X,
+              Ly2 = Lp2.Y;
 
-        //    Point<T> p1 = ArcSegment.Points[0],
-        //             p2 = ArcSegment.Points[1],
-        //             p3 = ArcSegment.Points[2];
+            Circle<T>.CalculateCenter(Ax1, Ay1, Ax2, Ay2, Ax3, Ay3, out T Cx, out T Cy);
 
-        //    return CrossPoint(p1.X, p1.Y, p2.X, p2.Y, p3.X, p3.Y, Lx1, Ly1, Lx2, Ly2);
-        //}
-        ///// <summary>
-        ///// Calculate the cross points between the specified Arc Segment and the specified Line.
-        ///// </summary>
-        ///// <param name="ArcP1">The first point on the first target ArcSegment.</param>
-        ///// <param name="ArcP2">The second point on the first target ArcSegment.</param>
-        ///// <param name="ArcP3">The third point on the first target ArcSegment.</param>
-        ///// <param name="LineP1">The point on the second target Line.</param>
-        ///// <param name="LineP2">The another point on the second target Line.</param>
-        //public static CrossPoints<T> CrossPoint(Point<T> ArcP1, Point<T> ArcP2, Point<T> ArcP3, Point<T> LineP1, Point<T> LineP2)
-        //    => CrossPoint(ArcP1.X, ArcP1.Y, ArcP2.X, ArcP2.Y, ArcP3.X, ArcP3.Y, LineP1.X, LineP1.Y, LineP2.X, LineP2.Y);
-        ///// <summary>
-        ///// Calculate the cross points between the specified Arc Segment and the specified Line.
-        ///// </summary>
-        ///// <param name="Ax1">The x-coordinate of a first point on the first target ArcSegment.</param>
-        ///// <param name="Ay1">The y-coordinate of a first point on the first target ArcSegment.</param>
-        ///// <param name="Ax2">The x-coordinate of a second point on the first target ArcSegment.</param>
-        ///// <param name="Ay2">The y-coordinate of a second point on the first target ArcSegment.</param>
-        ///// <param name="Ax3">The x-coordinate of a third point on the first target ArcSegment.</param>
-        ///// <param name="Ay3">The y-coordinate of a third point on the first target ArcSegment.</param>
-        ///// <param name="Lx1">The x-coordinate of a point on the second target Line.</param>
-        ///// <param name="Ly1">The y-coordinate of a point on the second target Line.</param>
-        ///// <param name="Lx2">The x-coordinate of a another point on the second target Line.</param>
-        ///// <param name="Ly2">The y-coordinate of a another point on the second target Line.</param>
-        //public static CrossPoints<T> CrossPoint(T Ax1, T Ay1, T Ax2, T Ay2, T Ax3, T Ay3, T Lx1, T Ly1, T Lx2, T Ly2)
-        //{
-        //    T v1x = Sub(Ax2, Ax1),
-        //      v1y = Sub(Ay2, Ay1);
+            double Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Ax1)), ToDouble(Sub(Cy, Ay1))),
+                   Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Ax3)), ToDouble(Sub(Cy, Ay3))),
+                   Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
 
-        //    if (IsDefault(v1x) && IsDefault(v1y))
-        //        return IsColArcSegmentar(Ax1, Ay1, Lx1, Ly1, Lx2, Ly2) ? new CrossPoints<T>(new Point<T>(Ax1, Ay1)) : CrossPoints<T>.None;
+            T Dx = Sub(Lx2, Lx1),
+              Dy = Sub(Ly2, Ly1);
 
-        //    T v2x = Sub(Lx2, Lx1),
-        //      v2y = Sub(Ly2, Ly1),
-        //      v3x = Sub(Lx1, Ax1),
-        //      v3y = Sub(Ly1, Ay1);
+            if (IsDefault(Dx) && IsDefault(Dy))
+            {
+                double Tr = Point<T>.Distance(Cx, Cy, Lx1, Ly1);
 
-        //    if (IsDefault(v2x) && IsDefault(v2y))
-        //        return (IsDefault(v3x) && IsDefault(v3x)) || IsDefault(Vector<T>.Cross(v1x, v1y, v3x, v3y)) ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+                if (Radius != Tr)
+                    return CrossPoints<T>.None;
 
-        //    T C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
-        //      C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
+                T TDx = Sub(Cx, Lx1),
+                  TDy = Sub(Cy, Ly1);
 
-        //    if (IsDefault(C1))
-        //        return IsDefault(C2) ? CrossPoints<T>.Infinity : CrossPoints<T>.None;
+                double Alpha = MathHelper.Atan(ToDouble(TDx), ToDouble(TDy));
 
-        //    double t = ToDouble(C2) / ToDouble(C1);
-        //    if (t < 0)
-        //        t = -t;
+                return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+            }
 
-        //    return new CrossPoints<T>(new Point<T>(Add(Ax1, ToGeneric(ToDouble(v1x) * t)), Add(Ay1, ToGeneric(ToDouble(v1y) * t))));
-        //}
-        ///// <summary>
-        ///// Calculate the cross points between the specified ArcSegment and the specified ArcSegment segment.
-        ///// </summary>
-        ///// <param name="ArcSegment">the target ArcSegment.</param>
-        ///// <param name="Segment">The target ArcSegment segment.</param>
-        //public static CrossPoints<T> CrossPoint(ArcSegment<T> ArcSegment, ArcSegment<T> Segment)
-        //{
-        //    if (ArcSegment.Points is null || ArcSegment.Points.Length < 2)
-        //        return CrossPoints<T>.None;
+            T Kx = Sub(Lx1, Cx),
+              Ky = Sub(Ly1, Cy);
+            double a = ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))),
+                   b = ToDouble(Add(Mul(Kx, Dx), Mul(Ky, Dy))),
+                   c = ToDouble(Add(Mul(Kx, Kx), Mul(Ky, Ky))) - Radius * Radius,
+                   D = b * b - a * c,
+                   DDx = ToDouble(Dx),
+                   DDy = ToDouble(Dy);
 
-        //    Point<T> p1 = ArcSegment.Points[0],
-        //             p2 = ArcSegment.Points[1];
+            double t;
+            if (D == 0)
+            {
+                t = -b / a;
+                return new CrossPoints<T>(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+            }
 
-        //    return CrossPoint(p1.X, p1.Y, p2.X, p2.Y, Segment);
-        //}
-        ///// <summary>
-        ///// Calculate the cross points between the specified ArcSegment and the specified ArcSegment segment.
-        ///// </summary>
-        ///// <param name="ArcSegmentPoint1">The point on the target ArcSegment.</param>
-        ///// <param name="ArcSegmentPoint2">The another point on the target ArcSegment.</param>
-        ///// <param name="Segment">the target ArcSegment segment.</param>
-        //public static CrossPoints<T> CrossPoint(Point<T> ArcSegmentPoint1, Point<T> ArcSegmentPoint2, ArcSegment<T> Segment)
-        //    => CrossPoint(ArcSegmentPoint1.X, ArcSegmentPoint1.Y, ArcSegmentPoint2.X, ArcSegmentPoint2.Y, Segment);
-        ///// <summary>
-        ///// Calculate the cross points between the specified ArcSegment and the specified ArcSegment segment.
-        ///// </summary>
-        ///// <param name="Lx1">The x-coordinate of a point on the target ArcSegment.</param>
-        ///// <param name="Ly1">The y-coordinate of a point on the target ArcSegment.</param>
-        ///// <param name="Lx2">The x-coordinate of a another point on the target ArcSegment.</param>
-        ///// <param name="Ly2">The y-coordinate of a another point on the target ArcSegment.</param>
-        ///// <param name="Segment">the target ArcSegment segment.</param>
-        //public static CrossPoints<T> CrossPoint(T Lx1, T Ly1, T Lx2, T Ly2, ArcSegment<T> Segment)
-        //{
-        //    if (Segment.Points is null || Segment.Points.Length < 2)
-        //        return CrossPoints<T>.None;
+            Point<T>[] Crosses = new Point<T>[2];
+            double SqrD = Math.Sqrt(D);
 
-        //    Point<T> Sp1 = Segment.Points[0],
-        //             Sp2 = Segment.Points[1];
+            t = (-b + SqrD) / a;
+            Crosses[0] = new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)));
+            t = (-b - SqrD) / a;
+            Crosses[1] = new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)));
 
-        //    T Sx1 = Sp1.X,
-        //      Sy1 = Sp1.Y,
-        //      Sx2 = Sp2.X,
-        //      Sy2 = Sp2.Y,
-        //      v1x = Sub(Lx2, Lx1),
-        //      v1y = Sub(Ly2, Ly1);
+            return new CrossPoints<T>(Crosses);
+        }
+        /// <summary>
+        /// Calculate the cross points between the specified Arc Segment and the specified Line.
+        /// </summary>
+        /// <param name="ArcP1">The first point on the target ArcSegment.</param>
+        /// <param name="ArcP2">The second point on the target ArcSegment.</param>
+        /// <param name="ArcP3">The third point on the target ArcSegment.</param>
+        /// <param name="Line">The target Line.</param>
+        public static CrossPoints<T> CrossPoint(Point<T> ArcP1, Point<T> ArcP2, Point<T> ArcP3, Line<T> Line)
+            => CrossPoint(ArcP1.X, ArcP1.Y, ArcP2.X, ArcP2.Y, ArcP3.X, ArcP3.Y, Line);
+        /// <summary>
+        /// Calculate the cross points between the specified Arc Segment and the specified Line.
+        /// </summary>
+        /// <param name="Ax1">The x-coordinate of a first point on the target ArcSegment.</param>
+        /// <param name="Ay1">The y-coordinate of a first point on the target ArcSegment.</param>
+        /// <param name="Ax2">The x-coordinate of a second point on the target ArcSegment.</param>
+        /// <param name="Ay2">The y-coordinate of a second point on the target ArcSegment.</param>
+        /// <param name="Ax3">The x-coordinate of a third point on the target ArcSegment.</param>
+        /// <param name="Ay3">The y-coordinate of a third point on the target ArcSegment.</param>
+        /// <param name="Line">The target Line.</param>
+        public static CrossPoints<T> CrossPoint(T Ax1, T Ay1, T Ax2, T Ay2, T Ax3, T Ay3, Line<T> Line)
+        {
+            if (Line.Points is null || Line.Points.Length < 2)
+                return CrossPoints<T>.None;
 
-        //    if (IsDefault(v1x) && IsDefault(v1y))
-        //        return ArcSegmentSegment<T>.Contain(Sx1, Sy1, Sx2, Sy2, Lx1, Ly1) ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+            Point<T> Lp1 = Line.Points[0],
+                     Lp2 = Line.Points[1];
 
-        //    T v2x = Sub(Sx2, Sx1),
-        //      v2y = Sub(Sy2, Sy1);
+            T Lx1 = Lp1.X,
+              Ly1 = Lp1.Y,
+              Lx2 = Lp2.X,
+              Ly2 = Lp2.Y;
 
-        //    if (IsDefault(v2x) && IsDefault(v2y))
-        //        return IsColArcSegmentar(Lx1, Ly1, Lx2, Ly2, Sx1, Sy1) ? new CrossPoints<T>(new Point<T>(Sx1, Sy1)) : CrossPoints<T>.None;
+            SortPoints(ref Ax1, ref Ay1, ref Ax2, ref Ay2, ref Ax3, ref Ay3, out T Cx, out T Cy, out double Theta1, out double Theta2, out double Theta3);
+            double Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
 
-        //    T v3x = Sub(Sx1, Lx1),
-        //      v3y = Sub(Sy1, Ly1),
-        //      C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
-        //      C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
+            T Dx = Sub(Lx2, Lx1),
+              Dy = Sub(Ly2, Ly1);
 
-        //    if (IsDefault(C1))
-        //        return IsDefault(C2) ? CrossPoints<T>.Infinity : CrossPoints<T>.None;
+            if (IsDefault(Dx) && IsDefault(Dy))
+            {
+                double Tr = Point<T>.Distance(Cx, Cy, Lx1, Ly1);
 
-        //    double t = ToDouble(C2) / ToDouble(C1);
-        //    if (t < 0)
-        //        t = -t;
+                if (Radius != Tr)
+                    return CrossPoints<T>.None;
 
-        //    T X = Add(Lx1, ToGeneric(ToDouble(v1x) * t)),
-        //      Y = Add(Ly1, ToGeneric(ToDouble(v1y) * t));
+                T TDx = Sub(Cx, Lx1),
+                  TDy = Sub(Cy, Ly1);
 
-        //    return ArcSegmentSegment<T>.OnSegment(Sx1, Sy1, Sx2, Sy2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : CrossPoints<T>.None;
-        //}
-        ///// <summary>
-        ///// Calculate the cross points between the specified ArcSegment and the specified circle.
-        ///// </summary>
-        ///// <param name="ArcSegment">the target ArcSegment.</param>
-        ///// <param name="Circle">The target circle.</param>
-        //public static CrossPoints<T> CrossPoint(ArcSegment<T> ArcSegment, Circle<T> Circle)
-        //{
-        //    if (ArcSegment.Points is null || ArcSegment.Points.Length < 2)
-        //        return CrossPoints<T>.None;
+                double Alpha = MathHelper.Atan(ToDouble(TDx), ToDouble(TDy));
 
-        //    Point<T> p1 = ArcSegment.Points[0],
-        //             p2 = ArcSegment.Points[1];
+                return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+            }
 
-        //    return CrossPoint(p1.X, p1.Y, p2.X, p2.Y, Circle);
-        //}
-        ///// <summary>
-        ///// Calculate the cross points between the specified ArcSegment and the specified circle.
-        ///// </summary>
-        ///// <param name="ArcSegmentPoint1">The point on the target ArcSegment.</param>
-        ///// <param name="ArcSegmentPoint2">The another point on the target ArcSegment.</param>
-        ///// <param name="Circle">the target circle.</param>
-        //public static CrossPoints<T> CrossPoint(Point<T> ArcSegmentPoint1, Point<T> ArcSegmentPoint2, Circle<T> Circle)
-        //    => CrossPoint(ArcSegmentPoint1.X, ArcSegmentPoint1.Y, ArcSegmentPoint2.X, ArcSegmentPoint2.Y, Circle);
-        ///// <summary>
-        ///// Calculate the cross points between the specified ArcSegment and the specified circle.
-        ///// </summary>
-        ///// <param name="Lx1">The x-coordinate of a point on the target ArcSegment.</param>
-        ///// <param name="Ly1">The y-coordinate of a point on the target ArcSegment.</param>
-        ///// <param name="Lx2">The x-coordinate of a another point on the target ArcSegment.</param>
-        ///// <param name="Ly2">The y-coordinate of a another point on the target ArcSegment.</param>
-        ///// <param name="Circle">the target circle.</param>
-        //public static CrossPoints<T> CrossPoint(T Lx1, T Ly1, T Lx2, T Ly2, Circle<T> Circle)
-        //{
-        //    if (Circle.IsEmpty)
-        //        return CrossPoints<T>.None;
+            T Kx = Sub(Lx1, Cx),
+              Ky = Sub(Ly1, Cy);
+            double a = ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))),
+                   b = ToDouble(Add(Mul(Kx, Dx), Mul(Ky, Dy))),
+                   c = ToDouble(Add(Mul(Kx, Kx), Mul(Ky, Ky))) - Radius * Radius,
+                   D = b * b - a * c,
+                   DDx = ToDouble(Dx),
+                   DDy = ToDouble(Dy);
 
-        //    double Dx = ToDouble(Sub(Lx2, Lx1)),
-        //           Dy = ToDouble(Sub(Ly2, Ly1));
+            double t;
+            if (D == 0)
+            {
+                t = -b / a;
+                return new CrossPoints<T>(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+            }
 
-        //    if (Dx is 0d && Dy is 0d)
-        //        return CrossPoints<T>.None;
+            Point<T>[] Crosses = new Point<T>[2];
+            double SqrD = Math.Sqrt(D);
 
-        //    // Lx' = Lx1 + Dx * t
-        //    // Ly' = Ly1 + Dy * t
+            t = (-b + SqrD) / a;
+            Crosses[0] = new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)));
+            t = (-b - SqrD) / a;
+            Crosses[1] = new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)));
 
-        //    // Circle Equation
-        //    // X ^ 2 + Y ^ 2 = R ^ 2
-        //    double R = Circle.Radius,
-        //           DLx = ToDouble(Lx1),
-        //           DLy = ToDouble(Ly1),
-        //           a = Dx * Dx + Dy * Dy,
-        //           b = DLx * Dx + DLy * Dy,
-        //           c = DLx * DLx + DLy * DLy - R * R,
-        //           D = b * b - a * c;
+            return new CrossPoints<T>(Crosses);
+        }
+        /// <summary>
+        /// Calculate the cross points between the specified Arc Segment and the specified Line Segment.
+        /// </summary>
+        /// <param name="ArcSegment">The target ArcSegment.</param>
+        /// <param name="LineSegment">The target LineSegment.</param>
+        public static CrossPoints<T> CrossPoint(ArcSegment<T> ArcSegment, LineSegment<T> LineSegment)
+        {
+            if (ArcSegment.Points is null || ArcSegment.Points.Length < 2 ||
+                LineSegment.Points is null || LineSegment.Points.Length < 2)
+                return CrossPoints<T>.None;
 
-        //    if (D < 0)
-        //        return CrossPoints<T>.None;
+            Point<T> Ap1 = ArcSegment.Points[0],
+                     Ap2 = ArcSegment.Points[1],
+                     Ap3 = ArcSegment.Points[2],
+                     Lp1 = LineSegment.Points[0],
+                     Lp2 = LineSegment.Points[1];
 
-        //    double t;
-        //    if (D == 0)
-        //    {
-        //        t = -b / a;
-        //        return new CrossPoints<T>(new Point<T>(ToGeneric(DLx + Dx * t), ToGeneric(DLy + Dy * t)));
-        //    }
+            T Ax1 = Ap1.X,
+              Ay1 = Ap1.Y,
+              Ax2 = Ap2.X,
+              Ay2 = Ap2.Y,
+              Ax3 = Ap3.X,
+              Ay3 = Ap3.Y,
+              Lx1 = Lp1.X,
+              Ly1 = Lp1.Y,
+              Lx2 = Lp2.X,
+              Ly2 = Lp2.Y;
 
-        //    Point<T>[] Crosses = new Point<T>[2];
+            Circle<T>.CalculateCenter(Ax1, Ay1, Ax2, Ay2, Ax3, Ay3, out T Cx, out T Cy);
 
-        //    double SqrD = Math.Sqrt(D);
+            double Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Ax1)), ToDouble(Sub(Cy, Ay1))),
+                   Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Ax3)), ToDouble(Sub(Cy, Ay3))),
+                   Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
 
-        //    t = (-b + SqrD) / a;
-        //    Crosses[0] = new Point<T>(ToGeneric(DLx + Dx * t), ToGeneric(DLy + Dy * t));
+            T Dx = Sub(Lx2, Lx1),
+              Dy = Sub(Ly2, Ly1);
 
-        //    t = (-b - SqrD) / a;
-        //    Crosses[1] = new Point<T>(ToGeneric(DLx + Dx * t), ToGeneric(DLy + Dy * t));
+            if (IsDefault(Dx) && IsDefault(Dy))
+            {
+                double Tr = Point<T>.Distance(Cx, Cy, Lx1, Ly1);
 
-        //    return new CrossPoints<T>(Crosses);
-        //}
+                if (Radius != Tr)
+                    return CrossPoints<T>.None;
+
+                T TDx = Sub(Cx, Lx1),
+                  TDy = Sub(Cy, Ly1);
+
+                double Alpha = MathHelper.Atan(ToDouble(TDx), ToDouble(TDy));
+
+                return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+            }
+
+            T Kx = Sub(Lx1, Cx),
+              Ky = Sub(Ly1, Cy);
+            double a = ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))),
+                   b = ToDouble(Add(Mul(Kx, Dx), Mul(Ky, Dy))),
+                   c = ToDouble(Add(Mul(Kx, Kx), Mul(Ky, Ky))) - Radius * Radius,
+                   D = b * b - a * c,
+                   DDx = ToDouble(Dx),
+                   DDy = ToDouble(Dy);
+
+            double t;
+            if (D == 0)
+            {
+                t = -b / a;
+                return 0d <= t && t <= 1d ? new CrossPoints<T>(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)))) :
+                                          CrossPoints<T>.None;
+            }
+
+            List<Point<T>> Crosses = new List<Point<T>>();
+            double SqrD = Math.Sqrt(D);
+
+            t = (-b + SqrD) / a;
+            if (0d <= t && t <= 1d)
+                Crosses.Add(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+
+            t = (-b - SqrD) / a;
+            if (0d <= t && t <= 1d)
+                Crosses.Add(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+
+            return new CrossPoints<T>(Crosses);
+        }
+        /// <summary>
+        /// Calculate the cross points between the specified Arc Segment and the specified Line Segment.
+        /// </summary>
+        /// <param name="ArcP1">The first point on the target ArcSegment.</param>
+        /// <param name="ArcP2">The second point on the target ArcSegment.</param>
+        /// <param name="ArcP3">The third point on the target ArcSegment.</param>
+        /// <param name="LineSegment">The target LineSegment.</param>
+        public static CrossPoints<T> CrossPoint(Point<T> ArcP1, Point<T> ArcP2, Point<T> ArcP3, LineSegment<T> LineSegment)
+            => CrossPoint(ArcP1.X, ArcP1.Y, ArcP2.X, ArcP2.Y, ArcP3.X, ArcP3.Y, LineSegment);
+        /// <summary>
+        /// Calculate the cross points between the specified Arc Segment and the specified Line Segment.
+        /// </summary>
+        /// <param name="Ax1">The x-coordinate of a first point on the target ArcSegment.</param>
+        /// <param name="Ay1">The y-coordinate of a first point on the target ArcSegment.</param>
+        /// <param name="Ax2">The x-coordinate of a second point on the target ArcSegment.</param>
+        /// <param name="Ay2">The y-coordinate of a second point on the target ArcSegment.</param>
+        /// <param name="Ax3">The x-coordinate of a third point on the target ArcSegment.</param>
+        /// <param name="Ay3">The y-coordinate of a third point on the target ArcSegment.</param>
+        /// <param name="LineSegment">The target LineSegment.</param>
+        public static CrossPoints<T> CrossPoint(T Ax1, T Ay1, T Ax2, T Ay2, T Ax3, T Ay3, LineSegment<T> LineSegment)
+        {
+            if (LineSegment.Points is null || LineSegment.Points.Length < 2)
+                return CrossPoints<T>.None;
+
+            Point<T> Lp1 = LineSegment.Points[0],
+                     Lp2 = LineSegment.Points[1];
+
+            T Lx1 = Lp1.X,
+              Ly1 = Lp1.Y,
+              Lx2 = Lp2.X,
+              Ly2 = Lp2.Y;
+
+            SortPoints(ref Ax1, ref Ay1, ref Ax2, ref Ay2, ref Ax3, ref Ay3, out T Cx, out T Cy, out double Theta1, out double Theta2, out double Theta3);
+            double Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
+
+            T Dx = Sub(Lx2, Lx1),
+              Dy = Sub(Ly2, Ly1);
+
+            if (IsDefault(Dx) && IsDefault(Dy))
+            {
+                double Tr = Point<T>.Distance(Cx, Cy, Lx1, Ly1);
+
+                if (Radius != Tr)
+                    return CrossPoints<T>.None;
+
+                T TDx = Sub(Cx, Lx1),
+                  TDy = Sub(Cy, Ly1);
+
+                double Alpha = MathHelper.Atan(ToDouble(TDx), ToDouble(TDy));
+
+                return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+            }
+
+            T Kx = Sub(Lx1, Cx),
+              Ky = Sub(Ly1, Cy);
+            double a = ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))),
+                   b = ToDouble(Add(Mul(Kx, Dx), Mul(Ky, Dy))),
+                   c = ToDouble(Add(Mul(Kx, Kx), Mul(Ky, Ky))) - Radius * Radius,
+                   D = b * b - a * c,
+                   DDx = ToDouble(Dx),
+                   DDy = ToDouble(Dy);
+
+            double t;
+            if (D == 0)
+            {
+                t = -b / a;
+                return 0d <= t && t <= 1d ? new CrossPoints<T>(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)))) :
+                                          CrossPoints<T>.None;
+            }
+
+            List<Point<T>> Crosses = new List<Point<T>>();
+            double SqrD = Math.Sqrt(D);
+
+            t = (-b + SqrD) / a;
+            if (0d <= t && t <= 1d)
+                Crosses.Add(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+
+            t = (-b - SqrD) / a;
+            if (0d <= t && t <= 1d)
+                Crosses.Add(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+
+            return new CrossPoints<T>(Crosses);
+        }
 
         /// <summary>
         /// Offsets the specified ArcSegment by the specified vector.
