@@ -1,7 +1,12 @@
-﻿namespace MenthaAssembly.Media.Imaging
+﻿using System;
+using System.Runtime.InteropServices;
+
+namespace MenthaAssembly.Media.Imaging
 {
-    public interface IImagePalette
+    public interface IImagePalette : IDisposable
     {
+        public GCHandle Handle { get; }
+
         int this[IPixel Color] { get; }
 
         IPixel this[int Index] { get; }

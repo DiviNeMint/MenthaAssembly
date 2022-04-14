@@ -26,9 +26,8 @@ namespace MenthaAssembly.Media.Imaging
 
         public int this[int Index]
         {
-            get => Index < 0 || Index > MaxIndex ?
-                   throw new ArgumentOutOfRangeException() :
-                   (Data >> ((MaxIndex - Index) << 2)) & BaseMask;
+            get => Index < 0 || Index > MaxIndex ? throw new ArgumentOutOfRangeException() :
+                                                   (Data >> ((MaxIndex - Index) << 2)) & BaseMask;
             set
             {
                 if (Index < 0 || Index > MaxIndex)
