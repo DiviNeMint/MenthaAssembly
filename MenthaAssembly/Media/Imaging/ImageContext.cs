@@ -619,6 +619,7 @@ namespace MenthaAssembly.Media.Imaging
                                                       Ex - Cx, Ey - Cy,
                                                       Rx, Ry,
                                                       Clockwise,
+                                                      false,
                                                       (Dx, Dy) => Operator.SetPixel(Cx + Dx, Cy + Dy, Color));
         public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
@@ -2098,7 +2099,7 @@ namespace MenthaAssembly.Media.Imaging
                             x1 = Width - 1;
 
                         // Fill the pixels
-                        Operator.ScanLineOverlay(x0, y, x1 - x0 + 1, Fill);
+                        Operator.ScanLine<Pixel>(x0, y, x1 - x0 + 1, a => a.Overlay(Fill));
                     }
                 }
 
@@ -2217,7 +2218,7 @@ namespace MenthaAssembly.Media.Imaging
                             x1 = Width - 1;
 
                         // Fill the pixels
-                        Operator.ScanLineOverlay(x0, y, x1 - x0 + 1, Fill);
+                        Operator.ScanLine<Pixel>(x0, y, x1 - x0 + 1, a => a.Overlay(Fill));
                     }
                 }
 
