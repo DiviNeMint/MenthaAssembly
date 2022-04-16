@@ -363,23 +363,16 @@ namespace MenthaAssembly.Media.Imaging
         {
             ImageContour Ellipse = new ImageContour();
 
-            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) =>
+            GraphicAlgorithm.CalculateBresenhamEllipseContourQuadrantI(Rx, Ry, (Dx, Dy) =>
             {
-                int X = Cx + Dx,
-                    Y = Cy + Dy;
-
-                ContourData TData = Ellipse[Y];
-                if (TData.Count == 0)
-                {
-                    TData.Datas.Add(X);
-                    TData.Datas.Add(X);
-                    return;
-                }
-
-                if (X < TData[0])
-                    TData[0] = X;
-                else if (TData[1] < X)
-                    TData[1] = X;
+                int X1 = Cx - Dx,
+                    X2 = Cx + Dx;
+                ContourData Data = Ellipse[Cy - Dy];
+                Data.Datas.Add(X1);
+                Data.Datas.Add(X2);
+                Data = Ellipse[Cy + Dy];
+                Data.Datas.Add(X1);
+                Data.Datas.Add(X2);
             });
 
             return Ellipse;
@@ -413,7 +406,7 @@ namespace MenthaAssembly.Media.Imaging
             GraphicAlgorithm.CalculateBresenhamLine(DSx, DSy, DSx.Abs(), DSy.Abs(), (Dx, Dy) => AddData(Cx + Dx, Cy + Dy));
             GraphicAlgorithm.CalculateBresenhamLine(DEx, DEy, DEx.Abs(), DEy.Abs(), (Dx, Dy) => AddData(Cx + Dx, Cy + Dy));
 
-            GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, (Dx, Dy) => AddData(Cx + Dx, Cy + Dy));
+            GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, false, (Dx, Dy) => AddData(Cx + Dx, Cy + Dy));
 
             return Contour;
         }
@@ -421,21 +414,6 @@ namespace MenthaAssembly.Media.Imaging
         public static ImageContour CreateFillObround(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
             ImageContour Obround = new ImageContour();
-            void AddData(int X, int Y)
-            {
-                ContourData TData = Obround[Y];
-                if (TData.Count == 0)
-                {
-                    TData.Datas.Add(X);
-                    TData.Datas.Add(X);
-                    return;
-                }
-
-                if (X < TData[0])
-                    TData[0] = X;
-                else if (TData[1] < X)
-                    TData[1] = X;
-            }
 
             int Length;
 
@@ -444,14 +422,34 @@ namespace MenthaAssembly.Media.Imaging
             {
                 Length = HalfWidth - HalfHeight;
 
-                GraphicAlgorithm.CalculateBresenhamEllipse(HalfHeight, HalfHeight, (Dx, Dy) => AddData(Cx + Dx + (Dx > 0 ? Length : -Length), Cy + Dy));
+                GraphicAlgorithm.CalculateBresenhamEllipseContourQuadrantI(HalfHeight, HalfHeight, (Dx, Dy) =>
+                {
+                    int X1 = Cx - Dx - Length,
+                        X2 = Cx + Dx + Length;
+                    ContourData Data = Obround[Cy - Dy];
+                    Data.Datas.Add(X1);
+                    Data.Datas.Add(X2);
+                    Data = Obround[Cy + Dy];
+                    Data.Datas.Add(X1);
+                    Data.Datas.Add(X2);
+                });
                 return Obround;
             }
 
             Length = HalfHeight - HalfWidth;
 
             // Vertical
-            GraphicAlgorithm.CalculateBresenhamEllipse(HalfWidth, HalfWidth, (Dx, Dy) => AddData(Cx + Dx, Cy + Dy + (Dy > 0 ? Length : -Length)));
+            GraphicAlgorithm.CalculateBresenhamEllipseContourQuadrantI(HalfHeight, HalfHeight, (Dx, Dy) =>
+            {
+                int X1 = Cx - Dx,
+                    X2 = Cx + Dx;
+                ContourData Data = Obround[Cy - Dy - Length];
+                Data.Datas.Add(X1);
+                Data.Datas.Add(X2);
+                Data = Obround[Cy + Dy + Length];
+                Data.Datas.Add(X1);
+                Data.Datas.Add(X2);
+            });
 
             int Left = Cx - HalfWidth,
                 Right = Cx + HalfWidth;
@@ -1010,56 +1008,69 @@ namespace MenthaAssembly.Media.Imaging
                     yMax = py;
             }
 
-            int[] intersectionsX = new int[pnh - 1];
+            int[] IntersectionsX = new int[pnh - 1],
+                  HorizontalX = new int[pn];
 
             // Scan line from min to max
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                float vxi = Datas[0] + OffsetX,
-                      vyi = Datas[1] + OffsetY;
+                float X0 = Datas[0] + OffsetX,
+                      Y0 = Datas[1] + OffsetY;
 
                 // Find all intersections
                 // Based on http://alienryderflex.com/polygon_fill/
-                int intersectionCount = 0;
+                int IntersectionCount = 0,
+                    HorizontalCount = 0;
                 for (int i = 2; i < pn; i += 2)
                 {
                     // Next point x, y
-                    float vxj = Datas[i] + OffsetX,
-                          vyj = Datas[i + 1] + OffsetY;
+                    float X1 = Datas[i] + OffsetX,
+                          Y1 = Datas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
-                    if (vyi < y && y <= vyj ||
-                        vyj < y && y <= vyi)
+                    if (Y0 < y && y <= Y1 ||
+                        Y1 < y && y <= Y0)
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
-                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
+                        IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
                     }
-                    vxi = vxj;
-                    vyi = vyj;
+                    else if (Y0 == Y1 && Y0 == y)
+                    {
+                        HorizontalX[HorizontalCount++] = (int)X0;
+                        HorizontalX[HorizontalCount++] = (int)X1;
+                    }
+
+                    X0 = X1;
+                    Y0 = Y1;
                 }
 
                 // Sort the intersections from left to right using Insertion sort 
                 // It's faster than Array.Sort for this small data set
                 int t, j;
-                for (int i = 1; i < intersectionCount; i++)
+                for (int i = 1; i < IntersectionCount; i++)
                 {
-                    t = intersectionsX[i];
+                    t = IntersectionsX[i];
                     j = i;
-                    while (j > 0 && intersectionsX[j - 1] > t)
+                    while (j > 0 && IntersectionsX[j - 1] > t)
                     {
-                        intersectionsX[j] = intersectionsX[j - 1];
+                        IntersectionsX[j] = IntersectionsX[j - 1];
                         j -= 1;
                     }
-                    intersectionsX[j] = t;
+                    IntersectionsX[j] = t;
                 }
 
-                // Add Datas
-                for (int i = 0; i < intersectionCount - 1;)
+                ContourData Data = Polygon[y];
+                // Add Intersections Datas
+                for (int i = 0; i < IntersectionCount - 1;)
                 {
-                    Polygon[y].Datas.Add(intersectionsX[i++]);
-                    Polygon[y].Datas.Add(intersectionsX[i++]);
+                    Data.Datas.Add(IntersectionsX[i++]);
+                    Data.Datas.Add(IntersectionsX[i++]);
                 }
+
+                // Add Horizontal Datas
+                for (int i = 0; i < HorizontalCount - 1;)
+                    Data.Union(HorizontalX[i++], HorizontalX[i++]);
             }
 
             return Polygon;
@@ -1174,8 +1185,7 @@ namespace MenthaAssembly.Media.Imaging
                 int LastDx = 0,
                     LastDy = 0;
 
-                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY,
-                    (Dx, Dy) =>
+                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, (Dx, Dy) =>
                     {
                         Stroke.Offset(Dx - LastDx, Dy - LastDy);
                         LineContour.Union(Stroke);

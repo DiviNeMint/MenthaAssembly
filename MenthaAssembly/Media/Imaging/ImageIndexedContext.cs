@@ -409,8 +409,7 @@ namespace MenthaAssembly.Media.Imaging
                 int LastDx = 0,
                     LastDy = 0;
 
-                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY,
-                    (Dx, Dy) =>
+                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, (Dx, Dy) =>
                     {
                         Stroke.Offset(Dx - LastDx, Dy - LastDy);
                         LineContour.Union(Stroke);
@@ -523,6 +522,7 @@ namespace MenthaAssembly.Media.Imaging
                                                       Ex - Cx, Ey - Cy,
                                                       Rx, Ry,
                                                       Clockwise,
+                                                      false,
                                                       (Dx, Dy) => this.Operator.SetPixel(Cx + Dx, Cy + Dy, Color));
         public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
@@ -531,7 +531,7 @@ namespace MenthaAssembly.Media.Imaging
             int X = Cx - (Pen.Width >> 1),
                 Y = Cy - (Pen.Height >> 1);
 
-            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
+            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise, false,
                 (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen));
         }
         public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill)
@@ -566,14 +566,14 @@ namespace MenthaAssembly.Media.Imaging
                 int LastDx = 0,
                     LastDy = 0;
                 GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise,
-                    (Dx, Dy) =>
-                    {
-                        Stroke.Offset(Dx - LastDx, Dy - LastDy);
-                        ArcContour.Union(Stroke);
+                    false, (Dx, Dy) =>
+{
+    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+    ArcContour.Union(Stroke);
 
-                        LastDx = Dx;
-                        LastDy = Dy;
-                    });
+    LastDx = Dx;
+    LastDy = Dy;
+});
             }
             else
             {
@@ -583,57 +583,57 @@ namespace MenthaAssembly.Media.Imaging
                                      SmallRightBound = new Dictionary<int, int>();
 
                 GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise,
-                   (Dx, Dy) =>
-                   {
-                       int OffsetX = Dx + Cx - PCx,
-                           OffsetY = Dy + Cy - PCy;
-                       if (Dx < 0)
-                       {
-                           foreach (KeyValuePair<int, ContourData> item in Contour)
-                           {
-                               ContourData Data = item.Value;
-                               int Ty = item.Key + OffsetY;
+                   false, (Dx, Dy) =>
+{
+    int OffsetX = Dx + Cx - PCx,
+        OffsetY = Dy + Cy - PCy;
+    if (Dx < 0)
+    {
+        foreach (KeyValuePair<int, ContourData> item in Contour)
+        {
+            ContourData Data = item.Value;
+            int Ty = item.Key + OffsetY;
 
-                               if (Ty < 0)
-                                   continue;
+            if (Ty < 0)
+                continue;
 
-                               if (this.Height <= Ty)
-                                   break;
+            if (this.Height <= Ty)
+                break;
 
-                               int LLTx = Data[0] + OffsetX,
-                                   MLTx = Data[1] + OffsetX;
+            int LLTx = Data[0] + OffsetX,
+                MLTx = Data[1] + OffsetX;
 
-                               if (!LargeLeftBound.TryGetValue(Ty, out int RLLx) || LLTx < RLLx)
-                                   LargeLeftBound[Ty] = LLTx;
+            if (!LargeLeftBound.TryGetValue(Ty, out int RLLx) || LLTx < RLLx)
+                LargeLeftBound[Ty] = LLTx;
 
-                               if (!SmallLeftBound.TryGetValue(Ty, out int RMLx) || RMLx < MLTx)
-                                   SmallLeftBound[Ty] = MLTx;
-                           }
-                       }
-                       else
-                       {
-                           foreach (KeyValuePair<int, ContourData> item in Contour)
-                           {
-                               ContourData Data = item.Value;
-                               int Ty = item.Key + OffsetY;
+            if (!SmallLeftBound.TryGetValue(Ty, out int RMLx) || RMLx < MLTx)
+                SmallLeftBound[Ty] = MLTx;
+        }
+    }
+    else
+    {
+        foreach (KeyValuePair<int, ContourData> item in Contour)
+        {
+            ContourData Data = item.Value;
+            int Ty = item.Key + OffsetY;
 
-                               if (Ty < 0)
-                                   continue;
+            if (Ty < 0)
+                continue;
 
-                               if (this.Height <= Ty)
-                                   break;
+            if (this.Height <= Ty)
+                break;
 
-                               int LRTx = Data[1] + OffsetX,
-                                   MRTx = Data[0] + OffsetX;
+            int LRTx = Data[1] + OffsetX,
+                MRTx = Data[0] + OffsetX;
 
-                               if (!LargeRightBound.TryGetValue(Ty, out int RLRx) || RLRx < LRTx)
-                                   LargeRightBound[Ty] = LRTx;
+            if (!LargeRightBound.TryGetValue(Ty, out int RLRx) || RLRx < LRTx)
+                LargeRightBound[Ty] = LRTx;
 
-                               if (!SmallRightBound.TryGetValue(Ty, out int RMRx) || MRTx < RMRx)
-                                   SmallRightBound[Ty] = MRTx;
-                           }
-                       }
-                   });
+            if (!SmallRightBound.TryGetValue(Ty, out int RMRx) || MRTx < RMRx)
+                SmallRightBound[Ty] = MRTx;
+        }
+    }
+});
 
                 foreach (KeyValuePair<int, int> item in LargeLeftBound)
                 {

@@ -5,6 +5,7 @@ using System.Linq;
 namespace MenthaAssembly.Media.Imaging.Utils
 {
     public delegate void GraphicDeltaHandler(int DeltaX, int DeltaY);
+    public delegate void GraphicDeltaHandler<T>(T DeltaX, T DeltaY) where T : unmanaged;
     public delegate void GraphicDoubleDeltaHandler(double DeltaX, double DeltaY);
     public delegate void GraphicPointsHandler(int X1, int Y1, int X2, int Y2);
 
@@ -12,8 +13,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
     {
         public static void CalculateBresenhamLine(int DeltaX, int DeltaY, int AbsDeltaX, int AbsDeltaY, GraphicDeltaHandler Handler)
         {
-            int Inx = DeltaX < 0 ? -1 : DeltaX > 0 ? 1 : 0,
-                Iny = DeltaY < 0 ? -1 : DeltaY > 0 ? 1 : 0;
+            int Inx = MathHelper.Clamp(DeltaX, -1, 1),
+                Iny = MathHelper.Clamp(DeltaY, -1, 1);
 
             int pDx, pDy, oDx, oDy, es, el;
             if (AbsDeltaX > AbsDeltaY)
@@ -60,6 +61,66 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Handler(X, Y);
             }
 
+        }
+        public static void CalculateBresenhamLineContour(int DeltaX, int DeltaY, int AbsDeltaX, int AbsDeltaY, bool IngoreEndPoint, GraphicDeltaHandler Handler)
+        {
+            int Inx = MathHelper.Clamp(DeltaX, -1, 1),
+                Iny = MathHelper.Clamp(DeltaY, -1, 1);
+
+            int X = 0,
+                Y = 0,
+                Lx = 0;
+
+            int error;
+            if (AbsDeltaX > AbsDeltaY)
+            {
+                Handler(X, Y);
+
+                error = AbsDeltaX >> 1;
+                for (int i = 0; i < AbsDeltaX; i++)
+                {
+                    error -= AbsDeltaY;
+
+                    if (error < 0)
+                    {
+                        if (Y != 0)
+                            Handler((Lx + X) >> 1, Y);
+
+                        error += AbsDeltaX;
+                        Y += Iny;
+                        X += Inx;
+                        Lx = X;
+                        continue;
+                    }
+
+                    if (IngoreEndPoint && Y == DeltaY)
+                        return;
+
+                    X += Inx;
+                }
+
+                Handler(X, Y);
+            }
+            else
+            {
+                error = AbsDeltaY >> 1;
+                for (int i = 0; i < AbsDeltaY; i++)
+                {
+                    Handler(X, Y);
+
+                    error -= AbsDeltaX;
+                    if (error < 0)
+                    {
+                        error += AbsDeltaY;
+                        X += Inx;
+                    }
+
+                    Y += Iny;
+                }
+
+                if (!IngoreEndPoint)
+                    Handler(X, Y);
+            }
         }
 
         public static void CalculateBresenhamEllipseQuadrantI(int Rx, int Ry, GraphicDeltaHandler Handler)
@@ -129,26 +190,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
-        public static void CalculateBresenhamEllipse(int Rx, int Ry, GraphicDeltaHandler Handler)
-            => CalculateBresenhamEllipseQuadrantI(Rx, Ry, (Dx, Dy) =>
-            {
-                Handler(Dx, Dy);      // Quadrant I  (Actually an octant)
-                Handler(-Dx, Dy);     // Quadrant II
-                Handler(-Dx, -Dy);    // Quadrant III
-                Handler(Dx, -Dy);     // Quadrant IV
-            });
-
-        public static void CalculateBresenhamArc(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, GraphicDeltaHandler Handler)
+        public static void CalculateBresenhamEllipseContourQuadrantI(int Rx, int Ry, GraphicDeltaHandler Handler)
         {
             // Avoid endless loop
             if (Rx < 1 || Ry < 1)
                 return;
-
-            if (DSx == DEx && DSy == DEy)
-            {
-                CalculateBresenhamEllipse(Rx, Ry, Handler);
-                return;
-            }
 
             checked
             {
@@ -165,363 +211,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
                      xStopping = yrSqTwo * LRx,
                      yStopping = 0;
 
-                Func<int, int, bool> Filter1, Filter2, Filter3, Filter4;
-
-                if (DSx > 0)
-                {
-                    if (DSy > 0)
-                    {
-                        if (DEx > 0)
-                        {
-                            if (DEy > 0)
-                            {
-                                bool Temp = DSx < DEx || DEy < DSy;
-                                if (!Temp)
-                                {
-                                    MathHelper.Swap(ref DEx, ref DSx);
-                                    MathHelper.Swap(ref DEy, ref DSy);
-                                }
-
-                                if (Clockwise == Temp)
-                                {
-                                    Filter1 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => true;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => false;
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (DEy > 0)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                    Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => false;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                    Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => true;
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                    Filter4 = (Dx, Dy) => false;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                    Filter4 = (Dx, Dy) => true;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (DEx > 0)
-                        {
-                            if (DEy > 0)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                }
-                            }
-                            else
-                            {
-                                bool Temp = DSx < DEx || DSy < DEy;
-                                if (!Temp)
-                                {
-                                    MathHelper.Swap(ref DEx, ref DSx);
-                                    MathHelper.Swap(ref DEy, ref DSy);
-                                }
-
-                                if (Clockwise == Temp)
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (DEy > 0)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                    Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                    Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    if (DSy > 0)
-                    {
-                        if (DEx > 0)
-                        {
-                            if (DEy > 0)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                    Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => true;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                    Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => false;
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (DEy > 0)
-                            {
-                                bool Temp = DSx < DEx || DSy < DEy;
-                                if (!Temp)
-                                {
-                                    MathHelper.Swap(ref DEx, ref DSx);
-                                    MathHelper.Swap(ref DEy, ref DSy);
-                                }
-
-                                if (Clockwise == Temp)
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
-                                    Filter3 = (Dx, Dy) => true;
-                                    Filter4 = (Dx, Dy) => true;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
-                                    Filter3 = (Dx, Dy) => false;
-                                    Filter4 = (Dx, Dy) => false;
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
-                                    Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                    Filter4 = (Dx, Dy) => false;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
-                                    Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                    Filter4 = (Dx, Dy) => true;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (DEx > 0)
-                        {
-                            if (DEy > 0)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                    Filter4 = (Dx, Dy) => true;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                    Filter4 = (Dx, Dy) => false;
-                                }
-                            }
-                            else
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                    Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                    Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (DEy > 0)
-                            {
-                                if (Clockwise)
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
-                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
-                                    Filter4 = (Dx, Dy) => true;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
-                                    Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
-                                    Filter4 = (Dx, Dy) => false;
-                                }
-                            }
-                            else
-                            {
-                                bool Temp = DSx < DEx || DEy < DSy;
-                                if (!Temp)
-                                {
-                                    MathHelper.Swap(ref DEx, ref DSx);
-                                    MathHelper.Swap(ref DEy, ref DSy);
-                                }
-
-                                if (Clockwise == Temp)
-                                {
-                                    Filter1 = (Dx, Dy) => false;
-                                    Filter2 = (Dx, Dy) => false;
-                                    Filter3 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
-                                    Filter4 = (Dx, Dy) => false;
-                                }
-                                else
-                                {
-                                    Filter1 = (Dx, Dy) => true;
-                                    Filter2 = (Dx, Dy) => true;
-                                    Filter3 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
-                                    Filter4 = (Dx, Dy) => true;
-                                }
-                            }
-                        }
-                    }
-                }
-
                 // Draw first set of points counter clockwise where tangent line slope > -1.
                 while (xStopping >= yStopping)
                 {
-                    // Draw 4 quadrant points at once
-                    if (Filter1(x, y))      // Quadrant I  (Actually an octant)
-                        Handler(x, y);
-                    if (Filter2(-x, y))     // Quadrant II
-                        Handler(-x, y);
-                    if (Filter3(-x, -y))    // Quadrant III
-                        Handler(-x, -y);
-                    if (Filter4(x, -y))     // Quadrant IV
-                        Handler(x, -y);
+                    Handler(x, y);      // Quadrant I  (Actually an octant)
 
                     y++;
                     yStopping += xrSqTwo;
@@ -548,30 +241,1893 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 // Draw second set of points clockwise where tangent line slope < -1.
                 while (xStopping <= yStopping)
                 {
-                    // Draw 4 quadrant points at once
-                    if (Filter1(x, y))      // Quadrant I  (Actually an octant)
-                        Handler(x, y);
-                    if (Filter2(-x, y))     // Quadrant II
-                        Handler(-x, y);
-                    if (Filter3(-x, -y))    // Quadrant III
-                        Handler(-x, -y);
-                    if (Filter4(x, -y))     // Quadrant IV
-                        Handler(x, -y);
-
-                    x++;
                     xStopping += yrSqTwo;
                     err += xChg;
                     xChg += yrSqTwo;
                     if ((yChg + (err << 1)) > 0)
                     {
+                        Handler(x, y);
+
                         y--;
                         yStopping -= xrSqTwo;
                         err += yChg;
                         yChg += xrSqTwo;
                     }
+                    x++;
                 }
             }
         }
+        public static void CalculateBresenhamEllipseContourOrderQuadrantI(int Rx, int Ry, GraphicDeltaHandler Handler)
+        {
+            // Avoid endless loop
+            if (Rx < 1 || Ry < 1)
+                return;
+
+            checked
+            {
+                // Init vars
+                int x = Rx,
+                    y = 0;
+                long LRx = Rx,
+                     LRy = Ry,
+                     xrSqTwo = (LRx * LRx) << 1,
+                     yrSqTwo = (LRy * LRy) << 1,
+                     xChg = LRy * LRy * (1 - (LRx << 1)),
+                     yChg = LRx * LRx,
+                     err = 0,
+                     xStopping = yrSqTwo * LRx,
+                     yStopping = 0;
+
+                // Draw first set of points counter clockwise where tangent line slope > -1.
+                while (xStopping >= yStopping)
+                {
+                    Handler(x, y);      // Quadrant I  (Actually an octant)
+
+                    y++;
+                    yStopping += xrSqTwo;
+                    err += yChg;
+                    yChg += xrSqTwo;
+                    if ((xChg + (err << 1)) > 0)
+                    {
+                        x--;
+                        xStopping -= yrSqTwo;
+                        err += xChg;
+                        xChg += yrSqTwo;
+                    }
+                }
+
+                int Ly = y - 1;
+
+                // ReInit vars
+                x = 0;
+                y = Ry;
+                xChg = LRy * LRy;
+                yChg = LRx * LRx * (1 - (LRy << 1));
+                err = 0;
+                xStopping = 0;
+                yStopping = xrSqTwo * LRy;
+
+                List<int> Datas = new List<int>();
+
+                // Draw second set of points clockwise where tangent line slope < -1.
+                while (xStopping <= yStopping)
+                {
+                    xStopping += yrSqTwo;
+                    err += xChg;
+                    xChg += yrSqTwo;
+                    if ((yChg + (err << 1)) > 0)
+                    {
+                        Datas.Add(x);
+
+                        y--;
+                        yStopping -= xrSqTwo;
+                        err += yChg;
+                        yChg += xrSqTwo;
+                    }
+                    x++;
+                }
+
+                for (int i = Datas.Count - 1; i >= 0; i--)
+                {
+                    if (++y > Ly)
+                        Handler(Datas[i], y);
+                }
+
+                Datas.Clear();
+            }
+        }
+        public static void CalculateBresenhamEllipse(int Rx, int Ry, GraphicDeltaHandler Handler)
+            => CalculateBresenhamEllipseQuadrantI(Rx, Ry, (Dx, Dy) =>
+            {
+                Handler(Dx, Dy);      // Quadrant I  (Actually an octant)
+                Handler(-Dx, Dy);     // Quadrant II
+                Handler(-Dx, -Dy);    // Quadrant III
+                Handler(Dx, -Dy);     // Quadrant IV
+            });
+        public static void CalculateBresenhamEllipseContour(int Rx, int Ry, GraphicDeltaHandler Handler)
+            => CalculateBresenhamEllipseContourQuadrantI(Rx, Ry, (Dx, Dy) =>
+            {
+                Handler(Dx, Dy);      // Quadrant I  (Actually an octant)
+                Handler(-Dx, Dy);     // Quadrant II
+                Handler(-Dx, -Dy);    // Quadrant III
+                Handler(Dx, -Dy);     // Quadrant IV
+            });
+
+        public static void CalculateBresenhamArc(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, bool IngoreEndPoint, GraphicDeltaHandler Handler)
+        {
+            if (DSx == DEx && DSy == DEy)
+            {
+                CalculateBresenhamEllipse(Rx, Ry, Handler);
+                return;
+            }
+
+            GraphicDeltaHandler QuadrantHandler;
+            Func<int, int, bool> Filter1, Filter2, Filter3, Filter4;
+
+            if (DSx > 0)
+            {
+                if (DSy > 0)
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            bool Temp = DSx < DEx || DEy < DSy;
+                            if (!Temp)
+                            {
+                                MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
+
+                            if (Clockwise == Temp)
+                            {
+                                Filter1 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                            }
+                        }
+                        else
+                        {
+                            bool Temp = DSx < DEx || DSy < DEy;
+                            if (!Temp)
+                            {
+                                MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
+
+                            if (Clockwise == Temp)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (DSy > 0)
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            bool Temp = DSx < DEx || DSy < DEy;
+                            if (!Temp)
+                            {
+                                MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
+
+                            if (Clockwise == Temp)
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            bool Temp = DSx < DEx || DEy < DSy;
+                            if (!Temp)
+                            {
+                                MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
+
+                            if (Clockwise == Temp)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (IngoreEndPoint)
+            {
+                if (DEx > 0)
+                {
+                    if (DEy > 0)
+                    {
+                        QuadrantHandler = (Dx, Dy) =>
+                        {
+                            if (Dx != DEx && Dy != DEy && Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                                Handler(Dx, Dy);
+                            if (Filter2(-Dx, Dy))     // Quadrant II
+                                Handler(-Dx, Dy);
+                            if (Filter3(-Dx, -Dy))    // Quadrant III
+                                Handler(-Dx, -Dy);
+                            if (Filter4(Dx, -Dy))     // Quadrant IV
+                                Handler(Dx, -Dy);
+                        };
+                    }
+                    else
+                    {
+                        QuadrantHandler = (Dx, Dy) =>
+                        {
+                            if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                                Handler(Dx, Dy);
+                            if (Filter2(-Dx, Dy))     // Quadrant II
+                                Handler(-Dx, Dy);
+                            if (Filter3(-Dx, -Dy))    // Quadrant III
+                                Handler(-Dx, -Dy);
+                            if (Dx != DEx && Dy != DEy && Filter4(Dx, -Dy))     // Quadrant IV
+                                Handler(Dx, -Dy);
+                        };
+                    }
+                }
+                else
+                {
+                    if (DEy > 0)
+                    {
+                        QuadrantHandler = (Dx, Dy) =>
+                        {
+                            if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                                Handler(Dx, Dy);
+                            if (Dx != DEx && Dy != DEy && Filter2(-Dx, Dy))     // Quadrant II
+                                Handler(-Dx, Dy);
+                            if (Filter3(-Dx, -Dy))    // Quadrant III
+                                Handler(-Dx, -Dy);
+                            if (Filter4(Dx, -Dy))     // Quadrant IV
+                                Handler(Dx, -Dy);
+                        };
+                    }
+                    else
+                    {
+                        QuadrantHandler = (Dx, Dy) =>
+                        {
+                            if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                                Handler(Dx, Dy);
+                            if (Filter2(-Dx, Dy))     // Quadrant II
+                                Handler(-Dx, Dy);
+                            if (Dx != DEx && Dy != DEy && Filter3(-Dx, -Dy))    // Quadrant III
+                                Handler(-Dx, -Dy);
+                            if (Filter4(Dx, -Dy))     // Quadrant IV
+                                Handler(Dx, -Dy);
+                        };
+                    }
+                }
+            }
+            else
+            {
+                QuadrantHandler = (Dx, Dy) =>
+                {
+                    if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                        Handler(Dx, Dy);
+                    if (Filter2(-Dx, Dy))     // Quadrant II
+                        Handler(-Dx, Dy);
+                    if (Filter3(-Dx, -Dy))    // Quadrant III
+                        Handler(-Dx, -Dy);
+                    if (Filter4(Dx, -Dy))     // Quadrant IV
+                        Handler(Dx, -Dy);
+                };
+            }
+
+            CalculateBresenhamEllipseQuadrantI(Rx, Ry, QuadrantHandler);
+        }
+        public static void CalculateBresenhamArcContour(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, bool IngoreEndPoint, GraphicDeltaHandler Handler)
+        {
+            if (DSx == DEx && DSy == DEy)
+            {
+                CalculateBresenhamEllipseContour(Rx, Ry, Handler);
+                return;
+            }
+
+            GraphicDeltaHandler QuadrantHandler;
+            Func<int, int, bool> Filter1, Filter2, Filter3, Filter4;
+
+            if (DSx > 0)
+            {
+                if (DSy > 0)
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            bool Temp = DSx < DEx || DEy < DSy;
+                            if (!Temp)
+                            {
+                                MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
+
+                            if (Clockwise == Temp)
+                            {
+                                Filter1 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                            }
+                        }
+                        else
+                        {
+                            bool Temp = DSx < DEx || DSy < DEy;
+                            if (!Temp)
+                            {
+                                MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
+
+                            if (Clockwise == Temp)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter4 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter4 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (DSy > 0)
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            bool Temp = DSx < DEx || DSy < DEy;
+                            if (!Temp)
+                            {
+                                MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
+
+                            if (Clockwise == Temp)
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => (Dx <= DSx && Dy <= DSy) || (DEx <= Dx && DEy <= Dy);
+                                Filter3 = (Dx, Dy) => true;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DSy <= Dy && Dy <= DEy;
+                                Filter3 = (Dx, Dy) => false;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => Dx <= DSx && Dy <= DSy;
+                                Filter3 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => DSx <= Dx && DSy <= Dy;
+                                Filter3 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => DEx <= Dx && Dy <= DEy;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => Dx <= DEx && DEy <= Dy;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter4 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter4 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => DEx <= Dx && DEy <= Dy;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dy <= DSy;
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => Dx <= DEx && Dy <= DEy;
+                                Filter3 = (Dx, Dy) => Dx <= DSx && DSy <= Dy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                        }
+                        else
+                        {
+                            bool Temp = DSx < DEx || DEy < DSy;
+                            if (!Temp)
+                            {
+                                MathHelper.Swap(ref DEx, ref DSx);
+                                MathHelper.Swap(ref DEy, ref DSy);
+                            }
+
+                            if (Clockwise == Temp)
+                            {
+                                Filter1 = (Dx, Dy) => false;
+                                Filter2 = (Dx, Dy) => false;
+                                Filter3 = (Dx, Dy) => DSx <= Dx && Dx <= DEx && DEy <= Dy && Dy <= DSy;
+                                Filter4 = (Dx, Dy) => false;
+                            }
+                            else
+                            {
+                                Filter1 = (Dx, Dy) => true;
+                                Filter2 = (Dx, Dy) => true;
+                                Filter3 = (Dx, Dy) => (Dx <= DSx && DSy <= Dy) || (DEx <= Dx && Dy <= DEy);
+                                Filter4 = (Dx, Dy) => true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (IngoreEndPoint)
+            {
+                if (DEx > 0)
+                {
+                    if (DEy > 0)
+                    {
+                        QuadrantHandler = (Dx, Dy) =>
+                        {
+                            if (Dx != DEx && Dy != DEy && Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                                Handler(Dx, Dy);
+                            if (Filter2(-Dx, Dy))     // Quadrant II
+                                Handler(-Dx, Dy);
+                            if (Filter3(-Dx, -Dy))    // Quadrant III
+                                Handler(-Dx, -Dy);
+                            if (Filter4(Dx, -Dy))     // Quadrant IV
+                                Handler(Dx, -Dy);
+                        };
+                    }
+                    else
+                    {
+                        QuadrantHandler = (Dx, Dy) =>
+                        {
+                            if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                                Handler(Dx, Dy);
+                            if (Filter2(-Dx, Dy))     // Quadrant II
+                                Handler(-Dx, Dy);
+                            if (Filter3(-Dx, -Dy))    // Quadrant III
+                                Handler(-Dx, -Dy);
+                            if (Dx != DEx && Dy != DEy && Filter4(Dx, -Dy))     // Quadrant IV
+                                Handler(Dx, -Dy);
+                        };
+                    }
+                }
+                else
+                {
+                    if (DEy > 0)
+                    {
+                        QuadrantHandler = (Dx, Dy) =>
+                        {
+                            if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                                Handler(Dx, Dy);
+                            if (Dx != DEx && Dy != DEy && Filter2(-Dx, Dy))     // Quadrant II
+                                Handler(-Dx, Dy);
+                            if (Filter3(-Dx, -Dy))    // Quadrant III
+                                Handler(-Dx, -Dy);
+                            if (Filter4(Dx, -Dy))     // Quadrant IV
+                                Handler(Dx, -Dy);
+                        };
+                    }
+                    else
+                    {
+                        QuadrantHandler = (Dx, Dy) =>
+                        {
+                            if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                                Handler(Dx, Dy);
+                            if (Filter2(-Dx, Dy))     // Quadrant II
+                                Handler(-Dx, Dy);
+                            if (Dx != DEx && Dy != DEy && Filter3(-Dx, -Dy))    // Quadrant III
+                                Handler(-Dx, -Dy);
+                            if (Filter4(Dx, -Dy))     // Quadrant IV
+                                Handler(Dx, -Dy);
+                        };
+                    }
+                }
+            }
+            else
+            {
+                QuadrantHandler = (Dx, Dy) =>
+                {
+                    if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
+                        Handler(Dx, Dy);
+                    if (Filter2(-Dx, Dy))     // Quadrant II
+                        Handler(-Dx, Dy);
+                    if (Filter3(-Dx, -Dy))    // Quadrant III
+                        Handler(-Dx, -Dy);
+                    if (Filter4(Dx, -Dy))     // Quadrant IV
+                        Handler(Dx, -Dy);
+                };
+            }
+
+            CalculateBresenhamEllipseContourQuadrantI(Rx, Ry, QuadrantHandler);
+        }
+        public static void CalculateBresenhamArcContourOrder(int DSx, int DSy, int DEx, int DEy, int Rx, int Ry, bool Clockwise, bool IngoreEndPoint, GraphicDeltaHandler Handler)
+        {
+            if (DSx == DEx && DSy == DEy)
+                return;
+
+            int i = 0;
+            int[] Datas = new int[Ry + 1];
+            CalculateBresenhamEllipseContourOrderQuadrantI(Rx, Ry, (Dx, Dy) => Datas[i++] = Dx);
+
+            // Start Point
+            Handler(DSx, DSy);
+
+            int Lx;
+            if (DSx > 0)
+            {
+                if (DSy > 0)
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (DSx < DEx || DEy < DSy)
+                            {
+                                if (Clockwise)
+                                {
+                                    // QuadrantI    Sx,Sy to 0, Ry
+                                    for (i = DSy + 1; i <= Ry; i++)
+                                        Handler(Datas[i], i);
+
+                                    // QuadrantII   0, Ry to -Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(-Datas[i], i);
+
+                                    // QuadrantIII  -Rx, 0 to 0, -Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(-Datas[i], -i);
+
+                                    // QuadrantIV   0, -Ry to Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantI    Rx, 0 to DEx, DEy
+                                    for (i = 0; i < DEy; i++)
+                                        Handler(Datas[i], i);
+
+                                    Lx = Datas[DEy];
+                                }
+                                else
+                                {
+                                    Lx = Datas[DSy];
+                                    if (DSx < Lx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantI    DSx, DSy to DEx, DEy
+                                    for (i = DSy - 1; i > DEy; i--)
+                                        Handler(Datas[i], i);
+
+                                    Lx = Math.Min(Datas[DEy], DEx);
+                                }
+                            }
+                            else
+                            {
+                                if (Clockwise)
+                                {
+                                    // QuadrantI    DSx, DSy to DEx, DEy
+                                    for (i = DSy + 1; i < DEy; i++)
+                                        Handler(Datas[i], i);
+
+                                    Lx = Datas[DEy];
+                                }
+                                else
+                                {
+                                    Lx = Datas[DSy];
+                                    if (DSx < Lx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantI    DSx, DSy to Rx, 0
+                                    for (i = DSy - 1; i > 0; i--)
+                                        Handler(Datas[i], i);
+
+                                    // QuadrantIV   Rx, 0 to 0, -Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantIII  0, -Ry to -Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(-Datas[i], -i);
+
+                                    // QuadrantII   -Rx, 0 to 0, Ry 
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(-Datas[i], i);
+
+                                    // QuadrantI    0, Ry to DEx, DEy
+                                    for (i = Ry; i > DEy; i--)
+                                        Handler(Datas[i], i);
+
+                                    Lx = Math.Min(Datas[DEy], DEx);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            int AbsDEy = DEy.Abs();
+                            if (Clockwise)
+                            {
+                                // QuadrantI    Sx,Sy to 0, Ry
+                                for (i = DSy + 1; i <= Ry; i++)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantII   0, Ry to -Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantIII  -Rx, 0 to 0, -Ry
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantIV   0, -Ry to DEx, DEy
+                                for (i = Ry; i > AbsDEy; i--)
+                                    Handler(Datas[i], -i);
+
+                                Lx = Math.Min(Datas[AbsDEy], DEx);
+                            }
+                            else
+                            {
+                                Lx = Datas[DSy];
+                                if (DSx < Lx)
+                                    Handler(Lx, DSy);
+
+                                // QuadrantI    DSx, DSy to Rx, 0
+                                for (i = DSy - 1; i > 0; i--)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantIV   Rx, 0 to DEx, DEy
+                                for (i = 0; i < AbsDEy; i++)
+                                    Handler(Datas[i], -i);
+
+                                Lx = Datas[AbsDEy];
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                // QuadrantI    Sx,Sy to 0, Ry
+                                for (i = DSy + 1; i <= Ry; i++)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantII   0, Ry to DEx, DEy
+                                for (i = Ry; i > DEy; i--)
+                                    Handler(-Datas[i], i);
+
+                                Lx = Math.Max(-Datas[DEy], DEx);
+                            }
+                            else
+                            {
+                                Lx = Datas[DSy];
+                                if (DSx < Lx)
+                                    Handler(Lx, DSy);
+
+                                // QuadrantI    DSx, DSy to Rx, 0
+                                for (i = DSy - 1; i >= 0; i--)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantIV   Rx, 0 to 0, -Ry
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantIII  0, -Ry to -Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantII   -Rx, 0 to DEx, DEy 
+                                for (i = 0; i < DEy; i++)
+                                    Handler(-Datas[i], i);
+
+                                Lx = -Datas[DEy];
+                            }
+                        }
+                        else
+                        {
+                            int AbsDEy = DEy.Abs();
+                            if (Clockwise)
+                            {
+                                // QuadrantI    Sx,Sy to 0, Ry
+                                for (i = DSy + 1; i <= Ry; i++)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantII   0, Ry to -Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantIII  -Rx, 0 to DEx, DEy
+                                for (i = 0; i < AbsDEy; i++)
+                                    Handler(-Datas[i], -i);
+
+                                Lx = -Datas[AbsDEy];
+                            }
+                            else
+                            {
+                                Lx = Datas[DSy];
+                                if (DSx < Lx)
+                                    Handler(Lx, DSy);
+
+                                // QuadrantI    DSx, DSy to Rx, 0
+                                for (i = DSy - 1; i >= 0; i--)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantIV   Rx, 0 to 0, -Ry
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantIII  0, -Ry to DEx, DEy
+                                for (i = Ry; i > AbsDEy; i--)
+                                    Handler(-Datas[i], -i);
+
+                                Lx = Math.Max(-Datas[AbsDEy], DEx);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    int AbsDSy = DSy.Abs();
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Lx = Datas[AbsDSy];
+                                if (DSx < Lx)
+                                    Handler(Lx, DSy);
+
+                                // QuadrantIV   DSx, DSy to Rx, 0
+                                for (i = AbsDSy - 1; i > 0; i--)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantI    Rx,0 to DEx, DEy
+                                for (i = 0; i < DEy; i++)
+                                    Handler(Datas[i], i);
+
+                                Lx = Datas[DEy];
+                            }
+                            else
+                            {
+                                // QuadrantIV   DEx, DEy to 0, -Ry
+                                for (i = AbsDSy + 1; i <= Ry; i++)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantIII  0, -Ry to -Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantII   -Rx, 0 to 0, Ry 
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantI    0, Ry to DEx, DEy
+                                for (i = Ry; i > DEy; i--)
+                                    Handler(Datas[i], i);
+
+                                Lx = Math.Min(Datas[DEy], DEx);
+                            }
+                        }
+                        else
+                        {
+                            int AbsDEy = DEy.Abs();
+                            if (DSx < DEx || DSy < DEy)
+                            {
+                                if (Clockwise)
+                                {
+                                    Lx = Datas[AbsDSy];
+                                    if (DSx < Lx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantIV   DSx, DSy to DEx, DEy
+                                    for (i = AbsDSy - 1; i > AbsDEy; i--)
+                                        Handler(Datas[i], -i);
+
+                                    Lx = Math.Min(Datas[AbsDEy], DEx);
+                                }
+                                else
+                                {
+                                    // QuadrantIV   DSx, DSy to 0, -Ry
+                                    for (i = AbsDSy + 1; i <= Ry; i++)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantIII  0, -Ry to -Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(-Datas[i], -i);
+
+                                    // QuadrantII   -Rx, 0 to 0, Ry 
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(-Datas[i], i);
+
+                                    // QuadrantI    0, Ry to Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(Datas[i], i);
+
+                                    // QuadrantIV   Rx, 0 to DEx, DEy
+                                    for (i = 0; i < AbsDEy; i++)
+                                        Handler(Datas[i], -i);
+
+                                    Lx = Datas[AbsDEy];
+                                }
+                            }
+                            else
+                            {
+                                if (Clockwise)
+                                {
+                                    Lx = Datas[AbsDSy];
+                                    if (DSx < Lx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantIV   DSx, DEy to Rx, 0
+                                    for (i = AbsDSy - 1; i > 0; i--)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantI    Rx,0 to 0, Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(Datas[i], i);
+
+                                    // QuadrantII   0, Ry to -Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(-Datas[i], i);
+
+                                    // QuadrantIII  -Rx, 0 to 0, -Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(-Datas[i], -i);
+
+                                    // QuadrantIV   0, -Ry to DEx, DEy
+                                    for (i = Ry; i > AbsDEy; i--)
+                                        Handler(Datas[i], -i);
+
+                                    Lx = Math.Min(Datas[AbsDEy], DEx);
+                                }
+                                else
+                                {
+                                    // QuadrantIV   DSx, DSy to DEx, DEy
+                                    for (i = AbsDSy + 1; i < AbsDEy; i++)
+                                        Handler(Datas[i], -i);
+
+                                    Lx = Datas[AbsDEy];
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                if (DSy == 0)
+                                {
+                                    // QuadrantI    Rx,0 to 0, Ry
+                                    for (i = 1; i <= Ry; i++)
+                                        Handler(Datas[i], i);
+                                }
+                                else
+                                {
+                                    Lx = Datas[AbsDSy];
+                                    if (DSx < Lx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantIV   DSx, DSy to Rx, 0
+                                    for (i = AbsDSy - 1; i > 0; i--)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantI    Rx,0 to 0, Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(Datas[i], i);
+                                }
+
+                                // QuadrantII   0, Ry to DEx, DEy
+                                for (i = Ry; i > DEy; i--)
+                                    Handler(-Datas[i], i);
+
+                                Lx = Math.Max(-Datas[DEy], DEx);
+                            }
+                            else
+                            {
+                                // QuadrantIV   DSx, DSy to 0, -Ry
+                                for (i = AbsDSy + 1; i <= Ry; i++)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantIII  0, -Ry to -Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantII   -Rx, 0 to DEx, DEy 
+                                for (i = 0; i < DEy; i++)
+                                    Handler(-Datas[i], i);
+
+                                Lx = -Datas[DEy];
+                            }
+                        }
+                        else
+                        {
+                            int AbsDEy = DEy.Abs();
+                            if (Clockwise)
+                            {
+                                if (DSy == 0)
+                                {
+                                    // QuadrantI    Rx,0 to 0, Ry
+                                    for (i = 1; i <= Ry; i++)
+                                        Handler(Datas[i], i);
+                                }
+                                else
+                                {
+                                    Lx = Datas[AbsDSy];
+                                    if (DSx < Lx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantIV   DSx, DSy to Rx, 0
+                                    for (i = AbsDSy - 1; i > 0; i--)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantI    Rx,0 to 0, Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(Datas[i], i);
+                                }
+
+                                // QuadrantII   0, Ry to -Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantIII  -Rx, 0 to DEx, DEy
+                                for (i = 0; i < AbsDEy; i++)
+                                    Handler(-Datas[i], -i);
+
+                                Lx = -Datas[AbsDEy];
+                            }
+                            else
+                            {
+                                // QuadrantIV   DSx, DSy to 0, -Ry
+                                for (i = AbsDSy + 1; i <= Ry; i++)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantIII  0, -Ry to DEx, DEy
+                                for (i = Ry; i > AbsDEy; i--)
+                                    Handler(-Datas[i], -i);
+
+                                Lx = Math.Max(-Datas[AbsDEy], DEx);
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (DSy > 0)
+                {
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                Lx = -Datas[DSy];
+                                if (Lx < DSx)
+                                    Handler(Lx, DSy);
+
+                                // QuadrantII   DSx, DSy to -Rx, 0
+                                for (i = DSy - 1; i > 0; i--)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantIII  -Rx, 0 to 0, -Ry
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantIV   0, -Ry to Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantI    Rx,0 to DEx, DEy
+                                for (i = 0; i < DEy; i++)
+                                    Handler(Datas[i], i);
+
+                                Lx = Datas[DEy];
+                            }
+                            else
+                            {
+                                // QuadrantII   -DSx, DSy to 0, Ry 
+                                for (i = DSy + 1; i <= Ry; i++)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantI    0, Ry to DEx, DEy
+                                for (i = Ry; i > DEy; i--)
+                                    Handler(Datas[i], i);
+
+                                Lx = Math.Min(Datas[DEy], DEx);
+                            }
+                        }
+                        else
+                        {
+                            int AbsDEy = DEy.Abs();
+                            if (Clockwise)
+                            {
+                                Lx = -Datas[DSy];
+                                if (Lx < DSx)
+                                    Handler(Lx, DSy);
+
+                                // QuadrantII   DSx, DSy to -Rx, 0
+                                for (i = DSy - 1; i > 0; i--)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantIII  -Rx, 0 to 0, -Ry
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantIV   0, -Ry to DEx, DEy
+                                for (i = Ry; i > AbsDEy; i--)
+                                    Handler(Datas[i], -i);
+
+                                Lx = Math.Min(Datas[AbsDEy], DEx);
+                            }
+                            else
+                            {
+                                // QuadrantII   -DSx, DSy to 0, Ry 
+                                for (i = DSy + 1; i <= Ry; i++)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantI    0, Ry to Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantIV   Rx, 0 to DEx, DEy
+                                for (i = 0; i < AbsDEy; i++)
+                                    Handler(Datas[i], -i);
+
+                                Lx = Datas[AbsDEy];
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (DSx < DEx || DSy < DEy)
+                            {
+                                if (Clockwise)
+                                {
+                                    Lx = -Datas[DSy];
+                                    if (Lx < DSx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantII   DSx, DSy to -Rx, 0
+                                    for (i = DSy - 1; i > 0; i--)
+                                        Handler(-Datas[i], i);
+
+                                    // QuadrantIII  -Rx, 0 to 0, -Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(-Datas[i], -i);
+
+                                    // QuadrantIV   0, -Ry to Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantI    Rx,0 to 0, Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(Datas[i], i);
+
+                                    // QuadrantII   0, Ry to DEx, DEy
+                                    for (i = Ry; i > DEy; i--)
+                                        Handler(-Datas[i], i);
+
+                                    Lx = Math.Max(-Datas[DEy], DEx);
+                                }
+                                else
+                                {
+                                    // QuadrantII   DSx, DSy to DEx, DEy
+                                    for (i = DSy + 1; i < DEy; i++)
+                                        Handler(-Datas[i], i);
+
+                                    Lx = -Datas[DEy];
+                                }
+                            }
+                            else
+                            {
+                                if (Clockwise)
+                                {
+                                    Lx = -Datas[DSy];
+                                    if (Lx < DSx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantII   DSx, DSy to DEx, DEy
+                                    for (i = DSy - 1; i > DEy; i--)
+                                        Handler(-Datas[i], i);
+
+                                    Lx = Math.Max(-Datas[DEy], DEx);
+                                }
+                                else
+                                {
+                                    // QuadrantII   DSx, DSy to 0, Ry 
+                                    for (i = DSy + 1; i <= Ry; i++)
+                                        Handler(-Datas[i], i);
+
+                                    // QuadrantI    0, Ry to Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(Datas[i], i);
+
+                                    // QuadrantIV   Rx, 0 to 0, -Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantIII  0, -Ry to -Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(-Datas[i], -i);
+
+                                    // QuadrantII   -Rx, 0 to DEx, DEy
+                                    for (i = 0; i < DEy; i++)
+                                        Handler(-Datas[i], i);
+
+                                    Lx = -Datas[DEy];
+                                }
+                            }
+                        }
+                        else
+                        {
+                            int AbsDEy = DEy.Abs();
+                            if (Clockwise)
+                            {
+                                Lx = -Datas[DSy];
+                                if (Lx < DSx)
+                                    Handler(Lx, DSy);
+
+                                // QuadrantII   DSx, DSy to -Rx, 0
+                                for (i = DSy; i > 0; i--)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantIII  -Rx, 0 to DEx, DEy
+                                for (i = 0; i < AbsDEy; i++)
+                                    Handler(-Datas[i], -i);
+
+                                Lx = -Datas[AbsDEy];
+                            }
+                            else
+                            {
+                                // QuadrantII   DSx, DSy to 0, Ry 
+                                for (i = DSy; i <= Ry; i++)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantI    0, Ry to Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantIV   Rx, 0 to 0, -Ry
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantIII  0, -Ry to DEx, DEy
+                                for (i = Ry; i > AbsDEy; i--)
+                                    Handler(-Datas[i], -i);
+
+                                Lx = Math.Max(-Datas[AbsDEy], DEx);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    int AbsDSy = DSy.Abs();
+                    if (DEx > 0)
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                // QuadrantIII  DSx, DSy to 0, -Ry
+                                for (i = AbsDSy + 1; i <= Ry; i++)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantIV   0, -Ry to Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantI    Rx,0 to DEx, DEy
+                                for (i = 0; i < DEy; i++)
+                                    Handler(Datas[i], i);
+
+                                Lx = Datas[DEy];
+                            }
+                            else
+                            {
+                                Lx = -Datas[AbsDSy];
+                                if (Lx < DSx)
+                                    Handler(Lx, DSy);
+
+                                // QuadrantIII  DSx, DSy to -Rx, 0
+                                for (i = AbsDSy - 1; i > 0; i--)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantII   -Rx, 0 to 0, Ry 
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantI    0, Ry to DEx, DEy
+                                for (i = Ry; i > DEy; i--)
+                                    Handler(Datas[i], i);
+
+                                Lx = Math.Min(Datas[DEy], DEx);
+                            }
+                        }
+                        else
+                        {
+                            int AbsDEy = DEy.Abs();
+                            if (Clockwise)
+                            {
+                                // QuadrantIII  DSx, DSy to 0, -Ry
+                                for (i = AbsDSy + 1; i <= Ry; i++)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantIV   0, -Ry to DEx, DEy
+                                for (i = Ry; i > AbsDEy; i--)
+                                    Handler(Datas[i], -i);
+
+                                Lx = Math.Min(Datas[AbsDEy], DEx);
+                            }
+                            else
+                            {
+                                Lx = -Datas[AbsDSy];
+                                if (Lx < DSx)
+                                    Handler(Lx, DSy);
+
+                                // QuadrantIII  DSx, DSy to -Rx, 0
+                                for (i = AbsDSy - 1; i > 0; i--)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantII   -Rx, 0 to 0, Ry 
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(-Datas[i], i);
+
+                                // QuadrantI    0, Ry to Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantIV   Rx, 0 to DEx, DEy
+                                for (i = 0; i < AbsDEy; i++)
+                                    Handler(Datas[i], -i);
+
+                                Lx = Datas[AbsDEy];
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (DEy > 0)
+                        {
+                            if (Clockwise)
+                            {
+                                // QuadrantIII  DSx, DSy to 0, -Ry
+                                for (i = AbsDSy + 1; i <= Ry; i++)
+                                    Handler(-Datas[i], -i);
+
+                                // QuadrantIV   0, -Ry to Rx, 0
+                                for (i = Ry; i > 0; i--)
+                                    Handler(Datas[i], -i);
+
+                                // QuadrantI    Rx,0 to 0, Ry
+                                for (i = 0; i <= Ry; i++)
+                                    Handler(Datas[i], i);
+
+                                // QuadrantII   0, Ry to DEx, DEy
+                                for (i = Ry; i > DEy; i--)
+                                    Handler(-Datas[i], i);
+
+                                Lx = Math.Max(-Datas[DEy], DEx);
+                            }
+                            else
+                            {
+                                if (DSy == 0)
+                                {
+                                    // QuadrantII   -Rx, 0 to DEx, DEy
+                                    for (i = 1; i < DEy; i++)
+                                        Handler(-Datas[i], i);
+
+                                }
+                                else
+                                {
+                                    Lx = -Datas[AbsDSy];
+                                    if (Lx < DSx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantIII  DSx, DSy to -Rx, 0
+                                    for (i = AbsDSy - 1; i > 0; i--)
+                                        Handler(-Datas[i], -i);
+
+                                    // QuadrantII   -Rx, 0 to DEx, DEy
+                                    for (i = 0; i < DEy; i++)
+                                        Handler(-Datas[i], i);
+                                }
+
+                                Lx = -Datas[DEy];
+                            }
+                        }
+                        else
+                        {
+                            int AbsDEy = DEy.Abs();
+                            if (DSx < DEx || DEy < DSy)
+                            {
+                                if (Clockwise)
+                                {
+                                    // QuadrantIII  DSx, DSy to DEx, DEy
+                                    for (i = AbsDSy + 1; i < AbsDEy; i++)
+                                        Handler(-Datas[i], -i);
+
+                                    Lx = -Datas[AbsDEy];
+                                }
+                                else
+                                {
+                                    if (DSy == 0)
+                                    {
+                                        // QuadrantII   -Rx, 0 to 0, Ry 
+                                        for (i = 1; i <= Ry; i++)
+                                            Handler(-Datas[i], i);
+                                    }
+                                    else
+                                    {
+                                        Lx = -Datas[AbsDSy];
+                                        if (Lx < DSx)
+                                            Handler(Lx, DSy);
+
+                                        // QuadrantIII  DSx, DSy to -Rx, 0
+                                        for (i = AbsDSy - 1; i > 0; i--)
+                                            Handler(-Datas[i], -i);
+
+                                        // QuadrantII   -Rx, 0 to 0, Ry 
+                                        for (i = 0; i <= Ry; i++)
+                                            Handler(-Datas[i], i);
+                                    }
+
+                                    // QuadrantI    0, Ry to Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(Datas[i], i);
+
+                                    // QuadrantIV   Rx, 0 to 0, -Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantIII  0, -Ry to DEx, DEy
+                                    for (i = Ry; i > AbsDEy; i--)
+                                        Handler(-Datas[i], -i);
+
+                                    Lx = Math.Max(-Datas[AbsDEy], DEx);
+                                }
+                            }
+                            else
+                            {
+                                if (Clockwise)
+                                {
+                                    // QuadrantIII  DSx, DSy to 0, -Ry
+                                    for (i = AbsDSy + 1; i <= Ry; i++)
+                                        Handler(-Datas[i], -i);
+
+                                    // QuadrantIV   0, -Ry to Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(Datas[i], -i);
+
+                                    // QuadrantI    Rx,0 to 0, Ry
+                                    for (i = 0; i <= Ry; i++)
+                                        Handler(Datas[i], i);
+
+                                    // QuadrantII   0, Ry to -Rx, 0
+                                    for (i = Ry; i > 0; i--)
+                                        Handler(-Datas[i], i);
+
+                                    // QuadrantIII  -Rx, 0 to DEx, DEy
+                                    for (i = 0; i < AbsDEy; i++)
+                                        Handler(-Datas[i], -i);
+
+                                    Lx = -Datas[AbsDEy];
+                                }
+                                else
+                                {
+                                    Lx = -Datas[AbsDSy];
+                                    if (Lx < DSx)
+                                        Handler(Lx, DSy);
+
+                                    // QuadrantIII  DSx, DSy to DEx, DEy
+                                    for (i = AbsDSy - 1; i > AbsDEy; i--)
+                                        Handler(-Datas[i], -i);
+
+                                    Lx = Math.Max(-Datas[AbsDEy], DEx);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // EndPoint
+            if (Lx != DEx)
+                Handler(Lx, DEy);
+
+            if (!IngoreEndPoint)
+                Handler(DEx, DEy);
+        }
+
 
         public static void CalculateArcPolygonPoints(double DSx, double DSy, double DEx, double DEy, double Rx, double Ry, bool Clockwise, bool IgnoreEndPoint, GraphicDoubleDeltaHandler Handler)
         {
@@ -778,7 +2334,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             List<int> Output = Polygon.ToList(),
                       Input;
-            
+
             if (Output.Count < 6)
                 throw new ArgumentException($"The polygons passed in must have at least 3 points: subject={Output.Count >> 1}");
 

@@ -412,7 +412,17 @@ namespace MenthaAssembly
         {
             double Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
-
+            Rotate(pPoints, Length, Sin, Cos);
+        }
+        /// <summary>
+        /// Rotates the specified points about the origin.
+        /// </summary>
+        /// <param name="pPoints">The pointer of the points to be rotated.</param>
+        /// <param name="Length">The length of the points to be rotated.</param>
+        /// <param name="Sin">The sine of the specified angle to rotate.</param>
+        /// <param name="Cos">The cosine of the specified angle to rotate.</param>
+        public static void Rotate(Point<T>* pPoints, int Length, double Sin, double Cos)
+        {
             T Px, Py;
             for (int i = 0; i < Length; i++)
             {
@@ -436,6 +446,19 @@ namespace MenthaAssembly
             double Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
+            Rotate(pPoints, Length, Cx, Cy, Sin, Cos);
+        }
+        /// <summary>
+        /// Rotates the specified points about the specified point.
+        /// </summary>
+        /// <param name="pPoints">The pointer of the points to be rotated.</param>
+        /// <param name="Length">The length of the points to be rotated.</param>
+        /// <param name="Cx">The x-coordinate of the center of rotation.</param>
+        /// <param name="Cy">The y-coordinate of the center of rotation.</param>
+        /// <param name="Sin">The sine of the specified angle to rotate.</param>
+        /// <param name="Cos">The cosine of the specified angle to rotate.</param>
+        public static void Rotate(Point<T>* pPoints, int Length, T Cx, T Cy, double Sin, double Cos)
+        {
             T Px, Py;
             for (int i = 0; i < Length; i++)
             {
