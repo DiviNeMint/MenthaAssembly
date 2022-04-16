@@ -13,9 +13,8 @@ namespace MenthaAssembly.Media.Imaging
 
         public int this[int Index]
         {
-            get => Index == 0 ?
-                   Data >> 0 :
-                   throw new ArgumentOutOfRangeException();
+            get => Index == 0 ? Data >> 0 :
+                                throw new ArgumentOutOfRangeException();
             set
             {
                 if (Index != 0)

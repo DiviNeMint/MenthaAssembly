@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -7,6 +9,8 @@ namespace MenthaAssembly.Media.Imaging
         where Pixel : unmanaged, IPixel
     {
         internal readonly List<Pixel> Datas;
+
+        public GCHandle Handle { get; }
 
         public int Count => Datas.Count;
 
@@ -22,11 +26,13 @@ namespace MenthaAssembly.Media.Imaging
         {
             this.Capacity = 1 << BitsPerPixel;
             this.Datas = new List<Pixel>(Capacity);
+            this.Handle = GCHandle.Alloc(this);
         }
         public ImagePalette(int BitsPerPixel, IEnumerable<Pixel> Palette)
         {
             this.Capacity = 1 << BitsPerPixel;
             this.Datas = new List<Pixel>(Palette);
+            this.Handle = GCHandle.Alloc(this);
         }
 
         public bool TryGetOrAdd(Pixel Color, out int Index)
@@ -58,5 +64,32 @@ namespace MenthaAssembly.Media.Imaging
         public T[] Extract<T>() where T : unmanaged, IPixel
             => Datas.Select(i => i.ToPixel<T>())
                     .ToArray();
+
+        private bool IsDisposed;
+        protected virtual void Dispose(bool Disposing)
+        {
+            if (!IsDisposed)
+            {
+                if (Disposing)
+                    Datas.Clear();
+
+                if (Handle.IsAllocated)
+                    Handle.Free();
+
+                IsDisposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        ~ImagePalette()
+        {
+            Dispose(false);
+        }
+
     }
 }

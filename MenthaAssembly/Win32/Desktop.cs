@@ -446,7 +446,7 @@ namespace MenthaAssembly.Win32
                                         {
                                             int ThicknessX = Info.cxWindowBorders,
                                                 ThicknessY = Info.cyWindowBorders;
-                                            return Snap.Crop(ThicknessX, ThicknessY, Snap.Width - ThicknessX * 2, Snap.Height - ThicknessY * 2);
+                                            return Snap.Crop<BGR>(ThicknessX, ThicknessY, Snap.Width - ThicknessX * 2, Snap.Height - ThicknessY * 2);
                                         }
 
                                         return Snap;
