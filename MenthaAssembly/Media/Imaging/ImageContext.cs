@@ -506,8 +506,7 @@ namespace MenthaAssembly.Media.Imaging
                 int LastDx = 0,
                     LastDy = 0;
 
-                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY,
-                    (Dx, Dy) =>
+                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, (Dx, Dy) =>
                     {
                         Stroke.Offset(Dx - LastDx, Dy - LastDy);
                         LineContour.Union(Stroke);
@@ -620,6 +619,7 @@ namespace MenthaAssembly.Media.Imaging
                                                       Ex - Cx, Ey - Cy,
                                                       Rx, Ry,
                                                       Clockwise,
+                                                      false,
                                                       (Dx, Dy) => Operator.SetPixel(Cx + Dx, Cy + Dy, Color));
         public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
@@ -628,7 +628,7 @@ namespace MenthaAssembly.Media.Imaging
             int X = Cx - (Pen.Width >> 1),
                 Y = Cy - (Pen.Height >> 1);
 
-            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise,
+            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise, false,
                 (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen));
         }
         public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill)
@@ -662,7 +662,7 @@ namespace MenthaAssembly.Media.Imaging
 
                 int LastDx = 0,
                     LastDy = 0;
-                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise,
+                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, false,
                     (Dx, Dy) =>
                     {
                         Stroke.Offset(Dx - LastDx, Dy - LastDy);
@@ -679,58 +679,58 @@ namespace MenthaAssembly.Media.Imaging
                                      SmallLeftBound = new Dictionary<int, int>(),
                                      SmallRightBound = new Dictionary<int, int>();
 
-                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise,
-                   (Dx, Dy) =>
-                   {
-                       int OffsetX = Dx + Cx - PCx,
-                           OffsetY = Dy + Cy - PCy;
-                       if (Dx < 0)
-                       {
-                           foreach (KeyValuePair<int, ContourData> item in Contour)
-                           {
-                               ContourData Data = item.Value;
-                               int Ty = item.Key + OffsetY;
+                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, false,
+                    (Dx, Dy) =>
+                    {
+                        int OffsetX = Dx + Cx - PCx,
+                            OffsetY = Dy + Cy - PCy;
+                        if (Dx < 0)
+                        {
+                            foreach (KeyValuePair<int, ContourData> item in Contour)
+                            {
+                                ContourData Data = item.Value;
+                                int Ty = item.Key + OffsetY;
 
-                               if (Ty < 0)
-                                   continue;
-
-                               if (Height <= Ty)
-                                   break;
-
-                               int LLTx = Data[0] + OffsetX,
-                                   MLTx = Data[1] + OffsetX;
-
-                               if (!LargeLeftBound.TryGetValue(Ty, out int RLLx) || LLTx < RLLx)
-                                   LargeLeftBound[Ty] = LLTx;
-
-                               if (!SmallLeftBound.TryGetValue(Ty, out int RMLx) || RMLx < MLTx)
-                                   SmallLeftBound[Ty] = MLTx;
-                           }
-                       }
-                       else
-                       {
-                           foreach (KeyValuePair<int, ContourData> item in Contour)
-                           {
-                               ContourData Data = item.Value;
-                               int Ty = item.Key + OffsetY;
-
-                               if (Ty < 0)
-                                   continue;
+                                if (Ty < 0)
+                                    continue;
 
                                if (Height <= Ty)
                                    break;
 
-                               int LRTx = Data[1] + OffsetX,
-                                   MRTx = Data[0] + OffsetX;
+                                int LLTx = Data[0] + OffsetX,
+                                    MLTx = Data[1] + OffsetX;
 
-                               if (!LargeRightBound.TryGetValue(Ty, out int RLRx) || RLRx < LRTx)
-                                   LargeRightBound[Ty] = LRTx;
+                                if (!LargeLeftBound.TryGetValue(Ty, out int RLLx) || LLTx < RLLx)
+                                    LargeLeftBound[Ty] = LLTx;
 
-                               if (!SmallRightBound.TryGetValue(Ty, out int RMRx) || MRTx < RMRx)
-                                   SmallRightBound[Ty] = MRTx;
-                           }
-                       }
-                   });
+                                if (!SmallLeftBound.TryGetValue(Ty, out int RMLx) || RMLx < MLTx)
+                                    SmallLeftBound[Ty] = MLTx;
+                            }
+                        }
+                        else
+                        {
+                            foreach (KeyValuePair<int, ContourData> item in Contour)
+                            {
+                                ContourData Data = item.Value;
+                                int Ty = item.Key + OffsetY;
+
+                                if (Ty < 0)
+                                    continue;
+
+                               if (Height <= Ty)
+                                   break;
+
+                                int LRTx = Data[1] + OffsetX,
+                                    MRTx = Data[0] + OffsetX;
+
+                                if (!LargeRightBound.TryGetValue(Ty, out int RLRx) || RLRx < LRTx)
+                                    LargeRightBound[Ty] = LRTx;
+
+                                if (!SmallRightBound.TryGetValue(Ty, out int RMRx) || MRTx < RMRx)
+                                    SmallRightBound[Ty] = MRTx;
+                            }
+                        }
+                    });
 
                 foreach (KeyValuePair<int, int> item in LargeLeftBound)
                 {
@@ -2009,7 +2009,9 @@ namespace MenthaAssembly.Media.Imaging
             Point<int>[] Datas = GraphicAlgorithm.CropPolygon(Vertices, -OffsetX - 1, -OffsetY - 1, Width - OffsetX, Height - OffsetY);
 
             int Length = Datas.Length;
-            int[] intersectionsX = new int[Length - 1];
+
+            int[] IntersectionsX = new int[Length - 1],
+                  HorizontalX = new int[Length << 1];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
             int yMin = Height,
@@ -2035,50 +2037,77 @@ namespace MenthaAssembly.Media.Imaging
             {
                 // Initial point x, y
                 Point<int> P0 = Datas[0];
-                float vxi = P0.X + OffsetX,
-                      vyi = P0.Y + OffsetY;
+                float X0 = P0.X + OffsetX,
+                      Y0 = P0.Y + OffsetY;
 
                 // Find all intersections
                 // Based on http://alienryderflex.com/polygon_fill/
-                int intersectionCount = 0;
+                int IntersectionCount = 0,
+                    HorizontalCount = 0;
                 for (int i = 1; i < Length; i++)
                 {
                     // Next point x, y
                     Point<int> P1 = Datas[i];
-                    float vxj = P1.X + OffsetX,
-                          vyj = P1.Y + OffsetY;
+                    float X1 = P1.X + OffsetX,
+                          Y1 = P1.Y + OffsetY;
 
                     // Is the scanline between the two points
-                    if (vyi < y && vyj >= y ||
-                        vyj < y && vyi >= y)
+                    if (Y0 < y && y <= Y1 ||
+                        Y1 < y && y <= Y0)
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
-                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
+                        IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
                     }
-                    vxi = vxj;
-                    vyi = vyj;
+                    else if (Y0 == Y1 && Y0 == y)
+                    {
+                        HorizontalX[HorizontalCount++] = (int)X0;
+                        HorizontalX[HorizontalCount++] = (int)X1;
+                    }
+
+                    X0 = X1;
+                    Y0 = Y1;
                 }
 
                 // Sort the intersections from left to right using Insertion sort 
                 // It's faster than Array.Sort for this small data set
                 int t, j;
-                for (int i = 1; i < intersectionCount; i++)
+                for (int i = 1; i < IntersectionCount; i++)
                 {
-                    t = intersectionsX[i];
+                    t = IntersectionsX[i];
                     j = i;
-                    while (j > 0 && intersectionsX[j - 1] > t)
+                    while (j > 0 && IntersectionsX[j - 1] > t)
                     {
-                        intersectionsX[j] = intersectionsX[j - 1];
+                        IntersectionsX[j] = IntersectionsX[j - 1];
                         j -= 1;
                     }
-                    intersectionsX[j] = t;
+                    IntersectionsX[j] = t;
                 }
 
                 // Fill the pixels between the intersections
-                for (int i = 0; i < intersectionCount - 1; i += 2)
+                for (int i = 0; i < IntersectionCount - 1; i += 2)
                 {
-                    int x0 = intersectionsX[i],
-                        x1 = intersectionsX[i + 1];
+                    int x0 = IntersectionsX[i],
+                        x1 = IntersectionsX[i + 1];
+
+                    // Check boundary
+                    if (x1 > 0 && x0 < Width)
+                    {
+                        if (x0 < 0)
+                            x0 = 0;
+
+                        if (x1 >= Width)
+                            x1 = Width - 1;
+
+                        // Fill the pixels
+                        Operator.ScanLine<Pixel>(x0, y, x1 - x0 + 1, a => a.Overlay(Fill));
+                    }
+                }
+
+                // Fill the pixels between the horizontals
+                for (int i = 0; i < HorizontalCount - 1; i += 2)
+                {
+                    int x0 = HorizontalX[i],
+                        x1 = HorizontalX[i + 1];
 
                     // Check boundary
                     if (x1 > 0 && x0 < Width)
@@ -2102,7 +2131,8 @@ namespace MenthaAssembly.Media.Imaging
             int pn = Datas.Length,
                 pnh = pn >> 1;
 
-            int[] intersectionsX = new int[pnh - 1];
+            int[] IntersectionsX = new int[pnh - 1],
+                  HorizontalX = new int[pn];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
             int yMin = Height,
@@ -2127,49 +2157,76 @@ namespace MenthaAssembly.Media.Imaging
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                float vxi = Datas[0] + OffsetX,
-                      vyi = Datas[1] + OffsetY;
+                float X0 = Datas[0] + OffsetX,
+                      Y0 = Datas[1] + OffsetY;
 
                 // Find all intersections
                 // Based on http://alienryderflex.com/polygon_fill/
-                int intersectionCount = 0;
+                int IntersectionCount = 0,
+                    HorizontalCount = 0;
                 for (int i = 2; i < pn; i += 2)
                 {
                     // Next point x, y
-                    float vxj = Datas[i] + OffsetX,
-                          vyj = Datas[i + 1] + OffsetY;
+                    float X1 = Datas[i] + OffsetX,
+                          Y1 = Datas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
-                    if (vyi < y && vyj >= y ||
-                        vyj < y && vyi >= y)
+                    if (Y0 < y && y <= Y1 ||
+                        Y1 < y && y <= Y0)
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
-                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
+                        IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
                     }
-                    vxi = vxj;
-                    vyi = vyj;
+                    else if (Y0 == Y1 && Y0 == y)
+                    {
+                        HorizontalX[HorizontalCount++] = (int)X0;
+                        HorizontalX[HorizontalCount++] = (int)X1;
+                    }
+
+                    X0 = X1;
+                    Y0 = Y1;
                 }
 
                 // Sort the intersections from left to right using Insertion sort 
                 // It's faster than Array.Sort for this small data set
                 int t, j;
-                for (int i = 1; i < intersectionCount; i++)
+                for (int i = 1; i < IntersectionCount; i++)
                 {
-                    t = intersectionsX[i];
+                    t = IntersectionsX[i];
                     j = i;
-                    while (j > 0 && intersectionsX[j - 1] > t)
+                    while (j > 0 && IntersectionsX[j - 1] > t)
                     {
-                        intersectionsX[j] = intersectionsX[j - 1];
+                        IntersectionsX[j] = IntersectionsX[j - 1];
                         j -= 1;
                     }
-                    intersectionsX[j] = t;
+                    IntersectionsX[j] = t;
                 }
 
                 // Fill the pixels between the intersections
-                for (int i = 0; i < intersectionCount - 1; i += 2)
+                for (int i = 0; i < IntersectionCount - 1; i += 2)
                 {
-                    int x0 = intersectionsX[i],
-                        x1 = intersectionsX[i + 1];
+                    int x0 = IntersectionsX[i],
+                        x1 = IntersectionsX[i + 1];
+
+                    // Check boundary
+                    if (x1 > 0 && x0 < Width)
+                    {
+                        if (x0 < 0)
+                            x0 = 0;
+
+                        if (x1 >= Width)
+                            x1 = Width - 1;
+
+                        // Fill the pixels
+                        Operator.ScanLine<Pixel>(x0, y, x1 - x0 + 1, a => a.Overlay(Fill));
+                    }
+                }
+
+                // Fill the pixels between the horizontals
+                for (int i = 0; i < HorizontalCount - 1; i += 2)
+                {
+                    int x0 = HorizontalX[i],
+                        x1 = HorizontalX[i + 1];
 
                     // Check boundary
                     if (x1 > 0 && x0 < Width)

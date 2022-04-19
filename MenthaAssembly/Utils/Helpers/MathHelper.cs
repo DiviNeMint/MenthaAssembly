@@ -233,7 +233,6 @@ namespace MenthaAssembly
         /// <param name="This">The value to be clamped.</param>
         /// <param name="Min">The lower bound of the result.</param>
         /// <param name="Max">The upper bound of the result.</param>
-        /// <returns></returns>
         public static T Clamp<T>(this T This, T Min, T Max)
             where T : IComparable
         {
@@ -244,6 +243,24 @@ namespace MenthaAssembly
                 return Max;
 
             return This;
+        }
+        /// <summary>
+        /// Check value is clamped to the inclusive range of Min and Max.
+        /// </summary>
+        /// <typeparam name="T">The type of value.</typeparam>
+        /// <param name="This">The value to be checked.</param>
+        /// <param name="Min">The lower bound of the result.</param>
+        /// <param name="Max">The upper bound of the result.</param>
+        public static bool IsClamped<T>(this T This, T Min, T Max)
+            where T : IComparable
+        {
+            if (This.CompareTo(Min) < 0)
+                return false;
+
+            if (This.CompareTo(Max) > 0)
+                return false;
+
+            return true;
         }
 
         /// <summary>
