@@ -684,11 +684,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
             where U : unmanaged, IPixel
         {
             int XBits = X * Context.BitsPerPixel;
-            long Offset = Context.Stride * Y;
+            long Stride = Context.Stride,
+                 Offset = Stride * Y;
             Struct* pScan = (Struct*)Context.Scan0 + Offset;
 
-            return Context.PixelType == typeof(U) ? new PixelIndexedAdapter<U, Struct>(pScan, XBits, Context.Palette.Handle) :
-                                                    new PixelIndexedAdapter<T, U, Struct>(pScan, XBits, Context.Palette.Handle);
+            return Context.PixelType == typeof(U) ? new PixelIndexedAdapter<U, Struct>(pScan, Stride, XBits, Context.Palette.Handle) :
+                                                    new PixelIndexedAdapter<T, U, Struct>(pScan, Stride, XBits, Context.Palette.Handle);
         }
 
     }

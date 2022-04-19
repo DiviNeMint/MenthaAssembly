@@ -278,7 +278,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, IPixelAdapter<T> Adapter) 
+        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, IPixelAdapter<T> Adapter)
         {
             byte* pScanR = (byte*)Context.ScanR,
                   pScanG = (byte*)Context.ScanG,
@@ -601,12 +601,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public IPixelAdapter<U> GetAdapter<U>(int X, int Y)
             where U : unmanaged, IPixel
         {
-            long Offset = Context.Stride * Y + X;
+            long Stride = Context.Stride,
+                 Offset = Stride * Y + X;
             byte* pScanR = (byte*)Context.ScanR + Offset,
                   pScanG = (byte*)Context.ScanG + Offset,
                   pScanB = (byte*)Context.ScanB + Offset;
 
-            return new PixelAdapter3<U>(pScanR, pScanG, pScanB);
+            return new PixelAdapter3<U>(pScanR, pScanG, pScanB, Stride);
         }
 
     }

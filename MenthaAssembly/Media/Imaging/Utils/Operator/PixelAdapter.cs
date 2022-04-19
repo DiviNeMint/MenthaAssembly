@@ -3,10 +3,22 @@
     internal unsafe class PixelAdapterBase<T>
         where T : unmanaged, IPixel
     {
+        public byte A => pScan->A;
+
+        public byte R => pScan->R;
+
+        public byte G => pScan->G;
+
+        public byte B => pScan->B;
+
+        public int BitsPerPixel => pScan->BitsPerPixel;
+
+        private readonly long Stride;
         protected T* pScan;
-        public PixelAdapterBase(T* pData)
+        public PixelAdapterBase(T* pData, long Stride)
         {
             pScan = pData;
+            this.Stride = Stride;
         }
 
         public void Override(byte A, byte R, byte G, byte B)
@@ -37,12 +49,16 @@
         public void MovePrevious()
             => pScan--;
 
+        public void MoveNextLine()
+            => pScan = (T*)((byte*)pScan + Stride);
+        public void MovePreviousLine()
+            => pScan = (T*)((byte*)pScan - Stride);
     }
 
     internal unsafe class PixelAdapter<T> : PixelAdapterBase<T>, IPixelAdapter<T>
         where T : unmanaged, IPixel
     {
-        public PixelAdapter(byte* pData) : base((T*)pData)
+        public PixelAdapter(byte* pData, long Stride) : base((T*)pData, Stride)
         {
         }
 
@@ -52,9 +68,19 @@
             => *pData = *pScan;
 
         public void Overlay(T Pixel)
-            => Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        {
+            if (Pixel.A == byte.MaxValue)
+                Override(Pixel);
+            else
+                Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        }
         public void OverlayTo(T* pData)
-            => pData->Overlay(pScan->A, pScan->R, pScan->G, pScan->B);
+        {
+            if (pScan->A == byte.MaxValue)
+                OverrideTo(pData);
+            else
+                pData->Overlay(pScan->A, pScan->R, pScan->G, pScan->B);
+        }
 
     }
 
@@ -62,7 +88,7 @@
         where T : unmanaged, IPixel
         where U : unmanaged, IPixel
     {
-        public PixelAdapter(byte* pData) : base((T*)pData)
+        public PixelAdapter(byte* pData, long Stride) : base((T*)pData, Stride)
         {
         }
 

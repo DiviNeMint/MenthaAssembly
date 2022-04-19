@@ -1,15 +1,29 @@
-﻿namespace MenthaAssembly.Media.Imaging.Utils
+﻿using System;
+
+namespace MenthaAssembly.Media.Imaging.Utils
 {
     internal unsafe class PixelAdapter4<T> : IPixelAdapter<T>
         where T : unmanaged, IPixel
     {
+        public byte A => *pScanA;
+
+        public byte R => *pScanR;
+
+        public byte G => *pScanG;
+
+        public byte B => *pScanB;
+
+        public int BitsPerPixel => throw new NotSupportedException();
+
+        private readonly long Stride;
         private byte* pScanA, pScanR, pScanG, pScanB;
-        public PixelAdapter4(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        public PixelAdapter4(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB, long Stride)
         {
             pScanA = pDataA;
             pScanR = pDataR;
             pScanG = pDataG;
             pScanB = pDataB;
+            this.Stride = Stride;
         }
 
         public void Override(T Pixel)
@@ -61,6 +75,21 @@
             pScanR--;
             pScanG--;
             pScanB--;
+        }
+
+        public void MoveNextLine()
+        {
+            pScanA += Stride;
+            pScanR += Stride;
+            pScanG += Stride;
+            pScanB += Stride;
+        }
+        public void MovePreviousLine()
+        {
+            pScanA -= Stride;
+            pScanR -= Stride;
+            pScanG -= Stride;
+            pScanB -= Stride;
         }
 
     }

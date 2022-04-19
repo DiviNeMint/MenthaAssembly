@@ -1,14 +1,28 @@
-﻿namespace MenthaAssembly.Media.Imaging.Utils
+﻿using System;
+
+namespace MenthaAssembly.Media.Imaging.Utils
 {
     internal unsafe class PixelAdapter3<T> : IPixelAdapter<T>
         where T : unmanaged, IPixel
     {
+        public byte A => byte.MaxValue;
+
+        public byte R => *pScanR;
+
+        public byte G => *pScanG;
+
+        public byte B => *pScanB;
+
+        public int BitsPerPixel => throw new NotSupportedException();
+
+        private readonly long Stride;
         private byte* pScanR, pScanG, pScanB;
-        public PixelAdapter3(byte* pDataR, byte* pDataG, byte* pDataB)
+        public PixelAdapter3(byte* pDataR, byte* pDataG, byte* pDataB, long Stride)
         {
             pScanR = pDataR;
             pScanG = pDataG;
             pScanB = pDataB;
+            this.Stride = Stride;
         }
 
         public void Override(T Pixel)
@@ -40,11 +54,11 @@
         public void Overlay(byte A, byte R, byte G, byte B)
             => PixelHelper.Overlay(ref pScanR, ref pScanG, ref pScanB, A, R, G, B);
         public void OverlayTo(T* pData)
-            => pData->Overlay(byte.MaxValue, *pScanR, *pScanG, *pScanB);
+            => pData->Override(byte.MaxValue, *pScanR, *pScanG, *pScanB);
         public void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
-            => PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, byte.MaxValue, *pScanR, *pScanG, *pScanB);
+            => OverrideTo(pDataR, pDataG, pDataB);
         public void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
-            => PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, byte.MaxValue, *pScanR, *pScanG, *pScanB);
+            => OverrideTo(pDataA, pDataR, pDataG, pDataB);
 
         public void MoveNext()
         {
@@ -57,6 +71,19 @@
             pScanR--;
             pScanG--;
             pScanB--;
+        }
+
+        public void MoveNextLine()
+        {
+            pScanR += Stride;
+            pScanG += Stride;
+            pScanB += Stride;
+        }
+        public void MovePreviousLine()
+        {
+            pScanR -= Stride;
+            pScanG -= Stride;
+            pScanB -= Stride;
         }
 
     }

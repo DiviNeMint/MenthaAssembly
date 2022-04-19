@@ -7,14 +7,54 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where T : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
+        public byte A
+        {
+            get
+            {
+                int Index = GetPaletteIndex();
+                return Palette[Index].A;
+            }
+        }
+
+        public byte R
+        {
+            get
+            {
+                int Index = GetPaletteIndex();
+                return Palette[Index].R;
+            }
+        }
+
+        public byte G
+        {
+            get
+            {
+                int Index = GetPaletteIndex();
+                return Palette[Index].G;
+            }
+        }
+
+        public byte B
+        {
+            get
+            {
+                int Index = GetPaletteIndex();
+                return Palette[Index].B;
+            }
+        }
+
+        public int BitsPerPixel => pScan->BitsPerPixel;
+
         public ImagePalette<T> Palette { get; }
 
         protected int XBit;
         private readonly int BitLength;
+        private readonly long Stride;
         protected Struct* pScan;
-        public PixelIndexedAdapterBase(Struct* pScan, int XBit, ImagePalette<T> Palette)
+        public PixelIndexedAdapterBase(Struct* pScan, long Stride, int XBit, ImagePalette<T> Palette)
         {
             this.pScan = pScan;
+            this.Stride = Stride;
 
             this.XBit = XBit;
             BitLength = pScan->Length;
@@ -114,13 +154,17 @@ namespace MenthaAssembly.Media.Imaging.Utils
             GetPaletteIndexFunc = ResetGetPaletteIndex;
         }
 
+        public void MoveNextLine()
+            => pScan = (Struct*)((byte*)pScan + Stride);
+        public void MovePreviousLine()
+            => pScan = (Struct*)((byte*)pScan - Stride);
     }
 
     internal unsafe class PixelIndexedAdapter<T, Struct> : PixelIndexedAdapterBase<T, Struct>, IPixelAdapter<T>
         where T : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
-        public PixelIndexedAdapter(Struct* pScan, int XBit, GCHandle pPalette) : base(pScan, XBit, (ImagePalette<T>)pPalette.Target)
+        public PixelIndexedAdapter(Struct* pScan, long Stride, int XBit, GCHandle pPalette) : base(pScan, Stride, XBit, (ImagePalette<T>)pPalette.Target)
         {
 
         }
@@ -153,7 +197,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where U : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
-        public PixelIndexedAdapter(Struct* pScan, int XBit, GCHandle pPalette) : base(pScan, XBit, (ImagePalette<T>)pPalette.Target)
+        public PixelIndexedAdapter(Struct* pScan, long Stride, int XBit, GCHandle pPalette) : base(pScan, Stride, XBit, (ImagePalette<T>)pPalette.Target)
         {
 
         }
