@@ -47,5 +47,20 @@
                 *pDestination++ = *pSource++;
         }
 
+        /// <summary>
+        /// Copies data from an unmanaged memory pointer to an unmanaged memory pointer.
+        /// </summary>
+        /// <param name="Source">The datas to copy from.</param>
+        /// <param name="Destination">The byte array to copy to.</param>
+        /// <param name="Offset">The zero-based index in the <paramref name="Destination"/> where copying to should start.</param>
+        public static void Copy<T>(T Source, byte[] Destination, int Offset)
+            where T : unmanaged
+        {
+            fixed (byte* pBuffer = &Destination[Offset])
+            {
+                *(T*)pBuffer = Source;
+            }
+        }
+
     }
 }

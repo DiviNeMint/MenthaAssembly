@@ -7,26 +7,27 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Network
 {
-    public class TcpClient : TcpSocketBase
+    public class TcpClient : TcpSocket
     {
-        protected SocketToken ServerToken;
+        protected TcpToken ServerToken;
 
         public IPEndPoint Server
             => ServerToken?.Address;
 
+        public override bool IsDisposed => _IsDisposed;
+
         public TcpClient(IMessageHandler MessageHandler) : this(CommonProtocolHandler.Instance, MessageHandler) { }
-        public TcpClient(IProtocolHandler Protocol, IMessageHandler MessageHandler) : this(Protocol, MessageHandler, 8192) { }
-        public TcpClient(IProtocolHandler Protocol, IMessageHandler MessageHandler, int BufferSize) : base(Protocol, MessageHandler, BufferSize) { }
+        public TcpClient(IProtocolHandler Protocol, IMessageHandler MessageHandler) : base(Protocol, MessageHandler) { }
 
         public void Connect(string Address, int Port)
         {
             if (!IPAddress.TryParse(Address, out IPAddress TempIP))
-                throw new Exception($"{this.GetType().Name} Connect Error\nIPAddress may not be correct format.");
+                throw new Exception($"{GetType().Name} Connect Error\nIPAddress may not be correct format.");
 
-            this.Connect(new IPEndPoint(TempIP, Port));
+            Connect(new IPEndPoint(TempIP, Port));
         }
         public void Connect(IPAddress IPAddress, int Port)
-            => this.Connect(new IPEndPoint(IPAddress, Port));
+            => Connect(new IPEndPoint(IPAddress, Port));
         public void Connect(IPEndPoint IPEndPoint)
         {
             //Check if it had Connect server.
@@ -36,11 +37,11 @@ namespace MenthaAssembly.Network
             Socket Server = new Socket(SocketType.Stream, ProtocolType.Tcp);
             Server.Connect(IPEndPoint);
 
-            Debug.WriteLine($"[Info]{this.GetType().Name} Connect to [{IPEndPoint.Address}:{IPEndPoint.Port}].");
+            Debug.WriteLine($"[Info][{GetType().Name}]Connect to [{IPEndPoint.Address}:{IPEndPoint.Port}].");
 
             // Start Receive Server's Message
-            SocketAsyncEventArgs e = Dequeue();
-            ServerToken = new SocketToken(Server) { LastRequsetUID = -1 };
+            SocketAsyncEventArgs e = Dequeue(true);
+            ServerToken = new TcpToken(Server, true);
             e.UserToken = ServerToken;
 
             if (!Server.ReceiveAsync(e))
@@ -69,7 +70,7 @@ namespace MenthaAssembly.Network
         }
 
         public IMessage Send(IMessage Request)
-            => Send(Request, 5000);
+            => Send(Request, 3000);
         public IMessage Send(IMessage Request, int TimeoutMileseconds)
            => base.Send(ServerToken, Request, TimeoutMileseconds);
 
@@ -89,7 +90,7 @@ namespace MenthaAssembly.Network
             return (T)Response;
         }
 
-        protected override void OnDisconnected(SocketToken Token)
+        protected override void OnDisconnected(TcpToken Token)
         {
             // Clear ServerToken
             ServerToken = null;
@@ -98,9 +99,10 @@ namespace MenthaAssembly.Network
             base.OnDisconnected(Token);
         }
 
+        private bool _IsDisposed = false;
         public override void Dispose()
         {
-            if (IsDisposed)
+            if (_IsDisposed)
                 return;
 
             try
@@ -110,7 +112,7 @@ namespace MenthaAssembly.Network
             }
             finally
             {
-                IsDisposed = true;
+                _IsDisposed = true;
             }
         }
 

@@ -11,7 +11,7 @@ namespace MenthaAssembly.Utils
 
         public override bool CanWrite => false;
 
-        public override bool CanSeek => false;
+        public override bool CanSeek => true;
 
         public override long Length
             => throw new NotSupportedException();
@@ -20,7 +20,7 @@ namespace MenthaAssembly.Utils
         public override long Position
         {
             get => _Position;
-            set => throw new NotSupportedException();
+            set => Seek(value, SeekOrigin.Begin);
         }
 
         private byte[] Datas;
@@ -33,20 +33,20 @@ namespace MenthaAssembly.Utils
         public ConcatStream(IEnumerable<byte> Datas, Stream Stream)
         {
             this.Datas = Datas.ToArray();
-            this.DatasLength = this.Datas.Length;
-            this.MergedStream = Stream;
+            DatasLength = this.Datas.Length;
+            MergedStream = Stream;
         }
         public ConcatStream(byte[] Datas, int Offset, int Count, Stream Stream)
         {
             this.Datas = Datas.Skip(Offset)
                               .Take(Count)
                               .ToArray();
-            this.DatasLength = Count;
-            this.MergedStream = Stream;
+            DatasLength = Count;
+            MergedStream = Stream;
         }
         public ConcatStream(Stream Stream, Stream MergedStream)
         {
-            this.BaseStream = Stream;
+            BaseStream = Stream;
             this.MergedStream = MergedStream;
             IsConcatStreams = true;
         }
@@ -95,8 +95,33 @@ namespace MenthaAssembly.Utils
         public override void Write(byte[] Buffers, int Offset, int Count)
             => throw new NotSupportedException();
 
-        public override long Seek(long offset, SeekOrigin origin)
-            => throw new NotSupportedException();
+        public override long Seek(long Offset, SeekOrigin origin)
+        {
+            if (origin == SeekOrigin.Current)
+                Offset += _Position;
+
+            else if (origin != SeekOrigin.Begin)
+                throw new NotSupportedException();
+
+            _Position = Offset;
+            if (Offset < DatasLength)
+            {
+                IsBasePosition = true;
+
+                if (MergedStream.CanSeek)
+                    MergedStream.Position = 0;
+            }
+            else
+            {
+                IsBasePosition = false;
+                Offset -= DatasLength;
+
+                if (MergedStream.CanSeek)
+                    MergedStream.Position = Offset;
+            }
+
+            return _Position;
+        }
 
         public override void SetLength(long value)
             => throw new NotSupportedException();

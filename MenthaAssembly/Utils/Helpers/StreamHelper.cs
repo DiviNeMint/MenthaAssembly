@@ -1,7 +1,32 @@
-﻿namespace System.IO
+﻿using System.Threading.Tasks;
+
+namespace System.IO
 {
     public static class StreamHelper
     {
+        public static unsafe void Write<T>(this Stream This, T Datas)
+            where T : unmanaged
+        {
+            byte[] Buffer = new byte[sizeof(T)];
+            fixed (byte* pBuffer = &Buffer[0])
+            {
+                *(T*)pBuffer = Datas;
+            }
+
+            This.Write(Buffer, 0, Buffer.Length);
+        }
+        public static unsafe Task WriteAsync<T>(this Stream This, T Datas)
+            where T : unmanaged
+        {
+            byte[] Buffer = new byte[sizeof(T)];
+            fixed (byte* pBuffer = &Buffer[0])
+            {
+                *(T*)pBuffer = Datas;
+            }
+
+            return This.WriteAsync(Buffer, 0, Buffer.Length);
+        }
+
         public static unsafe T Read<T>(this Stream This)
             where T : unmanaged
         {

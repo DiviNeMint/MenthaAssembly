@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using static MenthaAssembly.Network.Primitives.TcpSocketBase;
 
 namespace MenthaAssembly.Network.Primitives
 {
@@ -83,17 +82,17 @@ namespace MenthaAssembly.Network.Primitives
 
         private async void OnPingProcess(object state)
         {
-            SocketToken[] Clients = Scan().ToArray();
+            TcpToken[] Clients = Scan().ToArray();
             if (Clients.Length > 0)
                 await Ping(Clients, PingProvider.Provide());
         }
 
         private int MaxCount;
-        private IEnumerable<SocketToken> Scan()
+        private IEnumerable<TcpToken> Scan()
         {
             for (int i = Server.Clients.Count - 1; i >= 0; i--)
             {
-                SocketToken Token = Server.ClientTokens[i];
+                TcpToken Token = Server.ClientTokens[i];
                 if (++Token.PingCounter < MaxCount)
                     continue;
 
@@ -102,7 +101,7 @@ namespace MenthaAssembly.Network.Primitives
             }
         }
 
-        private async Task Ping(IEnumerable<SocketToken> Clients, IMessage Request)
+        private async Task Ping(IEnumerable<TcpToken> Clients, IMessage Request)
             => await Task.WhenAll(Clients.Select(i => Server.PingAsync(i, Request, Interval)));
 
     }

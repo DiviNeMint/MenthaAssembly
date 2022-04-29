@@ -4,17 +4,8 @@ using System.Text;
 
 namespace MenthaAssembly.Network.Messages
 {
-    public class SendMessageRequest : IIdentityMessage
+    public class SendMessageRequest : IMessage
     {
-        internal int _UID;
-        public int UID => _UID;
-
-        int IIdentityMessage.UID
-        {
-            set => _UID = value;
-            get => _UID;
-        }
-
         public string Message { get; }
 
         public SendMessageRequest(string Message)
@@ -25,9 +16,6 @@ namespace MenthaAssembly.Network.Messages
         public static Stream Encode(SendMessageRequest Message)
         {
             MemoryStream EncodeStream = new MemoryStream();
-
-            // UID
-            EncodeStream.Write(BitConverter.GetBytes(Message.UID), 0, sizeof(int));
 
             // Message
             if (Message.Message is null)
@@ -41,17 +29,11 @@ namespace MenthaAssembly.Network.Messages
                 EncodeStream.Write(Buffer, 0, Buffer.Length);
             }
 
-            // Reset Position
-            EncodeStream.Seek(0, SeekOrigin.Begin);
-
             return EncodeStream;
         }
 
         public static SendMessageRequest Decode(Stream Stream)
         {
-            // Decode UID
-            int UID = Stream.Read<int>();
-
             // Decode Size
             int Size = Stream.Read<int>();
 
@@ -64,7 +46,7 @@ namespace MenthaAssembly.Network.Messages
                 Message = Encoding.Default.GetString(Datas);
             }
 
-            return new SendMessageRequest(Message) { _UID = UID };
+            return new SendMessageRequest(Message);
         }
 
     }

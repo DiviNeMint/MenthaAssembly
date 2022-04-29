@@ -11,13 +11,13 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Network
 {
-    public class TcpServer : TcpSocketBase
+    public class TcpServer : TcpSocket
     {
         public event EventHandler<IPEndPoint> Connected;
 
         protected readonly ConcurrentObservableCollection<IPEndPoint> ClientKeys = new ConcurrentObservableCollection<IPEndPoint>();
-        internal protected readonly ConcurrentObservableCollection<SocketToken> ClientTokens = new ConcurrentObservableCollection<SocketToken>();
-        internal protected readonly ConcurrentDictionary<IPEndPoint, SocketToken> PrepareClients = new ConcurrentDictionary<IPEndPoint, SocketToken>();
+        internal protected readonly ConcurrentObservableCollection<TcpToken> ClientTokens = new ConcurrentObservableCollection<TcpToken>();
+        internal protected readonly ConcurrentDictionary<IPEndPoint, TcpToken> PrepareClients = new ConcurrentDictionary<IPEndPoint, TcpToken>();
 
         private ReadOnlyCollection<IPEndPoint> _Clients;
         public ReadOnlyCollection<IPEndPoint> Clients
@@ -33,7 +33,9 @@ namespace MenthaAssembly.Network
 
         public int MaxListenCount { set; get; } = 20;
 
-        public IPEndPoint IPEndPoint { protected set; get; }
+        public override bool IsDisposed => _IsDisposed;
+
+        public IPEndPoint IPEndPoint { get; protected set; }
 
         public IConnectionValidator ConnectionValidator { set; get; }
 
@@ -46,10 +48,9 @@ namespace MenthaAssembly.Network
         public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler) : this(Protocol, Handler, null, null) { }
         public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler, IPingProvider PingProvider) : this(Protocol, Handler, null, PingProvider) { }
         public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler, IConnectionValidator Validator) : this(Protocol, Handler, Validator, null) { }
-        public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler, IConnectionValidator Validator, IPingProvider PingProvider) : this(Protocol, Handler, Validator, PingProvider, 8192) { }
-        public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler, IConnectionValidator Validator, IPingProvider PingProvider, int BufferSize) : base(Protocol ?? CommonProtocolHandler.Instance, Handler, BufferSize)
+        public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler, IConnectionValidator Validator, IPingProvider PingProvider) : base(Protocol ?? CommonProtocolHandler.Instance, Handler)
         {
-            this.ConnectionValidator = Validator;
+            ConnectionValidator = Validator;
 
             if (PingProvider != null)
                 PingOperator = new PingOperator(this, PingProvider);
@@ -59,26 +60,26 @@ namespace MenthaAssembly.Network
         public void Start(string Address, int Port)
         {
             if (!IPAddress.TryParse(Address, out IPAddress TempIP))
-                throw new Exception($"{this.GetType().Name} Start Error\nAddress may not be correct format.");
+                throw new Exception($"{GetType().Name} Start Error\nAddress may not be correct format.");
 
-            this.Start(new IPEndPoint(TempIP, Port));
+            Start(new IPEndPoint(TempIP, Port));
         }
         public void Start(IPAddress IPAddress, int Port)
-            => this.Start(new IPEndPoint(IPAddress, Port));
+            => Start(new IPEndPoint(IPAddress, Port));
         public void Start(IPEndPoint IPEndPoint)
         {
             try
             {
                 // Reset
-                this.Dispose();
-                IsDisposed = false;
+                Dispose();
+                _IsDisposed = false;
 
                 // Create New Listener
                 Listener = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 Listener.Bind(IPEndPoint);
                 Listener.Listen(MaxListenCount);
 
-                Debug.WriteLine($"[Info]{this.GetType().Name} Start at [{IPEndPoint.Address}:{IPEndPoint.Port}].");
+                Debug.WriteLine($"[Info][{GetType().Name}]Start at [{IPEndPoint.Address}:{IPEndPoint.Port}].");
 
                 // Start Listen
                 Listen();
@@ -107,22 +108,22 @@ namespace MenthaAssembly.Network
             try
             {
                 if (!Listener.AcceptAsync(e))
-                    this.OnAcceptProcess(e);
+                    OnAcceptProcess(e);
             }
             catch (Exception Ex)
             {
                 if (IsDisposing)
                     return;
 
-                Debug.WriteLine($"[Error]{this.GetType().Name}.{nameof(Listen)} {Ex.Message}");
+                Debug.WriteLine($"[Error][{GetType().Name}]{nameof(Listen)} {Ex.Message}");
             }
         }
 
         public async Task<IMessage> SendAsync(IPEndPoint Client, IMessage Request)
-            => await SendAsync(Client, Request, 5000);
+            => await SendAsync(Client, Request, 3000);
         public async Task<IMessage> SendAsync(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
         {
-            if (TryGetToken(Client, out SocketToken Token))
+            if (TryGetToken(Client, out TcpToken Token))
                 return await base.SendAsync(Token, Request, TimeoutMileseconds);
 
             return ErrorMessage.ClientNotFound;
@@ -134,7 +135,7 @@ namespace MenthaAssembly.Network
         public async Task<T> SendAsync<T>(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
             where T : IMessage
         {
-            if (TryGetToken(Client, out SocketToken Token))
+            if (TryGetToken(Client, out TcpToken Token))
             {
                 IMessage Response = await base.SendAsync(Token, Request, TimeoutMileseconds);
                 if (ErrorMessage.Timeout.Equals(Response))
@@ -165,10 +166,10 @@ namespace MenthaAssembly.Network
         }
 
         public IMessage Send(IPEndPoint Client, IMessage Request)
-            => Send(Client, Request, 5000);
+            => Send(Client, Request, 3000);
         public IMessage Send(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
         {
-            if (TryGetToken(Client, out SocketToken Token))
+            if (TryGetToken(Client, out TcpToken Token))
                 return base.Send(Token, Request, TimeoutMileseconds);
 
             return ErrorMessage.ClientNotFound;
@@ -180,7 +181,7 @@ namespace MenthaAssembly.Network
         public T Send<T>(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
             where T : IMessage
         {
-            if (TryGetToken(Client, out SocketToken Token))
+            if (TryGetToken(Client, out TcpToken Token))
             {
                 IMessage Response = base.Send(Token, Request, TimeoutMileseconds);
                 if (ErrorMessage.Timeout.Equals(Response))
@@ -210,7 +211,7 @@ namespace MenthaAssembly.Network
             return Result.ToDictionary(i => i.Key, i => Result[i.Key].Result);
         }
 
-        protected bool TryGetToken(IPEndPoint Key, out SocketToken Token)
+        protected bool TryGetToken(IPEndPoint Key, out TcpToken Token)
         {
             int Index = ClientKeys.IndexOf(Key);
             if (Index > -1)
@@ -235,8 +236,8 @@ namespace MenthaAssembly.Network
             if (e.AcceptSocket is Socket s &&
                 s.Connected)
             {
-                SocketAsyncEventArgs e2 = Dequeue();
-                SocketToken Token = new SocketToken(s);
+                SocketAsyncEventArgs e2 = Dequeue(true);
+                TcpToken Token = new TcpToken(s, false);
                 e2.UserToken = Token;
 
                 IPEndPoint ClientAddress = Token.Address;
@@ -266,11 +267,11 @@ namespace MenthaAssembly.Network
             }
 
             // Loop Listen
-            if (!IsDisposed)
+            if (!_IsDisposed)
                 Listen(e);
         }
 
-        protected override void OnDisconnected(SocketToken Token)
+        protected override void OnDisconnected(TcpToken Token)
         {
             // Remove Client
             RemoveClient(Token.Address, Token);
@@ -279,7 +280,7 @@ namespace MenthaAssembly.Network
             base.OnDisconnected(Token);
         }
 
-        protected void AddClient(IPEndPoint Key, SocketToken Token)
+        protected void AddClient(IPEndPoint Key, TcpToken Token)
         {
             ClientKeys.Add(Key);
             ClientTokens.Add(Token);
@@ -287,16 +288,17 @@ namespace MenthaAssembly.Network
             // Trigger Connected Event.
             Connected?.Invoke(this, Key);
         }
-        protected void RemoveClient(IPEndPoint Key, SocketToken Token)
+        protected void RemoveClient(IPEndPoint Key, TcpToken Token)
         {
             ClientKeys.Remove(Key);
             ClientTokens.Remove(Token);
         }
 
+        private bool _IsDisposed = false;
         private bool IsDisposing = false;
         public override void Dispose()
         {
-            if (IsDisposed)
+            if (_IsDisposed)
                 return;
 
             IsDisposing = true;
@@ -314,7 +316,7 @@ namespace MenthaAssembly.Network
                 ClientTokens.Clear();
 
                 // PrepareClients
-                foreach (SocketToken item in PrepareClients.Values.ToArray())
+                foreach (TcpToken item in PrepareClients.Values.ToArray())
                     item.Dispose();
 
                 PrepareClients.Clear();
@@ -322,7 +324,7 @@ namespace MenthaAssembly.Network
             finally
             {
                 IsDisposing = false;
-                IsDisposed = true;
+                _IsDisposed = true;
             }
         }
 

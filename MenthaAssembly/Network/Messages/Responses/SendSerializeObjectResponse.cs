@@ -17,15 +17,12 @@ namespace MenthaAssembly.Network.Messages
         }
         private SendSerializeObjectResponse(SuccessMessage Message, object SerializeObject) : this(Message.Success, SerializeObject)
         {
-            this._UID = Message.UID;
+
         }
 
         public static Stream Encode(SendSerializeObjectResponse Message)
         {
             MemoryStream EncodeStream = new MemoryStream();
-
-            // UID
-            EncodeStream.Write(BitConverter.GetBytes(Message.UID), 0, sizeof(int));
 
             // Success
             EncodeStream.Write(BitConverter.GetBytes(Message.Success), 0, sizeof(bool));
@@ -45,9 +42,6 @@ namespace MenthaAssembly.Network.Messages
                 BF.Serialize(EncodeStream, Message.SerializeObject);
 
             }
-
-            // Reset Position
-            EncodeStream.Seek(0, SeekOrigin.Begin);
 
             return EncodeStream;
         }

@@ -15,7 +15,7 @@ namespace MenthaAssembly.Network
                 PingResponse PingResponse => new ConcatStream(new byte[] { 2 }, PingResponse.Encode(PingResponse)),
                 SendMessageRequest SendMessageRequest => new ConcatStream(new byte[] { 3 }, SendMessageRequest.Encode(SendMessageRequest)),
                 SendMessageResponse SendMessageResponse => new ConcatStream(new byte[] { 4 }, SendMessageResponse.Encode(SendMessageResponse)),
-                GetTimeRequest GetTimeRequest => new ConcatStream(new byte[] { 5 }, GetTimeRequest.Encode(GetTimeRequest)),
+                GetTimeRequest => new MemoryStream(new byte[] { 5 }),
                 GetTimeResponse GetTimeResponse => new ConcatStream(new byte[] { 6 }, GetTimeResponse.Encode(GetTimeResponse)),
                 SendSerializeObjectRequest SendSerializeObjectRequest => new ConcatStream(new byte[] { 7 }, SendSerializeObjectRequest.Encode(SendSerializeObjectRequest)),
                 SendSerializeObjectResponse SendSerializeObjectResponse => new ConcatStream(new byte[] { 8 }, SendSerializeObjectResponse.Encode(SendSerializeObjectResponse)),
@@ -25,13 +25,13 @@ namespace MenthaAssembly.Network
             };
 
         public IMessage Decode(Stream Stream)
-            => (Stream.ReadByte()) switch
+            => Stream.ReadByte() switch
             {
                 1 => PingRequest.Decode(Stream),
                 2 => PingResponse.Decode(Stream),
                 3 => SendMessageRequest.Decode(Stream),
                 4 => SendMessageResponse.Decode(Stream),
-                5 => GetTimeRequest.Decode(Stream),
+                5 => new GetTimeRequest(),
                 6 => GetTimeResponse.Decode(Stream),
                 7 => SendSerializeObjectRequest.Decode(Stream),
                 8 => SendSerializeObjectResponse.Decode(Stream),
