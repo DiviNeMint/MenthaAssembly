@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -11,6 +10,10 @@ namespace MenthaAssembly.Network
 
         public static ErrorMessage NotSupport => new ErrorMessage("Not support.");
 
+        public static ErrorMessage NotConnected => new ErrorMessage("Not connected.");
+
+        public static ErrorMessage Disconnected => new ErrorMessage("Disconnected.");
+
         public static ErrorMessage EncodeException => new ErrorMessage("Happen exception when encode request.");
 
         public static ErrorMessage ReceivingNotSupport => new ErrorMessage("The receiving side not support this request.");
@@ -19,16 +22,21 @@ namespace MenthaAssembly.Network
 
         public static ErrorMessage ReceivingHandleException => new ErrorMessage("The receiving side happen exception when handle request.");
 
-        public static ErrorMessage ClientNotFound => new ErrorMessage("Client not found.");
-
-        public static ErrorMessage Disconnected => new ErrorMessage("Disconnected.");
-
         public string Message { get; }
 
         public ErrorMessage(string Message)
         {
             this.Message = Message;
         }
+
+        public override int GetHashCode()
+            => Message.GetHashCode();
+
+        public override bool Equals(object obj)
+            => obj is ErrorMessage Item && Message.Equals(Item.Message);
+
+        public override string ToString()
+            => Message;
 
         public static Stream Encode(ErrorMessage Message)
         {
@@ -65,12 +73,6 @@ namespace MenthaAssembly.Network
 
             return new ErrorMessage(Message);
         }
-
-        public override int GetHashCode() 
-            => 460171812 + EqualityComparer<string>.Default.GetHashCode(Message);
-
-        public override bool Equals(object obj)
-            => obj is ErrorMessage Item && this.Message.Equals(Item.Message);
 
     }
 }

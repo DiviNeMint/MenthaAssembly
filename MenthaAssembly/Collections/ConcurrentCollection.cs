@@ -15,8 +15,8 @@ namespace MenthaAssembly
 
         public ConcurrentCollection()
         {
-            this.BaseCollection = new Collection<T>();
-            this.BaseList = BaseCollection;
+            BaseCollection = new Collection<T>();
+            BaseList = BaseCollection;
         }
         public ConcurrentCollection(IEnumerable<T> Items) : this()
         {
@@ -98,7 +98,7 @@ namespace MenthaAssembly
         IEnumerator IEnumerable.GetEnumerator()
             => BaseCollection.GetEnumerator();
 
-        internal protected U Handle<U>(Func<U> Func)
+        protected internal U Handle<U>(Func<U> Func)
         {
             bool Token = false;
             try
@@ -112,7 +112,7 @@ namespace MenthaAssembly
                     Monitor.Exit(LockObject);
             }
         }
-        internal protected void Handle(Action Action)
+        protected internal void Handle(Action Action)
         {
             bool Token = false;
             try
@@ -136,7 +136,7 @@ namespace MenthaAssembly
         }
 
         public override string ToString()
-            => $"Count = {this.Count}";
+            => $"Count = {Count}";
 
     }
 }

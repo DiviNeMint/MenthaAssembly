@@ -8,7 +8,6 @@
         /// <summary>
         /// Provide PingMessage(Request).
         /// </summary>
-        /// <returns></returns>
         IMessage Provide();
 
     }

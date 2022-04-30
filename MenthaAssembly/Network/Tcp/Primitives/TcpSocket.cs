@@ -12,22 +12,21 @@ namespace MenthaAssembly.Network.Primitives
 {
     public abstract class TcpSocket : IOCPSocket
     {
+        public event EventHandler<TcpRequest> RequestReceived;
+
         public event EventHandler<IPEndPoint> Disconnected;
 
-        public IProtocolHandler ProtocolHandler { get; }
-
-        public IMessageHandler MessageHandler { get; }
+        public IProtocolCoder ProtocolHandler { get; }
 
         public abstract bool IsDisposed { get; }
 
-        protected TcpSocket(IProtocolHandler Protocol, IMessageHandler MessageHandler)
+        protected TcpSocket(IProtocolCoder Protocol)
         {
             ProtocolHandler = Protocol;
-            this.MessageHandler = MessageHandler;
             ReplyHandler = OnReplyProcess;
         }
 
-        protected internal virtual IMessage Send(TcpToken Token, IMessage Request, int TimeoutMileseconds)
+        protected virtual IMessage Send(TcpToken Token, IMessage Request, int TimeoutMileseconds)
         {
             TaskCompletionSource<IMessage> TaskToken = new TaskCompletionSource<IMessage>();
 
@@ -146,7 +145,7 @@ namespace MenthaAssembly.Network.Primitives
             TaskToken.Task.Wait();
             return TaskToken.Task.Result;
         }
-        protected internal virtual async Task<IMessage> SendAsync(TcpToken Token, IMessage Request, int TimeoutMileseconds)
+        protected virtual async Task<IMessage> SendAsync(TcpToken Token, IMessage Request, int TimeoutMileseconds)
         {
             TaskCompletionSource<IMessage> TaskToken = new TaskCompletionSource<IMessage>();
 
@@ -362,7 +361,7 @@ namespace MenthaAssembly.Network.Primitives
             }
         }
 
-        protected override void OnSendProcess(SocketAsyncEventArgs e)
+        protected void OnSendProcess(SocketAsyncEventArgs e)
         {
             if (e.UserToken is TcpToken Token)
             {
@@ -382,7 +381,7 @@ namespace MenthaAssembly.Network.Primitives
         }
 
         private readonly Action<TcpToken, int, IMessage> ReplyHandler;
-        protected override void OnReceiveProcess(SocketAsyncEventArgs e)
+        protected void OnReceiveProcess(SocketAsyncEventArgs e)
         {
             if (e.UserToken is TcpToken Token)
             {
@@ -459,21 +458,13 @@ namespace MenthaAssembly.Network.Primitives
             else
             {
                 // Handle Received Message
-                IMessage Response;
-                try
-                {
-                    Response = MessageHandler?.HandleMessage(Token.Address, ReceiveMessage) ?? ErrorMessage.NotSupport;
-                }
-                catch
-                {
-                    Response = ErrorMessage.ReceivingHandleException;
-                }
-
-                if (!OperationMessage.DoNothing.Equals(Response))
-                    Reply(Token, ReceiveUID, Response, 3000);
+                if (RequestReceived is null)
+                    Reply(Token, ReceiveUID, ErrorMessage.NotSupport, 3000);
+                else
+                    RequestReceived(this, new TcpRequest(this, Token, ReceiveUID, ReceiveMessage));
             }
         }
-        protected virtual void Reply(TcpToken Token, int UID, IMessage Response, int TimeoutMileseconds)
+        protected internal virtual void Reply(TcpToken Token, int UID, IMessage Response, int TimeoutMileseconds)
         {
             // Check Response
             if (Response is null)
@@ -568,6 +559,24 @@ namespace MenthaAssembly.Network.Primitives
             finally
             {
                 Token.ReleaseSend();
+            }
+        }
+
+        protected sealed override void OnIOCompleted(object sender, SocketAsyncEventArgs e)
+        {
+            switch (e.LastOperation)
+            {
+                case SocketAsyncOperation.Receive:
+                    OnReceiveProcess(e);
+                    break;
+                case SocketAsyncOperation.Send:
+                    OnSendProcess(e);
+                    break;
+                default:
+                    {
+                        Debug.WriteLine($"[Error][{this.GetType().Name}Not support the operation {e.LastOperation}.");
+                        throw new ArgumentException("The last operation completed on the socket was not a Send or Receive");
+                    }
             }
         }
 

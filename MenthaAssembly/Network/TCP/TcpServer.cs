@@ -16,8 +16,8 @@ namespace MenthaAssembly.Network
         public event EventHandler<IPEndPoint> Connected;
 
         protected readonly ConcurrentObservableCollection<IPEndPoint> ClientKeys = new ConcurrentObservableCollection<IPEndPoint>();
-        internal protected readonly ConcurrentObservableCollection<TcpToken> ClientTokens = new ConcurrentObservableCollection<TcpToken>();
-        internal protected readonly ConcurrentDictionary<IPEndPoint, TcpToken> PrepareClients = new ConcurrentDictionary<IPEndPoint, TcpToken>();
+        protected internal readonly ConcurrentObservableCollection<TcpToken> ClientTokens = new ConcurrentObservableCollection<TcpToken>();
+        protected internal readonly ConcurrentDictionary<IPEndPoint, TcpToken> PrepareClients = new ConcurrentDictionary<IPEndPoint, TcpToken>();
 
         private ReadOnlyCollection<IPEndPoint> _Clients;
         public ReadOnlyCollection<IPEndPoint> Clients
@@ -41,14 +41,14 @@ namespace MenthaAssembly.Network
 
         public PingOperator PingOperator { get; }
 
-        public TcpServer(IMessageHandler Handler) : this(null, Handler) { }
-        public TcpServer(IMessageHandler Handler, bool EnableAutoPing) : this(Handler, null, EnableAutoPing) { }
-        public TcpServer(IMessageHandler Handler, IConnectionValidator Validator) : this(null, Handler, Validator, null) { }
-        public TcpServer(IMessageHandler Handler, IConnectionValidator Validator, bool EnableAutoPing) : this(null, Handler, Validator, EnableAutoPing ? CommonPingProvider.Instance : null) { }
-        public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler) : this(Protocol, Handler, null, null) { }
-        public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler, IPingProvider PingProvider) : this(Protocol, Handler, null, PingProvider) { }
-        public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler, IConnectionValidator Validator) : this(Protocol, Handler, Validator, null) { }
-        public TcpServer(IProtocolHandler Protocol, IMessageHandler Handler, IConnectionValidator Validator, IPingProvider PingProvider) : base(Protocol ?? CommonProtocolHandler.Instance, Handler)
+        public TcpServer() : this(null, null, null) { }
+        public TcpServer(bool EnableAutoPing) : this(null, EnableAutoPing) { }
+        public TcpServer(IConnectionValidator Validator) : this(null, Validator, null) { }
+        public TcpServer(IConnectionValidator Validator, bool EnableAutoPing) : this(null, Validator, EnableAutoPing ? CommonPingProvider.Instance : null) { }
+        public TcpServer(IProtocolCoder Protocol) : this(Protocol, null, null) { }
+        public TcpServer(IProtocolCoder Protocol, IPingProvider PingProvider) : this(Protocol, null, PingProvider) { }
+        public TcpServer(IProtocolCoder Protocol, IConnectionValidator Validator) : this(Protocol, Validator, null) { }
+        public TcpServer(IProtocolCoder Protocol, IConnectionValidator Validator, IPingProvider PingProvider) : base(Protocol ?? CommonProtocolCoder.Instance)
         {
             ConnectionValidator = Validator;
 
@@ -122,12 +122,8 @@ namespace MenthaAssembly.Network
         public async Task<IMessage> SendAsync(IPEndPoint Client, IMessage Request)
             => await SendAsync(Client, Request, 3000);
         public async Task<IMessage> SendAsync(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
-        {
-            if (TryGetToken(Client, out TcpToken Token))
-                return await base.SendAsync(Token, Request, TimeoutMileseconds);
-
-            return ErrorMessage.ClientNotFound;
-        }
+            => TryGetToken(Client, out TcpToken Token) ? await base.SendAsync(Token, Request, TimeoutMileseconds) :
+                                                         ErrorMessage.NotConnected;
 
         public async Task<T> SendAsync<T>(IPEndPoint Client, IMessage Request)
             where T : IMessage
@@ -147,7 +143,7 @@ namespace MenthaAssembly.Network
                 return (T)await base.SendAsync(Token, Request, TimeoutMileseconds);
             }
 
-            throw new ClientNotFoundException();
+            throw new NotConnectedException();
         }
 
         public async Task<Dictionary<IPEndPoint, IMessage>> SendAsync(IMessage Request)
@@ -168,12 +164,8 @@ namespace MenthaAssembly.Network
         public IMessage Send(IPEndPoint Client, IMessage Request)
             => Send(Client, Request, 3000);
         public IMessage Send(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
-        {
-            if (TryGetToken(Client, out TcpToken Token))
-                return base.Send(Token, Request, TimeoutMileseconds);
-
-            return ErrorMessage.ClientNotFound;
-        }
+            => TryGetToken(Client, out TcpToken Token) ? base.Send(Token, Request, TimeoutMileseconds) :
+                                                         ErrorMessage.NotConnected;
 
         public T Send<T>(IPEndPoint Client, IMessage Request)
             where T : IMessage
@@ -193,7 +185,7 @@ namespace MenthaAssembly.Network
                 return (T)base.Send(Token, Request, TimeoutMileseconds);
             }
 
-            throw new ClientNotFoundException();
+            throw new NotConnectedException();
         }
 
         public Dictionary<IPEndPoint, IMessage> Send(IMessage Request)
@@ -287,6 +279,8 @@ namespace MenthaAssembly.Network
 
             // Trigger Connected Event.
             Connected?.Invoke(this, Key);
+
+            Debug.WriteLine($"[Info][{GetType().Name}]Accept client[{Token.Address}].");
         }
         protected void RemoveClient(IPEndPoint Key, TcpToken Token)
         {

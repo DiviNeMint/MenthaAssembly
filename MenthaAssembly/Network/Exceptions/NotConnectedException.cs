@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Network
 {
-    public class ClientNotFoundException : Exception
+    public class NotConnectedException : Exception
     {
 
     }

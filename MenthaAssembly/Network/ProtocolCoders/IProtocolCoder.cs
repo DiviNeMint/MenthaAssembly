@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Network
 {
-    public interface IProtocolHandler
+    public interface IProtocolCoder
     {
         /// <summary>
         /// Encode Message.

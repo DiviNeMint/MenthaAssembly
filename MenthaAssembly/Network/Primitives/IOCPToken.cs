@@ -41,6 +41,7 @@ namespace MenthaAssembly.Network.Primitives
 
         public bool SendAsync(SocketAsyncEventArgs e)
             => Socket.SendAsync(e);
+
         public bool ReceiveAsync(SocketAsyncEventArgs e)
             => Socket.ReceiveAsync(e);
 

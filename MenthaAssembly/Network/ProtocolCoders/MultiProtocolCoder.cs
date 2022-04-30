@@ -5,17 +5,17 @@ using System.IO;
 
 namespace MenthaAssembly.Network
 {
-    public class MultiProtocolHandler : IProtocolHandler
+    public class MultiProtocolCoder : IProtocolCoder
     {
-        public List<IProtocolHandler> Handlers { get; }
+        public List<IProtocolCoder> Coders { get; }
 
-        public MultiProtocolHandler(params IProtocolHandler[] Handlers)
+        public MultiProtocolCoder(params IProtocolCoder[] Handlers)
         {
-            this.Handlers = new List<IProtocolHandler>(Handlers);
+            this.Coders = new List<IProtocolCoder>(Handlers);
         }
-        public MultiProtocolHandler(IEnumerable<IProtocolHandler> Handlers)
+        public MultiProtocolCoder(IEnumerable<IProtocolCoder> Handlers)
         {
-            this.Handlers = new List<IProtocolHandler>(Handlers);
+            this.Coders = new List<IProtocolCoder>(Handlers);
         }
 
         public IMessage Decode(Stream Stream)
@@ -33,16 +33,16 @@ namespace MenthaAssembly.Network
 
             int Index = DecodeHeader(Header);
 
-            return Handlers[Index].Decode(Stream);
+            return Coders[Index].Decode(Stream);
         }
 
         public Stream Encode(IMessage Message)
         {
-            for (int i = Handlers.Count - 1; i >= 0; i--)
+            for (int i = Coders.Count - 1; i >= 0; i--)
             {
                 try
                 {
-                    if (Handlers[i].Encode(Message) is Stream EncodeStream)
+                    if (Coders[i].Encode(Message) is Stream EncodeStream)
                         return new ConcatStream(EncodeHeader(i), EncodeStream);
                 }
                 catch
@@ -55,7 +55,7 @@ namespace MenthaAssembly.Network
         }
 
         private int CalculateMessageHeaderSize()
-            => Math.Min((Handlers.Count + 255) >> 8, sizeof(int));
+            => Math.Min((Coders.Count + 255) >> 8, sizeof(int));
 
         private byte[] EncodeHeader(int Index)
         {

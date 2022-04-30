@@ -20,24 +20,7 @@ namespace MenthaAssembly.Network.Primitives
             }
         }
 
-        protected abstract void OnSendProcess(SocketAsyncEventArgs e);
-
-        protected abstract void OnReceiveProcess(SocketAsyncEventArgs e);
-
-        private void OnIOCompleted(object sender, SocketAsyncEventArgs e)
-        {
-            switch (e.LastOperation)
-            {
-                case SocketAsyncOperation.Receive:
-                    OnReceiveProcess(e);
-                    break;
-                case SocketAsyncOperation.Send:
-                    OnSendProcess(e);
-                    break;
-                default:
-                    throw new ArgumentException("The last operation completed on the socket was not a Accept or Receive");
-            }
-        }
+        protected abstract void OnIOCompleted(object sender, SocketAsyncEventArgs e);
 
         protected void Enqueue(ref SocketAsyncEventArgs e)
         {
@@ -46,7 +29,7 @@ namespace MenthaAssembly.Network.Primitives
             e.UserToken = null;
 
             // Enqueue Buffer
-            if (e.Buffer.Length == BufferSize)
+            if (e.Buffer != null && e.Buffer.Length == BufferSize)
                 BufferPool.Enqueue(e.Buffer);
 
             e.SetBuffer(null, 0, 0);

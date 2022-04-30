@@ -4,9 +4,9 @@ using System.IO;
 
 namespace MenthaAssembly.Network
 {
-    public class CommonProtocolHandler : IProtocolHandler
+    public class CommonProtocolCoder : IProtocolCoder
     {
-        public static CommonProtocolHandler Instance { get; } = new CommonProtocolHandler();
+        public static CommonProtocolCoder Instance { get; } = new CommonProtocolCoder();
 
         public Stream Encode(IMessage Message)
             => Message switch

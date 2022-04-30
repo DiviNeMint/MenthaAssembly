@@ -16,8 +16,8 @@ namespace MenthaAssembly.Network
 
         public override bool IsDisposed => _IsDisposed;
 
-        public TcpClient(IMessageHandler MessageHandler) : this(CommonProtocolHandler.Instance, MessageHandler) { }
-        public TcpClient(IProtocolHandler Protocol, IMessageHandler MessageHandler) : base(Protocol, MessageHandler) { }
+        public TcpClient() : base(CommonProtocolCoder.Instance) { }
+        public TcpClient(IProtocolCoder Protocol) : base(Protocol) { }
 
         public void Connect(string Address, int Port)
         {
@@ -51,7 +51,12 @@ namespace MenthaAssembly.Network
         public async Task<IMessage> SendAsync(IMessage Request)
            => await SendAsync(Request, 5000);
         public async Task<IMessage> SendAsync(IMessage Request, int TimeoutMileseconds)
-           => await base.SendAsync(ServerToken, Request, TimeoutMileseconds);
+        {
+            if (ServerToken is null)
+                return ErrorMessage.NotConnected;
+
+            return await base.SendAsync(ServerToken, Request, TimeoutMileseconds);
+        }
 
         public async Task<T> SendAsync<T>(IMessage Request)
             where T : IMessage
@@ -59,6 +64,9 @@ namespace MenthaAssembly.Network
         public async Task<T> SendAsync<T>(IMessage Request, int TimeoutMileseconds)
             where T : IMessage
         {
+            if (ServerToken is null)
+                throw new NotConnectedException();
+
             IMessage Response = await base.SendAsync(ServerToken, Request, TimeoutMileseconds);
             if (ErrorMessage.Timeout.Equals(Response))
                 throw new TimeoutException();
@@ -72,7 +80,12 @@ namespace MenthaAssembly.Network
         public IMessage Send(IMessage Request)
             => Send(Request, 3000);
         public IMessage Send(IMessage Request, int TimeoutMileseconds)
-           => base.Send(ServerToken, Request, TimeoutMileseconds);
+        {
+            if (ServerToken is null)
+                return ErrorMessage.NotConnected;
+
+            return base.Send(ServerToken, Request, TimeoutMileseconds);
+        }
 
         public T Send<T>(IMessage Request)
             where T : IMessage
@@ -80,6 +93,9 @@ namespace MenthaAssembly.Network
         public T Send<T>(IMessage Request, int TimeoutMileseconds)
             where T : IMessage
         {
+            if (ServerToken is null)
+                throw new NotConnectedException();
+
             IMessage Response = base.Send(ServerToken, Request, TimeoutMileseconds);
             if (ErrorMessage.Timeout.Equals(Response))
                 throw new TimeoutException();
