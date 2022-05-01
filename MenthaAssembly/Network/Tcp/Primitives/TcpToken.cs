@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Network.Primitives
 {
-    public class TcpToken : IOCPToken
+    public unsafe class TcpToken : IOCPToken
     {
         public ConcurrentDictionary<int, TaskCompletionSource<IMessage>> ResponseTaskSources { get; }
 
@@ -29,12 +29,31 @@ namespace MenthaAssembly.Network.Primitives
             return LastRequsetUID;
         }
 
+        public int GetLastUID()
+            => LastRequsetUID;
+
         private readonly bool ClientSide;
         public bool ValidateResponseMessage(int MessageUID)
             => ((MessageUID & 1) > 0) == ClientSide && MessageUID <= LastRequsetUID;
 
-        public int GetLastUID()
-            => LastRequsetUID;
+        public void SetKeepAlive(bool Enable, uint Interval)
+        {
+            if (IsDisposed)
+                return;
+
+            byte[] Data = new byte[sizeof(TcpKeepAlive)];
+            fixed (byte* pData = &Data[0])
+            {
+                *(TcpKeepAlive*)pData = new TcpKeepAlive
+                {
+                    Enable = Enable,
+                    Time = Interval,
+                    Interval = MathHelper.Clamp(Interval / 8U, 100U, 1000U)
+                };
+            }
+
+            Socket.IOControl(IOControlCode.KeepAliveValues, Data, null);
+        }
 
         internal bool IsDisposed = false;
         public override void Dispose()

@@ -39,21 +39,45 @@ namespace MenthaAssembly.Network
 
         public IConnectionValidator ConnectionValidator { set; get; }
 
-        public PingOperator PingOperator { get; }
+        private bool _EnableCheckKeepAlive = true;
+        private uint _CheckKeepAliveInterval = 180000U;
 
-        public TcpServer() : this(null, null, null) { }
-        public TcpServer(bool EnableAutoPing) : this(null, EnableAutoPing) { }
-        public TcpServer(IConnectionValidator Validator) : this(null, Validator, null) { }
-        public TcpServer(IConnectionValidator Validator, bool EnableAutoPing) : this(null, Validator, EnableAutoPing ? CommonPingProvider.Instance : null) { }
-        public TcpServer(IProtocolCoder Protocol) : this(Protocol, null, null) { }
-        public TcpServer(IProtocolCoder Protocol, IPingProvider PingProvider) : this(Protocol, null, PingProvider) { }
-        public TcpServer(IProtocolCoder Protocol, IConnectionValidator Validator) : this(Protocol, Validator, null) { }
-        public TcpServer(IProtocolCoder Protocol, IConnectionValidator Validator, IPingProvider PingProvider) : base(Protocol ?? CommonProtocolCoder.Instance)
+        /// <summary>
+        /// 是否定期檢查連線狀況
+        /// </summary>
+        public bool EnableCheckKeepAlive
+        {
+            get => _EnableCheckKeepAlive;
+            set
+            {
+                _EnableCheckKeepAlive = value;
+
+                foreach (TcpToken Token in ClientTokens.Concat(PrepareClients.Values).ToArray())
+                    Token.SetKeepAlive(value, _CheckKeepAliveInterval);
+            }
+        }
+
+        /// <summary>
+        /// 檢查連線狀況間隔（單位：毫秒）
+        /// </summary>
+        public uint CheckKeepAliveInterval
+        {
+            get => _CheckKeepAliveInterval;
+            set
+            {
+                _CheckKeepAliveInterval = value;
+                if (_EnableCheckKeepAlive)
+                    foreach (TcpToken Token in ClientTokens.Concat(PrepareClients.Values).ToArray())
+                        Token.SetKeepAlive(true, value);
+            }
+        }
+
+        public TcpServer() : this(null, null) { }
+        public TcpServer(IConnectionValidator Validator) : this(null, Validator) { }
+        public TcpServer(IProtocolCoder Protocol) : this(Protocol, null) { }
+        public TcpServer(IProtocolCoder Protocol, IConnectionValidator Validator) : base(Protocol ?? CommonProtocolCoder.Instance)
         {
             ConnectionValidator = Validator;
-
-            if (PingProvider != null)
-                PingOperator = new PingOperator(this, PingProvider);
         }
 
         protected Socket Listener;
@@ -228,8 +252,10 @@ namespace MenthaAssembly.Network
             if (e.AcceptSocket is Socket s &&
                 s.Connected)
             {
-                SocketAsyncEventArgs e2 = Dequeue(true);
                 TcpToken Token = new TcpToken(s, false);
+                Token.SetKeepAlive(_EnableCheckKeepAlive, _CheckKeepAliveInterval);
+
+                SocketAsyncEventArgs e2 = Dequeue(true);
                 e2.UserToken = Token;
 
                 IPEndPoint ClientAddress = Token.Address;

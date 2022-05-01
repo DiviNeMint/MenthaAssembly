@@ -6,6 +6,9 @@ namespace MenthaAssembly.Network.Primitives
     public struct TcpHeader : IProtocolHeader
     {
         [FieldOffset(0)]
+        internal unsafe fixed int Context[5];
+
+        [FieldOffset(0)]
         private readonly byte SrcPort1;
         [FieldOffset(1)]
         private readonly byte SrcPort2;
@@ -30,7 +33,9 @@ namespace MenthaAssembly.Network.Primitives
         [FieldOffset(13)]
         private readonly byte HeaderDatas2;
 
-        public int Length => (HeaderDatas1 >> 4) << 2;
+        internal int Length4Bits => HeaderDatas1 >> 4;
+
+        public int Length => Length4Bits << 2;
 
         public TcpFlags Flags => (TcpFlags)(HeaderDatas2 & 0x3F);
 
@@ -45,6 +50,10 @@ namespace MenthaAssembly.Network.Primitives
         [FieldOffset(18)]
         private readonly short _UrgentPointer;
         public short UrgentPointer => _UrgentPointer;
+
+        [FieldOffset(20)]
+        internal byte[] _Options;
+        public byte[] Options => _Options;
 
     }
 }

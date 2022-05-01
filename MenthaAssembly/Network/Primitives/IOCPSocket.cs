@@ -10,7 +10,7 @@ namespace MenthaAssembly.Network.Primitives
         private ConcurrentQueue<byte[]> BufferPool = new ConcurrentQueue<byte[]>();
 
         private int _BufferSize = 8192;
-        public int BufferSize
+        public virtual int BufferSize
         {
             get => _BufferSize;
             set

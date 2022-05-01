@@ -6,6 +6,9 @@ namespace MenthaAssembly.Network.Primitives
     public struct IcmpHeader : IProtocolHeader
     {
         [FieldOffset(0)]
+        internal unsafe fixed int Context[1];
+
+        [FieldOffset(0)]
         private readonly byte _Type;
         public byte Type => _Type;
 

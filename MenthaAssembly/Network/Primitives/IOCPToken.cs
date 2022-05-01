@@ -9,7 +9,7 @@ namespace MenthaAssembly.Network.Primitives
 {
     public abstract class IOCPToken : IDisposable
     {
-        private Socket Socket;
+        protected Socket Socket;
 
         public IPEndPoint Address { get; private set; }
 

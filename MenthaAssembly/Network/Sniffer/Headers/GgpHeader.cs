@@ -6,6 +6,9 @@ namespace MenthaAssembly.Network.Primitives
     public struct GgpHeader : IProtocolHeader
     {
         [FieldOffset(0)]
+        internal unsafe fixed int Context[1];
+
+        [FieldOffset(0)]
         private readonly byte _Type;
         public GatewayType Type => (GatewayType)_Type;
 

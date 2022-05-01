@@ -16,13 +16,13 @@ namespace MenthaAssembly.Network.Primitives
 
         public event EventHandler<IPEndPoint> Disconnected;
 
-        public IProtocolCoder ProtocolHandler { get; }
+        public IProtocolCoder ProtocolCoder { get; }
 
         public abstract bool IsDisposed { get; }
 
         protected TcpSocket(IProtocolCoder Protocol)
         {
-            ProtocolHandler = Protocol;
+            ProtocolCoder = Protocol;
             ReplyHandler = OnReplyProcess;
         }
 
@@ -62,7 +62,7 @@ namespace MenthaAssembly.Network.Primitives
                 Stream MessageStream;
                 try
                 {
-                    MessageStream = ProtocolHandler.Encode(Request);
+                    MessageStream = ProtocolCoder.Encode(Request);
                     MessageStream.Seek(0, SeekOrigin.Begin);
                 }
                 catch
@@ -182,7 +182,7 @@ namespace MenthaAssembly.Network.Primitives
                 Stream MessageStream;
                 try
                 {
-                    MessageStream = ProtocolHandler.Encode(Request);
+                    MessageStream = ProtocolCoder.Encode(Request);
                     MessageStream.Seek(0, SeekOrigin.Begin);
                 }
                 catch
@@ -296,7 +296,7 @@ namespace MenthaAssembly.Network.Primitives
                 Stream MessageStream;
                 try
                 {
-                    MessageStream = ProtocolHandler.Encode(Message);
+                    MessageStream = ProtocolCoder.Encode(Message);
                     MessageStream.Seek(0, SeekOrigin.Begin);
                 }
                 catch
@@ -312,7 +312,7 @@ namespace MenthaAssembly.Network.Primitives
                 int Length = MessageStream?.Read(Buffer, sizeof(int), BufferSize - sizeof(int)) ?? 0;
                 if (Length == 0)
                 {
-                    Debug.WriteLine($"[Warn]{ProtocolHandler.GetType().Name} not support {Message.GetType().Name}.");
+                    Debug.WriteLine($"[Warn]{ProtocolCoder.GetType().Name} not support {Message.GetType().Name}.");
 
                     // Enqueue Buffer
                     Enqueue(ref Buffer);
@@ -399,7 +399,7 @@ namespace MenthaAssembly.Network.Primitives
                         // Decode Message
                         ConcatStream s = new ConcatStream(e.Buffer, 0, e.BytesTransferred, Token.GetStream());
                         ReceiveUID = s.Read<int>();
-                        ReceiveMessage = ProtocolHandler.Decode(s);
+                        ReceiveMessage = ProtocolCoder.Decode(s);
                         s.Dispose();
 
                         Debug.WriteLine($"[Info][{GetType().Name}]Receive {ReceiveMessage?.GetType().Name ?? "NullMessage"}.");
@@ -500,7 +500,7 @@ namespace MenthaAssembly.Network.Primitives
                 Stream MessageStream;
                 try
                 {
-                    MessageStream = ProtocolHandler.Encode(Response);
+                    MessageStream = ProtocolCoder.Encode(Response);
                     MessageStream.Seek(0, SeekOrigin.Begin);
                 }
                 catch
@@ -514,7 +514,7 @@ namespace MenthaAssembly.Network.Primitives
                 int Length = MessageStream?.Read(Buffer, sizeof(int), BufferSize - sizeof(int)) ?? 0;
                 if (Length == 0)
                 {
-                    Debug.WriteLine($"[Warn]{ProtocolHandler.GetType().Name} not support {Response.GetType().Name}.");
+                    Debug.WriteLine($"[Warn]{ProtocolCoder.GetType().Name} not support {Response.GetType().Name}.");
 
                     MessageStream = ErrorMessage.Encode(ErrorMessage.ReceivingNotSupport);
                     Length = MessageStream.Read(Buffer, sizeof(int), BufferSize - sizeof(int));

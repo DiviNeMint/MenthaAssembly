@@ -6,6 +6,9 @@ namespace MenthaAssembly.Network.Primitives
     public struct UdpHeader : IProtocolHeader
     {
         [FieldOffset(0)]
+        internal unsafe fixed int Context[1];
+
+        [FieldOffset(0)]
         private readonly byte SrcPort1;
         [FieldOffset(1)]
         private readonly byte SrcPort2;
@@ -22,11 +25,13 @@ namespace MenthaAssembly.Network.Primitives
         [FieldOffset(5)]
         private readonly byte LengthDatas2;
 
-        public int Length => ((LengthDatas1 << 8) | LengthDatas2) << 2;
+        public int DataLength => ((LengthDatas1 << 8) | LengthDatas2) << 2;
 
         [FieldOffset(6)]
         private readonly short _Checksum;
         public short Checksum => _Checksum;
+
+        public int Length => 4;
 
     }
 }

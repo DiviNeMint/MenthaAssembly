@@ -8,14 +8,19 @@ namespace MenthaAssembly.Network.Primitives
     public struct IPHeader
     {
         [FieldOffset(0)]
+        internal unsafe fixed int Context[5];
+
+        [FieldOffset(0)]
         private readonly byte _IPInfoDatas;
 
         public int Version => _IPInfoDatas >> 4;
 
-        public int HeaderLength => (_IPInfoDatas & 0x0F) << 2;
+        internal int Length4Bits => _IPInfoDatas & 0x0F;
+
+        public int HeaderLength => Length4Bits << 2;
 
         [FieldOffset(1)]
-        private readonly byte _TOS; 
+        private readonly byte _TOS;
         public byte TOS => _TOS;        // Type of service 
 
         [FieldOffset(2)]
@@ -62,6 +67,10 @@ namespace MenthaAssembly.Network.Primitives
         [FieldOffset(19)]
         private readonly byte DestAddr4;
         public IPAddress DestAddr => new IPAddress(new byte[] { DestAddr1, DestAddr2, DestAddr3, DestAddr4 });
+
+        [FieldOffset(20)]
+        internal byte[] _Options;
+        public byte[] Options => _Options;
 
     }
 
