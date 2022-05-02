@@ -11,8 +11,6 @@ namespace MenthaAssembly.Network.Primitives
 
         public ConcurrentDictionary<int, CancellationTokenSource> ResponseCancelTokens { get; }
 
-        public int PingCounter { set; get; }
-
         internal TcpToken(Socket Socket, bool ClientSide) : base(Socket)
         {
             ResponseTaskSources = new ConcurrentDictionary<int, TaskCompletionSource<IMessage>>();

@@ -103,7 +103,7 @@ namespace MenthaAssembly.Network
                 for (int i = 0; i < 5; i++)
                     *pIPHeader++ = *pPacket++;
 
-                int IPOptions4Bits = IPHeader.Length4Bits -5;
+                int IPOptions4Bits = IPHeader.Length4Bits - 5;
                 if (IPOptions4Bits > 0)
                 {
                     byte[] IPOptions = new byte[IPOptions4Bits << 2];
@@ -201,7 +201,7 @@ namespace MenthaAssembly.Network
                     break;
                 default:
                     {
-                        Debug.WriteLine($"[Error][{this.GetType().Name}Not support the operation {e.LastOperation}.");
+                        Debug.WriteLine($"[Error][{GetType().Name}Not support the operation {e.LastOperation}.");
                         throw new ArgumentException("The last operation completed on the socket was not Receive");
                     }
             }

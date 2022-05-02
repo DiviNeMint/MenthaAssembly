@@ -12,7 +12,7 @@ namespace MenthaAssembly.Network.Primitives
 {
     public abstract class TcpSocket : IOCPSocket
     {
-        public event EventHandler<TcpRequest> RequestReceived;
+        public event EventHandler<TcpMessage> RequestReceived;
 
         public event EventHandler<IPEndPoint> Disconnected;
 
@@ -265,116 +265,13 @@ namespace MenthaAssembly.Network.Primitives
             return await TaskToken.Task;
         }
 
-        protected internal virtual async Task PingAsync(TcpToken Token, IMessage Message, int TimeoutMileseconds)
-        {
-            // Timeout
-            CancellationTokenSource CancelToken = new CancellationTokenSource(TimeoutMileseconds);
-
-            // SendLock
-            try
-            {
-                await Token.WaitSendAsync(CancelToken.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Release CancelToken
-                CancelToken.Dispose();
-
-                Debug.WriteLine($"[Warn][{GetType().Name}]Ping {Message.GetType().Name} Timeout.");
-                return;
-            }
-            catch (ObjectDisposedException)
-            {
-                // Release CancelToken
-                CancelToken.Dispose();
-                return;
-            }
-
-            try
-            {
-                // Encode Message
-                Stream MessageStream;
-                try
-                {
-                    MessageStream = ProtocolCoder.Encode(Message);
-                    MessageStream.Seek(0, SeekOrigin.Begin);
-                }
-                catch
-                {
-                    Debug.WriteLine($"[Error][{GetType().Name}]Encoding {Message.GetType().Name} hanppen exception.");
-                    CancelToken.Dispose();
-                    return;
-                }
-
-                // Check Message's Context
-                byte[] Buffer = Dequeue();
-
-                int Length = MessageStream?.Read(Buffer, sizeof(int), BufferSize - sizeof(int)) ?? 0;
-                if (Length == 0)
-                {
-                    Debug.WriteLine($"[Warn]{ProtocolCoder.GetType().Name} not support {Message.GetType().Name}.");
-
-                    // Enqueue Buffer
-                    Enqueue(ref Buffer);
-                    return;
-                }
-
-                // UID
-                PointerHelper.Copy(Token.NextUID(), Buffer, 0);
-                Length += sizeof(int);
-
-                // Send Datas
-                try
-                {
-                    Debug.WriteLine($"[Info][{GetType().Name}]Ping {Message.GetType().Name} to [{Token.Address}].");
-
-                    do
-                    {
-                        SocketAsyncEventArgs e = Dequeue(false);
-                        e.UserToken = Token;
-                        e.SetBuffer(Buffer, 0, Length);
-
-                        if (!Token.SendAsync(e))
-                            OnSendProcess(e);
-
-                        Buffer = Dequeue();
-                        Length = MessageStream.Read(Buffer, 0, BufferSize);
-
-                    } while (Length > 0 & !Token.IsDisposed);
-                }
-                catch
-                {
-                    // Disconnect
-                    Token.Dispose();
-                }
-                finally
-                {
-                    MessageStream.Dispose();
-
-                    // Enqueue Last Empty Buffer
-                    Enqueue(ref Buffer);
-                }
-            }
-            finally
-            {
-                Token.ReleaseSend();
-            }
-        }
-
         protected void OnSendProcess(SocketAsyncEventArgs e)
         {
-            if (e.UserToken is TcpToken Token)
+            if (e.SocketError != SocketError.Success &&
+                e.UserToken is TcpToken Token)
             {
-                if (e.SocketError == SocketError.Success)
-                {
-                    // Reset Auto Ping Counter.
-                    Token.PingCounter = 0;
-                }
-                else
-                {
-                    // Dispose socket so that OnReceiveProcess will trigger OnDisconnect.
-                    Token.Dispose();
-                }
+                // Dispose socket so that OnReceiveProcess will trigger OnDisconnect.
+                Token.Dispose();
             }
 
             Enqueue(ref e);
@@ -389,9 +286,6 @@ namespace MenthaAssembly.Network.Primitives
                 if (e.SocketError == SocketError.Success &&
                     e.BytesTransferred > 0)
                 {
-                    // Reset Auto Ping Counter.
-                    Token.PingCounter = 0;
-
                     int ReceiveUID = -1;
                     IMessage ReceiveMessage;
                     try
@@ -461,7 +355,7 @@ namespace MenthaAssembly.Network.Primitives
                 if (RequestReceived is null)
                     Reply(Token, ReceiveUID, ErrorMessage.NotSupport, 3000);
                 else
-                    RequestReceived(this, new TcpRequest(this, Token, ReceiveUID, ReceiveMessage));
+                    RequestReceived(this, new TcpMessage(this, Token, ReceiveUID, ReceiveMessage));
             }
         }
         protected internal virtual void Reply(TcpToken Token, int UID, IMessage Response, int TimeoutMileseconds)
@@ -483,7 +377,7 @@ namespace MenthaAssembly.Network.Primitives
                 // Release CancelToken
                 CancelToken.Dispose();
 
-                Debug.WriteLine($"[Warn]Reply [{UID}]{Response.GetType().Name} Timeout.");
+                Debug.WriteLine($"[Warn][{GetType().Name}]Reply [{UID}]{Response.GetType().Name} Timeout.");
                 return;
             }
             catch (ObjectDisposedException)
@@ -574,7 +468,7 @@ namespace MenthaAssembly.Network.Primitives
                     break;
                 default:
                     {
-                        Debug.WriteLine($"[Error][{this.GetType().Name}Not support the operation {e.LastOperation}.");
+                        Debug.WriteLine($"[Error][{GetType().Name}Not support the operation {e.LastOperation}.");
                         throw new ArgumentException("The last operation completed on the socket was not a Send or Receive");
                     }
             }

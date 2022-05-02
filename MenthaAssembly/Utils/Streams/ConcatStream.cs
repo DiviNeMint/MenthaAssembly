@@ -26,35 +26,45 @@ namespace MenthaAssembly.Utils
         private byte[] Datas;
         private readonly int DatasLength;
 
+        private readonly bool LeaveStreamOpen;
+        private readonly bool LeaveMergedStreamOpen;
         private readonly bool IsConcatStreams;
-        private Stream BaseStream,
+        private Stream Stream,
                        MergedStream;
 
-        public ConcatStream(IEnumerable<byte> Datas, Stream Stream)
+        public ConcatStream(IEnumerable<byte> Datas, Stream Stream) : this(Datas, Stream, true)
+        {
+        }
+        public ConcatStream(IEnumerable<byte> Datas, Stream Stream, bool LeaveOpen)
         {
             this.Datas = Datas.ToArray();
             DatasLength = this.Datas.Length;
             MergedStream = Stream;
+            LeaveMergedStreamOpen = LeaveOpen;
         }
-        public ConcatStream(byte[] Datas, int Offset, int Count, Stream Stream)
+        public ConcatStream(byte[] Datas, int Offset, int Length, Stream Stream) : this(Datas, Offset, Length, Stream, true)
+        {
+        }
+        public ConcatStream(byte[] Datas, int Offset, int Length, Stream Stream, bool LeaveOpen)
         {
             this.Datas = Datas.Skip(Offset)
-                              .Take(Count)
+                              .Take(Length)
                               .ToArray();
-            DatasLength = Count;
+            DatasLength = Length;
             MergedStream = Stream;
+            LeaveMergedStreamOpen = LeaveOpen;
         }
-        public ConcatStream(Stream Stream, Stream MergedStream)
+        public ConcatStream(Stream Stream, Stream MergedStream) : this(Stream, false, MergedStream, false)
         {
-            BaseStream = Stream;
-            this.MergedStream = MergedStream;
-            IsConcatStreams = true;
-        }
 
-        public override void Flush()
+        }
+        public ConcatStream(Stream Stream, bool LeaveStreamOpen, Stream MergedStream, bool LeaveMergedStreamOpen)
         {
-            BaseStream?.Flush();
-            MergedStream?.Flush();
+            this.Stream = Stream;
+            this.LeaveStreamOpen = LeaveStreamOpen;
+            this.MergedStream = MergedStream;
+            this.LeaveMergedStreamOpen = LeaveMergedStreamOpen;
+            IsConcatStreams = true;
         }
 
         private bool IsBasePosition = true;
@@ -67,7 +77,7 @@ namespace MenthaAssembly.Utils
 
                 if (IsConcatStreams)
                 {
-                    ReadLength = BaseStream.Read(Buffers, Offset, Count);
+                    ReadLength = Stream.Read(Buffers, Offset, Count);
                 }
                 else
                 {
@@ -95,12 +105,12 @@ namespace MenthaAssembly.Utils
         public override void Write(byte[] Buffers, int Offset, int Count)
             => throw new NotSupportedException();
 
-        public override long Seek(long Offset, SeekOrigin origin)
+        public override long Seek(long Offset, SeekOrigin Origin)
         {
-            if (origin == SeekOrigin.Current)
+            if (Origin == SeekOrigin.Current)
                 Offset += _Position;
 
-            else if (origin != SeekOrigin.Begin)
+            else if (Origin != SeekOrigin.Begin)
                 throw new NotSupportedException();
 
             _Position = Offset;
@@ -126,23 +136,55 @@ namespace MenthaAssembly.Utils
         public override void SetLength(long value)
             => throw new NotSupportedException();
 
+        public override void Flush()
+        {
+            if (IsDisposed)
+                return;
+
+            if (IsConcatStreams)
+                Stream.Flush();
+
+            MergedStream.Flush();
+        }
+
         public override void Close()
         {
-            BaseStream?.Close();
-            MergedStream?.Dispose();
+            if (IsDisposed)
+                return;
+
+            if (IsConcatStreams && !LeaveStreamOpen)
+                Stream.Close();
+
+            if (!LeaveMergedStreamOpen)
+                MergedStream.Close();
+
             base.Close();
         }
 
+        private bool IsDisposed = false;
         protected override void Dispose(bool disposing)
         {
-            BaseStream?.Dispose();
-            BaseStream = null;
+            if (IsDisposed)
+                return;
 
-            MergedStream?.Dispose();
+            if (IsConcatStreams)
+            {
+                if (!LeaveStreamOpen)
+                    Stream.Dispose();
+                Stream = null;
+            }
+            else
+            {
+                Datas = null;
+            }
+
+            if (!LeaveMergedStreamOpen)
+                MergedStream.Dispose();
             MergedStream = null;
 
-            Datas = null;
             base.Dispose(disposing);
+
+            IsDisposed = true;
         }
 
     }

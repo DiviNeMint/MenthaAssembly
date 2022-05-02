@@ -1,12 +1,9 @@
 ﻿using MenthaAssembly.Utils;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -280,7 +277,7 @@ namespace MenthaAssembly.Network.Primitives
                     break;
                 default:
                     {
-                        Debug.WriteLine($"[Error][{this.GetType().Name}Not support the operation {e.LastOperation}.");
+                        Debug.WriteLine($"[Error][{GetType().Name}Not support the operation {e.LastOperation}.");
                         throw new ArgumentException("The last operation completed on the socket was not a SendTo or ReceiveFrom");
                     }
             }

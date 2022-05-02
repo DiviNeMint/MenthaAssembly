@@ -2,19 +2,19 @@
 
 namespace MenthaAssembly.Network
 {
-    public sealed class TcpRequest
+    public sealed class TcpMessage
     {
-        public IMessage Message { get; }
+        public IMessage Content { get; }
 
         private readonly TcpSocket Socket;
         private readonly TcpToken Token;
         private readonly int UID;
-        internal TcpRequest(TcpSocket Socket, TcpToken Token, int UID, IMessage Message)
+        internal TcpMessage(TcpSocket Socket, TcpToken Token, int UID, IMessage Message)
         {
             this.Socket = Socket;
             this.Token = Token;
             this.UID = UID;
-            this.Message = Message;
+            this.Content = Message;
         }
 
         public void Reply(IMessage Response)

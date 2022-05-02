@@ -37,6 +37,9 @@ namespace MenthaAssembly.Network
             Socket Server = new Socket(SocketType.Stream, ProtocolType.Tcp);
             Server.Connect(IPEndPoint);
 
+            if (!Server.Connected)
+                throw new ConnectingFailedException();
+
             Debug.WriteLine($"[Info][{GetType().Name}]Connect to [{IPEndPoint.Address}:{IPEndPoint.Port}].");
 
             // Start Receive Server's Message
@@ -49,7 +52,7 @@ namespace MenthaAssembly.Network
         }
 
         public async Task<IMessage> SendAsync(IMessage Request)
-           => await SendAsync(Request, 5000);
+           => await SendAsync(Request, 3000);
         public async Task<IMessage> SendAsync(IMessage Request, int TimeoutMileseconds)
         {
             if (ServerToken is null)
