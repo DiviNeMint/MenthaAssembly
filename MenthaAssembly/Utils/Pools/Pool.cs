@@ -1,16 +1,46 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 
 namespace MenthaAssembly.Utils
 {
-    public class Pool<T>
+    public class Pool<T> : IDisposable
     {
-        private readonly ConcurrentQueue<T> PoolBase = new ConcurrentQueue<T>();
+        private ConcurrentQueue<T> PoolBase = new ConcurrentQueue<T>();
 
-        public virtual void Enqueue(ref T Item)
-            => PoolBase.Enqueue(Item);
+        public virtual void Enqueue(T Item)
+        {
+            if (IsDisposed)
+                return;
+
+            PoolBase.Enqueue(Item);
+        }
 
         public virtual bool TryDequeue(out T Item)
-            => PoolBase.TryDequeue(out Item);
+        {
+            if (IsDisposed)
+            {
+                Item = default;
+                return false;
+            }
+
+            return PoolBase.TryDequeue(out Item);
+        }
+
+        private bool IsDisposed = false;
+        public virtual void Dispose()
+        {
+            if (IsDisposed)
+                return;
+
+            try
+            {
+                PoolBase = null;
+            }
+            finally
+            {
+                IsDisposed = true;
+            }
+        }
 
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 
 namespace MenthaAssembly
@@ -10,18 +11,15 @@ namespace MenthaAssembly
     {
         protected readonly object LockObject = new object();
 
-        protected readonly Collection<T> BaseCollection;
-        protected readonly IList BaseList;
+        internal readonly List<T> Items = new List<T>();
 
         public ConcurrentCollection()
         {
-            BaseCollection = new Collection<T>();
-            BaseList = BaseCollection;
+            Items = new List<T>();
         }
         public ConcurrentCollection(IEnumerable<T> Items) : this()
         {
-            foreach (T Item in Items)
-                BaseCollection.Add(Item);
+            this.Items = new List<T>(Items);
         }
 
         public virtual T this[int Index]
@@ -32,71 +30,91 @@ namespace MenthaAssembly
         object IList.this[int Index]
         {
             get => GetItem(Index);
-            set => SetItem(Index, value);
+            set
+            {
+                if (value is T i)
+                    SetItem(Index, i);
+            }
         }
 
         public int Count
-            => Handle(() => BaseCollection.Count);
+            => Items.Count;
 
-        public bool IsReadOnly
-            => false;
+        bool ICollection<T>.IsReadOnly
+            => ((ICollection<T>)Items).IsReadOnly;
 
-        public bool IsFixedSize
-            => false;
+        bool ICollection.IsSynchronized
+            => ((ICollection)Items).IsSynchronized;
 
-        public object SyncRoot
-            => BaseCollection;
+        object ICollection.SyncRoot
+            => ((ICollection)Items).SyncRoot;
 
-        public bool IsSynchronized
-            => ((ICollection)BaseCollection).IsSynchronized;
+        bool IList.IsFixedSize
+            => ((IList)Items).IsFixedSize;
+
+        bool IList.IsReadOnly
+            => ((IList)Items).IsReadOnly;
 
         protected T GetItem(int Index)
-            => Handle(() => BaseCollection[Index]);
+            => Handle(() => Items[Index]);
 
         protected virtual void SetItem(int Index, T Value)
-            => Handle(() => BaseCollection[Index] = Value);
-        protected virtual void SetItem(int Index, object Value)
-            => Handle(() => BaseList[Index] = Value);
+            => Handle(() => Items[Index] = Value);
 
         public virtual void Add(T Item)
-            => Handle(() => BaseCollection.Add(Item));
-        public virtual int Add(object Value)
-            => Handle(() => BaseList.Add(Value));
+            => Handle(() => Items.Add(Item));
+        int IList.Add(object Value)
+        {
+            if (Value is T Item)
+            {
+                Add(Item);
+                return Items.Count;
+            }
+
+            return -1;
+        }
 
         public virtual bool Remove(T Item)
-            => Handle(() => BaseCollection.Remove(Item));
-        public virtual void Remove(object Value)
-            => Handle(() => BaseList.Remove(Value));
+            => Handle(() => Items.Remove(Item));
+        void IList.Remove(object Item)
+        {
+            if (Item is T i)
+                Handle(() => Remove(i));
+        }
         public virtual void RemoveAt(int Index)
-            => Handle(() => BaseCollection.RemoveAt(Index));
+            => Handle(() => Items.RemoveAt(Index));
 
         public virtual void Insert(int Index, T Item)
-            => Handle(() => BaseCollection.Insert(Index, Item));
-        public virtual void Insert(int Index, object Value)
-            => Handle(() => BaseList.Insert(Index, Value));
+            => Handle(() => Items.Insert(Index, Item));
+        void IList.Insert(int Index, object Value)
+        {
+            if (Value is T Item)
+                Insert(Index, Item);
+        }
 
         public virtual void Clear()
-            => Handle(() => BaseCollection.Clear());
+            => Handle(() => Items.Clear());
 
         public bool Contains(T Item)
-            => Handle(() => BaseCollection.Contains(Item));
-        public bool Contains(object Value)
-            => Handle(() => BaseList.Contains(Value));
+            => Handle(() => Items.Contains(Item));
+        bool IList.Contains(object Item)
+            => Item is T i && Contains(i);
 
         public virtual void CopyTo(T[] Array, int ArrayIndex)
-            => Handle(() => BaseCollection.CopyTo(Array, ArrayIndex));
-        public virtual void CopyTo(Array Array, int Index)
-            => Handle(() => ((ICollection)BaseCollection).CopyTo(Array, Index));
+            => Handle(() => Items.CopyTo(Array, ArrayIndex));
+        void ICollection.CopyTo(Array Array, int Index)
+            => Handle(() => ((ICollection)Items).CopyTo(Array, Index));
 
         public int IndexOf(T Item)
-            => Handle(() => BaseCollection.IndexOf(Item));
-        public int IndexOf(object Value)
-            => Handle(() => BaseList.IndexOf(Value));
+            => Handle(() => Items.IndexOf(Item));
+        int IList.IndexOf(object Value)
+            => Value is T Item ? IndexOf(Item) : -1;
 
         public IEnumerator<T> GetEnumerator()
-            => BaseCollection.GetEnumerator();
+            => Items.ToList().GetEnumerator();
+
         IEnumerator IEnumerable.GetEnumerator()
-            => BaseCollection.GetEnumerator();
+            => Items.ToArray().GetEnumerator();
 
         protected internal U Handle<U>(Func<U> Func)
         {
@@ -137,6 +155,5 @@ namespace MenthaAssembly
 
         public override string ToString()
             => $"Count = {Count}";
-
     }
 }

@@ -31,8 +31,7 @@ namespace MenthaAssembly.Utils
         private readonly bool IsConcatStreams;
         private Stream Stream,
                        MergedStream;
-
-        public ConcatStream(IEnumerable<byte> Datas, Stream Stream) : this(Datas, Stream, true)
+        public ConcatStream(IEnumerable<byte> Datas, Stream Stream) : this(Datas, Stream, false)
         {
         }
         public ConcatStream(IEnumerable<byte> Datas, Stream Stream, bool LeaveOpen)
@@ -42,7 +41,7 @@ namespace MenthaAssembly.Utils
             MergedStream = Stream;
             LeaveMergedStreamOpen = LeaveOpen;
         }
-        public ConcatStream(byte[] Datas, int Offset, int Length, Stream Stream) : this(Datas, Offset, Length, Stream, true)
+        public ConcatStream(byte[] Datas, int Offset, int Length, Stream Stream) : this(Datas, Offset, Length, Stream, false)
         {
         }
         public ConcatStream(byte[] Datas, int Offset, int Length, Stream Stream, bool LeaveOpen)

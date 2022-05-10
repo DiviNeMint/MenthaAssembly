@@ -9,12 +9,11 @@ namespace MenthaAssembly
         public event NotifyCollectionChangedEventHandler CollectionChanged;
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public ReadOnlyConcurrentObservableCollection(ConcurrentObservableCollection<T> list) : base(list)
+        public ReadOnlyConcurrentObservableCollection(ConcurrentObservableCollection<T> List) : base(List)
         {
-            list.CollectionChanged += (s, e) => this.CollectionChanged?.Invoke(this, e);
-            list.PropertyChanged += (s, e) => this.PropertyChanged?.Invoke(this, e);
+            List.CollectionChanged += (s, e) => CollectionChanged?.Invoke(this, e);
+            List.PropertyChanged += (s, e) => PropertyChanged?.Invoke(this, e);
         }
 
     }
-
 }

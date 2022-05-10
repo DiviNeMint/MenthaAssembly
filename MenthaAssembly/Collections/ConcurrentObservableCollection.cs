@@ -24,17 +24,8 @@ namespace MenthaAssembly
         protected override void SetItem(int Index, T Value)
             => Handle(() =>
             {
-                T originalItem = BaseCollection[Index];
-                BaseCollection[Index] = Value;
-
-                OnPropertyChanged("Item[]");
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, originalItem, Value, Index));
-            });
-        protected override void SetItem(int Index, object Value)
-            => Handle(() =>
-            {
-                object originalItem = BaseList[Index];
-                BaseList[Index] = Value;
+                T originalItem = Items[Index];
+                Items[Index] = Value;
 
                 OnPropertyChanged("Item[]");
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, originalItem, Value, Index));
@@ -43,28 +34,16 @@ namespace MenthaAssembly
         public override void Add(T item)
             => Handle(() =>
             {
-                BaseCollection.Add(item);
+                Items.Add(item);
                 OnPropertyChanged(nameof(Count));
                 OnPropertyChanged("Item[]");
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
-            });
-        public override int Add(object value)
-            => Handle(() =>
-            {
-                int Result = BaseList.Add(value);
-                if (Result > -1)
-                {
-                    OnPropertyChanged(nameof(Count));
-                    OnPropertyChanged("Item[]");
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, value, Result));
-                }
-                return Result;
             });
 
         public override bool Remove(T item)
             => Handle(() =>
             {
-                if (BaseCollection.Remove(item))
+                if (Items.Remove(item))
                 {
                     OnPropertyChanged(nameof(Count));
                     OnPropertyChanged("Item[]");
@@ -73,26 +52,11 @@ namespace MenthaAssembly
                 }
                 return false;
             });
-        public override void Remove(object value)
-            => Handle(() =>
-            {
-                int Index = BaseList.IndexOf(value);
-                if (Index > -1)
-                {
-                    T RemovedItem = BaseCollection[Index];
-                    if (BaseCollection.Remove(RemovedItem))
-                    {
-                        OnPropertyChanged(nameof(Count));
-                        OnPropertyChanged("Item[]");
-                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, Index));
-                    }
-                }
-            });
         public override void RemoveAt(int index)
             => Handle(() =>
             {
-                T RemovedItem = BaseCollection[index];
-                if (BaseCollection.Remove(RemovedItem))
+                T RemovedItem = Items[index];
+                if (Items.Remove(RemovedItem))
                 {
                     OnPropertyChanged(nameof(Count));
                     OnPropertyChanged("Item[]");
@@ -103,24 +67,16 @@ namespace MenthaAssembly
         public override void Insert(int index, T item)
             => Handle(() =>
             {
-                BaseCollection.Insert(index, item);
+                Items.Insert(index, item);
                 OnPropertyChanged(nameof(Count));
                 OnPropertyChanged("Item[]");
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
-            });
-        public override void Insert(int index, object value)
-            => Handle(() =>
-            {
-                BaseList.Insert(index, value);
-                OnPropertyChanged(nameof(Count));
-                OnPropertyChanged("Item[]");
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, value, index));
             });
 
         public override void Clear()
             => Handle(() =>
             {
-                BaseCollection.Clear();
+                Items.Clear();
                 OnPropertyChanged(nameof(Count));
                 OnPropertyChanged("Item[]");
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
@@ -129,7 +85,7 @@ namespace MenthaAssembly
         public void ForEach(Action<T> Action)
             => Handle(() =>
             {
-                foreach (T item in BaseCollection)
+                foreach (T item in Items)
                     Action(item);
             });
 
