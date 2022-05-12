@@ -17,6 +17,7 @@ namespace MenthaAssembly
     {
         public event PropertyChangedEventHandler PropertyChanged;
         public event NotifyCollectionChangedEventHandler CollectionChanged;
+        private const string CountName = nameof(Count);
 
         protected readonly Dictionary<TKey, TValue> Base;
 
@@ -49,7 +50,7 @@ namespace MenthaAssembly
                     return;
                 }
 
-                this.Add(key, value);
+                Add(key, value);
             }
         }
         object IDictionary.this[object key]
@@ -105,16 +106,16 @@ namespace MenthaAssembly
         public void Add(TKey key, TValue value)
         {
             Base.Add(key, value);
-            this.OnPropertyChanged(nameof(Count));
-            this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, new KeyValuePair<TKey, TValue>(key, value)));
+            OnPropertyChanged(CountName);
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, new KeyValuePair<TKey, TValue>(key, value)));
         }
         void IDictionary.Add(object key, object value)
             => Add((TKey)key, (TValue)value);
         void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item)
         {
             Base.Add(item.Key, item.Value);
-            this.OnPropertyChanged(nameof(Count));
-            this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
+            OnPropertyChanged(CountName);
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
         }
 
         public bool Remove(TKey key)
@@ -122,8 +123,8 @@ namespace MenthaAssembly
             if (TryGetValue(key, out TValue value))
             {
                 Base.Remove(key);
-                this.OnPropertyChanged(nameof(Count));
-                this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, new KeyValuePair<TKey, TValue>(key, value)));
+                OnPropertyChanged(CountName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, new KeyValuePair<TKey, TValue>(key, value)));
                 return true;
             }
 
@@ -134,16 +135,16 @@ namespace MenthaAssembly
         bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
         {
             bool Result = Base.Remove(item.Key);
-            this.OnPropertyChanged(nameof(Count));
-            this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+            OnPropertyChanged(CountName);
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
             return Result;
         }
 
         public void Clear()
         {
             Base.Clear();
-            this.OnPropertyChanged(nameof(Count));
-            this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            OnPropertyChanged(CountName);
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item)

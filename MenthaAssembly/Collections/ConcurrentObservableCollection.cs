@@ -10,6 +10,8 @@ namespace MenthaAssembly
     public class ConcurrentObservableCollection<T> : ConcurrentCollection<T>, INotifyCollectionChanged, INotifyPropertyChanged
     {
         private readonly SynchronizationContext OriginalSynchronizationContext = SynchronizationContext.Current;
+        private const string CountName = nameof(Count);
+        private const string IndexerName = "Item[]";
 
         public event PropertyChangedEventHandler PropertyChanged;
         public event NotifyCollectionChangedEventHandler CollectionChanged;
@@ -27,7 +29,7 @@ namespace MenthaAssembly
                 T originalItem = Items[Index];
                 Items[Index] = Value;
 
-                OnPropertyChanged("Item[]");
+                OnPropertyChanged(IndexerName);
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, originalItem, Value, Index));
             });
 
@@ -35,8 +37,8 @@ namespace MenthaAssembly
             => Handle(() =>
             {
                 Items.Add(item);
-                OnPropertyChanged(nameof(Count));
-                OnPropertyChanged("Item[]");
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
             });
 
@@ -45,8 +47,8 @@ namespace MenthaAssembly
             {
                 if (Items.Remove(item))
                 {
-                    OnPropertyChanged(nameof(Count));
-                    OnPropertyChanged("Item[]");
+                    OnPropertyChanged(CountName);
+                    OnPropertyChanged(IndexerName);
                     OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
                     return true;
                 }
@@ -58,8 +60,8 @@ namespace MenthaAssembly
                 T RemovedItem = Items[index];
                 if (Items.Remove(RemovedItem))
                 {
-                    OnPropertyChanged(nameof(Count));
-                    OnPropertyChanged("Item[]");
+                    OnPropertyChanged(CountName);
+                    OnPropertyChanged(IndexerName);
                     OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, index));
                 }
             });
@@ -68,8 +70,8 @@ namespace MenthaAssembly
             => Handle(() =>
             {
                 Items.Insert(index, item);
-                OnPropertyChanged(nameof(Count));
-                OnPropertyChanged("Item[]");
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
             });
 
@@ -77,8 +79,8 @@ namespace MenthaAssembly
             => Handle(() =>
             {
                 Items.Clear();
-                OnPropertyChanged(nameof(Count));
-                OnPropertyChanged("Item[]");
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             });
 
@@ -92,28 +94,22 @@ namespace MenthaAssembly
         private void OnPropertyChanged([CallerMemberName] string PropertyName = null)
         {
             if (SynchronizationContext.Current == OriginalSynchronizationContext)
-            {
                 RaisePropertyChanged(PropertyName);
-                return;
-            }
-
-            OriginalSynchronizationContext.Post((s) => RaisePropertyChanged(PropertyName), null);
+            else
+                OriginalSynchronizationContext.Post((s) => RaisePropertyChanged(PropertyName), null);
         }
-        internal protected void RaisePropertyChanged([CallerMemberName] string PropertyName = null)
-            => this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));
+        protected internal void RaisePropertyChanged([CallerMemberName] string PropertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));
 
         private void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
         {
             if (SynchronizationContext.Current == OriginalSynchronizationContext)
-            {
                 RaiseCollectionChanged(e);
-                return;
-            }
-
-            OriginalSynchronizationContext.Post((s) => RaiseCollectionChanged(e), null);
+            else
+                OriginalSynchronizationContext.Post((s) => RaiseCollectionChanged(e), null);
         }
-        internal protected void RaiseCollectionChanged(NotifyCollectionChangedEventArgs e)
-            => this.CollectionChanged?.Invoke(this, e);
+        protected internal void RaiseCollectionChanged(NotifyCollectionChangedEventArgs e)
+            => CollectionChanged?.Invoke(this, e);
 
     }
 }

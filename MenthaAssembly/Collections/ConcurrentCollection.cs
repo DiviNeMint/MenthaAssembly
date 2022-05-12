@@ -17,7 +17,7 @@ namespace MenthaAssembly
         {
             Items = new List<T>();
         }
-        public ConcurrentCollection(IEnumerable<T> Items) : this()
+        public ConcurrentCollection(IEnumerable<T> Items)
         {
             this.Items = new List<T>(Items);
         }
