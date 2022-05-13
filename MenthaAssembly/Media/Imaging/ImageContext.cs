@@ -694,8 +694,8 @@ namespace MenthaAssembly.Media.Imaging
                                 if (Ty < 0)
                                     continue;
 
-                               if (Height <= Ty)
-                                   break;
+                                if (Height <= Ty)
+                                    break;
 
                                 int LLTx = Data[0] + OffsetX,
                                     MLTx = Data[1] + OffsetX;
@@ -717,8 +717,8 @@ namespace MenthaAssembly.Media.Imaging
                                 if (Ty < 0)
                                     continue;
 
-                               if (Height <= Ty)
-                                   break;
+                                if (Height <= Ty)
+                                    break;
 
                                 int LRTx = Data[1] + OffsetX,
                                     MRTx = Data[0] + OffsetX;
@@ -2256,32 +2256,36 @@ namespace MenthaAssembly.Media.Imaging
             => DrawStamp(Position.X, Position.Y, Stamp);
         public void DrawStamp(int X, int Y, IImageContext Stamp)
         {
-            int Bx = X + Stamp.Width,
-                By = Y + Stamp.Height,
-                OffsetX = 0,
-                OffsetY = 0;
+            int Width = Stamp.Width,
+                Height = Stamp.Height,
+                Sx = X - (Width >> 1),
+                Sy = Y - (Height >> 1),
+                Ex = Sx + Width,
+                Ey = Sy + Height,
+                SourceX = 0,
+                SourceY = 0;
 
-            if (X < 0)
+            if (Sx < 0)
             {
-                OffsetX -= X;
-                X = 0;
+                SourceX -= Sx;
+                Sx = 0;
             }
 
-            if (Y < 0)
+            if (Sy < 0)
             {
-                OffsetY -= Y;
-                Y = 0;
+                SourceY -= Sy;
+                Sy = 0;
             }
 
-            int Width = Math.Min(Bx, this.Width) - X;
+            Width = Math.Min(Ex, this.Width - 1) - Sx;
             if (Width < 1)
                 return;
 
-            int Height = Math.Min(By, this.Width) - Y;
+            Height = Math.Min(Ey, this.Height - 1) - Sy;
             if (Height < 1)
                 return;
 
-            Operator.BlockOverlay(X, Y, Stamp, OffsetX, OffsetY, Width, Height);
+            Operator.BlockOverlay(Sx, Sy, Stamp, SourceX, SourceY, Width, Height);
         }
 
         public void FillContour(ImageContour Contour, Pixel Fill, int OffsetX, int OffsetY)

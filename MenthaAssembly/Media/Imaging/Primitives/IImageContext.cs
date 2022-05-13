@@ -730,14 +730,14 @@ namespace MenthaAssembly.Media.Imaging
         /// <summary>
         /// Draw a stamp.
         /// </summary>
-        /// <param name="Position">The coordinate of left-top in stamp.</param>
+        /// <param name="Position">The coordinate of center in stamp.</param>
         /// <param name="Stamp">The stamp to draw.</param>
         public void DrawStamp(Point<int> Position, IImageContext Stamp);
         /// <summary>
         /// Draw a stamp.
         /// </summary>
-        /// <param name="X">The x-coordinate of left-top in stamp.</param>
-        /// <param name="Y">The y-coordinate of left-top in stamp.</param>
+        /// <param name="X">The x-coordinate of center in stamp.</param>
+        /// <param name="Y">The y-coordinate of center in stamp.</param>
         /// <param name="Stamp">The stamp to draw.</param>
         public void DrawStamp(int X, int Y, IImageContext Stamp);
 

@@ -507,9 +507,31 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public void BlockOverlay(int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height)
+        public void BlockOverlay(int X, int Y, IImageContext Source, int SourceX, int SourceY, int Width, int Height)
         {
+            T Pixel = default;
+            T* pPixel = &Pixel;
+            for (int j = 0; j < Height; j++)
+            {
+                IPixelAdapter<T> Adapter = GetAdapter<T>(X, Y + j);
+                Source.Operator.ScanLine<T>(SourceX, SourceY + j, Width, a =>
+                {
+                    a.OverlayTo(pPixel);
+                    Adapter.Overlay(*pPixel);
+                    Adapter.MoveNext();
+                });
+            }
 
+            //long Stride = Context.Stride,
+            //     Offset = Stride * Y + ((X * Context.BitsPerPixel) >> 3);
+            //byte* pPixels = (byte*)Context.Scan0 + Offset;
+
+            //for (int j = 0; j < Height; j++)
+            //{
+            //    T* pScan = (T*)pPixels;
+            //    Source.Operator.ScanLine<T>(X + OffsetX, Y + j + OffsetY, Width, Adapter => Adapter.OverlayTo(pScan++));
+            //    pPixels += Stride;
+            //}
         }
 
         public ImageContour FindBound(int SeedX, int SeedY, ImagePredicate Predicate)

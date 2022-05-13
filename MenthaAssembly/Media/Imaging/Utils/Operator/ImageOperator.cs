@@ -336,7 +336,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public void BlockOverlay(int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height)
+        public void BlockOverlay(int X, int Y, IImageContext Source, int SourceX, int SourceY, int Width, int Height)
         {
             long Stride = Context.Stride,
                  Offset = Stride * Y + ((X * Context.BitsPerPixel) >> 3);
@@ -345,7 +345,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             for (int j = 0; j < Height; j++)
             {
                 T* pScan = (T*)pPixels;
-                Source.Operator.ScanLine<T>(X, Y + j, Width, Adapter => Adapter.OverlayTo(pScan++));
+                Source.Operator.ScanLine<T>(SourceX, SourceY + j, Width, Adapter => Adapter.OverlayTo(pScan++));
                 pPixels += Stride;
             }
         }

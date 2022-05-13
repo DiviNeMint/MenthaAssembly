@@ -17,21 +17,21 @@ namespace MenthaAssembly
 
         public T Bottom { set; get; }
 
-        public T Width => Sub(this.Right, this.Left);
+        public T Width => Sub(Right, Left);
 
-        public T Height => Sub(this.Bottom, this.Top);
+        public T Height => Sub(Bottom, Top);
 
-        public Point<T> Center => new(ValueHalf(Add(this.Left, this.Right)), ValueHalf(Add(this.Top, this.Bottom)));
+        public Point<T> Center => new(ValueHalf(Add(Left, Right)), ValueHalf(Add(Top, Bottom)));
 
-        public Point<T> LeftTop => new(this.Left, this.Top);
+        public Point<T> LeftTop => new(Left, Top);
 
-        public Point<T> LeftBottom => new(this.Left, this.Bottom);
+        public Point<T> LeftBottom => new(Left, Bottom);
 
-        public Point<T> RightTop => new(this.Right, this.Top);
+        public Point<T> RightTop => new(Right, Top);
 
-        public Point<T> RightBottom => new(this.Right, this.Bottom);
+        public Point<T> RightBottom => new(Right, Bottom);
 
-        public bool IsEmpty => IsDefault(this.Width) && IsDefault(this.Height);
+        public bool IsEmpty => IsDefault(Width) && IsDefault(Height);
 
         public Bound(T Left, T Top, T Right, T Bottom)
         {
@@ -42,46 +42,46 @@ namespace MenthaAssembly
         }
         public Bound(Point<T> Position, Size<T> Size)
         {
-            this.Left = Position.X;
-            this.Top = Position.Y;
-            this.Right = Add(Position.X, Size.Width);
-            this.Bottom = Add(Position.Y, Size.Height);
+            Left = Position.X;
+            Top = Position.Y;
+            Right = Add(Position.X, Size.Width);
+            Bottom = Add(Position.Y, Size.Height);
         }
 
         public void Offset(Vector<T> Vector)
-            => this.Offset(Vector.X, Vector.Y);
+            => Offset(Vector.X, Vector.Y);
         public void Offset(T X, T Y)
         {
-            this.Left = Add(this.Left, X);
-            this.Right = Add(this.Right, X);
-            this.Top = Add(this.Top, Y);
-            this.Bottom = Add(this.Bottom, Y);
+            Left = Add(Left, X);
+            Right = Add(Right, X);
+            Top = Add(Top, Y);
+            Bottom = Add(Bottom, Y);
         }
 
         public void Scale(T Scale)
             => this.Scale(Scale, Scale);
         public void Scale(T XScale, T YScale)
         {
-            this.Left = Mul(this.Left, XScale);
-            this.Top = Mul(this.Top, YScale);
-            this.Right = Mul(this.Right, XScale);
-            this.Bottom = Mul(this.Bottom, YScale);
+            Left = Mul(Left, XScale);
+            Top = Mul(Top, YScale);
+            Right = Mul(Right, XScale);
+            Bottom = Mul(Bottom, YScale);
         }
 
         public void ScaleSize(T Scale)
-            => this.ScaleSize(Scale, Scale);
+            => ScaleSize(Scale, Scale);
         public void ScaleSize(T XScale, T YScale)
         {
-            this.Right = Add(this.Left, Mul(this.Width, XScale));
-            this.Bottom = Add(this.Top, Mul(this.Height, YScale));
+            Right = Add(Left, Mul(Width, XScale));
+            Bottom = Add(Top, Mul(Height, YScale));
         }
 
         public void Rotate(double Theta)
         {
-            double DL = ToDouble(this.Left),
-                   DT = ToDouble(this.Top),
-                   DR = ToDouble(this.Right),
-                   DB = ToDouble(this.Bottom),
+            double DL = ToDouble(Left),
+                   DT = ToDouble(Top),
+                   DR = ToDouble(Right),
+                   DB = ToDouble(Bottom),
                    DOx = (DL + DR) * 0.5d,
                    DOy = (DT + DB) * 0.5d,
                    Sin = Math.Sin(Theta),
@@ -93,19 +93,19 @@ namespace MenthaAssembly
             Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
-            this.Left = ToGeneric(Min);
-            this.Right = ToGeneric(Max);
+            Left = ToGeneric(Min);
+            Right = ToGeneric(Max);
 
             MathHelper.MinAndMax(out Min, out Max, Y0, Y1, Y2, Y3);
-            this.Top = ToGeneric(Min);
-            this.Bottom = ToGeneric(Max);
+            Top = ToGeneric(Min);
+            Bottom = ToGeneric(Max);
         }
         public void Rotate(T Ox, T Oy, double Theta)
         {
-            double DL = ToDouble(this.Left),
-                   DT = ToDouble(this.Top),
-                   DR = ToDouble(this.Right),
-                   DB = ToDouble(this.Bottom),
+            double DL = ToDouble(Left),
+                   DT = ToDouble(Top),
+                   DR = ToDouble(Right),
+                   DB = ToDouble(Bottom),
                    DOx = ToDouble(Ox),
                    DOy = ToDouble(Oy),
                    Sin = Math.Sin(Theta),
@@ -117,40 +117,40 @@ namespace MenthaAssembly
             Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
-            this.Left = ToGeneric(Min);
-            this.Right = ToGeneric(Max);
+            Left = ToGeneric(Min);
+            Right = ToGeneric(Max);
 
             MathHelper.MinAndMax(out Min, out Max, Y0, Y1, Y2, Y3);
-            this.Top = ToGeneric(Min);
-            this.Bottom = ToGeneric(Max);
+            Top = ToGeneric(Min);
+            Bottom = ToGeneric(Max);
         }
 
         public void Union(Bound<T> Bound)
         {
-            //if (IsEmpty)
-            //{
-            //    this = Bound;
-            //    return;
-            //}
+            if (IsEmpty)
+            {
+                this = Bound;
+                return;
+            }
 
-            //if (Bound.IsEmpty)
-            //    return;
+            if (Bound.IsEmpty)
+                return;
 
-            this.Left = Min(this.Left, Bound.Left);
-            this.Right = Max(this.Right, Bound.Right);
-            this.Top = Min(this.Top, Bound.Top);
-            this.Bottom = Max(this.Bottom, Bound.Bottom);
+            Left = Min(Left, Bound.Left);
+            Right = Max(Right, Bound.Right);
+            Top = Min(Top, Bound.Top);
+            Bottom = Max(Bottom, Bound.Bottom);
         }
         public void Union(T Left, T Top, T Right, T Bottom)
         {
-            //if (IsEmpty)
-            //{
-            //    this = new(Left, Top, Right, Bottom);
-            //    return;
-            //}
+            if (IsEmpty)
+            {
+                this = new(Left, Top, Right, Bottom);
+                return;
+            }
 
-            //if (IsDefault(Sub(Right, Left)) && IsDefault(Sub(Bottom, Top)))
-            //    return;
+            if (IsDefault(Sub(Right, Left)) && IsDefault(Sub(Bottom, Top)))
+                return;
 
             this.Left = Min(this.Left, Left);
             this.Right = Max(this.Right, Right);
@@ -160,12 +160,12 @@ namespace MenthaAssembly
 
         public void Intersect(Bound<T> Bound)
         {
-            if (this.IntersectsWith(Bound))
+            if (IntersectsWith(Bound))
             {
-                this.Left = Max(this.Left, Bound.Left);
-                this.Right = Max(Min(this.Right, Bound.Right), this.Left);
-                this.Top = Max(this.Top, Bound.Top);
-                this.Bottom = Max(Min(this.Bottom, Bound.Bottom), this.Top);
+                Left = Max(Left, Bound.Left);
+                Right = Max(Min(Right, Bound.Right), Left);
+                Top = Max(Top, Bound.Top);
+                Bottom = Max(Min(Bottom, Bound.Bottom), Top);
             }
             else
             {
@@ -174,7 +174,7 @@ namespace MenthaAssembly
         }
         public void Intersect(T Left, T Top, T Right, T Bottom)
         {
-            if (this.IntersectsWith(Left, Top, Right, Bottom))
+            if (IntersectsWith(Left, Top, Right, Bottom))
             {
                 this.Left = Max(this.Left, Left);
                 this.Right = Max(Min(this.Right, Right), this.Left);
@@ -189,17 +189,17 @@ namespace MenthaAssembly
 
         public bool IntersectsWith(Bound<T> Bound)
         {
-            if (this.IsEmpty || Bound.IsEmpty)
+            if (IsEmpty || Bound.IsEmpty)
                 return false;
 
-            return LessThanOrEqual(Bound.Left, this.Right) &&
-                   GreaterThanOrEqual(Bound.Right, this.Left) &&
-                   LessThanOrEqual(Bound.Top, this.Bottom) &&
-                   GreaterThanOrEqual(Bound.Bottom, this.Top);
+            return LessThanOrEqual(Bound.Left, Right) &&
+                   GreaterThanOrEqual(Bound.Right, Left) &&
+                   LessThanOrEqual(Bound.Top, Bottom) &&
+                   GreaterThanOrEqual(Bound.Bottom, Top);
         }
         public bool IntersectsWith(T Left, T Top, T Right, T Bottom)
         {
-            if (this.IsEmpty || (IsDefault(Sub(Right, Left)) && IsDefault(Sub(Bottom, Top))))
+            if (IsEmpty || (IsDefault(Sub(Right, Left)) && IsDefault(Sub(Bottom, Top))))
                 return false;
 
             return LessThanOrEqual(Left, this.Right) &&
@@ -209,43 +209,43 @@ namespace MenthaAssembly
         }
 
         public bool Contains(Point<T> Point)
-            => this.Contains(Point.X, Point.Y);
+            => Contains(Point.X, Point.Y);
         public bool Contains(T X, T Y)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return false;
 
-            return LessThan(this.Left, X) && LessThan(X, this.Right) &&
-                   LessThan(this.Top, Y) && LessThan(Y, this.Bottom);
+            return LessThan(Left, X) && LessThan(X, Right) &&
+                   LessThan(Top, Y) && LessThan(Y, Bottom);
         }
 
         public Bound<U> Cast<U>()
             where U : unmanaged
         {
             Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
-            return new Bound<U>(CastHandler(this.Left), CastHandler(this.Top), CastHandler(this.Right), CastHandler(this.Bottom));
+            return new Bound<U>(CastHandler(Left), CastHandler(Top), CastHandler(Right), CastHandler(Bottom));
         }
 
         public Bound<T> Clone()
-            => new(this.Left, this.Top, this.Right, this.Bottom);
+            => new(Left, Top, Right, Bottom);
         object ICloneable.Clone()
-            => this.Clone();
+            => Clone();
 
         public override int GetHashCode()
             => base.GetHashCode();
 
         public bool Equals(Bound<T> Target)
-            => Equal(this.Left, Target.Left) && Equal(this.Top, Target.Top) && Equal(this.Right, Target.Right) && Equal(this.Bottom, Target.Bottom);
+            => Equal(Left, Target.Left) && Equal(Top, Target.Top) && Equal(Right, Target.Right) && Equal(Bottom, Target.Bottom);
         public override bool Equals(object obj)
         {
             if (obj is Bound<T> Target)
-                return this.Equals(Target);
+                return Equals(Target);
 
             return false;
         }
 
         public override string ToString()
-            => $"Left : {this.Left}, Top : {this.Top}, Right : {this.Right}, Bottom : {this.Bottom}";
+            => $"Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom}";
 
         internal static readonly Func<T, T, T> Add, Sub, Mul, Div;
         internal static readonly Predicate<T> IsDefault;

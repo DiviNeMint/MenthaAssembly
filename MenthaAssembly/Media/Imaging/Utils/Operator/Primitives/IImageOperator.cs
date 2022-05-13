@@ -11,7 +11,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public void ScanLine<U>(int X, int Y, int Length, Action<IPixelAdapter<U>> Handler) where U : unmanaged, IPixel;
         public void ScanLine<U>(int X, int Y, int Length, Predicate<IPixelAdapter<U>> Predicate) where U : unmanaged, IPixel;
 
-        public void BlockOverlay(int X, int Y, IImageContext Source, int OffsetX, int OffsetY, int Width, int Height);
+        public void BlockOverlay(int X, int Y, IImageContext Source, int SourceX, int SourceY, int Width, int Height);
 
         public ImageContour FindBound(int SeedX, int SeedY, ImagePredicate Predicate);
 
