@@ -5,10 +5,6 @@ namespace MenthaAssembly.Utils
 {
     public class SegmentStream : Stream
     {
-        internal event EventHandler Ended;
-
-        protected Stream Stream;
-
         public override bool CanRead => true;
 
         public override bool CanSeek => Stream.CanSeek;
@@ -25,6 +21,7 @@ namespace MenthaAssembly.Utils
             set => Seek(value, SeekOrigin.Begin);
         }
 
+        protected Stream Stream;
         public SegmentStream(Stream Stream, long Length) : this(Stream, Stream.CanSeek ? Stream.Position : 0L, Length)
         {
         }
@@ -42,10 +39,6 @@ namespace MenthaAssembly.Utils
             {
                 Length = Stream.Read(Buffer, Offset, Length);
                 _Position += Length;
-
-                if (_Position == this.Length)
-                    Ended?.Invoke(this, EventArgs.Empty);
-
                 return Length;
             }
 
@@ -97,26 +90,28 @@ namespace MenthaAssembly.Utils
             if (IsDisposed)
                 return;
 
-            Ended?.Invoke(this, EventArgs.Empty);
-
             Stream.Close();
             base.Close();
         }
 
         private bool IsDisposed = false;
-        protected override void Dispose(bool disposing)
+        protected override void Dispose(bool Disposing)
         {
             if (IsDisposed)
                 return;
 
-            Ended?.Invoke(this, EventArgs.Empty);
+            try
+            {
+                Stream.Dispose();
+                Stream = null;
 
-            Stream.Dispose();
-            Stream = null;
+                base.Dispose(Disposing);
+            }
+            finally
+            {
+                IsDisposed = true;
 
-            base.Dispose(disposing);
-
-            IsDisposed = true;
+            }
         }
 
     }
