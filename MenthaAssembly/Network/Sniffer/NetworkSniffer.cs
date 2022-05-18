@@ -8,15 +8,13 @@ using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Network
 {
-    public unsafe class NetworkSniffer : IOCPSocket
+    public unsafe class NetworkSniffer : IOCPBase
     {
-        public override int BufferSize => base.BufferSize;
-
         public event EventHandler<PacketArrivedEventArgs> PacketArrived;
 
         public NetworkSniffer()
         {
-            base.BufferSize = ushort.MaxValue;
+            BufferSize = ushort.MaxValue;
             Parser = ParsePacket;
         }
 
@@ -32,9 +30,7 @@ namespace MenthaAssembly.Network
         }
         public void Start(IPAddress Address)
         {
-            // Reset
-            if (Listener != null)
-                Listener.Dispose();
+            Stop();
 
             Listener = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
             Listener.Bind(new IPEndPoint(Address, 0));
@@ -43,9 +39,23 @@ namespace MenthaAssembly.Network
                 throw new NotSupportedException();
 
             // Listen
-            SocketAsyncEventArgs e = Dequeue(true);
+            SocketAsyncEventArgs e = Pool.Dequeue();
+            e.Completed += OnIOCompleted;
+
+            byte[] Buffer = Pool.DequeueBuffer();
+            e.SetBuffer(Buffer, 0, BufferSize);
+
             if (!Listener.ReceiveAsync(e))
                 OnReceiveProcess(e);
+        }
+
+        public void Stop()
+        {
+            if (Listener != null)
+            {
+                Listener.Dispose();
+                Listener = null;
+            }
         }
 
         private bool SetSocketOption()
@@ -78,8 +88,8 @@ namespace MenthaAssembly.Network
                 int Length = e.BytesTransferred;
                 Parser.BeginInvoke(Packet, Length, ar => Parser.EndInvoke(ar), null);
 
-                byte[] Buffer = Dequeue();
-                e.SetBuffer(Buffer, 0, ushort.MaxValue);
+                byte[] Buffer = Pool.DequeueBuffer();
+                e.SetBuffer(Buffer, 0, BufferSize);
             }
 
             // Loop Receive
@@ -185,14 +195,14 @@ namespace MenthaAssembly.Network
             }
             finally
             {
-                Enqueue(ref Packet);
+                Pool.EnqueueBuffer(Packet);
             }
         }
 
         protected virtual void OnPacketArrived(PacketArrivedEventArgs e)
             => PacketArrived?.Invoke(this, e);
 
-        protected sealed override void OnIOCompleted(object sender, SocketAsyncEventArgs e)
+        protected void OnIOCompleted(object sender, SocketAsyncEventArgs e)
         {
             switch (e.LastOperation)
             {

@@ -1,23 +1,26 @@
 ﻿using MenthaAssembly.Network.Primitives;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MenthaAssembly.Network
 {
-    public class TcpClient : TcpSocket
+    public class TcpSlimClient : TcpSlimBase
     {
-        protected TcpToken ServerToken;
+        protected TcpSlimToken ServerToken;
 
         public IPEndPoint Server
-            => ServerToken?.Address;
+            => _IsDisposed ? throw new ObjectDisposedException(GetType().Name) :
+                             ServerToken?.Address;
 
-        public override bool IsDisposed => _IsDisposed;
+        public int ConnectTimeout { get; set; } = 3000;
 
-        public TcpClient() : base(CommonProtocolCoder.Instance) { }
-        public TcpClient(IProtocolCoder Protocol) : base(Protocol) { }
+        public TcpSlimClient() : base(CommonProtocolCoder.Instance) { }
+        public TcpSlimClient(IProtocolCoder Protocol) : base(Protocol) { }
 
         public void Connect(string Address, int Port)
         {
@@ -28,14 +31,26 @@ namespace MenthaAssembly.Network
         }
         public void Connect(IPAddress IPAddress, int Port)
             => Connect(new IPEndPoint(IPAddress, Port));
-        public void Connect(IPEndPoint IPEndPoint)
+        public virtual void Connect(IPEndPoint IPEndPoint)
         {
-            //Check if it had Connect server.
-            ServerToken?.Dispose();
+            // Reset Last Connecting
+            if (ServerToken != null)
+            {
+                EnqueueToken(ServerToken);
+                ServerToken = default;
+            }
 
             // Connect Server
             Socket Server = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            Server.Connect(IPEndPoint);
+
+            IAsyncResult Result = Server.BeginConnect(IPEndPoint, null, null);
+            if (!Result.AsyncWaitHandle.WaitOne(ConnectTimeout, true))
+            {
+                Server.Dispose();
+                throw new TimeoutException();
+            }
+
+            Server.EndConnect(Result);
 
             if (!Server.Connected)
                 throw new ConnectingFailedException();
@@ -43,12 +58,30 @@ namespace MenthaAssembly.Network
             Debug.WriteLine($"[Info][{GetType().Name}]Connect to [{IPEndPoint.Address}:{IPEndPoint.Port}].");
 
             // Start Receive Server's Message
-            SocketAsyncEventArgs e = Dequeue(true);
-            ServerToken = new TcpToken(Server, true);
-            e.UserToken = ServerToken;
+            TcpStream Stream = new TcpStream(Server, Pool);
 
-            if (!Server.ReceiveAsync(e))
-                OnReceiveProcess(e);
+            // Build Token
+            TcpSlimToken Token = DequeueToken();
+            PrepareToken(Token, Stream);
+            ServerToken = Token;
+
+            // Events
+            void OnStreamDisconnected(IPEndPoint Address, Stream e)
+            {
+                OnDisconnected(Address);
+
+                Stream.ReceiveCompleted -= OnStreamReceiveCompleted;
+                Stream.Disconnected -= OnStreamDisconnected;
+            }
+
+            void OnStreamReceiveCompleted(IPEndPoint sender, Stream e)
+                => OnReceived(Token, e);
+
+            Stream.ReceiveCompleted += OnStreamReceiveCompleted;
+            Stream.Disconnected += OnStreamDisconnected;
+
+            // Start Receive
+            Stream.Receive();
         }
 
         public async Task<IMessage> SendAsync(IMessage Request)
@@ -109,13 +142,21 @@ namespace MenthaAssembly.Network
             return (T)Response;
         }
 
-        protected override void OnDisconnected(TcpToken Token)
+        protected override TcpSlimToken CreateToken()
+            => new TcpSlimToken(true);
+        protected override void PrepareToken(TcpSlimToken Token, TcpStream Stream)
+            => Token.Prepare(Stream);
+        protected override void ResetToken(TcpSlimToken Token)
+            => Token.Clear();
+
+        protected override void OnDisconnected(IPEndPoint Address)
         {
-            // Clear ServerToken
+            EnqueueToken(ServerToken);
             ServerToken = null;
 
             // Trigger Disconnected Event.
-            base.OnDisconnected(Token);
+            base.OnDisconnected(Address);
+            Debug.WriteLine($"[Info][{GetType().Name}]Server[{Address}] is disconnected.");
         }
 
         private bool _IsDisposed = false;
@@ -126,18 +167,18 @@ namespace MenthaAssembly.Network
 
             try
             {
-                ServerToken?.Dispose();
-                ServerToken = null;
+                if (ServerToken != null)
+                {
+                    ResetToken(ServerToken);
+                    ServerToken = null;
+                }
+
+                base.Dispose();
             }
             finally
             {
                 _IsDisposed = true;
             }
-        }
-
-        ~TcpClient()
-        {
-            Dispose();
         }
 
     }

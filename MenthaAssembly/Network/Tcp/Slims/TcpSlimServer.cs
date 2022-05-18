@@ -1,9 +1,9 @@
 ﻿using MenthaAssembly.Network.Primitives;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -11,13 +11,12 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Network
 {
-    public class TcpServer : TcpSocket
+    public class TcpSlimServer : TcpSlimBase
     {
         public event EventHandler<IPEndPoint> Connected;
 
-        protected readonly ConcurrentObservableCollection<IPEndPoint> ClientKeys = new ConcurrentObservableCollection<IPEndPoint>();
-        protected internal readonly ConcurrentObservableCollection<TcpToken> ClientTokens = new ConcurrentObservableCollection<TcpToken>();
-        protected internal readonly ConcurrentDictionary<IPEndPoint, TcpToken> PrepareClients = new ConcurrentDictionary<IPEndPoint, TcpToken>();
+        private ConcurrentObservableCollection<IPEndPoint> ClientKeys = new ConcurrentObservableCollection<IPEndPoint>();
+        private ConcurrentObservableCollection<TcpSlimToken> ClientTokens = new ConcurrentObservableCollection<TcpSlimToken>();
 
         private ReadOnlyCollection<IPEndPoint> _Clients;
         public ReadOnlyCollection<IPEndPoint> Clients
@@ -31,13 +30,11 @@ namespace MenthaAssembly.Network
             }
         }
 
+        protected IPEndPoint _Address;
+        public IPEndPoint Address
+            => _Address;
+
         public int MaxListenCount { set; get; } = 20;
-
-        public override bool IsDisposed => _IsDisposed;
-
-        public IPEndPoint IPEndPoint { get; protected set; }
-
-        public IConnectionValidator ConnectionValidator { set; get; }
 
         private bool _EnableCheckKeepAlive = true;
         private uint _CheckKeepAliveInterval = 180000U;
@@ -52,8 +49,8 @@ namespace MenthaAssembly.Network
             {
                 _EnableCheckKeepAlive = value;
 
-                foreach (TcpToken Token in ClientTokens.Concat(PrepareClients.Values).ToArray())
-                    Token.SetKeepAlive(value, _CheckKeepAliveInterval);
+                foreach (TcpSlimToken Token in ClientTokens.ToArray())
+                    Token.Stream.SetKeepAlive(value, _CheckKeepAliveInterval);
             }
         }
 
@@ -67,17 +64,16 @@ namespace MenthaAssembly.Network
             {
                 _CheckKeepAliveInterval = value;
                 if (_EnableCheckKeepAlive)
-                    foreach (TcpToken Token in ClientTokens.Concat(PrepareClients.Values).ToArray())
-                        Token.SetKeepAlive(true, value);
+                    foreach (TcpSlimToken Token in ClientTokens.ToArray())
+                        Token.Stream.SetKeepAlive(true, value);
             }
         }
 
-        public TcpServer() : this(null, null) { }
-        public TcpServer(IConnectionValidator Validator) : this(null, Validator) { }
-        public TcpServer(IProtocolCoder Protocol) : this(Protocol, null) { }
-        public TcpServer(IProtocolCoder Protocol, IConnectionValidator Validator) : base(Protocol ?? CommonProtocolCoder.Instance)
+        public TcpSlimServer() : base(CommonProtocolCoder.Instance)
         {
-            ConnectionValidator = Validator;
+        }
+        public TcpSlimServer(IProtocolCoder Protocol) : base(Protocol) 
+        {
         }
 
         protected Socket Listener;
@@ -90,12 +86,12 @@ namespace MenthaAssembly.Network
         }
         public void Start(IPAddress IPAddress, int Port)
             => Start(new IPEndPoint(IPAddress, Port));
-        public void Start(IPEndPoint IPEndPoint)
+        public virtual void Start(IPEndPoint IPEndPoint)
         {
             try
             {
                 // Reset
-                Dispose();
+                Stop();
                 _IsDisposed = false;
 
                 // Create New Listener
@@ -110,8 +106,21 @@ namespace MenthaAssembly.Network
             }
             finally
             {
-                this.IPEndPoint = IPEndPoint;
+                _Address = IPEndPoint;
             }
+        }
+
+        public virtual void Stop()
+        {
+            // Listener
+            Listener?.Close();
+            Listener?.Dispose();
+            Listener = null;
+
+            // Clients
+            ClientKeys.Clear();
+            ClientTokens.ForEach(i => EnqueueToken(i));
+            ClientTokens.Clear();
         }
 
         private void Listen(SocketAsyncEventArgs e = null)
@@ -142,12 +151,95 @@ namespace MenthaAssembly.Network
                 Debug.WriteLine($"[Error][{GetType().Name}]{nameof(Listen)} {Ex.Message}");
             }
         }
+        private void OnAcceptCompleted(object sender, SocketAsyncEventArgs e)
+        {
+            if (e.LastOperation != SocketAsyncOperation.Accept)
+                throw new ArgumentException("The last operation completed on the socket was not Accepting.");
+
+            OnAcceptProcess(e);
+        }
+        private void OnAcceptProcess(SocketAsyncEventArgs e)
+        {
+            if (e.AcceptSocket is Socket s &&
+                s.Connected)
+            {
+                TcpStream Stream = new TcpStream(s, Pool);
+                Stream.SetKeepAlive(_EnableCheckKeepAlive, _CheckKeepAliveInterval);
+
+                // Build Token
+                TcpSlimToken Token = DequeueToken();
+                PrepareToken(Token, Stream);
+
+                // Events
+                void OnStreamDisconnected(IPEndPoint sender, Stream e)
+                {
+                    RemoveClient(Token.Address);
+                    Stream.ReceiveCompleted -= OnStreamReceiveCompleted;
+                    Stream.Disconnected -= OnStreamDisconnected;
+                }
+
+                void OnStreamReceiveCompleted(IPEndPoint sender, Stream e)
+                    => OnReceived(Token, e);
+
+                Stream.ReceiveCompleted += OnStreamReceiveCompleted;
+                Stream.Disconnected += OnStreamDisconnected;
+
+                AddClient(Token.Address, Token);
+
+                // Start Receive
+                Stream.Receive();
+            }
+
+            // Loop Listen
+            if (!_IsDisposed)
+                Listen(e);
+        }
+
+        protected bool TryGetClient(IPEndPoint Address, out TcpSlimToken Token)
+        {
+            int Index = ClientKeys.IndexOf(Address);
+            if (Index > -1)
+            {
+                Token = ClientTokens[Index];
+                return true;
+            }
+
+            Token = default;
+            return false;
+        }
+        protected void AddClient(IPEndPoint Address, TcpSlimToken Token)
+        {
+            ClientKeys.Add(Address);
+            ClientTokens.Add(Token);
+            OnConnected(Address, Token);
+        }
+        public void RemoveClient(IPEndPoint Address)
+        {
+            int Index = ClientKeys.IndexOf(Address);
+            if (Index > -1)
+            {
+                TcpSlimToken Token = ClientTokens[Index];
+
+                ClientKeys.RemoveAt(Index);
+                ClientTokens.RemoveAt(Index);
+
+                EnqueueToken(Token);
+                OnDisconnected(Address);
+            }
+        }
+
+        protected override TcpSlimToken CreateToken()
+            => new TcpSlimToken(false);
+        protected override void PrepareToken(TcpSlimToken Token, TcpStream Stream)
+            => Token.Prepare(Stream);
+        protected override void ResetToken(TcpSlimToken Token)
+            => Token.Clear();
 
         public async Task<IMessage> SendAsync(IPEndPoint Client, IMessage Request)
             => await SendAsync(Client, Request, 3000);
         public async Task<IMessage> SendAsync(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
-            => TryGetToken(Client, out TcpToken Token) ? await base.SendAsync(Token, Request, TimeoutMileseconds) :
-                                                         ErrorMessage.NotConnected;
+            => TryGetClient(Client, out TcpSlimToken Token) ? await base.SendAsync(Token, Request, TimeoutMileseconds) :
+                                                          ErrorMessage.NotConnected;
 
         public async Task<T> SendAsync<T>(IPEndPoint Client, IMessage Request)
             where T : IMessage
@@ -155,7 +247,7 @@ namespace MenthaAssembly.Network
         public async Task<T> SendAsync<T>(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
             where T : IMessage
         {
-            if (TryGetToken(Client, out TcpToken Token))
+            if (TryGetClient(Client, out TcpSlimToken Token))
             {
                 IMessage Response = await base.SendAsync(Token, Request, TimeoutMileseconds);
                 if (ErrorMessage.Timeout.Equals(Response))
@@ -188,8 +280,8 @@ namespace MenthaAssembly.Network
         public IMessage Send(IPEndPoint Client, IMessage Request)
             => Send(Client, Request, 3000);
         public IMessage Send(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
-            => TryGetToken(Client, out TcpToken Token) ? base.Send(Token, Request, TimeoutMileseconds) :
-                                                         ErrorMessage.NotConnected;
+            => TryGetClient(Client, out TcpSlimToken Token) ? base.Send(Token, Request, TimeoutMileseconds) :
+                                                          ErrorMessage.NotConnected;
 
         public T Send<T>(IPEndPoint Client, IMessage Request)
             where T : IMessage
@@ -197,7 +289,7 @@ namespace MenthaAssembly.Network
         public T Send<T>(IPEndPoint Client, IMessage Request, int TimeoutMileseconds)
             where T : IMessage
         {
-            if (TryGetToken(Client, out TcpToken Token))
+            if (TryGetClient(Client, out TcpSlimToken Token))
             {
                 IMessage Response = base.Send(Token, Request, TimeoutMileseconds);
                 if (ErrorMessage.Timeout.Equals(Response))
@@ -227,91 +319,17 @@ namespace MenthaAssembly.Network
             return Result.ToDictionary(i => i.Key, i => Result[i.Key].Result);
         }
 
-        protected bool TryGetToken(IPEndPoint Key, out TcpToken Token)
+        protected virtual void OnConnected(IPEndPoint Address, TcpSlimToken Token)
         {
-            int Index = ClientKeys.IndexOf(Key);
-            if (Index > -1)
-            {
-                Token = ClientTokens[Index];
-                return true;
-            }
-
-            return PrepareClients.TryGetValue(Key, out Token);
-        }
-
-        protected virtual void OnAcceptCompleted(object sender, SocketAsyncEventArgs e)
-        {
-            if (e.LastOperation != SocketAsyncOperation.Accept)
-                throw new ArgumentException("The last operation completed on the socket was not Accepting.");
-
-            OnAcceptProcess(e);
-        }
-
-        protected virtual void OnAcceptProcess(SocketAsyncEventArgs e)
-        {
-            if (e.AcceptSocket is Socket s &&
-                s.Connected)
-            {
-                TcpToken Token = new TcpToken(s, false);
-                Token.SetKeepAlive(_EnableCheckKeepAlive, _CheckKeepAliveInterval);
-
-                SocketAsyncEventArgs e2 = Dequeue(true);
-                e2.UserToken = Token;
-
-                IPEndPoint ClientAddress = Token.Address;
-                if (ConnectionValidator is null)
-                {
-                    AddClient(ClientAddress, Token);
-
-                    if (!s.ReceiveAsync(e2))
-                        OnReceiveProcess(e2);
-                }
-                else
-                {
-                    PrepareClients.AddOrUpdate(ClientAddress, Token, (key, i) => Token);
-
-                    if (!s.ReceiveAsync(e2))
-                        OnReceiveProcess(e2);
-
-                    bool IsValidated = ConnectionValidator.Validate(this, ClientAddress);
-
-                    PrepareClients.TryRemove(ClientAddress, out _);
-
-                    if (IsValidated)
-                        AddClient(ClientAddress, Token);
-                    else
-                        Token.Dispose();
-                }
-            }
-
-            // Loop Listen
-            if (!_IsDisposed)
-                Listen(e);
-        }
-
-        protected override void OnDisconnected(TcpToken Token)
-        {
-            // Remove Client
-            RemoveClient(Token.Address, Token);
-
-            // Trigger Disconnected Event.
-            base.OnDisconnected(Token);
-        }
-
-        protected void AddClient(IPEndPoint Key, TcpToken Token)
-        {
-            ClientKeys.Add(Key);
-            ClientTokens.Add(Token);
-
             // Trigger Connected Event.
-            Connected?.Invoke(this, Key);
-
-            Debug.WriteLine($"[Info][{GetType().Name}]Accept client[{Token.Address}].");
+            Connected?.Invoke(this, Address);
+            Debug.WriteLine($"[Info][{GetType().Name}]Accept client[{Address}].");
         }
-        protected void RemoveClient(IPEndPoint Key, TcpToken Token)
+        protected override void OnDisconnected(IPEndPoint Address)
         {
-            ClientKeys.Remove(Key);
-            ClientTokens.Remove(Token);
+            // Trigger Disconnected Event.
+            base.OnDisconnected(Address);
+            Debug.WriteLine($"[Info][{GetType().Name}]Client[{Address}] is disconnected.");
         }
 
         private bool _IsDisposed = false;
@@ -330,27 +348,23 @@ namespace MenthaAssembly.Network
                 Listener?.Dispose();
                 Listener = null;
 
+                _Address = null;
+
                 // Clients
                 ClientKeys.Clear();
-                ClientTokens.ForEach(i => i.Dispose());
+                ClientKeys = null;
+
+                ClientTokens.ForEach(i => ResetToken(i));
                 ClientTokens.Clear();
+                ClientTokens = null;
 
-                // PrepareClients
-                foreach (TcpToken item in PrepareClients.Values.ToArray())
-                    item.Dispose();
-
-                PrepareClients.Clear();
+                base.Dispose();
             }
             finally
             {
                 IsDisposing = false;
                 _IsDisposed = true;
             }
-        }
-
-        ~TcpServer()
-        {
-            Dispose();
         }
 
     }

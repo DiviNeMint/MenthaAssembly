@@ -14,6 +14,8 @@ namespace MenthaAssembly.Network
 
         public static ErrorMessage Disconnected => new ErrorMessage("Disconnected.");
 
+        public static ErrorMessage OperationCanceled => new ErrorMessage("Operation Canceled.");
+
         public static ErrorMessage EncodeException => new ErrorMessage("Happen exception when encode request.");
 
         public static ErrorMessage ReceivingNotSupport => new ErrorMessage("The receiving side not support this request.");
