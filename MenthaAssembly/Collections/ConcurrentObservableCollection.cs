@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -40,6 +42,15 @@ namespace MenthaAssembly
                 OnPropertyChanged(CountName);
                 OnPropertyChanged(IndexerName);
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
+            });
+
+        public override void AddRange(IEnumerable<T> Items)
+            => Handle(() =>
+            {
+                this.Items.AddRange(Items);
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, Items is IList ListItems ? ListItems : Items.ToList()));
             });
 
         public override bool Remove(T item)

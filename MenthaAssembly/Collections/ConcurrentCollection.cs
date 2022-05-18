@@ -74,6 +74,9 @@ namespace MenthaAssembly
             return -1;
         }
 
+        public virtual void AddRange(IEnumerable<T> Items)
+            => Handle(() => this.Items.AddRange(Items));
+
         public virtual bool Remove(T Item)
             => Handle(() => Items.Remove(Item));
         void IList.Remove(object Item)
@@ -81,6 +84,7 @@ namespace MenthaAssembly
             if (Item is T i)
                 Handle(() => Remove(i));
         }
+        
         public virtual void RemoveAt(int Index)
             => Handle(() => Items.RemoveAt(Index));
 
