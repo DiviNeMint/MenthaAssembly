@@ -8,16 +8,19 @@ namespace MenthaAssembly.Media.Imaging
 {
     public static class BmpCoder
     {
-        public static int IdentifyHeaderSize => 2;
+        public const int IdentifyHeaderSize = 2;
 
         public static bool TryDecode(string FilePath, out IImageContext Image)
-            => TryDecode(new FileStream(FilePath, FileMode.Open, FileAccess.Read), out Image);
+        {
+            using Stream Stream = new FileStream(FilePath, FileMode.Open, FileAccess.Read);
+            return TryDecode(Stream, out Image);
+        }
         public static bool TryDecode(Stream Stream, out IImageContext Image)
         {
             byte[] Datas = new byte[IdentifyHeaderSize];
 
-            if (Stream.Position != 0)
-                Stream.Seek(0, SeekOrigin.Begin);
+            //if (Stream.Position != 0)
+            //    Stream.Seek(0, SeekOrigin.Begin);
 
             Stream.Read(Datas, 0, Datas.Length);
 
@@ -107,9 +110,8 @@ namespace MenthaAssembly.Media.Imaging
                     Image = new ImageContext<BGRA, Indexed4>(Width, Height, ImageDatas, Palette);
                     return true;
                 case 8:
-                    Image = Palette is null ?
-                            (IImageContext)new ImageContext<Gray8>(Width, Height, ImageDatas) :
-                                           new ImageContext<BGRA, Indexed8>(Width, Height, ImageDatas, Palette);
+                    Image = Palette is null ? new ImageContext<Gray8>(Width, Height, ImageDatas) :
+                                              new ImageContext<BGRA, Indexed8>(Width, Height, ImageDatas, Palette);
                     return true;
                 case 24:
                     Image = new ImageContext<BGR>(Width, Height, ImageDatas);
@@ -125,8 +127,11 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         public static void Encode(IImageContext Image, string FilePath)
-            => Encode(Image, new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write));
-        public static void Encode(IImageContext Image, Stream Stream, bool KeepStreamAlive = false)
+        {
+            using Stream Stream = new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write);
+            Encode(Image, Stream);
+        }
+        public static void Encode(IImageContext Image, Stream Stream)
         {
             // Bitmap File Struct
             // https://crazycat1130.pixnet.net/blog/post/1345538#mark-4
@@ -205,12 +210,6 @@ namespace MenthaAssembly.Media.Imaging
                 Stream.Write(ImageDatas, 0, ImageDatas.Length);
             }
 
-
-            if (!KeepStreamAlive)
-            {
-                Stream.Close();
-                Stream.Dispose();
-            }
         }
 
         public static bool Identify(byte[] Data)
@@ -227,7 +226,6 @@ namespace MenthaAssembly.Media.Imaging
             //       (Data[0].Equals(0x49) && Data[1].Equals(0x43)) ||    // IC – OS / 2 struct Icon
             //       (Data[0].Equals(0x50) && Data[1].Equals(0x54));      // PT – OS / 2 Pointer
         }
-
 
         [Conditional("DEBUG")]
         public static void Parse(string FilePath)

@@ -128,10 +128,6 @@ namespace MenthaAssembly.Utils
             this.baseInputStream = baseInputStream;
         }
 
-        /// <summary>
-        /// See <see cref="System.IO.Stream.ReadByte"/>
-        /// </summary>
-        /// <returns></returns>
         public override int ReadByte()
         {
             int b = Read(one, 0, 1);
@@ -140,19 +136,6 @@ namespace MenthaAssembly.Utils
             return -1;
         }
 
-        /// <summary>
-        /// Reads decompressed data into the provided buffer byte array
-        /// </summary>
-        /// <param name ="buffer">
-        /// The array to read and decompress data into
-        /// </param>
-        /// <param name ="offset">
-        /// The offset indicating where the data should be placed
-        /// </param>
-        /// <param name ="count">
-        /// The number of bytes to decompress
-        /// </param>
-        /// <returns>The number of bytes read. Zero signals the end of stream</returns>
         public override int Read(byte[] buffer, int offset, int count)
         {
             if (!headerParsed)
@@ -440,91 +423,39 @@ namespace MenthaAssembly.Utils
                 tabSuffix[idx] = (byte)idx;
         }
 
-        /// <summary>
-        /// Gets a value indicating whether the current stream supports reading
-        /// </summary>
         public override bool CanRead
             => baseInputStream.CanRead;
 
-        /// <summary>
-        /// Gets a value of false indicating seeking is not supported for this stream.
-        /// </summary>
         public override bool CanSeek
             => false;
 
-        /// <summary>
-        /// Gets a value of false indicating that this stream is not writeable.
-        /// </summary>
         public override bool CanWrite
             => false;
 
-        /// <summary>
-        /// A value representing the length of the stream in bytes.
-        /// </summary>
         public override long Length
             => got;
 
-        /// <summary>
-        /// The current position within the stream.
-        /// Throws a NotSupportedException when attempting to set the position
-        /// </summary>
-        /// <exception cref="NotSupportedException">Attempting to set the position</exception>
         public override long Position
         {
             get => baseInputStream.Position;
             set => throw new NotSupportedException("InflaterInputStream Position not supported");
         }
 
-        /// <summary>
-        /// Flushes the baseInputStream
-        /// </summary>
         public override void Flush()
             => baseInputStream.Flush();
 
-        /// <summary>
-        /// Sets the position within the current stream
-        /// Always throws a NotSupportedException
-        /// </summary>
-        /// <param name="offset">The relative offset to seek to.</param>
-        /// <param name="origin">The <see cref="SeekOrigin"/> defining where to seek from.</param>
-        /// <returns>The new position in the stream.</returns>
-        /// <exception cref="NotSupportedException">Any access</exception>
         public override long Seek(long offset, SeekOrigin origin)
             => throw new NotSupportedException("Seek not supported");
 
-        /// <summary>
-        /// Set the length of the current stream
-        /// Always throws a NotSupportedException
-        /// </summary>
-        /// <param name="value">The new length value for the stream.</param>
-        /// <exception cref="NotSupportedException">Any access</exception>
         public override void SetLength(long value)
             => throw new NotSupportedException("InflaterInputStream SetLength not supported");
 
-        /// <summary>
-        /// Writes a sequence of bytes to stream and advances the current position
-        /// This method always throws a NotSupportedException
-        /// </summary>
-        /// <param name="buffer">The buffer containing data to write.</param>
-        /// <param name="offset">The offset of the first byte to write.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        /// <exception cref="NotSupportedException">Any access</exception>
         public override void Write(byte[] buffer, int offset, int count)
             => throw new NotSupportedException("InflaterInputStream Write not supported");
 
-        /// <summary>
-        /// Writes one byte to the current stream and advances the current position
-        /// Always throws a NotSupportedException
-        /// </summary>
-        /// <param name="value">The byte to write.</param>
-        /// <exception cref="NotSupportedException">Any access</exception>
         public override void WriteByte(byte value)
             => throw new NotSupportedException("InflaterInputStream WriteByte not supported");
 
-        /// <summary>
-        /// Closes the input stream.  When <see cref="IsStreamOwner"></see>
-        /// is true the underlying stream is also closed.
-        /// </summary>
         protected override void Dispose(bool disposing)
         {
             if (!isClosed)

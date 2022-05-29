@@ -13,17 +13,20 @@ namespace MenthaAssembly.Media.Imaging
     // https://www.w3.org/TR/PNG/
     public static class PngCoder
     {
-        public static int IdentifyHeaderSize => 8;
+        public const int IdentifyHeaderSize = 8;
 
         public static bool TryDecode(string FilePath, out IImageContext Image)
-            => TryDecode(new FileStream(FilePath, FileMode.Open, FileAccess.Read), out Image);
+        {
+            using FileStream Stream = new FileStream(FilePath, FileMode.Open, FileAccess.Read);
+            return TryDecode(Stream, out Image);
+        }
         public static bool TryDecode(Stream Stream, out IImageContext Image)
         {
             bool CheckCRC32 = true;
             byte[] Datas = new byte[IdentifyHeaderSize];
 
-            if (Stream.Position != 0)
-                Stream.Seek(0, SeekOrigin.Begin);
+            //if (Stream.Position != 0)
+            //    Stream.Seek(0, SeekOrigin.Begin);
 
             Stream.Read(Datas, 0, Datas.Length);
 
@@ -305,7 +308,7 @@ namespace MenthaAssembly.Media.Imaging
             } while (Stream.Position < Stream.Length);
             Decompressor.Dispose();
             DataStream.Dispose();
-            Stream.Dispose();
+            //Stream.Dispose();
 
             switch (ImageDatas.Length)
             {
@@ -325,8 +328,11 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         public static void Encode(IImageContext Image, string FilePath)
-            => Encode(Image, new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write));
-        public static void Encode(IImageContext Image, Stream Stream, bool KeepStreamAlive = false)
+        {
+            using FileStream Stream = new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write);
+            Encode(Image, Stream);
+        }
+        public static void Encode(IImageContext Image, Stream Stream)
         {
             // IdentifyHeader
             byte[] Datas = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
@@ -432,11 +438,6 @@ namespace MenthaAssembly.Media.Imaging
 
             #endregion
 
-            if (!KeepStreamAlive)
-            {
-                Stream.Close();
-                Stream.Dispose();
-            }
         }
 
         /// <summary>
@@ -475,7 +476,6 @@ namespace MenthaAssembly.Media.Imaging
             Buffers = new byte[] { (byte)(CRCResult >> 24), (byte)(CRCResult >> 16), (byte)(CRCResult >> 8), (byte)CRCResult };
             Stream.Write(Buffers, 0, Buffers.Length);
         }
-
 
         /// <summary>
         /// ∥c∥b∥

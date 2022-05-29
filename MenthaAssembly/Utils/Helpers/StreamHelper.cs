@@ -2,9 +2,9 @@
 
 namespace System.IO
 {
-    public static class StreamHelper
+    public unsafe static class StreamHelper
     {
-        public static unsafe void Write<T>(this Stream This, T Datas)
+        public static void Write<T>(this Stream This, T Datas)
             where T : unmanaged
         {
             byte[] Buffer = new byte[sizeof(T)];
@@ -15,7 +15,23 @@ namespace System.IO
 
             This.Write(Buffer, 0, Buffer.Length);
         }
-        public static unsafe Task WriteAsync<T>(this Stream This, T Datas)
+        public static void Write<T>(this Stream This, T[] Datas)
+            where T : unmanaged
+        {
+            int DataLength = Datas.Length;
+            byte[] Buffer = new byte[sizeof(T) * DataLength];
+            T* pTempBuffer;
+            fixed (byte* pBuffer = &Buffer[0])
+            {
+                pTempBuffer = (T*)pBuffer;
+            }
+
+            for (int i = 0; i < DataLength; i++)
+                *pTempBuffer++ = Datas[i];
+
+            This.Write(Buffer, 0, Buffer.Length);
+        }
+        public static Task WriteAsync<T>(this Stream This, T Datas)
             where T : unmanaged
         {
             byte[] Buffer = new byte[sizeof(T)];
@@ -26,8 +42,24 @@ namespace System.IO
 
             return This.WriteAsync(Buffer, 0, Buffer.Length);
         }
+        public static Task WriteAsync<T>(this Stream This, T[] Datas)
+            where T : unmanaged
+        {
+            int DataLength = Datas.Length;
+            byte[] Buffer = new byte[sizeof(T) * DataLength];
+            T* pTempBuffer;
+            fixed (byte* pBuffer = &Buffer[0])
+            {
+                pTempBuffer = (T*)pBuffer;
+            }
 
-        public static unsafe T Read<T>(this Stream This)
+            for (int i = 0; i < DataLength; i++)
+                *pTempBuffer++ = Datas[i];
+
+            return This.WriteAsync(Buffer, 0, Buffer.Length);
+        }
+
+        public static T Read<T>(this Stream This)
             where T : unmanaged
         {
             byte[] Buffer = new byte[sizeof(T)];

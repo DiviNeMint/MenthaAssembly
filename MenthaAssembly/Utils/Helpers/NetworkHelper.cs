@@ -107,7 +107,7 @@ namespace System.Net
                                  .Select(i => i.Port);
 
         public bool CheckAvailableServerPort(int Port)
-            => GetActiveTcpPorts().Any(Port);
+            => GetActiveTcpPorts().Contains(Port);
 
     }
 }
