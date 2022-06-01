@@ -13,13 +13,15 @@ namespace MenthaAssembly.Utils
 
         public override long Length { get; }
 
-        private long _Position,
-                     _Offset;
+        private long _Position;
+        private readonly long _Offset;
         public override long Position
         {
             get => _Position;
             set => Seek(value, SeekOrigin.Begin);
         }
+
+        private readonly bool LeaveOpen;
 
         protected Stream Stream;
         public SegmentStream(Stream Stream, long Length) : this(Stream, Stream.CanSeek ? Stream.Position : 0L, Length)
@@ -30,6 +32,13 @@ namespace MenthaAssembly.Utils
             this.Stream = Stream;
             _Offset = Offset;
             this.Length = Length;
+        }
+        public SegmentStream(Stream Stream, long Offset, long Length, bool LeaveOpen)
+        {
+            this.Stream = Stream;
+            _Offset = Offset;
+            this.Length = Length;
+            this.LeaveOpen = LeaveOpen;
         }
 
         public override int Read(byte[] Buffer, int Offset, int Count)
@@ -80,17 +89,16 @@ namespace MenthaAssembly.Utils
             => throw new NotSupportedException();
 
         public override void Flush()
-        {
-            if (!IsDisposed)
-                Stream.Flush();
-        }
+            => throw new NotSupportedException();
 
         public override void Close()
         {
             if (IsDisposed)
                 return;
 
-            Stream.Close();
+            if (!LeaveOpen)
+                Stream.Close();
+
             base.Close();
         }
 
@@ -102,7 +110,8 @@ namespace MenthaAssembly.Utils
 
             try
             {
-                Stream.Dispose();
+                if (!LeaveOpen)
+                    Stream.Dispose();
                 Stream = null;
 
                 base.Dispose(Disposing);

@@ -1,5 +1,4 @@
-﻿using MenthaAssembly;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -11,39 +10,38 @@ namespace System.Net
     {
         public static IEnumerable<IPAddress> GetInterNetworkIPAddresses()
         {
-            ConcurrentCollection<IPAddress> Results = new ConcurrentCollection<IPAddress>();
+            foreach (IPAddress Address in GetAllInterNetworkAddresses())
+            {
+                PingReply Reply = Ping(Address, 1000);
+                if (Reply.Status == IPStatus.Success)
+                    yield return Reply.Address;
+            }
 
-            Task GetPingTask(IPAddress IP)
-                => Task.Run(async () =>
-                {
-                    PingReply Reply = await Ping(IP, 1000);
-                    if (Reply.Status == IPStatus.Success)
-                        Results.Add(Reply.Address);
-                });
+            //ConcurrentCollection<IPAddress> Results = new ConcurrentCollection<IPAddress>();
 
-            Task[] Tasks = GetAllInterNetworkAddresses().Select(i => GetPingTask(i))
-                                                        .ToArray();
-            Task.WaitAll(Tasks);
+            //Task GetPingTask(IPAddress IP)
+            //    => Task.Run(async () =>
+            //    {
+            //        PingReply Reply = await Ping(IP, 1000);
+            //        if (Reply.Status == IPStatus.Success)
+            //            Results.Add(Reply.Address);
+            //    });
 
-            return Results;
+            //Task[] Tasks = GetAllInterNetworkAddresses().Select(i => GetPingTask(i))
+            //                                            .ToArray();
+            //Task.WaitAll(Tasks);
+
+            //return Results;
         }
-        public static async Task<IEnumerable<IPAddress>> GetInterNetworkIPAddressesAsync()
+
+        public static async IAsyncEnumerable<IPAddress> GetInterNetworkIPAddressesAsync()
         {
-            ConcurrentCollection<IPAddress> Results = new ConcurrentCollection<IPAddress>();
-
-            Task GetPingTask(IPAddress IP)
-                => Task.Run(async () =>
-                {
-                    PingReply Reply = await Ping(IP, 1000);
-                    if (Reply.Status == IPStatus.Success)
-                        Results.Add(Reply.Address);
-                });
-
-            Task[] Tasks = GetAllInterNetworkAddresses().Select(i => GetPingTask(i))
-                                                        .ToArray();
-            await Task.WhenAll(Tasks);
-
-            return Results;
+            foreach (IPAddress Address in GetAllInterNetworkAddresses())
+            {
+                PingReply Reply = await PingAsync(Address, 1000);
+                if (Reply.Status == IPStatus.Success)
+                    yield return Reply.Address;
+            }
         }
 
         public static IEnumerable<IPAddress> GetAllInterNetworkAddresses()
@@ -95,7 +93,12 @@ namespace System.Net
         //                    i.AddressFamily == AddressFamily.InterNetworkV6);
 
         private static readonly byte[] PingData = new byte[1];
-        public static async Task<PingReply> Ping(IPAddress IPAddress, int Timeout)
+        public static PingReply Ping(IPAddress IPAddress, int Timeout)
+        {
+            using Ping p = new Ping();
+            return p.Send(IPAddress, Timeout, PingData, null);
+        }
+        public static async Task<PingReply> PingAsync(IPAddress IPAddress, int Timeout)
         {
             using Ping p = new Ping();
             return await p.SendPingAsync(IPAddress, Timeout, PingData, null);

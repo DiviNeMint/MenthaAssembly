@@ -94,7 +94,7 @@ namespace MenthaAssembly
         }
 #endif
 
-        public static void Calculate(byte[] Datas,int Offset, int Length, out uint NewRegister, uint Register = 0xFFFFFFFFU)
+        public static void Calculate(byte[] Datas, int Offset, int Length, out uint NewRegister, uint Register = 0xFFFFFFFFU)
         {
             if (Datas is null ||
                 Datas.Count() == 0)
