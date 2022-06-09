@@ -439,7 +439,7 @@ namespace MenthaAssembly.Media.Imaging
             Length = HalfHeight - HalfWidth;
 
             // Vertical
-            GraphicAlgorithm.CalculateBresenhamEllipseContourQuadrantI(HalfHeight, HalfHeight, (Dx, Dy) =>
+            GraphicAlgorithm.CalculateBresenhamEllipseContourQuadrantI(HalfWidth, HalfWidth, (Dx, Dy) =>
             {
                 int X1 = Cx - Dx,
                     X2 = Cx + Dx;
