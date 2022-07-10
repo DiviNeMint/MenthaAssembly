@@ -1084,8 +1084,12 @@ namespace MenthaAssembly.Media.Imaging
         {
             ImageContour Polygon = new ImageContour();
             int[] Datas = GraphicAlgorithm.CropPolygon(VerticeDatas, MinX, MaxX, MinY, MaxY);
-            int pn = Datas.Length,
-                pnh = pn >> 1;
+
+            int pn = Datas.Length;
+            if (pn == 0)
+                return null;
+
+            int pnh = pn >> 1;
 
             // Find y min and max (slightly faster than scanning from 0 to height)
             int yMin = int.MaxValue,
