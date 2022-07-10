@@ -151,7 +151,7 @@ namespace System.IO
         /// </summary>
         /// <param name="This">The current stream.</param>
         /// <param name="Buffer">The buffer to be filled by the stream.</param>
-        public static void ReadBuffer(this Stream This, byte[] Buffer)
+        public static bool ReadBuffer(this Stream This, byte[] Buffer)
             => ReadBuffer(This, Buffer, Buffer.Length);
         /// <summary>
         /// Reads a buffer from the stream until it fills the specified length of buffer.
@@ -159,7 +159,7 @@ namespace System.IO
         /// <param name="This">The current stream.</param>
         /// <param name="Buffer">The buffer to be filled by the stream.</param>
         /// <param name="Length">The specified length of buffer to be filled.</param>
-        public static void ReadBuffer(this Stream This, byte[] Buffer, int Length)
+        public static bool ReadBuffer(this Stream This, byte[] Buffer, int Length)
         {
             int Offset = This.Read(Buffer, 0, Length),
                 ReadLength;
@@ -170,11 +170,13 @@ namespace System.IO
                 ReadLength = This.Read(Buffer, Offset, Length);
 
                 if (ReadLength < 1)
-                    throw new EndOfStreamException();
+                    return false;
 
                 Offset += ReadLength;
                 Length -= ReadLength;
             }
+
+            return true;
         }
 
     }
