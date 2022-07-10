@@ -648,8 +648,7 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             bool IsHollow = Contour.Any(i => i.Value.Count > 2);
-            int MaxX = Width - 1,
-                PCx = (Bound.Left + Bound.Right) >> 1,
+            int PCx = (Bound.Left + Bound.Right) >> 1,
                 PCy = (Bound.Top + Bound.Bottom) >> 1,
                 DSx = Sx - Cx,
                 DSy = Sy - Cy,

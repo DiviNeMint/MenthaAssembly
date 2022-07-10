@@ -103,7 +103,12 @@ namespace MenthaAssembly.Media.Imaging
         public void Difference(ImageContour Contour)
         {
             foreach (KeyValuePair<int, ContourData> Pair in Contour.Datas)
-                this[Pair.Key].Difference(Pair.Value);
+            {
+                ContourData Data = this[Pair.Key];
+                Data.Difference(Pair.Value);
+                if (Data.Count == 0)
+                    Datas.Remove(Pair.Key);
+            }
         }
 
         public void Flip(FlipMode Mode)
@@ -1075,6 +1080,92 @@ namespace MenthaAssembly.Media.Imaging
 
             return Polygon;
         }
+        public static ImageContour CreateFillPolygon(IEnumerable<int> VerticeDatas, int OffsetX, int OffsetY, int MinX, int MaxX, int MinY, int MaxY)
+        {
+            ImageContour Polygon = new ImageContour();
+            int[] Datas = GraphicAlgorithm.CropPolygon(VerticeDatas, MinX, MaxX, MinY, MaxY);
+            int pn = Datas.Length,
+                pnh = pn >> 1;
+
+            // Find y min and max (slightly faster than scanning from 0 to height)
+            int yMin = int.MaxValue,
+                yMax = 0;
+            for (int i = 1; i < pn; i += 2)
+            {
+                int py = Datas[i] + OffsetY;
+                if (py < yMin)
+                    yMin = py;
+                if (py > yMax)
+                    yMax = py;
+            }
+
+            int[] IntersectionsX = new int[pnh - 1],
+                  HorizontalX = new int[pn];
+
+            // Scan line from min to max
+            for (int y = yMin; y <= yMax; y++)
+            {
+                // Initial point x, y
+                float X0 = Datas[0] + OffsetX,
+                      Y0 = Datas[1] + OffsetY;
+
+                // Find all intersections
+                // Based on http://alienryderflex.com/polygon_fill/
+                int IntersectionCount = 0,
+                    HorizontalCount = 0;
+                for (int i = 2; i < pn; i += 2)
+                {
+                    // Next point x, y
+                    float X1 = Datas[i] + OffsetX,
+                          Y1 = Datas[i + 1] + OffsetY;
+
+                    // Is the scanline between the two points
+                    if (Y0 < y && y <= Y1 ||
+                        Y1 < y && y <= Y0)
+                    {
+                        // Compute the intersection of the scanline with the edge (line between two points)
+                        IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
+                    }
+                    else if (Y0 == Y1 && Y0 == y)
+                    {
+                        HorizontalX[HorizontalCount++] = (int)X0;
+                        HorizontalX[HorizontalCount++] = (int)X1;
+                    }
+
+                    X0 = X1;
+                    Y0 = Y1;
+                }
+
+                // Sort the intersections from left to right using Insertion sort 
+                // It's faster than Array.Sort for this small data set
+                int t, j;
+                for (int i = 1; i < IntersectionCount; i++)
+                {
+                    t = IntersectionsX[i];
+                    j = i;
+                    while (j > 0 && IntersectionsX[j - 1] > t)
+                    {
+                        IntersectionsX[j] = IntersectionsX[j - 1];
+                        j -= 1;
+                    }
+                    IntersectionsX[j] = t;
+                }
+
+                ContourData Data = Polygon[y];
+                // Add Intersections Datas
+                for (int i = 0; i < IntersectionCount - 1;)
+                {
+                    Data.Datas.Add(IntersectionsX[i++]);
+                    Data.Datas.Add(IntersectionsX[i++]);
+                }
+
+                // Add Horizontal Datas
+                for (int i = 0; i < HorizontalCount - 1;)
+                    Data.Union(HorizontalX[i++], HorizontalX[i++]);
+            }
+
+            return Polygon;
+        }
 
         public static ImageContour CreateLineContour(int X0, int Y0, int X1, int Y1, ImageContour Pen)
         {
@@ -1228,6 +1319,129 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             return LineContour;
+        }
+
+        public static ImageContour CreateArcContour(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Pen)
+        {
+            ImageContour Contour = new ImageContour();
+            Bound<int> Bound = Pen.Bound;
+
+            if (Bound.IsEmpty)
+                return null;
+
+            bool IsHollow = Pen.Any(i => i.Value.Count > 2);
+            int PCx = (Bound.Left + Bound.Right) >> 1,
+                PCy = (Bound.Top + Bound.Bottom) >> 1,
+                DSx = Sx - Cx,
+                DSy = Sy - Cy,
+                DEx = Ex - Cx,
+                DEy = Ey - Cy;
+
+            if (IsHollow)
+            {
+                ImageContour Stroke = ImageContour.Offset(Pen, Cx - PCx, Cy - PCy);
+
+                int LastDx = 0,
+                    LastDy = 0;
+                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, false,
+                    (Dx, Dy) =>
+                    {
+                        Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                        Contour.Union(Stroke);
+
+                        LastDx = Dx;
+                        LastDy = Dy;
+                    });
+            }
+            else
+            {
+                Dictionary<int, int> LargeLeftBound = new Dictionary<int, int>(),
+                                     LargeRightBound = new Dictionary<int, int>(),
+                                     SmallLeftBound = new Dictionary<int, int>(),
+                                     SmallRightBound = new Dictionary<int, int>();
+
+                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, false,
+                    (Dx, Dy) =>
+                    {
+                        int OffsetX = Dx + Cx - PCx,
+                            OffsetY = Dy + Cy - PCy;
+                        if (Dx < 0)
+                        {
+                            foreach (KeyValuePair<int, ContourData> item in Pen)
+                            {
+                                ContourData Data = item.Value;
+                                int Ty = item.Key + OffsetY;
+
+                                if (Ty < 0)
+                                    continue;
+
+                                int LLTx = Data[0] + OffsetX,
+                                    MLTx = Data[1] + OffsetX;
+
+                                if (!LargeLeftBound.TryGetValue(Ty, out int RLLx) || LLTx < RLLx)
+                                    LargeLeftBound[Ty] = LLTx;
+
+                                if (!SmallLeftBound.TryGetValue(Ty, out int RMLx) || RMLx < MLTx)
+                                    SmallLeftBound[Ty] = MLTx;
+                            }
+                        }
+                        else
+                        {
+                            foreach (KeyValuePair<int, ContourData> item in Pen)
+                            {
+                                ContourData Data = item.Value;
+                                int Ty = item.Key + OffsetY;
+
+                                if (Ty < 0)
+                                    continue;
+
+                                int LRTx = Data[1] + OffsetX,
+                                    MRTx = Data[0] + OffsetX;
+
+                                if (!LargeRightBound.TryGetValue(Ty, out int RLRx) || RLRx < LRTx)
+                                    LargeRightBound[Ty] = LRTx;
+
+                                if (!SmallRightBound.TryGetValue(Ty, out int RMRx) || MRTx < RMRx)
+                                    SmallRightBound[Ty] = MRTx;
+                            }
+                        }
+                    });
+
+                foreach (KeyValuePair<int, int> item in LargeLeftBound)
+                {
+                    int X0 = item.Value,
+                        Y = item.Key;
+
+                    if (SmallLeftBound.TryGetValue(Y, out int X1))
+                    {
+                        Contour[Y].Union(X0, X1);
+                        SmallLeftBound.Remove(Y);
+                        continue;
+                    }
+
+                    if (LargeRightBound.TryGetValue(Y, out X1))
+                    {
+                        Contour[Y].Union(X0, X1);
+                        LargeRightBound.Remove(Y);
+                    }
+                }
+                LargeLeftBound.Clear();
+
+                foreach (KeyValuePair<int, int> item in SmallRightBound)
+                {
+                    int X0 = item.Value,
+                        Y = item.Key;
+
+                    if (LargeRightBound.TryGetValue(Y, out int X1))
+                    {
+                        Contour[Y].Union(X0, X1);
+                        LargeRightBound.Remove(Y);
+                    }
+                }
+                SmallRightBound.Clear();
+            }
+
+            return Contour;
         }
 
         public static ImageContour CreateTextContour(int X, int Y, string Text, string FontName, int CharSize, double Angle = 0, FontWeightType Weight = FontWeightType.Normal, bool Italic = false)
