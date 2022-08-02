@@ -41,22 +41,22 @@ namespace MenthaAssembly.Offices.Primitives
             this.SectorChain = SectorChain;
             ReadSector();
         }
-        public CompoundStream(CompoundDocument document, Stream baseStream, CompoundDirectoryEntry Entry, bool leaveOpen)
+        public CompoundStream(CompoundDocument Document, Stream BaseStream, CompoundDirectoryEntry Entry, bool LeaveOpen)
         {
-            Document = document;
-            BaseStream = baseStream;
+            this.Document = Document;
+            this.BaseStream = BaseStream;
             IsMini = Entry.IsEntryMiniStream;
             Length = Entry.StreamSize;
-            LeaveOpen = leaveOpen;
+            this.LeaveOpen = LeaveOpen;
 
             if (IsMini)
             {
-                SectorChain = Document.GetMiniSectorChain(Entry.StreamFirstSector);
-                RootSectorChain = Document.GetSectorChain(Document.Entries[0].StreamFirstSector);
+                SectorChain = this.Document.GetMiniSectorChain(Entry.StreamFirstSector);
+                RootSectorChain = this.Document.GetSectorChain(this.Document.Entries[0].StreamFirstSector);
             }
             else
             {
-                SectorChain = Document.GetSectorChain(Entry.StreamFirstSector);
+                SectorChain = this.Document.GetSectorChain(Entry.StreamFirstSector);
             }
 
             ReadSector();

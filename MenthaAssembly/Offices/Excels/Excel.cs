@@ -1,4 +1,6 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -9,8 +11,11 @@ namespace MenthaAssembly.Offices
 {
     public static unsafe class Excel
     {
-
         public static bool TryParse(string FilePath, out IExcelWorkbook Excel)
+            => TryParse(FilePath, null, -1, out Excel);
+        public static bool TryParse(string FilePath, string Password, out IExcelWorkbook Excel)
+            => TryParse(FilePath, () => Password, 1, out Excel);
+        public static bool TryParse(string FilePath, Func<string> PasswordAction, int RetryCount, out IExcelWorkbook Excel)
         {
             using FileStream FileStream = new FileStream(FilePath, FileMode.Open, FileAccess.ReadWrite);
             byte[] Header = ArrayPool<byte>.Shared.Rent(8);
@@ -24,11 +29,11 @@ namespace MenthaAssembly.Offices
                     CompoundDocument Document = new CompoundDocument(FileStream);
                     if (TryGetWorkbook(FileStream, Document, out Stream XlsFileStream))
                     {
-                        Excel = new XlsWorkbook(XlsFileStream);
+                        Excel = new XlsWorkbook(XlsFileStream, PasswordAction, RetryCount);
                         return true;
                     }
 
-                    if (TryGetEncryptedPackage(FileStream, Document, null, out Stream XlsxFileStream))
+                    if (TryGetEncryptedPackage(FileStream, Document, PasswordAction, RetryCount, out Stream XlsxFileStream))
                     {
                         using ZipArchive Archive = new ZipArchive(XlsxFileStream, ZipArchiveMode.Read);
                         Excel = new XlsxWorkbook(Archive);
@@ -38,7 +43,7 @@ namespace MenthaAssembly.Offices
                 else if (IsRawBiffStream(pHeader))
                 {
                     FileStream.Seek(0, SeekOrigin.Begin);
-                    Excel = new XlsWorkbook(FileStream);
+                    Excel = new XlsWorkbook(FileStream, PasswordAction, RetryCount);
                     return true;
                 }
                 else if (IsPkZip(pHeader))
@@ -48,17 +53,18 @@ namespace MenthaAssembly.Offices
                     Excel = new XlsxWorkbook(Archive);
                     return true;
                 }
-                else
+                else if (IsCsv(FilePath))
                 {
-                    string Extension = FilePath.Substring(FilePath.Length - 4, 4)
-                                               .ToUpper();
-                    if (Extension.Equals(".CSV"))
-                    {
-                        Excel = null;
-                        return true;
-                    }
+                    Excel = null;
+                    return true;
                 }
 
+                Excel = null;
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Message : {ex.Message}");
                 Excel = null;
                 return false;
             }
@@ -70,7 +76,8 @@ namespace MenthaAssembly.Offices
 
         private static bool TryGetWorkbook(Stream FileStream, CompoundDocument Document, out Stream Stream)
         {
-            if (Document.Entries.FirstOrDefault(i => i.EntryType == 2 && i.EntryName.Equals("Workbook") || i.EntryName.Equals("Book")) is CompoundDirectoryEntry Entry)
+            if (Document.Entries.Where(i => i.EntryType == 2)
+                                .FirstOrDefault(i => i.EntryName == "Workbook" || i.EntryName == "Book") is CompoundDirectoryEntry Entry)
             {
                 Stream = new CompoundStream(Document, FileStream, Entry, false);
                 return true;
@@ -79,45 +86,56 @@ namespace MenthaAssembly.Offices
             Stream = null;
             return false;
         }
-        private static bool TryGetEncryptedPackage(Stream FileStream, CompoundDocument Document, string Password, out Stream Stream)
+        private static bool TryGetEncryptedPackage(Stream FileStream, CompoundDocument Document, Func<string> PasswordAction, int RetryCount, out Stream Stream)
         {
-            if (Document.Entries.FirstOrDefault(i => i.EntryName.Equals("EncryptedPackage")) is not CompoundDirectoryEntry PackageEntry)
+            if (Document.Entries.FirstOrDefault(i => i.EntryName == "EncryptedPackage") is not CompoundDirectoryEntry PackageEntry ||
+                Document.Entries.FirstOrDefault(i => i.EntryName == "EncryptionInfo") is not CompoundDirectoryEntry InfoEntry)
             {
                 Stream = null;
                 return false;
             }
 
-            if (Document.Entries.FirstOrDefault(i => i.EntryName.Equals("EncryptionInfo")) is not CompoundDirectoryEntry InfoEntry)
+            using Stream EncryptionStream = new CompoundStream(Document, FileStream, InfoEntry, true);
+            Encryption Encryption = Encryption.Create(EncryptionStream);
+
+            string Password = null;
+
+            // Magic password used for write-protected workbooks
+            if (PasswordAction is null)
             {
-                Stream = null;
-                return false;
+                Password = "VelvetSweatshop";
+                if (!Encryption.VerifyPassword(Password))
+                {
+                    Stream = null;
+                    return false;
+                }
+            }
+            else
+            {
+                int Try = 0;
+                string LastPassword = null;
+                for (; Try < RetryCount; Try++)
+                {
+                    Password = PasswordAction();
+                    if (Password == LastPassword)
+                        continue;
+
+                    if (Encryption.VerifyPassword(Password))
+                        break;
+                }
+
+                if (Try >= RetryCount)
+                {
+                    Stream = null;
+                    return false;
+                }
             }
 
+            byte[] SecretKey = Encryption.GenerateSecretKey(Password);
+            Stream PackageStream = new CompoundStream(Document, FileStream, PackageEntry, false);
 
-            Stream = null;
-            return false;
-
-
-
-
-            //var infoBytes = Document.ReadStream(FileStream, encryptionInfo.StreamFirstSector, (int)encryptionInfo.StreamSize, encryptionInfo.IsEntryMiniStream);
-            //var encryption = EncryptionInfo.Create(infoBytes);
-
-            //if (encryption.VerifyPassword("VelvetSweatshop"))
-            //{
-            //    // Magic password used for write-protected workbooks
-            //    Password = "VelvetSweatshop";
-            //}
-            //else if (Password == null || !encryption.VerifyPassword(Password))
-            //{
-            //    throw new InvalidPasswordException(Errors.ErrorInvalidPassword);
-            //}
-
-            //var secretKey = encryption.GenerateSecretKey(Password);
-            //var packageStream = new CompoundStream(Document, FileStream, encryptedPackage.StreamFirstSector, (int)encryptedPackage.StreamSize, encryptedPackage.IsEntryMiniStream, false);
-
-            //Stream = encryption.CreateEncryptedPackageStream(packageStream, secretKey);
-            //return true;
+            Stream = Encryption.CreateEncryptedPackageStream(PackageStream, SecretKey);
+            return true;
         }
 
         private static bool IsRawBiffStream(byte* pHeader)
@@ -183,6 +201,12 @@ namespace MenthaAssembly.Offices
 
         private static bool IsCompoundDocument(byte* pHeader)
             => *(ulong*)pHeader == 0xE11AB1A1E011CFD0;
+
+        private static bool IsCsv(string FilePath)
+            => FilePath.Length > 4 &&
+               FilePath.Substring(FilePath.Length - 4, 4)
+                       .ToLower()
+                       .Equals(".csv");
 
     }
 }

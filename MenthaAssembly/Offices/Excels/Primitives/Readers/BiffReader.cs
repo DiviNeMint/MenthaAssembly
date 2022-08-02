@@ -6,12 +6,11 @@ using System.Text;
 
 namespace MenthaAssembly.Offices.Primitives
 {
-    public abstract unsafe class BiffReader : IDisposable
+    internal abstract unsafe class BiffReader : IDisposable
     {
         private readonly bool LeaveOpen;
         protected Stream Stream;
-        protected byte[] Buffer;
-        protected byte* pBuffer;
+        private byte[] Buffer;
         protected BiffReader(Stream Stream, bool LeaveOpen = false)
         {
             if (Stream is null)
@@ -19,13 +18,14 @@ namespace MenthaAssembly.Offices.Primitives
 
             this.Stream = Stream;
             Buffer = ArrayPool<byte>.Shared.Rent(512);
-            pBuffer = Buffer.ToPointer();
             this.LeaveOpen = LeaveOpen;
         }
 
         protected int VariableLength = 0,
                       VariableOffset = 0;
-        public abstract bool ReadVariable(out int ID);
+        public abstract bool ReadVariable(out int ID, out int Length);
+
+        protected abstract bool ReadVariableContext(byte[] Buffer, int Length);
 
         public T Read<T>()
             where T : unmanaged
@@ -39,11 +39,66 @@ namespace MenthaAssembly.Offices.Primitives
             if (Buffer.Length < Size)
                 ResizeBuffer(Size);
 
-            if (!Stream.ReadBuffer(Buffer, Size))
+            if (!ReadVariableContext(Buffer, Size))
                 throw new EndOfStreamException();
 
             VariableOffset = NextOffset;
-            return *(T*)pBuffer;
+
+            return *(T*)Buffer.ToPointer();
+        }
+        public bool TryRead<T>(out T Value)
+            where T : unmanaged
+        {
+            int Size = sizeof(T);
+
+            int NextOffset = VariableOffset + Size;
+            if (NextOffset > VariableLength)
+            {
+                Value = default;
+                return false;
+            }
+
+            if (Buffer.Length < Size)
+                ResizeBuffer(Size);
+
+            if (!ReadVariableContext(Buffer, Size))
+            {
+                Value = default;
+                return false;
+            }
+
+            VariableOffset = NextOffset;
+            Value = *(T*)Buffer.ToPointer();
+            return true;
+        }
+
+        public object ReadRkNumber()
+        {
+            int Data = Read<int>();
+
+            bool fx100 = (Data & 0b01) != 0,
+                 fInt = (Data & 0b10) != 0;
+
+            Data >>= 2;
+            if (fInt)
+                return fx100 ? Data / 100 : Data;
+
+            double FloatValue = BitConverter.Int64BitsToDouble(((long)Data) << 34);
+            return fx100 ? FloatValue / 100d : FloatValue;
+        }
+
+        public byte[] ReadBuffer(int Length)
+        {
+            int NextOffset = VariableOffset + Length;
+            if (NextOffset > VariableLength)
+                throw new OutOfMemoryException();
+
+            byte[] Buffer = new byte[Length];
+            if (!ReadVariableContext(Buffer, Length))
+                throw new EndOfStreamException();
+
+            VariableOffset = NextOffset;
+            return Buffer;
         }
 
         protected StringBuilder Builder = new StringBuilder();
@@ -63,10 +118,10 @@ namespace MenthaAssembly.Offices.Primitives
                 if (Buffer.Length < ByteLength)
                     ResizeBuffer(ByteLength);
 
-                if (!Stream.ReadBuffer(Buffer, ByteLength))
+                if (!ReadVariableContext(Buffer, ByteLength))
                     throw new EndOfStreamException();
 
-                ushort* pUshort = (ushort*)pBuffer;
+                ushort* pUshort = (ushort*)Buffer.ToPointer();
                 for (uint i = 0; i < Length; i++)
                     Builder.Append((char)*pUshort++);
 
@@ -84,7 +139,7 @@ namespace MenthaAssembly.Offices.Primitives
             try
             {
                 if (VariableOffset < VariableLength &&
-                    !Stream.ReadBuffer(Buffer, VariableLength - VariableOffset))
+                    !SkipVariableContext(VariableLength - VariableOffset))
                     return false;
 
                 return true;
@@ -101,20 +156,42 @@ namespace MenthaAssembly.Offices.Primitives
             if (NextOffset > VariableLength)
                 throw new OutOfMemoryException();
 
-            if (Buffer.Length < Length)
-                ResizeBuffer(Length);
-
-            if (!Stream.ReadBuffer(Buffer, Length))
+            if (!SkipVariableContext(Length))
                 throw new EndOfStreamException();
 
             VariableOffset = NextOffset;
         }
+        public bool TrySkip(int Length)
+        {
+            int NextOffset = VariableOffset + Length;
+            if (NextOffset > VariableLength)
+                return false;
 
-        protected void ResizeBuffer(int Length)
+            if (!SkipVariableContext(Length))
+                return false;
+
+            VariableOffset = NextOffset;
+            return true;
+        }
+
+        protected virtual bool SkipVariableContext(int Length)
+        {
+            if (Stream.CanSeek)
+            {
+                Stream.Seek(Length, SeekOrigin.Current);
+                return true;
+            }
+
+            if (Buffer.Length < Length)
+                ResizeBuffer(Length);
+
+            return ReadVariableContext(Buffer, Length);
+        }
+
+        private void ResizeBuffer(int Length)
         {
             ArrayPool<byte>.Shared.Return(Buffer);
             Buffer = ArrayPool<byte>.Shared.Rent(Length);
-            pBuffer = Buffer.ToPointer();
         }
 
         private bool IsDisposed = false;

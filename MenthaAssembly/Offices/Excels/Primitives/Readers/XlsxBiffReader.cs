@@ -1,16 +1,19 @@
-﻿using System;
+﻿using System.Buffers;
 using System.IO;
 
 namespace MenthaAssembly.Offices.Primitives
 {
-    public class XlsxBiffReader : BiffReader
+    internal class XlsxBiffReader : BiffReader
     {
         public XlsxBiffReader(Stream Stream) : base(Stream)
         {
+            ByteBuffer = ArrayPool<byte>.Shared.Rent(1);
         }
 
-        public override bool ReadVariable(out int ID)
+        private byte[] ByteBuffer;
+        public override bool ReadVariable(out int ID, out int Length)
         {
+            Length = 0;
             if (!SkipVariable())
             {
                 ID = -1;
@@ -20,50 +23,59 @@ namespace MenthaAssembly.Offices.Primitives
             ID = 0;
             for (int i = 0; i < 4; i++)
             {
-                if (Stream.Read(Buffer, 0, 1) == 0)
+                if (Stream.Read(ByteBuffer, 0, 1) == 0)
                 {
                     ID = -1;
                     return false;
                 }
 
-                byte Data = Buffer[0];
+                byte Data = ByteBuffer[0];
                 ID |= (Data & 0x7F) << (7 * i);
 
                 if ((Data & 0x80) == 0)
                     break;
             }
 
+            Length = 0;
             for (int i = 0; i < 4; i++)
             {
-                if (Stream.Read(Buffer, 0, 1) == 0)
+                if (Stream.Read(ByteBuffer, 0, 1) == 0)
                 {
                     ID = -1;
                     return false;
                 }
 
-                byte Data = Buffer[0];
-                VariableLength |= (Data & 0x7F) << (7 * i);
+                byte Data = ByteBuffer[0];
+                Length |= (Data & 0x7F) << (7 * i);
 
                 if ((Data & 0x80) == 0)
                     break;
             }
 
+            VariableLength = Length;
             return true;
         }
 
-        public object ReadRkNumber()
+        protected override bool ReadVariableContext(byte[] Buffer, int Length)
+            => Stream.ReadBuffer(Buffer, Length);
+
+        private bool IsDisposed = false;
+        public override void Dispose()
         {
-            int Data = Read<int>();
+            if (IsDisposed)
+                return;
 
-            bool fx100 = (Data & 0b01) != 0,
-                 fInt = (Data & 0b10) != 0;
+            try
+            {
+                ArrayPool<byte>.Shared.Return(ByteBuffer);
+                ByteBuffer = null;
 
-            Data >>= 2;
-            if (fInt)
-                return fx100 ? Data / 100 : Data;
-
-            double FloatValue = BitConverter.Int64BitsToDouble(((long)Data) << 34);
-            return fx100 ? FloatValue / 100d : FloatValue;
+                base.Dispose();
+            }
+            finally
+            {
+                IsDisposed = true;
+            }
         }
 
     }

@@ -17,7 +17,7 @@ namespace MenthaAssembly.Offices
 
         public ExcelHeaderFooter HeaderFooter { get; }
 
-        public ExcelRow[] Rows { get; }
+        public ExcelRowCollection Rows { get; }
 
         public ExcelColumnCollection Columns { get; }
 
@@ -26,6 +26,8 @@ namespace MenthaAssembly.Offices
         public ExcelCellRange[] MergeCells { get; }
 
         public IExcelWorkbook Workbook { get; }
+
+        public IEnumerable<ExcelRowCells> EnumRows();
 
         public IEnumerable<ExcelCell> EnumCells();
 

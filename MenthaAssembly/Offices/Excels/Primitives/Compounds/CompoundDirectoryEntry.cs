@@ -82,5 +82,8 @@ namespace MenthaAssembly.Offices.Primitives
         /// </summary>
         public uint PropType { get; set; }
 
+        public override string ToString()
+            => $"Name : {EntryName}, Type : {EntryType}";
+
     }
 }

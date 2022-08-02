@@ -193,7 +193,7 @@ namespace MenthaAssembly.Offices
         }
         private IEnumerable<XlsxSheetInfo> LoadBiffSheetInfos(XlsxBiffReader Reader)
         {
-            while (Reader.ReadVariable(out int ID))
+            while (Reader.ReadVariable(out int ID, out _))
             {
                 switch (ID)
                 {
@@ -266,7 +266,7 @@ namespace MenthaAssembly.Offices
         }
         private void LoadBiffSharedStrings(XlsxBiffReader Reader)
         {
-            while (Reader.ReadVariable(out int ID))
+            while (Reader.ReadVariable(out int ID, out _))
             {
                 // String
                 if (ID == 0x13)
@@ -348,5 +348,6 @@ namespace MenthaAssembly.Offices
 
             IsDisposed = true;
         }
+
     }
 }

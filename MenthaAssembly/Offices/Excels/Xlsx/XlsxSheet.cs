@@ -1,6 +1,5 @@
 ﻿using MenthaAssembly.Offices.Primitives;
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -33,11 +32,12 @@ namespace MenthaAssembly.Offices
 
         public ExcelHeaderFooter HeaderFooter { get; }
 
+        public ExcelRowCollection Rows { get; }
+
         public ExcelColumnCollection Columns { get; }
 
-        public ExcelRow[] Rows { get; }
+        private readonly ExcelCellCollection Cells;
 
-        private readonly ExcelCell[][] CacheCells;
         public ExcelCell this[int Column, int Row]
         {
             get
@@ -45,10 +45,13 @@ namespace MenthaAssembly.Offices
                 if (IsDisposed)
                     throw new ObjectDisposedException(nameof(XlsxSheet));
 
-                if (CacheCells[Row] is null)
-                    CacheCells[Row] = ExtractRowCells(Row).ToArray();
+                if (Column >= Columns.Length)
+                    throw new IndexOutOfRangeException($"Column index is out of range.");
 
-                return CacheCells[Row][Column];
+                if (Row >= Rows.Length)
+                    throw new IndexOutOfRangeException($"Row index is out of range.");
+
+                return EnumCells().First(i => i.ColumnIndex == Column && i.RowIndex == Row);
             }
         }
 
@@ -67,6 +70,8 @@ namespace MenthaAssembly.Offices
             this.Info = Info;
             DefaultRowHeight = 15d;
             Columns = new ExcelColumnCollection(this);
+            Rows = new ExcelRowCollection(this);
+            Cells = new ExcelCellCollection(this);
         }
         public XlsxSheet(XlsxWorkbook Parent, XlsxSheetInfo Info, Stream Stream, Func<Stream, Stream> GetDecompressor) : this(Parent, Info)
         {
@@ -79,16 +84,12 @@ namespace MenthaAssembly.Offices
             }
 
             int RowIndex = 0;
-
-            List<ExcelRow> RowList = new List<ExcelRow>();
-            List<ExcelCell[]> CellsList = new List<ExcelCell[]>();
+            ExcelRowCells CurrentRowCells = null;
             List<ExcelCellRange> MergeCellList = new List<ExcelCellRange>();
-
-            ExcelCell[] CurrentRowCells = null;
 
             // https://interoperability.blob.core.windows.net/files/MS-XLSB/%5bMS-XLSB%5d.pdf
             using XlsxBiffReader Reader = new XlsxBiffReader(Stream);
-            while (Reader.ReadVariable(out int Id))
+            while (Reader.ReadVariable(out int Id, out _))
             {
                 switch (Id)
                 {
@@ -101,7 +102,8 @@ namespace MenthaAssembly.Offices
                             int column = Reader.Read<int>(),
                                 xfIndex = Reader.Read<int>() & 0xFFFFFF;
 
-                            CurrentRowCells[column] = new ExcelCell(this, RowIndex, column, null, -1, xfIndex, null);
+                            Columns.SetMaxIndex(column);
+                            CurrentRowCells.Add(new ExcelCell(this, RowIndex, column, null, -1, xfIndex, null));
                             break;
                         }
                     case 0x02:  // Number
@@ -113,7 +115,8 @@ namespace MenthaAssembly.Offices
                                 xfIndex = Reader.Read<int>() & 0xFFFFFF;
                             object RkNumber = Reader.ReadRkNumber();
 
-                            CurrentRowCells[column] = new ExcelCell(this, RowIndex, column, RkNumber, -1, xfIndex, null);
+                            Columns.SetMaxIndex(column);
+                            CurrentRowCells.Add(new ExcelCell(this, RowIndex, column, RkNumber, -1, xfIndex, null));
                             break;
                         }
                     case 0x03:  // Error
@@ -126,7 +129,8 @@ namespace MenthaAssembly.Offices
                                 xfIndex = Reader.Read<int>() & 0xFFFFFF;
                             ExcelCellError Error = Reader.Read<ExcelCellError>();
 
-                            CurrentRowCells[column] = new ExcelCell(this, RowIndex, column, null, -1, xfIndex, Error);
+                            Columns.SetMaxIndex(column);
+                            CurrentRowCells.Add(new ExcelCell(this, RowIndex, column, null, -1, xfIndex, Error));
                             break;
                         }
                     case 0x04:  // Boolean
@@ -139,7 +143,8 @@ namespace MenthaAssembly.Offices
                                 xfIndex = Reader.Read<int>() & 0xFFFFFF;
                             bool Bool = Reader.Read<bool>();
 
-                            CurrentRowCells[column] = new ExcelCell(this, RowIndex, column, Bool, -1, xfIndex, null);
+                            Columns.SetMaxIndex(column);
+                            CurrentRowCells.Add(new ExcelCell(this, RowIndex, column, Bool, -1, xfIndex, null));
                             break;
                         }
                     case 0x05:  // Float
@@ -152,7 +157,8 @@ namespace MenthaAssembly.Offices
                                 xfIndex = Reader.Read<int>() & 0xFFFFFF;
                             double Float = Reader.Read<double>();
 
-                            CurrentRowCells[column] = new ExcelCell(this, RowIndex, column, Float, -1, xfIndex, null);
+                            Columns.SetMaxIndex(column);
+                            CurrentRowCells.Add(new ExcelCell(this, RowIndex, column, Float, -1, xfIndex, null));
                             break;
                         }
                     case 0x06:  // String
@@ -165,7 +171,8 @@ namespace MenthaAssembly.Offices
                                 xfIndex = Reader.Read<int>() & 0xFFFFFF;
                             string Content = Reader.ReadString();
 
-                            CurrentRowCells[column] = new ExcelCell(this, RowIndex, column, Content, -1, xfIndex, null);
+                            Columns.SetMaxIndex(column);
+                            CurrentRowCells.Add(new ExcelCell(this, RowIndex, column, Content, -1, xfIndex, null));
                             break;
                         }
                     case 0x07:  // SST
@@ -177,7 +184,8 @@ namespace MenthaAssembly.Offices
                                 xfIndex = Reader.Read<int>() & 0xFFFFFF,
                                 SSTIndex = Reader.Read<int>();
 
-                            CurrentRowCells[column] = new ExcelCell(this, RowIndex, column, null, SSTIndex, xfIndex, null);
+                            Columns.SetMaxIndex(column);
+                            CurrentRowCells.Add(new ExcelCell(this, RowIndex, column, null, SSTIndex, xfIndex, null));
                             break;
                         }
                     #endregion
@@ -202,12 +210,6 @@ namespace MenthaAssembly.Offices
                     #region Row
                     case 0x00:
                         {
-                            if (CurrentRowCells != null)
-                            {
-                                CellsList.Add(CurrentRowCells);
-                                CurrentRowCells = null;
-                            }
-
                             RowIndex = Reader.Read<int>();
 
                             Reader.Skip(4); // Skip ixfe.
@@ -222,7 +224,7 @@ namespace MenthaAssembly.Offices
                                  CustomHeight = (flags & 0b100000) != 0;
 
                             double Height = CustomHeight ? miyRw / 15d : -1;
-                            RowList.Add(new ExcelRow(this, RowIndex, Hidden, Height));
+                            Rows.Add(new ExcelRow(this, RowIndex, Hidden, Height));
 
                             // Check every time or one time ?
                             if (Columns.Length == 0)
@@ -238,7 +240,7 @@ namespace MenthaAssembly.Offices
                             }
 
                             if (!Reread)
-                                CurrentRowCells = new ExcelCell[Columns.Length];
+                                CurrentRowCells = Cells.Create(RowIndex);
 
                             break;
                         }
@@ -308,14 +310,7 @@ namespace MenthaAssembly.Offices
                 }
             }
 
-            Rows = RowList.ToArray();
             MergeCells = MergeCellList.ToArray();
-
-            if (Reread)
-            {
-                int RowsLength = Rows.Length;
-                CacheCells = new ExcelCell[RowsLength][];
-            }
         }
         public XlsxSheet(XlsxWorkbook Parent, XlsxSheetInfo Info, Stream Stream, Func<Stream, Stream> GetDecompressor, XmlReaderSettings XmlSettings) : this(Parent, Info)
         {
@@ -339,14 +334,12 @@ namespace MenthaAssembly.Offices
 
             while (!Reader.EOF)
             {
-                #region Datas
+                #region Rows & Cells
                 if (Reader.IsStartElement(NSheetData, NsSpreadsheetMl))
                 {
                     if (!Reader.ReadFirstContent())
                         continue;
 
-                    List<ExcelRow> RowList = new List<ExcelRow>();
-                    List<ExcelCell[]> CellsList = new List<ExcelCell[]>();
                     int RowIndex = 0;
                     while (!Reader.EOF)
                     {
@@ -360,7 +353,7 @@ namespace MenthaAssembly.Offices
 
                             double Height = CustomHeight && double.TryParse(Reader.GetAttribute(AHt), NumberStyles.Any, CultureInfo.InvariantCulture, out double Value) ? Value : -1;
 
-                            RowList.Add(new ExcelRow(this, RowIndex, Hidden, Height));
+                            Rows.Add(new ExcelRow(this, RowIndex, Hidden, Height));
 
                             if (Reread)
                             {
@@ -372,7 +365,8 @@ namespace MenthaAssembly.Offices
                                 continue;
 
                             int ColumnIndex = 0;
-                            List<ExcelCell> CellList = new List<ExcelCell>();
+
+                            ExcelRowCells RowCells = Cells.Create(RowIndex);
                             while (!Reader.EOF)
                             {
                                 if (Reader.IsStartElement(NC, NsSpreadsheetMl))
@@ -387,7 +381,8 @@ namespace MenthaAssembly.Offices
                                     string aT = Reader.GetAttribute(AT);
                                     if (!Reader.ReadFirstContent())
                                     {
-                                        CellList.Add(new ExcelCell(this, RowIndex, ColumnIndex++, null, -1, xfIndex, null));
+                                        Columns.SetMaxIndex(ColumnIndex);
+                                        RowCells.Add(new ExcelCell(this, RowIndex, ColumnIndex++, null, -1, xfIndex, null));
                                         continue;
                                     }
 
@@ -417,24 +412,20 @@ namespace MenthaAssembly.Offices
                                         }
                                     }
 
-                                    CellList.Add(new ExcelCell(this, RowIndex, ColumnIndex++, CellValue, SSTIndex, xfIndex, Error));
+                                    Columns.SetMaxIndex(ColumnIndex);
+                                    RowCells.Add(new ExcelCell(this, RowIndex, ColumnIndex++, CellValue, SSTIndex, xfIndex, Error));
                                 }
                                 else if (!Reader.SkipContent())
                                 {
                                     break;
                                 }
                             }
-
-                            CellsList.Add(CellList.ToArray());
                         }
                         else if (!Reader.SkipContent())
                         {
                             break;
                         }
                     }
-
-                    Rows = RowList.ToArray();
-                    CacheCells = CellsList.ToArray();
                 }
                 #endregion
                 #region Columns
@@ -519,137 +510,19 @@ namespace MenthaAssembly.Offices
                     break;
                 }
             }
-
-            if (Reread)
-            {
-                int RowsLength = Rows.Length;
-                CacheCells = new ExcelCell[RowsLength][];
-            }
         }
 
-        private IEnumerable<ExcelCell> ExtractRowCells(int RowIndex)
+        public IEnumerable<ExcelRowCells> EnumRows()
         {
             if (GetDecompressor is null)
-                yield break;
-
-            using Stream Stream = GetDecompressor(CompressedStream);
-
-            // Biff
-            if (XmlSettings is null)
             {
-
-            }
-
-            // Xml
-            else
-            {
-                using XmlReader Reader = XmlReader.Create(Stream, XmlSettings);
-
-                if (!Reader.IsStartElement(NWorksheet, NsSpreadsheetMl))
-                    yield break;
-
-                if (!Reader.ReadFirstContent())
-                    yield break;
-
-                while (!Reader.EOF)
+                for (int i = 0; i < Rows.Length; i++)
                 {
-                    if (Reader.IsStartElement(NSheetData, NsSpreadsheetMl))
-                    {
-                        if (!Reader.ReadFirstContent())
-                            continue;
+                    if (!Cells.TryGetCellRows(i, out ExcelRowCells RowCells))
+                        RowCells = new ExcelRowCells(this, i);
 
-                        int Index = 0;
-                        while (!Reader.EOF)
-                        {
-                            if (Reader.IsStartElement(NRow, NsSpreadsheetMl))
-                            {
-                                if (int.TryParse(Reader.GetAttribute(AR), out int arValue))
-                                    Index = arValue - 1;    // The row attribute is 1-based
-
-                                if (Index != RowIndex)
-                                {
-                                    Reader.Skip();
-                                    continue;
-                                }
-
-                                if (!Reader.ReadFirstContent())
-                                    continue;
-
-                                int ColumnIndex = 0;
-                                while (!Reader.EOF)
-                                {
-                                    if (Reader.IsStartElement(NC, NsSpreadsheetMl))
-                                    {
-                                        if (Reader.GetAttribute(AR).TryParseReference(out int ReferenceColumn, out _))
-                                            ColumnIndex = ReferenceColumn - 1;  // ParseReference is 1-based
-
-                                        string aS = Reader.GetAttribute(AS);
-                                        int xfIndex = !string.IsNullOrEmpty(aS) &&
-                                                      int.TryParse(aS, NumberStyles.Any, CultureInfo.InvariantCulture, out int StyleIndex) ? StyleIndex : -1;
-
-                                        string aT = Reader.GetAttribute(AT);
-                                        if (!Reader.ReadFirstContent())
-                                        {
-                                            yield return new ExcelCell(this, Index, ColumnIndex++, null, -1, xfIndex, null);
-                                            continue;
-                                        }
-
-                                        object CellValue = null;
-                                        int SSTIndex = -1;
-                                        ExcelCellError? Error = null;
-
-                                        while (!Reader.EOF)
-                                        {
-                                            if (Reader.IsStartElement(NV, NsSpreadsheetMl))
-                                            {
-                                                string RawValue = Reader.ReadElementContentAsString();
-
-                                                if (!string.IsNullOrEmpty(RawValue))
-                                                    CellValue = ConvertCellValue(RawValue, aT, out SSTIndex, out Error);
-                                            }
-                                            else if (Reader.IsStartElement(NIs, NsSpreadsheetMl))
-                                            {
-                                                string RawValue = Reader.ReadStringItem();
-
-                                                if (!string.IsNullOrEmpty(RawValue))
-                                                    CellValue = ConvertCellValue(RawValue, aT, out SSTIndex, out Error);
-                                            }
-                                            else if (!Reader.SkipContent())
-                                            {
-                                                break;
-                                            }
-                                        }
-                                        yield return new ExcelCell(this, Index, ColumnIndex++, CellValue, SSTIndex, xfIndex, Error);
-                                    }
-                                    else if (!Reader.SkipContent())
-                                    {
-                                        break;
-                                    }
-                                }
-
-                                yield break;
-                            }
-                            else if (!Reader.SkipContent())
-                            {
-                                break;
-                            }
-                        }
-                    }
-                    else if (!Reader.SkipContent())
-                    {
-                        break;
-                    }
+                    yield return RowCells;
                 }
-            }
-        }
-
-        public IEnumerable<ExcelCell> EnumCells()
-        {
-            if (GetDecompressor is null)
-            {
-                foreach (ExcelCell[] RowCells in CacheCells)
-                    foreach (ExcelCell Cell in RowCells)
-                        yield return Cell;
 
                 yield break;
             }
@@ -662,28 +535,28 @@ namespace MenthaAssembly.Offices
                 using XlsxBiffReader Reader = new XlsxBiffReader(Stream);
 
                 int RowIndex = 0;
+                ExcelRowCells RowCells = null;
                 bool HasCache = false;
-                ExcelCell[] RowCells = null;
-                while (Reader.ReadVariable(out int Id))
+                while (Reader.ReadVariable(out int Id, out _))
                 {
                     switch (Id)
                     {
                         #region Row
                         case 0x00:
                             {
+                                if (RowCells != null)
+                                    yield return RowCells;
+
                                 RowIndex = Reader.Read<int>();
-
-                                RowCells = CacheCells[RowIndex];
-                                HasCache = RowCells != null;
-
+                                HasCache = Cells.TryGetCellRows(RowIndex, out RowCells);
                                 if (HasCache)
                                 {
-                                    foreach (ExcelCell Cell in RowCells)
-                                        yield return Cell;
+                                    yield return RowCells;
+                                    RowCells = null;
                                 }
                                 else
                                 {
-                                    RowCells = new ExcelCell[Columns.Length];
+                                    RowCells = Cells.Create(RowIndex);
                                 }
                                 break;
                             }
@@ -697,9 +570,8 @@ namespace MenthaAssembly.Offices
                                 int column = Reader.Read<int>(),
                                     xfIndex = Reader.Read<int>() & 0xFFFFFF;
 
-                                ExcelCell Cell = new ExcelCell(this, RowIndex, column, null, -1, xfIndex, null);
-                                RowCells[column] = Cell;
-                                yield return Cell;
+                                Columns.SetMaxIndex(column);
+                                RowCells.Add(new ExcelCell(this, RowIndex, column, null, -1, xfIndex, null));
                                 break;
                             }
                         case 0x02:  // Number
@@ -711,9 +583,8 @@ namespace MenthaAssembly.Offices
                                     xfIndex = Reader.Read<int>() & 0xFFFFFF;
                                 object RkNumber = Reader.ReadRkNumber();
 
-                                ExcelCell Cell = new ExcelCell(this, RowIndex, column, RkNumber, -1, xfIndex, null);
-                                RowCells[column] = Cell;
-                                yield return Cell;
+                                Columns.SetMaxIndex(column);
+                                RowCells.Add(new ExcelCell(this, RowIndex, column, RkNumber, -1, xfIndex, null));
                                 break;
                             }
                         case 0x03:  // Error
@@ -726,9 +597,8 @@ namespace MenthaAssembly.Offices
                                     xfIndex = Reader.Read<int>() & 0xFFFFFF;
                                 ExcelCellError Error = Reader.Read<ExcelCellError>();
 
-                                ExcelCell Cell = new ExcelCell(this, RowIndex, column, null, -1, xfIndex, Error);
-                                RowCells[column] = Cell;
-                                yield return Cell;
+                                Columns.SetMaxIndex(column);
+                                RowCells.Add(new ExcelCell(this, RowIndex, column, null, -1, xfIndex, Error));
                                 break;
                             }
                         case 0x04:  // Boolean
@@ -741,9 +611,8 @@ namespace MenthaAssembly.Offices
                                     xfIndex = Reader.Read<int>() & 0xFFFFFF;
                                 bool Bool = Reader.Read<bool>();
 
-                                ExcelCell Cell = new ExcelCell(this, RowIndex, column, Bool, -1, xfIndex, null);
-                                RowCells[column] = Cell;
-                                yield return Cell;
+                                Columns.SetMaxIndex(column);
+                                RowCells.Add(new ExcelCell(this, RowIndex, column, Bool, -1, xfIndex, null));
                                 break;
                             }
                         case 0x05:  // Float
@@ -756,9 +625,8 @@ namespace MenthaAssembly.Offices
                                     xfIndex = Reader.Read<int>() & 0xFFFFFF;
                                 double Float = Reader.Read<double>();
 
-                                ExcelCell Cell = new ExcelCell(this, RowIndex, column, Float, -1, xfIndex, null);
-                                RowCells[column] = Cell;
-                                yield return Cell;
+                                Columns.SetMaxIndex(column);
+                                RowCells.Add(new ExcelCell(this, RowIndex, column, Float, -1, xfIndex, null));
                                 break;
                             }
                         case 0x06:  // String
@@ -771,9 +639,8 @@ namespace MenthaAssembly.Offices
                                     xfIndex = Reader.Read<int>() & 0xFFFFFF;
                                 string Content = Reader.ReadString();
 
-                                ExcelCell Cell = new ExcelCell(this, RowIndex, column, Content, -1, xfIndex, null);
-                                RowCells[column] = Cell;
-                                yield return Cell;
+                                Columns.SetMaxIndex(column);
+                                RowCells.Add(new ExcelCell(this, RowIndex, column, Content, -1, xfIndex, null));
                                 break;
                             }
                         case 0x07:  // SST
@@ -785,14 +652,16 @@ namespace MenthaAssembly.Offices
                                     xfIndex = Reader.Read<int>() & 0xFFFFFF,
                                     SSTIndex = Reader.Read<int>();
 
-                                ExcelCell Cell = new ExcelCell(this, RowIndex, column, null, SSTIndex, xfIndex, null);
-                                RowCells[column] = Cell;
-                                yield return Cell;
+                                Columns.SetMaxIndex(column);
+                                RowCells.Add(new ExcelCell(this, RowIndex, column, null, SSTIndex, xfIndex, null));
                                 break;
                             }
                             #endregion
                     }
                 }
+
+                if (RowCells != null)
+                    yield return RowCells;
             }
 
             // Xml
@@ -813,19 +682,17 @@ namespace MenthaAssembly.Offices
                         if (!Reader.ReadFirstContent())
                             continue;
 
-                        int Index = 0;
+                        int RowIndex = 0;
                         while (!Reader.EOF)
                         {
                             if (Reader.IsStartElement(NRow, NsSpreadsheetMl))
                             {
                                 if (int.TryParse(Reader.GetAttribute(AR), out int arValue))
-                                    Index = arValue - 1;    // The row attribute is 1-based
+                                    RowIndex = arValue - 1;    // The row attribute is 1-based
 
-                                ExcelCell[] RowCells = CacheCells[Index];
-                                if (RowCells != null)
+                                if (Cells.TryGetCellRows(RowIndex, out ExcelRowCells RowCells))
                                 {
-                                    foreach (ExcelCell Cell in RowCells)
-                                        yield return Cell;
+                                    yield return RowCells;
 
                                     Reader.Skip();
                                     continue;
@@ -834,9 +701,8 @@ namespace MenthaAssembly.Offices
                                 if (!Reader.ReadFirstContent())
                                     continue;
 
-                                RowCells = new ExcelCell[Columns.Length];
-
                                 int ColumnIndex = 0;
+                                RowCells = Cells.Create(RowIndex);
                                 while (!Reader.EOF)
                                 {
                                     if (Reader.IsStartElement(NC, NsSpreadsheetMl))
@@ -851,10 +717,8 @@ namespace MenthaAssembly.Offices
                                         string aT = Reader.GetAttribute(AT);
                                         if (!Reader.ReadFirstContent())
                                         {
-                                            ExcelCell EmptyCell = new ExcelCell(this, Index, ColumnIndex, null, -1, xfIndex, null);
-                                            RowCells[ColumnIndex] = EmptyCell;
-                                            ColumnIndex++;
-                                            yield return EmptyCell;
+                                            Columns.SetMaxIndex(ColumnIndex);
+                                            RowCells.Add(new ExcelCell(this, RowIndex, ColumnIndex++, null, -1, xfIndex, null));
                                             continue;
                                         }
 
@@ -884,10 +748,8 @@ namespace MenthaAssembly.Offices
                                             }
                                         }
 
-                                        ExcelCell Cell = new ExcelCell(this, Index, ColumnIndex, CellValue, SSTIndex, xfIndex, Error);
-                                        RowCells[ColumnIndex] = Cell;
-                                        ColumnIndex++;
-                                        yield return Cell;
+                                        Columns.SetMaxIndex(ColumnIndex);
+                                        RowCells.Add(new ExcelCell(this, RowIndex, ColumnIndex++, CellValue, SSTIndex, xfIndex, Error));
                                     }
                                     else if (!Reader.SkipContent())
                                     {
@@ -895,7 +757,7 @@ namespace MenthaAssembly.Offices
                                     }
                                 }
 
-                                CacheCells[Index] = RowCells;
+                                yield return RowCells;
                             }
                             else if (!Reader.SkipContent())
                             {
@@ -909,6 +771,14 @@ namespace MenthaAssembly.Offices
                     }
                 }
             }
+
+        }
+
+        public IEnumerable<ExcelCell> EnumCells()
+        {
+            foreach (ExcelRowCells Row in EnumRows())
+                foreach (ExcelCell Cell in Row)
+                    yield return Cell;
         }
 
         private object ConvertCellValue(string RawValue, string aT, out int SSTIndex, out ExcelCellError? Error)
@@ -1012,6 +882,10 @@ namespace MenthaAssembly.Offices
             CompressedStream = null;
 
             XmlSettings = null;
+
+            Rows.Clear();
+            Columns.Clear();
+            Cells.Clear();
 
             IsDisposed = true;
         }

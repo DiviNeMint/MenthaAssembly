@@ -11,7 +11,7 @@ namespace MenthaAssembly.Offices.Primitives
     {
         public static bool TryExtract(this ZipArchiveEntry This, out Stream CompressedStream, out Func<Stream, Stream> GetDecompressor)
         {
-            if (!This.Archive.TryGetInternalFieldValue<Stream>("_archiveStream", out Stream BaseStream) ||
+            if (!This.Archive.TryGetInternalFieldValue("_archiveStream", out Stream BaseStream) ||
                 !This.TryGetInternalFieldValue("_compressedSize", out long CompressedSize) ||
                 !This.TryGetInternalPropertyValue("OffsetOfCompressedData", out long Offset) ||
                 !This.TryGetInternalFieldValue("_storedCompressionMethod", out object CompressionMethod))

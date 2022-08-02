@@ -1,14 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MenthaAssembly.Offices
 {
-    public class ExcelCell
+    public class ExcelCell : IEquatable<ExcelCell>
     {
+        public IExcelSheet Sheet { get; }
+
         public int RowIndex { get; }
 
         public int ColumnIndex { get; }
 
-        private object _Value; 
+        private readonly object _Value;
         public object Value
         {
             get
@@ -21,12 +24,10 @@ namespace MenthaAssembly.Offices
                 }
 
                 return _Value;
-            } 
+            }
         }
 
         public ExcelCellError? Error { get; }
-
-        public IExcelSheet Sheet { get; }
 
         internal readonly int SharedStringIndex;
         internal readonly int StyleIndex;
@@ -40,6 +41,26 @@ namespace MenthaAssembly.Offices
             this.SharedStringIndex = SharedStringIndex;
             this.StyleIndex = StyleIndex;
             this.Error = Error;
+        }
+
+        public override bool Equals(object obj)
+            => obj is ExcelCell c && Equals(c);
+        public bool Equals(ExcelCell other)
+            => other.Sheet == Sheet &&
+               other.RowIndex == RowIndex &&
+               other.ColumnIndex == ColumnIndex &&
+               other._Value == _Value &&
+               other.SharedStringIndex == SharedStringIndex;
+
+        public override int GetHashCode()
+        {
+            int hashCode = -1506529040;
+            hashCode = hashCode * -1521134295 + EqualityComparer<IExcelSheet>.Default.GetHashCode(Sheet);
+            hashCode = hashCode * -1521134295 + RowIndex.GetHashCode();
+            hashCode = hashCode * -1521134295 + ColumnIndex.GetHashCode();
+            hashCode = hashCode * -1521134295 + EqualityComparer<object>.Default.GetHashCode(_Value);
+            hashCode = hashCode * -1521134295 + SharedStringIndex.GetHashCode();
+            return hashCode;
         }
 
         public override string ToString()

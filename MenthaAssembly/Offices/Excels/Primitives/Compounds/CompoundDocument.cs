@@ -51,7 +51,8 @@ namespace MenthaAssembly.Offices.Primitives
             //TransactionSignature = Stream.Read<uint>();
             MiniStreamCutoff = Stream.Read<uint>();
             uint MiniFatFirstSector = Stream.Read<uint>();
-            int MiniFatSectorCount = Stream.Read<int>();
+            Stream.Seek(4, SeekOrigin.Current);
+            //int MiniFatSectorCount = Stream.Read<int>();
             uint DiFatFirstSector = Stream.Read<uint>();
             int DiFatSectorCount = Stream.Read<int>();
 
@@ -67,7 +68,7 @@ namespace MenthaAssembly.Offices.Primitives
                 {
                     for (int i = 0; i < DiFatSectorCount; ++i)
                     {
-                        long Offset = GetSectorOffset(DiFatFirstSector);
+                        //long Offset = GetSectorOffset(DiFatFirstSector);
                         Stream.Seek(DiFatFirstSector, SeekOrigin.Begin);
                         int Count = SectorSize >> 2 - 1;
                         for (int j = 0; j < Count; ++j)
@@ -88,7 +89,7 @@ namespace MenthaAssembly.Offices.Primitives
                     Chain.RemoveAt(i);
                 }
 
-                this.SectorTable = ReadSectorTable(Stream, Chain);
+                SectorTable = ReadSectorTable(Stream, Chain);
             }
             #endregion
             #region Mini Sector Table
@@ -102,11 +103,9 @@ namespace MenthaAssembly.Offices.Primitives
                 List<uint> Chain = GetSectorChain(RootDirectoryEntryStart);
                 Entries = new List<CompoundDirectoryEntry>();
 
-                using (CompoundStream CompoundStream = new CompoundStream(this, Stream, Chain, Chain.Count * SectorSize, true))
-                {
-                    while (CompoundStream.Position < CompoundStream.Length)
-                        Entries.Add(ReadDirectoryEntry(CompoundStream));
-                }
+                using CompoundStream CompoundStream = new CompoundStream(this, Stream, Chain, Chain.Count * SectorSize, true);
+                while (CompoundStream.Position < CompoundStream.Length)
+                    Entries.Add(ReadDirectoryEntry(CompoundStream));
             }
             #endregion
         }
@@ -192,7 +191,7 @@ namespace MenthaAssembly.Offices.Primitives
         {
             Stream.Seek(GetSectorOffset(Sector), SeekOrigin.Begin);
             int Count = SectorSize >> 2;
-            for (var i = 0; i < Count; ++i)
+            for (int i = 0; i < Count; ++i)
                 yield return Stream.Read<uint>();
         }
 
@@ -209,7 +208,7 @@ namespace MenthaAssembly.Offices.Primitives
             if (nameLength > 0)
             {
                 nameLength = Math.Min((ushort)64, nameLength);
-                Entry.EntryName = Encoding.Unicode.GetString(Buffer, 0, nameLength).TrimEnd('\0');
+                Entry.EntryName = Encoding.Unicode.GetString(Buffer, 0, nameLength).Trim('\0');
             }
             ArrayPool<byte>.Shared.Return(Buffer);
 

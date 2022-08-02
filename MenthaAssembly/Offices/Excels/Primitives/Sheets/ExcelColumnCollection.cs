@@ -17,15 +17,7 @@ namespace MenthaAssembly.Offices
                 if (MaxIndex < Index)
                     throw new IndexOutOfRangeException();
 
-                if (Columns.FirstOrDefault(i => i.MinIndex <= Index && Index <= i.MaxIndex) is ExcelColumn Column)
-                    return Column;
-
-                int ColumnIndex = Math.Max(Columns.FindIndex(i => Index < i.MinIndex), 0);
-
-                Column = new ExcelColumn(Parent, Index, Index, false, -1);
-                Columns.Insert(ColumnIndex, Column);
-
-                return Column;
+                return Columns.FirstOrDefault(i => i.MinIndex <= Index && Index <= i.MaxIndex) is ExcelColumn Column ? Column : new ExcelColumn(Parent, Index, Index, false, -1);
             }
         }
 
@@ -40,8 +32,8 @@ namespace MenthaAssembly.Offices
 
         internal void Add(ExcelColumn Column)
         {
-            int Index = Math.Max(Columns.FindIndex(i => i.MinIndex > Column.MinIndex), 0);
-            Columns.Insert(Index, Column);
+            int Index = Columns.FindIndex(i => i.MinIndex > Column.MinIndex);
+            Columns.Insert(Index < 0 ? Columns.Count : Index, Column);
             SetMaxIndex(Column.MaxIndex);
         }
 
@@ -61,7 +53,7 @@ namespace MenthaAssembly.Offices
             => Columns.Count == Length ? Columns.GetEnumerator() :
                                          EnumColumns().GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator()
-            => this.GetEnumerator();
+            => GetEnumerator();
 
         private IEnumerable<ExcelColumn> EnumColumns()
         {
@@ -73,11 +65,7 @@ namespace MenthaAssembly.Offices
                 if (ColumnsIndex == -1)
                 {
                     for (; i <= MaxIndex; i++)
-                    {
-                        Column = new ExcelColumn(Parent, i, i, false, -1);
-                        Columns.Add(Column);
-                        yield return Column;
-                    }
+                        yield return new ExcelColumn(Parent, i, i, false, -1);
 
                     yield break;
                 }
@@ -85,11 +73,7 @@ namespace MenthaAssembly.Offices
                 Column = Columns[ColumnsIndex];
                 int TempIndex = Column.MinIndex;
                 for (; i < TempIndex; i++)
-                {
-                    ExcelColumn NewColumn = new ExcelColumn(Parent, i, i, false, -1);
-                    Columns.Insert(ColumnsIndex++, NewColumn);
-                    yield return NewColumn;
-                }
+                    yield return new ExcelColumn(Parent, i, i, false, -1);
 
                 ColumnsIndex++;
                 yield return Column;

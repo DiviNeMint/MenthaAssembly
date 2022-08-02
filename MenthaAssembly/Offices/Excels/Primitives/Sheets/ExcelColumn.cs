@@ -1,7 +1,12 @@
-﻿namespace MenthaAssembly.Offices
+﻿using System;
+using System.Collections.Generic;
+
+namespace MenthaAssembly.Offices
 {
-    public class ExcelColumn
+    public class ExcelColumn : IEquatable<ExcelColumn>
     {
+        public IExcelSheet Parent { get; }
+
         public int MinIndex { get; }
 
         public int MaxIndex { get; }
@@ -12,8 +17,6 @@
         public double Width
             => _Width == -1 ? Parent.DefaultColumnWidth : _Width;
 
-        public IExcelSheet Parent { get; }
-
         public ExcelColumn(IExcelSheet Parent, int MinIndex, int MaxIndex, bool Hidden, double Width)
         {
             this.Parent = Parent;
@@ -21,6 +24,22 @@
             this.MaxIndex = MaxIndex;
             this.Hidden = Hidden;
             this._Width = Width;
+        }
+
+        public override bool Equals(object obj)
+            => obj is ExcelColumn c && Equals(c);
+        public bool Equals(ExcelColumn other)
+            => other.Parent == Parent &&
+               other.MinIndex == MinIndex &&
+               other.MaxIndex == MaxIndex;
+
+        public override int GetHashCode()
+        {
+            int hashCode = 1844283282;
+            hashCode = hashCode * -1521134295 + MinIndex.GetHashCode();
+            hashCode = hashCode * -1521134295 + MaxIndex.GetHashCode();
+            hashCode = hashCode * -1521134295 + EqualityComparer<IExcelSheet>.Default.GetHashCode(Parent);
+            return hashCode;
         }
 
         public override string ToString()
