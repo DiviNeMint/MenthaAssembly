@@ -36,16 +36,26 @@ namespace System.IO
         /// <param name="Datas">The array of special type to write to the stream.</param>
         public static void Write<T>(this Stream This, T[] Datas)
             where T : unmanaged
+            => Write(This, Datas, 0, Datas.Length);
+        /// <summary>
+        /// Writes an array of special type to the stream.
+        /// </summary>
+        /// <typeparam name="T">The special type of array.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Datas">The array of special type to be written.</param>
+        /// <param name="Offset">The zero-based byte offset in datas at which to begin writing to the stream.</param>
+        /// <param name="Length">The special length of datas to be written.</param>
+        public static void Write<T>(this Stream This, T[] Datas, int Offset, int Length)
+            where T : unmanaged
         {
-            int DataLength = Datas.Length,
-                Size = sizeof(T) * DataLength;
+            int Size = sizeof(T) * Length;
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
 
             try
             {
                 T* pBuffer = (T*)Buffer.ToPointer();
-                for (int i = 0; i < DataLength; i++)
-                    *pBuffer++ = Datas[i];
+                for (int i = 0; i < Length; i++)
+                    *pBuffer++ = Datas[Offset++];
 
                 This.Write(Buffer, 0, Size);
             }
@@ -77,23 +87,44 @@ namespace System.IO
             }
         }
 
-        public static Task WriteAsync<T>(this Stream This, T Datas)
+        /// <summary>
+        /// Asynchronously writes a data of special type to the stream.
+        /// </summary>
+        /// <typeparam name="T">The special type of data.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Data">The special type of data to write to the stream.</param>
+        public static Task WriteAsync<T>(this Stream This, T Data)
             where T : unmanaged
         {
             byte[] Buffer = new byte[sizeof(T)];
-            *(T*)Buffer.ToPointer() = Datas;
+            *(T*)Buffer.ToPointer() = Data;
 
             return This.WriteAsync(Buffer, 0, Buffer.Length);
         }
+        /// <summary>
+        /// Asynchronously writes an array of special type to the stream.
+        /// </summary>
+        /// <typeparam name="T">The special type of array.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Datas">The array of special type to write to the stream.</param>
         public static Task WriteAsync<T>(this Stream This, T[] Datas)
             where T : unmanaged
+            => WriteAsync(This, Datas, 0, Datas.Length);
+        /// <summary>
+        /// Asynchronously writes an array of special type to the stream.
+        /// </summary>
+        /// <typeparam name="T">The special type of array.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Datas">The array of special type to be written.</param>
+        /// <param name="Offset">The zero-based byte offset in datas at which to begin writing to the stream.</param>
+        /// <param name="Length">The special length of datas to be written.</param>
+        public static Task WriteAsync<T>(this Stream This, T[] Datas, int Offset, int Length)
+            where T : unmanaged
         {
-            int DataLength = Datas.Length;
-            byte[] Buffer = new byte[sizeof(T) * DataLength];
+            byte[] Buffer = new byte[sizeof(T) * Length];
             T* pBuffer = (T*)Buffer.ToPointer();
-
-            for (int i = 0; i < DataLength; i++)
-                *pBuffer++ = Datas[i];
+            for (int i = 0; i < Length; i++)
+                *pBuffer++ = Datas[Offset++];
 
             return This.WriteAsync(Buffer, 0, Buffer.Length);
         }
@@ -117,6 +148,19 @@ namespace System.IO
             {
                 ArrayPool<byte>.Shared.Return(Buffer);
             }
+        }
+        /// <summary>
+        /// Reads a  specified length buffer from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Length">The length of specified buffer.</param>
+        public static byte[] Read(this Stream This, int Length)
+        {
+            byte[] Buffer = new byte[Length];
+            if (!ReadBuffer(This, Buffer))
+                throw new OutOfMemoryException();
+
+            return Buffer;
         }
 
         /// <summary>
@@ -152,7 +196,7 @@ namespace System.IO
         /// <param name="This">The current stream.</param>
         /// <param name="Buffer">The buffer to be filled by the stream.</param>
         public static bool ReadBuffer(this Stream This, byte[] Buffer)
-            => ReadBuffer(This, Buffer, Buffer.Length);
+            => ReadBuffer(This, Buffer, 0, Buffer.Length);
         /// <summary>
         /// Reads a buffer from the stream until it fills the specified length of buffer.
         /// </summary>
@@ -160,19 +204,29 @@ namespace System.IO
         /// <param name="Buffer">The buffer to be filled by the stream.</param>
         /// <param name="Length">The specified length of buffer to be filled.</param>
         public static bool ReadBuffer(this Stream This, byte[] Buffer, int Length)
+            => ReadBuffer(This, Buffer, 0, Length);
+        /// <summary>
+        /// Reads a buffer from the stream until it fills the specified length of buffer.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Buffer">The buffer to be filled by the stream.</param>
+        /// <param name="Offset">The zero-based byte offset in buffer at which to begin storing the data read from the current stream.</param>
+        /// <param name="Length">The specified length of buffer to be filled.</param>
+        public static bool ReadBuffer(this Stream This, byte[] Buffer, int Offset, int Length)
         {
-            int Offset = This.Read(Buffer, 0, Length),
+            int Index = This.Read(Buffer, Offset, Length),
                 ReadLength;
 
-            Length -= Offset;
+            Length -= Index;
+            Index += Offset;
             while (Length > 0)
             {
-                ReadLength = This.Read(Buffer, Offset, Length);
+                ReadLength = This.Read(Buffer, Index, Length);
 
                 if (ReadLength < 1)
                     return false;
 
-                Offset += ReadLength;
+                Index += ReadLength;
                 Length -= ReadLength;
             }
 

@@ -441,7 +441,7 @@ namespace MenthaAssembly
         /// </summary>
         public static void Swap<T>(ref T X, ref T Y)
         {
-            T Temp = Y;
+            T Temp = X;
             X = Y;
             Y = Temp;
         }
