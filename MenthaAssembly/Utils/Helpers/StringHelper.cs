@@ -93,6 +93,15 @@ namespace System
             return DefaultName;
         }
 
+        public static bool IsInteger(this string This)
+        {
+            foreach (char c in This)
+                if (!char.IsNumber(c))
+                    return false;
+
+            return true;
+        }
+
         /// <summary>
         /// Convert string to Int32<para/>
         /// It don't check whether all chars is number.
@@ -214,7 +223,6 @@ namespace System
 
             return Integer + Digital * 0.1d;
         }
-
 
         /// <summary>
         /// Convert string to Float<para/>

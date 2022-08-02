@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace System.Linq
 {
-    public static class LinqHelper
+    public static class EnumerableHelper
     {
         /// <summary>
         /// Returns the first element of a sequence, or a null value if the sequence contains no elements.
@@ -67,7 +67,7 @@ namespace System.Linq
             foreach (T i in Source.OfType<T>())
                 if (Item.Equals(i))
                     return true;
-            
+
             return false;
         }
 
@@ -195,6 +195,11 @@ namespace System.Linq
                     yield return Result;
             }
         }
+
+        public static TResult MaxBy<TResult>(this IEnumerable<TResult> Source, Func<TResult, IComparable> Selector)
+            => Source.Aggregate((i1, i2) => Selector(i1).CompareTo(Selector(i2)) > 0 ? i1 : i2);
+        public static TResult MinBy<TResult>(this IEnumerable<TResult> Source, Func<TResult, IComparable> Selector)
+            => Source.Aggregate((i1, i2) => Selector(i1).CompareTo(Selector(i2)) < 0 ? i1 : i2);
 
     }
 }

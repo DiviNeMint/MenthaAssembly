@@ -21,7 +21,7 @@ namespace MenthaAssembly
 
             OnPropertyChanged(CountString);
             OnPropertyChanged(IndexerName);
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, Items is IList ListItems ? ListItems : Items.ToList()));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
         protected void OnPropertyChanged(string PropertyName)
