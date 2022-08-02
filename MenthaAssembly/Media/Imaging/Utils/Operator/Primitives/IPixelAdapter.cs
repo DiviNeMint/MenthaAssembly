@@ -19,6 +19,8 @@
 
         public void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB);
 
+        public void Move(int Offset);
+
         public void MoveNext();
 
         public void MovePrevious();

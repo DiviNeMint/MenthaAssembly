@@ -44,6 +44,9 @@
         public void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, pScan->A, pScan->R, pScan->G, pScan->B);
 
+        public void Move(int Offset)
+            => pScan += Offset;
+
         public void MoveNext()
             => pScan++;
         public void MovePrevious()

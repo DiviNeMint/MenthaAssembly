@@ -62,6 +62,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, *pScanA, *pScanR, *pScanG, *pScanB);
 
+        public void Move(int Offset)
+        {
+            pScanA += Offset;
+            pScanR += Offset;
+            pScanG += Offset;
+            pScanB += Offset;
+        }
+
         public void MoveNext()
         {
             pScanA++;

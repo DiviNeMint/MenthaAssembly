@@ -133,6 +133,30 @@ namespace MenthaAssembly.Media.Imaging.Utils
             return Index;
         }
 
+        public void Move(int Offset)
+        {
+            XBit += Offset;
+
+            if (BitLength <= XBit)
+            {
+                do
+                {
+                    XBit -= BitLength;
+                    pScan++;
+                } while (BitLength <= XBit);
+            }
+            else if (XBit < 0)
+            {
+                do
+                {
+                    XBit += BitLength;
+                    pScan--;
+                } while (XBit < 0);
+            }
+
+            GetPaletteIndexFunc = ResetGetPaletteIndex;
+        }
+
         public void MoveNext()
         {
             XBit++;

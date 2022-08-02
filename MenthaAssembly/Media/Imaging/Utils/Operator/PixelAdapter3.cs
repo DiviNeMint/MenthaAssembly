@@ -60,6 +60,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => OverrideTo(pDataA, pDataR, pDataG, pDataB);
 
+        public void Move(int Offset)
+        {
+            pScanR += Offset;
+            pScanG += Offset;
+            pScanB += Offset;
+        }
+
         public void MoveNext()
         {
             pScanR++;
