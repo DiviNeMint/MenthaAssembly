@@ -18,6 +18,8 @@ namespace MenthaAssembly.Offices
             XmlResolver = null,
         };
 
+        public string FilePath { get; }
+
         private bool _IsDate1904;
         public bool IsDate1904 => _IsDate1904;
 
@@ -33,8 +35,10 @@ namespace MenthaAssembly.Offices
         List<string> IExcelWorkbook.SharedStrings
             => SharedStrings;
 
-        public XlsxWorkbook(ZipArchive Archive)
+
+        public XlsxWorkbook(string FilePath, ZipArchive Archive)
         {
+            this.FilePath = FilePath;
             ZipArchiveEntry FindEntry(string Name)
                 => Archive.Entries.FirstOrDefault(i => i.FullName.Equals(Name)) is ZipArchiveEntry Entry ? Entry : null;
 

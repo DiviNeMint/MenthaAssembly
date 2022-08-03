@@ -10,6 +10,8 @@ namespace MenthaAssembly.Offices
     // https://interoperability.blob.core.windows.net/files/MS-XLS/%5bMS-XLS%5d.pdf
     internal class XlsWorkbook : IExcelWorkbook
     {
+        public string FilePath { get; }
+
         public IExcelSheet this[int Index]
             => Index < _Sheets.Count ? _Sheets[Index] : null;
         public IExcelSheet this[string Name]
@@ -24,8 +26,10 @@ namespace MenthaAssembly.Offices
 
         public bool IsDate1904 { get; }
 
-        public XlsWorkbook(Stream Stream, Func<string> PasswordAction, int RetryCount)
+        public XlsWorkbook(string FilePath, Stream Stream, Func<string> PasswordAction, int RetryCount)
         {
+            this.FilePath = FilePath;
+
             using XlsBiffReader Reader = new XlsBiffReader(Stream, true);
 
             if (!Reader.ReadVariable(out int ID, out _) || (ID != 0x009 && ID != 0x0209 && ID != 0x0409 && ID != 0x0809))

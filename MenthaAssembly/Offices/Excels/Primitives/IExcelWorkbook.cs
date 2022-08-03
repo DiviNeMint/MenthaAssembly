@@ -5,6 +5,8 @@ namespace MenthaAssembly.Offices
 {
     public interface IExcelWorkbook : IDisposable
     {
+        public string FilePath { get; }
+
         public IExcelSheet this[int Index] { get; }
         
         public IExcelSheet this[string Name] { get; }

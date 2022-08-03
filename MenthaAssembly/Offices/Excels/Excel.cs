@@ -1,16 +1,23 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using MenthaAssembly.Offices.Primitives;
 
 namespace MenthaAssembly.Offices
 {
     public static unsafe class Excel
     {
+        /// <summary>
+        /// Gets or sets the CSV separator.<para/>Default : ','
+        /// </summary>
+        public static char CsvSeparator { set; get; } = ',';
+
         public static bool TryParse(string FilePath, out IExcelWorkbook Excel)
             => TryParse(FilePath, null, -1, out Excel);
         public static bool TryParse(string FilePath, string Password, out IExcelWorkbook Excel)
@@ -29,33 +36,34 @@ namespace MenthaAssembly.Offices
                     CompoundDocument Document = new CompoundDocument(FileStream);
                     if (TryGetWorkbook(FileStream, Document, out Stream XlsFileStream))
                     {
-                        Excel = new XlsWorkbook(XlsFileStream, PasswordAction, RetryCount);
+                        Excel = new XlsWorkbook(FilePath, XlsFileStream, PasswordAction, RetryCount);
                         return true;
                     }
 
                     if (TryGetEncryptedPackage(FileStream, Document, PasswordAction, RetryCount, out Stream XlsxFileStream))
                     {
                         using ZipArchive Archive = new ZipArchive(XlsxFileStream, ZipArchiveMode.Read);
-                        Excel = new XlsxWorkbook(Archive);
+                        Excel = new XlsxWorkbook(FilePath, Archive);
                         return true;
                     }
                 }
                 else if (IsRawBiffStream(pHeader))
                 {
                     FileStream.Seek(0, SeekOrigin.Begin);
-                    Excel = new XlsWorkbook(FileStream, PasswordAction, RetryCount);
+                    Excel = new XlsWorkbook(FilePath, FileStream, PasswordAction, RetryCount);
                     return true;
                 }
                 else if (IsPkZip(pHeader))
                 {
                     FileStream.Seek(0, SeekOrigin.Begin);
                     using ZipArchive Archive = new ZipArchive(FileStream, ZipArchiveMode.Read);
-                    Excel = new XlsxWorkbook(Archive);
+                    Excel = new XlsxWorkbook(FilePath, Archive);
                     return true;
                 }
-                else if (IsCsv(FilePath))
+                else if (IsCsv(FilePath, Header, out Encoding Encoding, out int BomLength))
                 {
-                    Excel = null;
+                    FileStream.Seek(BomLength, SeekOrigin.Begin);
+                    Excel = new CsvWorkbook(FilePath, FileStream, Encoding);
                     return true;
                 }
 
@@ -202,11 +210,50 @@ namespace MenthaAssembly.Offices
         private static bool IsCompoundDocument(byte* pHeader)
             => *(ulong*)pHeader == 0xE11AB1A1E011CFD0;
 
-        private static bool IsCsv(string FilePath)
-            => FilePath.Length > 4 &&
-               FilePath.Substring(FilePath.Length - 4, 4)
-                       .ToLower()
-                       .Equals(".csv");
+        private static readonly Encoding[] DefaultCsvEncoding = { Encoding.Unicode, Encoding.BigEndianUnicode, Encoding.UTF8, Encoding.Default };
+        private static bool IsCsv(string FilePath, byte[] Header, out Encoding Encoding, out int BomLength)
+        {
+            if (FilePath.Length < 4 ||
+                !FilePath.Substring(FilePath.Length - 4, 4)
+                         .ToLower()
+                         .Equals(".csv"))
+            {
+                BomLength = 0;
+                Encoding = null;
+                return false;
+            }
+
+            bool IsEncodingPreamble(Encoding Encoding, out int BomLength)
+            {
+                BomLength = 0;
+
+                byte[] Preamble = Encoding.GetPreamble();
+                if (8 < Preamble.Length)
+                    return false;
+
+                for (; BomLength < Preamble.Length; BomLength++)
+                    if (Preamble[BomLength] != Header[BomLength])
+                        return false;
+
+                return true;
+            }
+
+            IEnumerable<Encoding> Encodings = DefaultCsvEncoding.Concat(Encoding.GetEncodings()
+                                                                                .Where(i => !DefaultCsvEncoding.Any(j => j.CodePage == i.CodePage))
+                                                                                .Select(i => i.GetEncoding()));
+            foreach (Encoding c in Encodings)
+            {
+                if (IsEncodingPreamble(c, out BomLength))
+                {
+                    Encoding = c;
+                    return true;
+                }
+            }
+
+            BomLength = 0;
+            Encoding = null;
+            return false;
+        }
 
     }
 }

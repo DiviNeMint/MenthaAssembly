@@ -51,7 +51,10 @@ namespace MenthaAssembly.Offices
                 if (Row >= Rows.Length)
                     throw new IndexOutOfRangeException($"Row index is out of range.");
 
-                return EnumCells().First(i => i.ColumnIndex == Column && i.RowIndex == Row);
+                if (Cells.TryGetCellRows(Row, out ExcelRowCells RowCells))
+                    return RowCells[Column];
+
+                return EnumRows().First(i => i.RowIndex == Row)[Column];
             }
         }
 
@@ -69,6 +72,7 @@ namespace MenthaAssembly.Offices
             this.Parent = Parent;
             this.Info = Info;
             DefaultRowHeight = 15d;
+            DefaultColumnWidth = 109.59d;   // 8.43 * 13;
             Columns = new ExcelColumnCollection(this);
             Rows = new ExcelRowCollection(this);
             Cells = new ExcelCellCollection(this);
