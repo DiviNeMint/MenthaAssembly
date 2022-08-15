@@ -2453,7 +2453,7 @@ namespace MenthaAssembly.Media.Imaging
                         {
                             int Y = (int)SumStepY;
                             IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                            this.Operator.ScanLineBilinearResizeTo(0, Y, Width, 0f, StepX, SumStepY - Y, Adapter);
+                            Operator.ScanLineBilinearResizeTo(0, Y, Width, 0f, StepX, SumStepY - Y, Adapter);
 
                             SumStepY += StepY;
                         }
@@ -2488,7 +2488,7 @@ namespace MenthaAssembly.Media.Imaging
                             float SumStepY = StepY * j;
                             int Y = (int)SumStepY;
                             IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                            this.Operator.ScanLineBilinearResizeTo(0, Y, Width, 0f, StepX, SumStepY - Y, Adapter);
+                            Operator.ScanLineBilinearResizeTo(0, Y, Width, 0f, StepX, SumStepY - Y, Adapter);
                         });
                         break;
                     }
@@ -2562,7 +2562,7 @@ namespace MenthaAssembly.Media.Imaging
                         long DestStride = Result.Stride;
                         byte* Dest0 = (byte*)Result.Scan0;
 
-                        Parallel.For(0, Height, Options, (y) =>
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
                             T* pDest = (T*)(Dest0 + DestStride * (Height - 1 - y));
                             Operator.ScanLine<T>(0, y, Width, a => a.OverrideTo(pDest++));
@@ -2576,7 +2576,7 @@ namespace MenthaAssembly.Media.Imaging
                         long DestStride = Result.Stride;
                         byte* Dest0 = (byte*)Result.Scan0 + DestStride - sizeof(T);
 
-                        Parallel.For(0, Height, Options, (y) =>
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
                             T* pDest = (T*)(Dest0 + DestStride * y);
                             Operator.ScanLine<T>(0, y, Width, a => a.OverrideTo(pDest--));
@@ -2590,7 +2590,7 @@ namespace MenthaAssembly.Media.Imaging
                         long DestStride = Result.Stride;
                         byte* Dest0 = (byte*)Result.Scan0 + DestStride - sizeof(T);
 
-                        Parallel.For(0, Height, Options, (y) =>
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
                             T* pDest = (T*)(Dest0 + DestStride * (Height - 1 - y));
                             Operator.ScanLine<T>(0, y, Width, a => a.OverrideTo(pDest--));
@@ -3319,9 +3319,210 @@ namespace MenthaAssembly.Media.Imaging
 
         public ImageContext<Pixel> Clone()
             => Cast<Pixel>();
-
         object ICloneable.Clone()
             => Clone();
+
+        public void AND(IImageContext Image)
+            => AND(Image, 127);
+        public void AND(IImageContext Image, ParallelOptions Options)
+            => AND(Image, 127, Options);
+        public void AND(IImageContext Image, byte Threshold)
+            => AND(Image, (X, Y, A, R, G, B) => ((R * 30 + G * 59 + B * 11 + 50) / 100) > Threshold);
+        public void AND(IImageContext Image, byte Threshold, ParallelOptions Options)
+            => AND(Image, (X, Y, A, R, G, B) => ((R * 30 + G * 59 + B * 11 + 50) / 100) > Threshold, Options);
+        public void AND(IImageContext Image, ImagePredicate ThresholdSelector)
+        {
+            int MaxX = Math.Min(Width, Image.Width),
+                MaxY = Math.Min(Height, Image.Height);
+
+            Pixel Empty = default;
+            for (int y = 0; y < MaxY; y++)
+            {
+                IPixelAdapter<Pixel> Adapter1 = Operator.GetAdapter<Pixel>(0, y),
+                                     Adapter2 = Image.Operator.GetAdapter<Pixel>(0, y);
+                for (int x = 0; x < MaxX; x++)
+                {
+                    if (ThresholdSelector(x, y, Adapter1.A, Adapter1.R, Adapter1.G, Adapter1.B) &&
+                        ThresholdSelector(x, y, Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B))
+                        Adapter1.Overlay(Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B);
+                    else
+                        Adapter1.Overlay(Empty);
+
+                    Adapter1.MoveNext();
+                    Adapter2.MoveNext();
+                }
+            }
+        }
+        public void AND(IImageContext Image, ImagePredicate ThresholdSelector, ParallelOptions Options)
+        {
+            int MaxX = Math.Min(Width, Image.Width),
+                MaxY = Math.Min(Height, Image.Height);
+
+            Pixel Empty = default;
+            Parallel.For(0, MaxY, Options ?? DefaultParallelOptions, y =>
+            {
+                IPixelAdapter<Pixel> Adapter1 = Operator.GetAdapter<Pixel>(0, y),
+                                     Adapter2 = Image.Operator.GetAdapter<Pixel>(0, y);
+                for (int x = 0; x < MaxX; x++)
+                {
+                    if (ThresholdSelector(x, y, Adapter1.A, Adapter1.R, Adapter1.G, Adapter1.B) &&
+                        ThresholdSelector(x, y, Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B))
+                        Adapter1.Overlay(Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B);
+                    else
+                        Adapter1.Overlay(Empty);
+
+                    Adapter1.MoveNext();
+                    Adapter2.MoveNext();
+                }
+            });
+        }
+
+        public void OR(IImageContext Image)
+            => OR(Image, 127);
+        public void OR(IImageContext Image, ParallelOptions Options)
+            => OR(Image, 127, Options);
+        public void OR(IImageContext Image, byte Threshold)
+            => OR(Image, (X, Y, A, R, G, B) => ((R * 30 + G * 59 + B * 11 + 50) / 100) > Threshold);
+        public void OR(IImageContext Image, byte Threshold, ParallelOptions Options)
+            => OR(Image, (X, Y, A, R, G, B) => ((R * 30 + G * 59 + B * 11 + 50) / 100) > Threshold, Options);
+        public void OR(IImageContext Image, ImagePredicate ThresholdSelector)
+        {
+            int MaxX = Math.Min(Width, Image.Width),
+                MaxY = Math.Min(Height, Image.Height);
+
+            for (int y = 0; y < MaxY; y++)
+            {
+                IPixelAdapter<Pixel> Adapter1 = Operator.GetAdapter<Pixel>(0, y),
+                                     Adapter2 = Image.Operator.GetAdapter<Pixel>(0, y);
+                for (int x = 0; x < MaxX; x++)
+                {
+                    if (ThresholdSelector(x, y, Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B))
+                        Adapter1.Overlay(Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B);
+
+                    Adapter1.MoveNext();
+                    Adapter2.MoveNext();
+                }
+            }
+        }
+        public void OR(IImageContext Image, ImagePredicate ThresholdSelector, ParallelOptions Options)
+        {
+            int MaxX = Math.Min(Width, Image.Width),
+                MaxY = Math.Min(Height, Image.Height);
+
+            Parallel.For(0, MaxY, Options ?? DefaultParallelOptions, y =>
+            {
+                IPixelAdapter<Pixel> Adapter1 = Operator.GetAdapter<Pixel>(0, y),
+                                     Adapter2 = Image.Operator.GetAdapter<Pixel>(0, y);
+                for (int x = 0; x < MaxX; x++)
+                {
+                    if (ThresholdSelector(x, y, Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B))
+                        Adapter1.Overlay(Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B);
+
+                    Adapter1.MoveNext();
+                    Adapter2.MoveNext();
+                }
+            });
+        }
+
+        public void XOR(IImageContext Image)
+            => XOR(Image, 127);
+        public void XOR(IImageContext Image, ParallelOptions Options)
+            => XOR(Image, 127, Options);
+        public void XOR(IImageContext Image, byte Threshold)
+            => XOR(Image, (X, Y, A, R, G, B) => ((R * 30 + G * 59 + B * 11 + 50) / 100) > Threshold);
+        public void XOR(IImageContext Image, byte Threshold, ParallelOptions Options)
+            => XOR(Image, (X, Y, A, R, G, B) => ((R * 30 + G * 59 + B * 11 + 50) / 100) > Threshold, Options);
+        public void XOR(IImageContext Image, ImagePredicate ThresholdSelector)
+        {
+            int MaxX = Math.Min(Width, Image.Width),
+                MaxY = Math.Min(Height, Image.Height);
+
+            Pixel Empty = default;
+            for (int y = 0; y < MaxY; y++)
+            {
+                IPixelAdapter<Pixel> Adapter1 = Operator.GetAdapter<Pixel>(0, y),
+                                     Adapter2 = Image.Operator.GetAdapter<Pixel>(0, y);
+                for (int x = 0; x < MaxX; x++)
+                {
+                    bool Throeshold = ThresholdSelector(x, y, Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B);
+
+                    if (ThresholdSelector(x, y, Adapter1.A, Adapter1.R, Adapter1.G, Adapter1.B) == Throeshold)
+                        Adapter1.Overlay(Empty);
+                    else if (Throeshold)
+                        Adapter1.Overlay(Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B);
+
+                    Adapter1.MoveNext();
+                    Adapter2.MoveNext();
+                }
+            }
+        }
+        public void XOR(IImageContext Image, ImagePredicate ThresholdSelector, ParallelOptions Options)
+        {
+            int MaxX = Math.Min(Width, Image.Width),
+                MaxY = Math.Min(Height, Image.Height);
+
+            Pixel Empty = default;
+            Parallel.For(0, MaxY, Options ?? DefaultParallelOptions, y =>
+            {
+                IPixelAdapter<Pixel> Adapter1 = Operator.GetAdapter<Pixel>(0, y),
+                                     Adapter2 = Image.Operator.GetAdapter<Pixel>(0, y);
+                for (int x = 0; x < MaxX; x++)
+                {
+                    bool Throeshold = ThresholdSelector(x, y, Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B);
+
+                    if (ThresholdSelector(x, y, Adapter1.A, Adapter1.R, Adapter1.G, Adapter1.B) == Throeshold)
+                        Adapter1.Overlay(Empty);
+                    else if (Throeshold)
+                        Adapter1.Overlay(Adapter2.A, Adapter2.R, Adapter2.G, Adapter2.B);
+
+                    Adapter1.MoveNext();
+                    Adapter2.MoveNext();
+                }
+            });
+        }
+
+        public void NOT()
+            => NOT(127);
+        public void NOT(ParallelOptions Options)
+            => NOT(127, Options);
+        public void NOT(byte Threshold)
+            => NOT((X, Y, A, R, G, B) => ((R * 30 + G * 59 + B * 11 + 50) / 100) > Threshold);
+        public void NOT(byte Threshold, ParallelOptions Options)
+            => NOT((X, Y, A, R, G, B) => ((R * 30 + G * 59 + B * 11 + 50) / 100) > Threshold, Options);
+        public void NOT(ImagePredicate ThresholdSelector)
+        {
+            Pixel Empty = default;
+            for (int y = 0; y < Height; y++)
+            {
+                IPixelAdapter<Pixel> Adapter1 = Operator.GetAdapter<Pixel>(0, y);
+                for (int x = 0; x < Width; x++)
+                {
+                    if (ThresholdSelector(x, y, Adapter1.A, Adapter1.R, Adapter1.G, Adapter1.B))
+                        Adapter1.Overlay(Empty);
+                    else
+                        Adapter1.Overlay(byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue);
+
+                    Adapter1.MoveNext();
+                }
+            }
+        }
+        public void NOT(ImagePredicate ThresholdSelector, ParallelOptions Options)
+        {
+            Pixel Empty = default;
+            Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
+            {
+                IPixelAdapter<Pixel> Adapter1 = Operator.GetAdapter<Pixel>(0, y);
+                for (int x = 0; x < Width; x++)
+                {
+                    if (ThresholdSelector(x, y, Adapter1.A, Adapter1.R, Adapter1.G, Adapter1.B))
+                        Adapter1.Overlay(Empty);
+                    else
+                        Adapter1.Overlay(byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue);
+
+                    Adapter1.MoveNext();
+                }
+            });
+        }
 
     }
 }
