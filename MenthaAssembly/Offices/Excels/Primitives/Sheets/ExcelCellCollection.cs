@@ -1,12 +1,11 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 
 namespace MenthaAssembly.Offices
 {
     internal class ExcelCellCollection
     {
         private readonly IExcelSheet Parent;
-        private readonly List<ExcelRowCells> RowCellsCollection = new List<ExcelRowCells>();
+        private readonly Dictionary<int, ExcelRowCells> RowCellsCollection = new Dictionary<int, ExcelRowCells>();
 
         public ExcelCellCollection(IExcelSheet Parent)
         {
@@ -16,16 +15,13 @@ namespace MenthaAssembly.Offices
         public ExcelRowCells Create(int RowIndex)
         {
             ExcelRowCells Cells = new ExcelRowCells(Parent, RowIndex);
-
-            int Index = RowCellsCollection.FindIndex(i => i.RowIndex > Cells.RowIndex);
-            RowCellsCollection.Insert(Index < 0 ? RowCellsCollection.Count : Index, Cells);
-
+            RowCellsCollection[RowIndex] = Cells;
             return Cells;
         }
 
         public bool TryGetCellRows(int RowIndex, out ExcelRowCells Cells)
         {
-            if (RowCellsCollection.FirstOrDefault(i => i.RowIndex == RowIndex) is not ExcelRowCells TempCells)
+            if (!RowCellsCollection.TryGetValue(RowIndex, out ExcelRowCells TempCells))
             {
                 Cells = null;
                 return false;
@@ -37,7 +33,7 @@ namespace MenthaAssembly.Offices
 
         public void Clear()
         {
-            foreach (ExcelRowCells RowCells in RowCellsCollection)
+            foreach (ExcelRowCells RowCells in RowCellsCollection.Values)
                 RowCells.Clear();
 
             RowCellsCollection.Clear();

@@ -50,7 +50,7 @@ namespace MenthaAssembly
                 this.Items.AddRange(Items);
                 OnPropertyChanged(CountName);
                 OnPropertyChanged(IndexerName);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, Items is IList ListItems ? ListItems : Items.ToList()));
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             });
 
         public override bool Remove(T item)
@@ -64,6 +64,23 @@ namespace MenthaAssembly
                     return true;
                 }
                 return false;
+            });
+        public override void Remove(IEnumerable<T> Items)
+            => Handle(() =>
+            {
+                if (Items is not T[] &&
+                    Items is not IList &&
+                    Items is not ICollection)
+                    Items = Items.ToArray();
+
+                foreach (T item in Items)
+                {
+                    if (this.Items.Remove(item))
+                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+                }
+
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
             });
         public override void RemoveAt(int index)
             => Handle(() =>
