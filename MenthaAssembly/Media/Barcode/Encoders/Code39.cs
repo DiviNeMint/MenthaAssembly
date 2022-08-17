@@ -3,7 +3,7 @@ using System;
 
 namespace MenthaAssembly.Media.Barcode
 {
-    internal class Code39 : IBarcode
+    internal class Code39 : IBarcode1D
     {
         public const string Keys = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%";
         public static readonly bool[][] Values =

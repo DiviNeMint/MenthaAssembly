@@ -83,6 +83,17 @@ namespace MenthaAssembly
             if (Item is T i)
                 Handle(() => Remove(i));
         }
+        public virtual void Remove(IEnumerable<T> Items)
+            => Handle(() =>
+            {
+                if (Items is not T[] &&
+                    Items is not IList &&
+                    Items is not ICollection)
+                    Items = Items.ToArray();
+
+                foreach (T Item in Items)
+                    this.Items.Remove(Item);
+            });
 
         public virtual void RemoveAt(int Index)
             => Handle(() => Items.RemoveAt(Index));

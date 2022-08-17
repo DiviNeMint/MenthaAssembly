@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MenthaAssembly.Offices
 {
     public class ExcelRowCollection : IEnumerable<ExcelRow>
     {
         private readonly IExcelSheet Parent;
-        private readonly List<ExcelRow> Rows = new List<ExcelRow>();
+        private readonly Dictionary<int, ExcelRow> Rows = new Dictionary<int, ExcelRow>();
 
         public ExcelRow this[int Index]
         {
@@ -17,7 +16,7 @@ namespace MenthaAssembly.Offices
                 if (MaxIndex < Index)
                     throw new IndexOutOfRangeException();
 
-                return Rows.FirstOrDefault(i => i.Index == Index) is ExcelRow Row ? Row : new ExcelRow(Parent, Index, false, -1);
+                return Rows.TryGetValue(Index, out ExcelRow Row) ? Row : new ExcelRow(Parent, Index, false, -1);
             }
         }
 
@@ -32,8 +31,7 @@ namespace MenthaAssembly.Offices
 
         internal void Add(ExcelRow Row)
         {
-            int Index = Rows.FindIndex(i => i.Index > Row.Index);
-            Rows.Insert(Index < 0 ? Rows.Count : Index, Row);
+            Rows[Row.Index] = Row;
             SetMaxIndex(Row.Index);
         }
 
@@ -50,34 +48,25 @@ namespace MenthaAssembly.Offices
         }
 
         public IEnumerator<ExcelRow> GetEnumerator()
-            => Rows.Count == Length ? Rows.GetEnumerator() :
+            => Rows.Count == Length ? Rows.Values.GetEnumerator() :
                                       EnumRows().GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
         private IEnumerable<ExcelRow> EnumRows()
         {
-            int RowsIndex = 0;
-            ExcelRow Row = null;
-            for (int i = 0; i <= MaxIndex; i++)
+            int i = 0;
+            foreach (KeyValuePair<int, ExcelRow> Data in Rows)
             {
-                RowsIndex = Rows.FindIndex(RowsIndex, r => i <= r.Index);
-                if (RowsIndex == -1)
-                {
-                    for (; i <= MaxIndex; i++)
-                        yield return new ExcelRow(Parent, i, false, -1);
-
-                    yield break;
-                }
-
-                Row = Rows[RowsIndex];
-                int TempIndex = Row.Index;
-                for (; i < TempIndex; i++)
+                for (; i < Data.Key; i++)
                     yield return new ExcelRow(Parent, i, false, -1);
 
-                RowsIndex++;
-                yield return Row;
+                yield return Data.Value;
+                i = Data.Key + 1;
             }
+
+            for (; i <= MaxIndex; i++)
+                yield return new ExcelRow(Parent, i, false, -1);
         }
 
         public override string ToString()

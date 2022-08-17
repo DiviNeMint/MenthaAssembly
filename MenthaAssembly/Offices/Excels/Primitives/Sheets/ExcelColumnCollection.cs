@@ -8,7 +8,7 @@ namespace MenthaAssembly.Offices
     public class ExcelColumnCollection : IEnumerable<ExcelColumn>
     {
         private readonly IExcelSheet Parent;
-        private readonly List<ExcelColumn> Columns = new List<ExcelColumn>();
+        private readonly Dictionary<int, ExcelColumn> Columns = new Dictionary<int, ExcelColumn>();
 
         public ExcelColumn this[int Index]
         {
@@ -17,7 +17,10 @@ namespace MenthaAssembly.Offices
                 if (MaxIndex < Index)
                     throw new IndexOutOfRangeException();
 
-                return Columns.FirstOrDefault(i => i.MinIndex <= Index && Index <= i.MaxIndex) is ExcelColumn Column ? Column : new ExcelColumn(Parent, Index, Index, false, -1);
+                if (Columns.TryGetValue(Index, out ExcelColumn c))
+                    return c;
+
+                return Columns.Values.FirstOrDefault(i => i.MinIndex <= Index && Index <= i.MaxIndex) is ExcelColumn Column ? Column : new ExcelColumn(Parent, Index, Index, false, -1);
             }
         }
 
@@ -32,8 +35,7 @@ namespace MenthaAssembly.Offices
 
         internal void Add(ExcelColumn Column)
         {
-            int Index = Columns.FindIndex(i => i.MinIndex > Column.MinIndex);
-            Columns.Insert(Index < 0 ? Columns.Count : Index, Column);
+            Columns[Column.MinIndex] = Column;
             SetMaxIndex(Column.MaxIndex);
         }
 
@@ -50,34 +52,26 @@ namespace MenthaAssembly.Offices
         }
 
         public IEnumerator<ExcelColumn> GetEnumerator()
-            => Columns.Count == Length ? Columns.GetEnumerator() :
+            => Columns.Count == Length ? Columns.Values.GetEnumerator() :
                                          EnumColumns().GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
         private IEnumerable<ExcelColumn> EnumColumns()
         {
-            int ColumnsIndex = 0;
-            ExcelColumn Column = null;
-            for (int i = 0; i <= MaxIndex; i++)
+            int i = 0;
+            foreach (KeyValuePair<int, ExcelColumn> Datas in Columns)
             {
-                ColumnsIndex = Columns.FindIndex(ColumnsIndex, c => i <= c.MinIndex);
-                if (ColumnsIndex == -1)
-                {
-                    for (; i <= MaxIndex; i++)
-                        yield return new ExcelColumn(Parent, i, i, false, -1);
-
-                    yield break;
-                }
-
-                Column = Columns[ColumnsIndex];
-                int TempIndex = Column.MinIndex;
-                for (; i < TempIndex; i++)
+                for (; i < Datas.Key; i++)
                     yield return new ExcelColumn(Parent, i, i, false, -1);
 
-                ColumnsIndex++;
-                yield return Column;
+                yield return Datas.Value;
+
+                i = Datas.Value.MaxIndex + 1;
             }
+
+            for (; i <= MaxIndex; i++)
+                yield return new ExcelColumn(Parent, i, i, false, -1);
         }
 
         public override string ToString()

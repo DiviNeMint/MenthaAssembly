@@ -64,6 +64,23 @@ namespace MenthaAssembly
                 }
                 return false;
             });
+        public override void Remove(IEnumerable<T> Items)
+            => Handle(() =>
+            {
+                if (Items is not T[] &&
+                    Items is not IList &&
+                    Items is not ICollection)
+                    Items = Items.ToArray();
+
+                foreach (T item in Items)
+                {
+                    if (this.Items.Remove(item))
+                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+                }
+
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
+            });
         public override void RemoveAt(int index)
             => Handle(() =>
             {
