@@ -51,6 +51,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private readonly int BitLength;
         private readonly long Stride;
         protected Struct* pScan;
+        public PixelIndexedAdapterBase(PixelIndexedAdapterBase<T, Struct> Adapter)
+        {
+            pScan = Adapter.pScan;
+            Stride = Adapter.Stride;
+            BitLength = Adapter.BitLength;
+            XBit = Adapter.XBit;
+            Palette = Adapter.Palette;
+            GetPaletteIndexFunc = Adapter.GetPaletteIndexFunc;
+        }
         public PixelIndexedAdapterBase(Struct* pScan, long Stride, int XBit, ImagePalette<T> Palette)
         {
             this.pScan = pScan;
@@ -188,6 +197,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where T : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
+        public PixelIndexedAdapter(PixelIndexedAdapter<T, Struct> Adapter) : base(Adapter)
+        {
+
+        }
         public PixelIndexedAdapter(Struct* pScan, long Stride, int XBit, GCHandle pPalette) : base(pScan, Stride, XBit, (ImagePalette<T>)pPalette.Target)
         {
 
@@ -200,6 +213,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             (*pScan)[XBit] = Index;
         }
+        public void Override(IPixelAdapter<T> Adapter)
+        {
+            T Pixel;
+            Adapter.OverrideTo(&Pixel);
+            Override(Pixel);
+        }
         public void OverrideTo(T* pData)
         {
             int Index = GetPaletteIndex();
@@ -208,12 +227,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void Overlay(T Pixel)
             => Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        public void Overlay(IPixelAdapter<T> Adapter)
+            => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public void OverlayTo(T* pData)
         {
             int Index = GetPaletteIndex();
             T Pixel = Palette[Index];
             pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
+
+        public IPixelAdapter<T> Clone()
+            => new PixelIndexedAdapter<T, Struct>(this);
+
     }
 
     internal unsafe class PixelIndexedAdapter<T, U, Struct> : PixelIndexedAdapterBase<T, Struct>, IPixelAdapter<U>
@@ -221,6 +246,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where U : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
+        public PixelIndexedAdapter(PixelIndexedAdapter<T, U, Struct> Adapter) : base(Adapter)
+        {
+
+        }
         public PixelIndexedAdapter(Struct* pScan, long Stride, int XBit, GCHandle pPalette) : base(pScan, Stride, XBit, (ImagePalette<T>)pPalette.Target)
         {
 
@@ -228,6 +257,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void Override(U Pixel)
             => Override(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        public void Override(IPixelAdapter<U> Adapter)
+            => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public void OverrideTo(U* pData)
         {
             int Index = GetPaletteIndex();
@@ -237,12 +268,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void Overlay(U Pixel)
             => Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        public void Overlay(IPixelAdapter<U> Adapter)
+            => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public void OverlayTo(U* pData)
         {
             int Index = GetPaletteIndex();
             T Pixel = Palette[Index];
             pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
+
+        public IPixelAdapter<U> Clone()
+            => new PixelIndexedAdapter<T, U, Struct>(this);
+
     }
 
 }

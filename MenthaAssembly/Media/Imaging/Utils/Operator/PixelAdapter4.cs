@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace MenthaAssembly.Media.Imaging.Utils
+﻿namespace MenthaAssembly.Media.Imaging.Utils
 {
     internal unsafe class PixelAdapter4<T> : IPixelAdapter<T>
         where T : unmanaged, IPixel
@@ -13,7 +11,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public byte B => *pScanB;
 
-        public int BitsPerPixel => throw new NotSupportedException();
+        public int BitsPerPixel => 32;
 
         private readonly long Stride;
         private byte* pScanA, pScanR, pScanG, pScanB;
@@ -28,6 +26,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void Override(T Pixel)
             => Override(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        public void Override(IPixelAdapter<T> Adapter)
+            => Override(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public void Override(byte A, byte R, byte G, byte B)
         {
             *pScanA = A;
@@ -53,6 +53,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void Overlay(T Pixel)
             => Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        public void Overlay(IPixelAdapter<T> Adapter)
+            => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public void Overlay(byte A, byte R, byte G, byte B)
             => PixelHelper.Overlay(ref pScanA, ref pScanR, ref pScanG, ref pScanB, A, R, G, B);
         public void OverlayTo(T* pData)
@@ -99,6 +101,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
             pScanG -= Stride;
             pScanB -= Stride;
         }
+
+        public IPixelAdapter<T> Clone()
+            => new PixelAdapter4<T>(pScanA, pScanR, pScanG, pScanB, Stride);
 
     }
 }

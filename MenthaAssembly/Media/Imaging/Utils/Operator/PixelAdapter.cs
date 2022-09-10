@@ -15,6 +15,11 @@
 
         private readonly long Stride;
         protected T* pScan;
+        public PixelAdapterBase(PixelAdapterBase<T> Adapter)
+        {
+            pScan = Adapter.pScan;
+            Stride = Adapter.Stride;
+        }
         public PixelAdapterBase(T* pData, long Stride)
         {
             pScan = pData;
@@ -56,17 +61,24 @@
             => pScan = (T*)((byte*)pScan + Stride);
         public void MovePreviousLine()
             => pScan = (T*)((byte*)pScan - Stride);
+
     }
 
     internal unsafe class PixelAdapter<T> : PixelAdapterBase<T>, IPixelAdapter<T>
         where T : unmanaged, IPixel
     {
+        public PixelAdapter(PixelAdapter<T> Adapter) : base(Adapter)
+        {
+
+        }
         public PixelAdapter(byte* pData, long Stride) : base((T*)pData, Stride)
         {
         }
 
         public void Override(T Pixel)
             => *pScan = Pixel;
+        public void Override(IPixelAdapter<T> Adapter)
+            => Adapter.OverrideTo(pScan);
         public void OverrideTo(T* pData)
             => *pData = *pScan;
 
@@ -77,6 +89,8 @@
             else
                 Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
+        public void Overlay(IPixelAdapter<T> Adapter)
+            => Adapter.OverlayTo(pScan);
         public void OverlayTo(T* pData)
         {
             if (pScan->A == byte.MaxValue)
@@ -85,25 +99,39 @@
                 pData->Overlay(pScan->A, pScan->R, pScan->G, pScan->B);
         }
 
+        public IPixelAdapter<T> Clone()
+            => new PixelAdapter<T>(this);
+
     }
 
     internal unsafe class PixelAdapter<T, U> : PixelAdapterBase<T>, IPixelAdapter<U>
         where T : unmanaged, IPixel
         where U : unmanaged, IPixel
     {
+        public PixelAdapter(PixelAdapter<T, U> Adapter) : base(Adapter)
+        {
+
+        }
         public PixelAdapter(byte* pData, long Stride) : base((T*)pData, Stride)
         {
         }
 
         public void Override(U Pixel)
             => Override(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        public void Override(IPixelAdapter<U> Adapter)
+            => Override(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public void OverrideTo(U* pData)
             => pData->Override(pScan->A, pScan->R, pScan->G, pScan->B);
 
         public void Overlay(U Pixel)
             => Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        public void Overlay(IPixelAdapter<U> Adapter)
+            => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public void OverlayTo(U* pData)
             => pData->Overlay(pScan->A, pScan->R, pScan->G, pScan->B);
+
+        public IPixelAdapter<U> Clone()
+            => new PixelAdapter<T, U>(this);
 
     }
 
