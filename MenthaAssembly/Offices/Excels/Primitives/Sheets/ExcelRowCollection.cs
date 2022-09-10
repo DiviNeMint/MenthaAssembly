@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MenthaAssembly.Offices
 {
@@ -56,7 +57,7 @@ namespace MenthaAssembly.Offices
         private IEnumerable<ExcelRow> EnumRows()
         {
             int i = 0;
-            foreach (KeyValuePair<int, ExcelRow> Data in Rows)
+            foreach (KeyValuePair<int, ExcelRow> Data in Rows.OrderBy(i => i.Key))
             {
                 for (; i < Data.Key; i++)
                     yield return new ExcelRow(Parent, i, false, -1);

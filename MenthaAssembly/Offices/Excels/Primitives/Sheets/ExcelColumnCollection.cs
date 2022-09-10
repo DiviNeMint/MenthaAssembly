@@ -60,7 +60,7 @@ namespace MenthaAssembly.Offices
         private IEnumerable<ExcelColumn> EnumColumns()
         {
             int i = 0;
-            foreach (KeyValuePair<int, ExcelColumn> Datas in Columns)
+            foreach (KeyValuePair<int, ExcelColumn> Datas in Columns.OrderBy(i => i.Key))
             {
                 for (; i < Datas.Key; i++)
                     yield return new ExcelColumn(Parent, i, i, false, -1);
