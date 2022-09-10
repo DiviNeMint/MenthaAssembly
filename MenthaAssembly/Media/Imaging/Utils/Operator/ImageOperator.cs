@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
@@ -14,102 +13,26 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
 
         public T GetPixel(int X, int Y)
-        {
-            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
-            return *(T*)((byte*)Context.Scan0 + Offset);
-        }
+            => Context.GetPixel<T>(X, Y);
 
         public void SetPixel(int X, int Y, T Pixel)
-        {
-            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
-            *(T*)((byte*)Context.Scan0 + Offset) = Pixel;
-        }
+            => Context.SetPixel(X, Y, Pixel);
 
-        public void ScanLine<U>(int X, int Y, int Length, Action<IPixelAdapter<U>> Handler)
+        public void ScanLine<U>(int X, int Y, int Length, PixelAdapterAction<U> Handler)
             where U : unmanaged, IPixel
-        {
-            IPixelAdapter<U> Adapter = GetAdapter<U>(X, Y);
-            for (int i = 0; i < Length; i++, Adapter.MoveNext())
-                Handler(Adapter);
-        }
-        public void ScanLine<U>(int X, int Y, int Length, Predicate<IPixelAdapter<U>> Predicate)
+            => Context.ScanLine(X, Y, Length, Handler);
+        public void ScanLine<U>(int X, int Y, int Length, PixelAdapterFunc<U, bool> Predicate)
             where U : unmanaged, IPixel
-        {
-            IPixelAdapter<U> Adapter = GetAdapter<U>(X, Y);
-            for (int i = 0; i < Length; i++)
-                if (Predicate(Adapter))
-                    Adapter.MoveNext();
-        }
+            => Context.ScanLine(X, Y, Length, Predicate);
+        public void ScanLine<U>(int X, int Y, ImageContourScanLine Range, PixelAdapterAction<U> Handler)
+            where U : unmanaged, IPixel
+            => Context.ScanLine(X, Y, Range, Handler);
 
         public void ScanLineNearestResizeTo(int X, int Y, int Length, float FracX, float Step, IPixelAdapter<T> Adapter)
-        {
-            long Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
-            T* pPixels = (T*)((byte*)Context.Scan0 + Offset);
-
-            for (int i = 0; i < Length; i++)
-            {
-                Adapter.Override(*pPixels);
-                Adapter.MoveNext();
-
-                FracX += Step;
-                while (FracX >= 1f)
-                {
-                    FracX -= 1f;
-                    pPixels++;
-                }
-            }
-        }
+            => Context.ScanLineNearestResizeTo(X, Y, Length, FracX, Step, Adapter, (s, d) => d.Override(s));
 
         public void ScanLineBilinearResizeTo(int X, int Y, int Length, float FracX, float FracY, float Step, IPixelAdapter<T> Adapter)
-        {
-            long SourceStride = Context.Stride,
-                 Offset = SourceStride * Y + ((X * Context.BitsPerPixel) >> 3);
-            byte* pData0 = (byte*)Context.Scan0 + Offset;
-            T* pPixels0 = (T*)pData0,
-               pPixels1 = Y + 1 < Context.Height ? (T*)(pData0 + SourceStride) : pPixels0;
-
-            float IFracY = 1f - FracY;
-            int SourceW = Context.Width;
-            for (int i = 0; i < Length; i++)
-            {
-                T p00 = *pPixels0,
-                  p10 = *pPixels1,
-                  p01, p11;
-
-                if (X < SourceW)
-                {
-                    p01 = p00;
-                    p11 = p10;
-                }
-                else
-                {
-                    p01 = *(pPixels0 + 1);
-                    p11 = *(pPixels1 + 1);
-                }
-
-                float IFracX = 1f - FracX,
-                      IFxIFy = IFracX * IFracY,
-                      IFxFy = IFracX * FracY,
-                      FxIFy = FracX * IFracY,
-                      FxFy = FracX * FracY;
-
-                Adapter.Override((byte)(p00.A * IFxIFy + p01.A * FxIFy + p10.A * IFxFy + p11.A * FxFy),
-                                 (byte)(p00.R * IFxIFy + p01.R * FxIFy + p10.R * IFxFy + p11.R * FxFy),
-                                 (byte)(p00.G * IFxIFy + p01.G * FxIFy + p10.G * IFxFy + p11.G * FxFy),
-                                 (byte)(p00.B * IFxIFy + p01.B * FxIFy + p10.B * IFxFy + p11.B * FxFy));
-                Adapter.MoveNext();
-
-                FracX += Step;
-                while (FracX >= 1f)
-                {
-                    FracX -= 1f;
-
-                    X++;
-                    pPixels0++;
-                    pPixels1++;
-                }
-            }
-        }
+            => Context.ScanLineBilinearResizeTo(X, Y, Length, FracX, FracY, Step, Adapter, (Adapter, A, R, G, B) => Adapter.Override(A, R, G, B));
 
         public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, IPixelAdapter<T> Adapter)
         {
@@ -260,202 +183,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        private delegate void PixelAction(T* pData);
-        public void ContourOverlay(ImageContour Contour, T Color, int OffsetX, int OffsetY)
-        {
-            IEnumerator<KeyValuePair<int, ContourData>> Enumerator = Contour.GetEnumerator();
-            if (!Enumerator.MoveNext())
-                return;
-
-            int MaxX = Context.Width - 1,
-                MaxY = Context.Height - 1;
-            KeyValuePair<int, ContourData> Current = Enumerator.Current;
-
-            long Y = Current.Key + OffsetY;
-            if (MaxY < Y)
-                return;
-
-            while (Y < 0)
-            {
-                if (!Enumerator.MoveNext())
-                    return;
-
-                Current = Enumerator.Current;
-                Y = Current.Key + OffsetY;
-
-                if (MaxY < Y)
-                    return;
-            }
-
-            long Offset = Context.Stride * Y;
-            byte* pPixels = (byte*)Context.Scan0 + Offset;
-
-            ContourData Data = Current.Value;
-
-            PixelAction Handler = Color.A == 0 || Color.A == byte.MaxValue ?
-                pData => *pData = Color :
-                pData => pData->Overlay(Color.A, Color.R, Color.G, Color.B);
-
-            void DoOverlay()
-            {
-                T* pTempPixels = (T*)pPixels;
-                int CurrentX = 0;
-                for (int i = 0; i < Data.Count; i++)
-                {
-                    int Sx = Math.Max(Data[i++] + OffsetX, 0),
-                        Ex = Math.Min(Data[i] + OffsetX, MaxX);
-
-                    if (Ex < Sx)
-                        continue;
-
-                    if (MaxX < Sx)
-                        return;
-
-                    pTempPixels += Sx - CurrentX;
-                    for (int j = Sx; j <= Ex; j++)
-                        Handler(pTempPixels++);
-
-                    CurrentX = Ex + 1;
-                }
-            }
-
-            DoOverlay();
-            while (Enumerator.MoveNext())
-            {
-                Current = Enumerator.Current;
-
-                long TempY = Current.Key + OffsetY;
-                if (MaxY < TempY)
-                    return;
-
-                pPixels += Context.Stride * (TempY - Y);
-                Y = TempY;
-                Data = Current.Value;
-
-                DoOverlay();
-            }
-        }
+        public void ContourOverlay(IImageContour Contour, T Color, double OffsetX, double OffsetY)
+            => Context.Contour<T>(Contour, OffsetX, OffsetY, a => a.Overlay(Color));
 
         public void BlockOverlay(int X, int Y, IImageContext Source, int SourceX, int SourceY, int Width, int Height)
-        {
-            long Stride = Context.Stride,
-                 Offset = Stride * Y + ((X * Context.BitsPerPixel) >> 3);
-            byte* pPixels = (byte*)Context.Scan0 + Offset;
-
-            for (int j = 0; j < Height; j++)
-            {
-                T* pScan = (T*)pPixels;
-                Source.Operator.ScanLine<T>(SourceX, SourceY + j, Width, Adapter => Adapter.OverlayTo(pScan++));
-                pPixels += Stride;
-            }
-        }
+            => Context.Block(X, Y, Source, SourceX, SourceY, Width, Height, (s, d) => d.Overlay(s));
 
         public ImageContour FindBound(int SeedX, int SeedY, ImagePredicate Predicate)
-        {
-            int Width = Context.Width,
-                Height = Context.Height;
-
-            if (SeedX < 0 || Width <= SeedX ||
-                SeedY < 0 || Height <= SeedY)
-                return null;
-
-            ImageContour Contour = new ImageContour();
-            Stack<int> StackX = new Stack<int>(),
-                       StackY = new Stack<int>();
-            StackX.Push(SeedX);
-            StackY.Push(SeedY);
-
-            int X, Y, SaveX, Rx, Lx;
-            long Offset;
-            T* pSeed, pPixels;
-            while (StackX.Count > 0)
-            {
-                X = StackX.Pop();
-                Y = StackY.Pop();
-                SaveX = X;
-
-                Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
-                pSeed = (T*)((byte*)Context.Scan0 + Offset);
-                pPixels = pSeed;
-
-                // Find Right Bound
-                while (X < Width && !Predicate(X, Y, pPixels->A, pPixels->R, pPixels->G, pPixels->B))
-                {
-                    X++;
-                    pPixels++;
-                }
-
-                // Find Left Bound
-                Rx = X - 1;
-                X = SaveX - 1;
-
-                pPixels = pSeed - 1;
-                while (-1 < X && !Predicate(X, Y, pPixels->A, pPixels->R, pPixels->G, pPixels->B))
-                {
-                    X--;
-                    pPixels--;
-                }
-
-                Lx = X + 1;
-
-                // Log Region
-                Contour[Y].Union(Lx, Rx);
-
-                // Lower ScanLine's Seed
-                bool NeedFill = false;
-                X = Lx;
-                Y++;
-
-                Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
-                pSeed = (T*)((byte*)Context.Scan0 + Offset);
-                if (-1 < Y && Y < Height &&
-                    !Contour.Contain(X, Y))
-                    for (; X <= Rx; X++)
-                    {
-                        while (X <= Rx && !Predicate(X, Y, pSeed->A, pSeed->R, pSeed->G, pSeed->B))
-                        {
-                            NeedFill = true;
-                            X++;
-                            pSeed++;
-                        }
-
-                        if (NeedFill)
-                        {
-                            StackX.Push(X - 1);
-                            StackY.Push(Y);
-                            NeedFill = false;
-                        }
-                    }
-
-                // Upper ScanLine's Seed
-                NeedFill = false;
-                X = Lx;
-                Y -= 2;
-
-                Offset = Context.Stride * Y + ((X * Context.BitsPerPixel) >> 3);
-                pSeed = (T*)((byte*)Context.Scan0 + Offset);
-                if (0 <= Y && Y < Height &&
-                    !Contour.Contain(X, Y))
-                    for (; X <= Rx; X++)
-                    {
-                        while (X <= Rx && !Predicate(X, Y, pSeed->A, pSeed->R, pSeed->G, pSeed->B))
-                        {
-                            NeedFill = true;
-                            X++;
-                            pSeed++;
-                        }
-
-                        if (NeedFill)
-                        {
-                            StackX.Push(X - 1);
-                            StackY.Push(Y);
-                            NeedFill = false;
-                        }
-                    }
-            }
-
-            return Contour;
-        }
+            => Context.FindBound(SeedX, SeedY, Predicate);
 
         public IPixelAdapter<U> GetAdapter<U>(int X, int Y)
             where U : unmanaged, IPixel

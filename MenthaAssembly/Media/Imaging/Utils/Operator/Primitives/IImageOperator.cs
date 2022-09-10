@@ -4,12 +4,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
 {
     public delegate bool ImagePredicate(int X, int Y, byte A, byte R, byte G, byte B);
 
+    public delegate void PixelAdapterAction<T>(IPixelAdapter<T> Source) where T : unmanaged, IPixel;
+    public delegate U PixelAdapterFunc<T, U>(IPixelAdapter<T> Source) where T : unmanaged, IPixel;
+    public delegate void PixelAdapterAction2<T>(IPixelAdapter<T> Source, IPixelAdapter<T> Destination) where T : unmanaged, IPixel;
+    public delegate void PixelAdapterAction3<T>(IPixelAdapter<T> Destination, byte A, byte R, byte G, byte B) where T : unmanaged, IPixel;
+
     internal unsafe interface IImageOperator
     {
         public IPixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel;
 
-        public void ScanLine<U>(int X, int Y, int Length, Action<IPixelAdapter<U>> Handler) where U : unmanaged, IPixel;
-        public void ScanLine<U>(int X, int Y, int Length, Predicate<IPixelAdapter<U>> Predicate) where U : unmanaged, IPixel;
+        public void ScanLine<U>(int X, int Y, int Length, PixelAdapterAction<U> Handler) where U : unmanaged, IPixel;
+        public void ScanLine<U>(int X, int Y, int Length, PixelAdapterFunc<U, bool> Predicate) where U : unmanaged, IPixel;
+        public void ScanLine<U>(int X, int Y, ImageContourScanLine Range, PixelAdapterAction<U> Handler) where U : unmanaged, IPixel;
 
         public void BlockOverlay(int X, int Y, IImageContext Source, int SourceX, int SourceY, int Width, int Height);
 
@@ -32,7 +38,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, IPixelAdapter<T> Adapter);
 
-        public void ContourOverlay(ImageContour Contour, T Color, int OffsetX, int OffsetY);
+        public void ContourOverlay(IImageContour Contour, T Color, double OffsetX, double OffsetY);
 
     }
 

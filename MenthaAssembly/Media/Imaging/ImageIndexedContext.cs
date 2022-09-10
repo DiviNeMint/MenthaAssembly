@@ -302,11 +302,11 @@ namespace MenthaAssembly.Media.Imaging
                 UpperDistance = 0,
                 LowerDistance = 0;
 
-            foreach (KeyValuePair<int, ContourData> Item in Contour)
+            foreach (KeyValuePair<int, ImageContourScanLine> Item in Contour)
             {
                 int j = Item.Key;
-                ContourData Data = Item.Value;
-                if (Data.Count > 2)
+                ImageContourScanLine Data = Item.Value;
+                if (Data.Length > 2)
                 {
                     IsHollow = true;
                     LeftBound.Clear();
@@ -357,7 +357,7 @@ namespace MenthaAssembly.Media.Imaging
 
                 // Found Right Bound
                 {
-                    int Tx = Data[Data.Count - 1] - PCx,
+                    int Tx = Data[Data.Length - 1] - PCx,
                         Predict = DeltaX * Ty - DeltaY * Tx,
                         Distance = Math.Abs(Predict);
 
@@ -550,7 +550,7 @@ namespace MenthaAssembly.Media.Imaging
                 return;
             }
 
-            bool IsHollow = Contour.Any(i => i.Value.Count > 2);
+            bool IsHollow = Contour.Any(i => i.Value.Length > 2);
             int MaxX = Width - 1,
                 PCx = (Bound.Left + Bound.Right) >> 1,
                 PCy = (Bound.Top + Bound.Bottom) >> 1,
@@ -589,16 +589,16 @@ namespace MenthaAssembly.Media.Imaging
         OffsetY = Dy + Cy - PCy;
     if (Dx < 0)
     {
-        foreach (KeyValuePair<int, ContourData> item in Contour)
+        foreach (KeyValuePair<int, ImageContourScanLine> item in Contour)
         {
-            ContourData Data = item.Value;
+            ImageContourScanLine Data = item.Value;
             int Ty = item.Key + OffsetY;
 
             if (Ty < 0)
                 continue;
 
-                               if (Height <= Ty)
-                                   break;
+            if (Height <= Ty)
+                break;
 
             int LLTx = Data[0] + OffsetX,
                 MLTx = Data[1] + OffsetX;
@@ -612,16 +612,16 @@ namespace MenthaAssembly.Media.Imaging
     }
     else
     {
-        foreach (KeyValuePair<int, ContourData> item in Contour)
+        foreach (KeyValuePair<int, ImageContourScanLine> item in Contour)
         {
-            ContourData Data = item.Value;
+            ImageContourScanLine Data = item.Value;
             int Ty = item.Key + OffsetY;
 
             if (Ty < 0)
                 continue;
 
-                               if (Height <= Ty)
-                                   break;
+            if (Height <= Ty)
+                break;
 
             int LRTx = Data[1] + OffsetX,
                 MRTx = Data[0] + OffsetX;
@@ -3101,6 +3101,10 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #endregion
+
+        public IPixelAdapter<T> GetAdapter<T>(int X, int Y)
+            where T : unmanaged, IPixel
+            => Operator.GetAdapter<T>(X, Y);
 
         object ICloneable.Clone()
             => this.Clone();

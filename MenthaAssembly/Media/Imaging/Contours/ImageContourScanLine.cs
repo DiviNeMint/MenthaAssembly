@@ -5,27 +5,28 @@ using System.Collections.Generic;
 namespace MenthaAssembly.Media.Imaging
 {
     [Serializable]
-    public class ContourData : IEnumerable<int>, ICloneable
+    public class ImageContourScanLine : IEnumerable<int>, ICloneable
     {
         internal readonly List<int> Datas;
 
-        public ContourData()
+        public ImageContourScanLine()
         {
             Datas = new List<int>();
         }
-        public ContourData(int Left, int Right)
+        public ImageContourScanLine(int Left, int Right)
         {
             if (Right < Left)
                 MathHelper.Swap(ref Left, ref Right);
 
             Datas = new List<int> { Left, Right };
         }
-        private ContourData(IEnumerable<int> Datas)
+        public ImageContourScanLine(ImageContourScanLine ScanLine)
         {
-            this.Datas = new List<int>(Datas);
+            Datas = new List<int>(ScanLine.Datas);
         }
 
-        public int Count => Datas.Count;
+        public int Length
+            => Datas.Count;
 
         public int this[int Index]
         {
@@ -35,8 +36,11 @@ namespace MenthaAssembly.Media.Imaging
 
         public bool Contain(int X)
         {
-            int Index = Datas.FindIndex(i => X < i);
-            return Index > 0 && (Index & 1) > 0;
+            for (int i = 0; i < Length; i += 2)
+                if (X < Datas[i])
+                    return i != 0 && Datas[i - 1] < X;
+
+            return false;
         }
 
         public void Clear()
@@ -134,17 +138,17 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        public void Union(ContourData Info)
+        public void Union(ImageContourScanLine Data)
         {
             if (Datas.Count == 0)
             {
-                Datas.AddRange(Info.Datas);
+                Datas.AddRange(Data.Datas);
                 return;
             }
 
             int Index = 0;
-            for (int i = 0; i < Info.Datas.Count;)
-                HandleUnion(Info.Datas[i++], Info.Datas[i++], ref Index);
+            for (int i = 0; i < Data.Length;)
+                InternalUnion(Data.Datas[i++], Data.Datas[i++], ref Index);
         }
         public void Union(int Left, int Right)
         {
@@ -159,29 +163,44 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             int Index = 0;
-            HandleUnion(Left, Right, ref Index);
-        }
-        public static ContourData Union(ContourData Data, int Left, int Right)
-        {
-            ContourData Result = new ContourData(Data.Datas);
-            Result.Union(Left, Right);
-            return Result;
-        }
-        public static ContourData Union(ContourData Data1, ContourData Data2)
-        {
-            ContourData Result = new ContourData(Data1.Datas);
-            Result.Union(Data2);
-            return Result;
+            InternalUnion(Left, Right, ref Index);
         }
 
-        public void Difference(ContourData Info)
+        public void Intersection(ImageContourScanLine Data)
+        {
+            if (Length == 0)
+                return;
+
+            if (Data.Length == 0)
+            {
+                Datas.Clear();
+                return;
+            }
+
+            int Index = 0;
+            for (int i = 0; i < Data.Length;)
+            {
+                InternalIntersection(Data.Datas[i++], Data.Datas[i++], ref Index);
+                if (Index >= Length)
+                    return;
+            }
+
+            for (int i = Length - 1; i >= Index; i--)
+                Datas.RemoveAt(i);
+        }
+
+        public void Difference(ImageContourScanLine Data)
         {
             if (Datas.Count == 0)
                 return;
 
             int Index = 0;
-            for (int i = 0; i < Info.Datas.Count;)
-                HandleDifference(Info.Datas[i++], Info.Datas[i++], ref Index);
+            for (int i = 0; i < Data.Length;)
+            {
+                InternalDifference(Data.Datas[i++], Data.Datas[i++], ref Index);
+                if (Index >= Length)
+                    return;
+            }
         }
         public void Difference(int Left, int Right)
         {
@@ -192,19 +211,41 @@ namespace MenthaAssembly.Media.Imaging
                 MathHelper.Swap(ref Left, ref Right);
 
             int Index = 0;
-            HandleDifference(Left, Right, ref Index);
+            InternalDifference(Left, Right, ref Index);
         }
-        public static ContourData Difference(ContourData Data, int Left, int Right)
+
+        public void SymmetricDifference(ImageContourScanLine Data)
         {
-            ContourData Result = new ContourData(Data.Datas);
-            Result.Difference(Left, Right);
-            return Result;
+
         }
-        public static ContourData Difference(ContourData Data1, ContourData Data2)
+
+        internal void Crop(int Left, int Right)
         {
-            ContourData Result = new ContourData(Data1.Datas);
-            Result.Difference(Data2);
-            return Result;
+            int Index = 0;
+            for (; Index < Length; Index++)
+                if (Left <= Datas[Index])
+                    break;
+
+            if ((Index & 0x01) > 0)
+            {
+                Index--;
+                Datas[Index] = Left;
+            }
+
+            for (int i = 0; i < Index; i++)
+                Datas.RemoveAt(0);
+
+            Index = 1;
+            for (; Index < Length; Index++)
+                if (Right < Datas[Index])
+                    break;
+
+            if ((Index & 0x01) > 0)
+                Datas[Index] = Right;
+
+            Index++;
+            for (int i = Length - 1; i >= Index; i--)
+                Datas.RemoveAt(i);
         }
 
         public void Offset(int X)
@@ -215,145 +256,21 @@ namespace MenthaAssembly.Media.Imaging
             for (int i = 0; i < Datas.Count; i++)
                 Datas[i] += X;
         }
-        public static ContourData Offset(ContourData Data, int X)
-        {
-            ContourData Result = new ContourData();
-            foreach (int Value in Data.Datas)
-                Result.Datas.Add(Value + X);
-
-            return Result;
-        }
 
         public IEnumerator<int> GetEnumerator()
             => Datas.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
-        public ContourData Clone()
-            => new ContourData(Datas);
+        public ImageContourScanLine Clone()
+            => new ImageContourScanLine(this);
         object ICloneable.Clone()
             => Clone();
 
         public override string ToString()
             => $"{{{string.Join(", ", Datas)}}}";
 
-        //private void HandleUnion(int Left, int Right)
-        //{
-        //    int LastIndexOfDatas = this.Datas.Count - 1,
-        //        LIndex = RightIndexWithLessThanOrEqual(Left, out bool LEqual);
-        //    if (LIndex < 0)
-        //    {
-        //        int RIndex = LeftIndexWithMoreThanOrEqual(Right, out bool REqual);
-        //        if (RIndex == 0)
-        //        {
-        //            if (REqual)
-        //            {
-        //                this.Datas[0] = Left;
-        //            }
-        //            else
-        //            {
-        //                this.Datas.Insert(0, Left);
-        //                this.Datas.Insert(1, Right);
-        //            }
-        //        }
-        //        else if (RIndex < 0)
-        //        {
-        //            Left = Math.Min(Left, this.Datas[0]);
-        //            Right = Math.Max(Right, this.Datas[LastIndexOfDatas]);
-
-        //            this.Datas.Clear();
-        //            this.Datas.Add(Left);
-        //            this.Datas.Add(Right);
-        //        }
-        //        else
-        //        {
-        //            if (Left < this.Datas[0])
-        //                this.Datas[0] = Left;
-
-        //            if (!REqual)
-        //            {
-        //                // Nearest RIndex
-        //                RIndex--;
-        //                int NearestRight = this.Datas[RIndex];
-        //                if (NearestRight < Right)
-        //                    this.Datas[RIndex] = Right;
-
-        //                RIndex--;
-        //            }
-
-        //            for (int i = RIndex; i > 0; i--)
-        //                this.Datas.RemoveAt(i);
-        //        }
-        //    }
-        //    else if (LIndex == LastIndexOfDatas)
-        //    {
-        //        if (LEqual)
-        //        {
-        //            this.Datas[LastIndexOfDatas] = Right;
-        //        }
-        //        else
-        //        {
-        //            this.Datas.Add(Left);
-        //            this.Datas.Add(Right);
-        //        }
-        //    }
-        //    else
-        //    {
-        //        if (LEqual)
-        //        {
-        //            LIndex--;
-        //        }
-        //        else
-        //        {
-        //            // Nearest LIndex
-        //            LIndex++;
-        //            int NearestLeft = this.Datas[LIndex];
-        //            if (Left < NearestLeft)
-        //            {
-        //                if (Right < NearestLeft)
-        //                {
-        //                    this.Datas.Insert(LIndex, Right);
-        //                    this.Datas.Insert(LIndex, Left);
-        //                    return;
-        //                }
-
-        //                this.Datas[LIndex] = Left;
-
-        //                if (Right == NearestLeft)
-        //                    return;
-        //            }
-        //        }
-
-        //        int RIndex = LeftIndexWithMoreThanOrEqual(Right, LIndex, out bool REqual);
-        //        if (RIndex < 0)
-        //        {
-        //            RIndex = LastIndexOfDatas;
-        //            int NearRight = this.Datas[RIndex];
-
-        //            if (NearRight < Right)
-        //                this.Datas[RIndex] = Right;
-
-        //            RIndex--;
-        //        }
-        //        else
-        //        {
-        //            if (!REqual)
-        //            {
-        //                // Nearest RIndex
-        //                RIndex--;
-        //                int NearRight = this.Datas[RIndex];
-        //                if (NearRight < Right)
-        //                    this.Datas[RIndex] = Right;
-
-        //                RIndex--;
-        //            }
-        //        }
-
-        //        for (int i = RIndex; i > LIndex; i--)
-        //            this.Datas.RemoveAt(i);
-        //    }
-        //}
-        private void HandleUnion(int Left, int Right, ref int StartIndex)
+        private void InternalUnion(int Left, int Right, ref int StartIndex)
         {
             int MinIndex = StartIndex,
                 Tx, Lx = int.MinValue;
@@ -510,45 +427,36 @@ namespace MenthaAssembly.Media.Imaging
 
             StartIndex = MinIndex;
         }
+        private void InternalIntersection(int Left, int Right, ref int StartIndex)
+        {
+            int Index = StartIndex;
+            for (; Index < Length; Index++)
+                if (Left <= Datas[Index])
+                    break;
 
-        //private void HandleDifference(int Left, int Right)
-        //{
-        //    int MinIndex = 0;
-        //    for (; MinIndex < Datas.Count; MinIndex++)
-        //        if (Left < Datas[MinIndex])
-        //            break;
+            if ((Index & 0x01) > 0)
+            {
+                Index--;
+                Datas[Index] = Left;
+            }
 
-        //    int MaxIndex = MinIndex;
-        //    for (; MaxIndex < Datas.Count; MaxIndex++)
-        //        if (Right < Datas[MaxIndex])
-        //            break;
+            for (int i = StartIndex; i < Index; i++)
+                Datas.RemoveAt(StartIndex);
 
-        //    if (MinIndex == MaxIndex)
-        //    {
-        //        if ((MinIndex & 0x01) == 0)
-        //            return;
+            StartIndex++;
+            for (; StartIndex < Length; StartIndex++)
+                if (Right < Datas[StartIndex])
+                    break;
 
-        //        Datas.Insert(MaxIndex, Right);
-        //        Datas.Insert(MaxIndex, Left);
-        //        return;
-        //    }
+            if ((StartIndex & 0x01) > 0)
+            {
+                Datas.Insert(StartIndex, Right + 1);
+                Datas.Insert(StartIndex, Right);
+            }
 
-        //    if ((MaxIndex & 0x01) == 1)
-        //    {
-        //        MaxIndex--;
-        //        Datas[MaxIndex] = Right;
-        //    }
-
-        //    if ((MinIndex & 0x01) == 1)
-        //    {
-        //        Datas[MinIndex] = Left;
-        //        MinIndex++;
-        //    }
-
-        //    for (int i = MaxIndex - 1; i >= MinIndex; i--)
-        //        Datas.RemoveAt(i);
-        //}
-        private void HandleDifference(int Left, int Right, ref int StartIndex)
+            StartIndex++;
+        }
+        private void InternalDifference(int Left, int Right, ref int StartIndex)
         {
             for (; StartIndex < Datas.Count; StartIndex++)
                 if (Left <= Datas[StartIndex])
@@ -632,23 +540,76 @@ namespace MenthaAssembly.Media.Imaging
             return -1;
         }
 
-        public static ContourData operator +(ContourData This, ContourData Data)
+        public static ImageContourScanLine Union(ImageContourScanLine Data, int Left, int Right)
+        {
+            ImageContourScanLine Result = new ImageContourScanLine(Data);
+            Result.Union(Left, Right);
+            return Result;
+        }
+        public static ImageContourScanLine Union(ImageContourScanLine Data1, ImageContourScanLine Data2)
+        {
+            ImageContourScanLine Result = new ImageContourScanLine(Data1);
+            Result.Union(Data2);
+            return Result;
+        }
+
+        public static ImageContourScanLine Intersection(ImageContourScanLine Data1, ImageContourScanLine Data2)
+        {
+            ImageContourScanLine Result = new ImageContourScanLine(Data1);
+            Result.Intersection(Data2);
+            return Result;
+        }
+
+        public static ImageContourScanLine Difference(ImageContourScanLine Data, int Left, int Right)
+        {
+            ImageContourScanLine Result = new ImageContourScanLine(Data);
+            Result.Difference(Left, Right);
+            return Result;
+        }
+        public static ImageContourScanLine Difference(ImageContourScanLine Data1, ImageContourScanLine Data2)
+        {
+            ImageContourScanLine Result = new ImageContourScanLine(Data1);
+            Result.Difference(Data2);
+            return Result;
+        }
+
+        public static ImageContourScanLine Offset(ImageContourScanLine Data, int X)
+        {
+            ImageContourScanLine Result = new ImageContourScanLine();
+            foreach (int Value in Data.Datas)
+                Result.Datas.Add(Value + X);
+
+            return Result;
+        }
+
+        public static ImageContourScanLine operator |(ImageContourScanLine This, ImageContourScanLine Data)
         {
             This.Union(Data);
             return This;
         }
-        public static ContourData operator -(ContourData This, ContourData Data)
+        public static ImageContourScanLine operator &(ImageContourScanLine This, ImageContourScanLine Data)
+        {
+            This.Intersection(Data);
+            return This;
+        }
+
+        public static ImageContourScanLine operator +(ImageContourScanLine This, ImageContourScanLine Data)
+        {
+            This.Union(Data);
+            return This;
+        }
+        public static ImageContourScanLine operator -(ImageContourScanLine This, ImageContourScanLine Data)
         {
             This.Difference(Data);
             return This;
         }
 
-        public static ContourData operator +(ContourData This, int OffsetX)
+        public static ImageContourScanLine operator +(ImageContourScanLine This, int OffsetX)
         {
             This.Offset(OffsetX);
             return This;
         }
-        public static ContourData operator -(ContourData This, int OffsetX)
+        public static ImageContourScanLine operator -(ImageContourScanLine This, int OffsetX)
         {
             This.Offset(-OffsetX);
             return This;

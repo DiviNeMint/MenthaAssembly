@@ -399,11 +399,11 @@ namespace MenthaAssembly.Media.Imaging
                 UpperDistance = 0,
                 LowerDistance = 0;
 
-            foreach (KeyValuePair<int, ContourData> Item in Contour)
+            foreach (KeyValuePair<int, ImageContourScanLine> Item in Contour)
             {
                 int j = Item.Key;
-                ContourData Data = Item.Value;
-                if (Data.Count > 2)
+                ImageContourScanLine Data = Item.Value;
+                if (Data.Length > 2)
                 {
                     IsHollow = true;
                     LeftBound.Clear();
@@ -454,7 +454,7 @@ namespace MenthaAssembly.Media.Imaging
 
                 // Found Right Bound
                 {
-                    int Tx = Data[Data.Count - 1] - PCx,
+                    int Tx = Data[Data.Length - 1] - PCx,
                         Predict = DeltaX * Ty - DeltaY * Tx,
                         Distance = Math.Abs(Predict);
 
@@ -647,7 +647,7 @@ namespace MenthaAssembly.Media.Imaging
                 return;
             }
 
-            bool IsHollow = Contour.Any(i => i.Value.Count > 2);
+            bool IsHollow = Contour.Any(i => i.Value.Length > 2);
             int PCx = (Bound.Left + Bound.Right) >> 1,
                 PCy = (Bound.Top + Bound.Bottom) >> 1,
                 DSx = Sx - Cx,
@@ -685,9 +685,9 @@ namespace MenthaAssembly.Media.Imaging
                             OffsetY = Dy + Cy - PCy;
                         if (Dx < 0)
                         {
-                            foreach (KeyValuePair<int, ContourData> item in Contour)
+                            foreach (KeyValuePair<int, ImageContourScanLine> item in Contour)
                             {
-                                ContourData Data = item.Value;
+                                ImageContourScanLine Data = item.Value;
                                 int Ty = item.Key + OffsetY;
 
                                 if (Ty < 0)
@@ -708,9 +708,9 @@ namespace MenthaAssembly.Media.Imaging
                         }
                         else
                         {
-                            foreach (KeyValuePair<int, ContourData> item in Contour)
+                            foreach (KeyValuePair<int, ImageContourScanLine> item in Contour)
                             {
-                                ContourData Data = item.Value;
+                                ImageContourScanLine Data = item.Value;
                                 int Ty = item.Key + OffsetY;
 
                                 if (Ty < 0)
@@ -2438,13 +2438,18 @@ namespace MenthaAssembly.Media.Imaging
             {
                 case InterpolationTypes.Nearest:
                     {
-                        for (int j = 0; j < Height; j++)
-                        {
-                            IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                            Operator.ScanLineNearestResizeTo(0, (int)SumStepY, Width, 0f, StepX, Adapter);
+                        IPixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, 0, 0, StepX, StepY),
+                                         Dest = Result.GetAdapter<T>(0, 0);
 
-                            SumStepY += StepY;
+                        for (int j = 0; j < Height; j++, Sorc.MoveNextLine(), Dest.MoveNextLine())
+                        {
+                            for (int i = 0; i < Width; i++, Sorc.MoveNext(), Dest.MoveNext())
+                                Dest.Override(Sorc);
+
+                            Sorc.Move(-Width);
+                            Dest.Move(-Width);
                         }
+
                         break;
                     }
                 case InterpolationTypes.Bilinear:
@@ -2476,8 +2481,11 @@ namespace MenthaAssembly.Media.Imaging
                     {
                         Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
                         {
-                            IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                            Operator.ScanLineNearestResizeTo(0, (int)(StepY * j), Width, 0f, StepX, Adapter);
+                            IPixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, 0, j, StepX, StepY),
+                                             Dest = Result.GetAdapter<T>(0, j);
+
+                            for (int i = 0; i < Width; i++, Sorc.MoveNext(), Dest.MoveNext())
+                                Dest.Override(Sorc);
                         });
                         break;
                     }
@@ -3316,6 +3324,10 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #endregion
+
+        public IPixelAdapter<T> GetAdapter<T>(int X, int Y)
+            where T : unmanaged, IPixel
+            => Operator.GetAdapter<T>(X, Y);
 
         public ImageContext<Pixel> Clone()
             => Cast<Pixel>();

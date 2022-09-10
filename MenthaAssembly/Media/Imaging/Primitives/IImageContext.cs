@@ -38,6 +38,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public IImagePalette Palette { get; }
 
+
         #region Graphic Processing
 
         #region Line Rendering
@@ -1768,6 +1769,8 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #endregion
+
+        public IPixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel;
 
     }
 

@@ -8,319 +8,321 @@ using System.Linq;
 namespace MenthaAssembly.Media.Imaging
 {
     [Serializable]
-    public class ImageContour : IEnumerable<KeyValuePair<int, ContourData>>, ICloneable
+    public sealed class ImageContour : IImageContour, ICloneable
     {
-        internal readonly SortedList<int, ContourData> Datas = new SortedList<int, ContourData>();
+        private readonly Dictionary<int, ImageContourScanLine> Contents;
+        IReadOnlyDictionary<int, ImageContourScanLine> IImageContour.Contents
+            => Contents;
 
-        public int Count => Datas.Count;
+        private double OffsetX = 0d;
+        double IImageContour.OffsetX
+            => OffsetX;
+
+        private double OffsetY = 0d;
+        double IImageContour.OffsetY
+            => OffsetY;
 
         public Bound<int> Bound
         {
             get
             {
-                IEnumerator<KeyValuePair<int, ContourData>> Enumerator = Datas.GetEnumerator();
-                try
+                int X0 = int.MaxValue,
+                    X1 = int.MinValue,
+                    Y0 = int.MaxValue,
+                    Y1 = int.MinValue,
+                    T;
+
+                foreach (KeyValuePair<int, ImageContourScanLine> Content in Contents)
                 {
-                    if (Enumerator.MoveNext())
+                    List<int> XDatas = Content.Value.Datas;
+                    if (XDatas.Count > 0)
                     {
-                        int Key = Enumerator.Current.Key;
-                        ContourData Value = Enumerator.Current.Value;
-                        while (Value.Count == 0)
-                        {
-                            if (!Enumerator.MoveNext())
-                                return Bound<int>.Empty;
+                        T = Content.Key;
+                        if (T < Y0)
+                            Y0 = T;
+                        else if (Y1 < T)
+                            Y1 = T;
 
-                            Key = Enumerator.Current.Key;
-                            Value = Enumerator.Current.Value;
-                        }
+                        T = XDatas[0];
+                        if (T < X0)
+                            X0 = T;
 
-                        int Left = Value[0],
-                            Top = Key,
-                            Right = Value[Value.Count - 1],
-                            Bottom = Key;
-
-                        while (Enumerator.MoveNext())
-                        {
-                            Value = Enumerator.Current.Value;
-                            Left = Math.Min(Left, Value[0]);
-                            Right = Math.Max(Right, Value[Value.Count - 1]);
-                            Bottom = Enumerator.Current.Key;
-                        }
-
-                        return new Bound<int>(Left, Top, Right + 1, Bottom + 1);
+                        T = XDatas[XDatas.Count - 1];
+                        if (X1 < T)
+                            X1 = T;
                     }
-
-                    return Bound<int>.Empty;
                 }
-                finally
+
+                return X0 != int.MaxValue || X1 != int.MinValue || Y0 != int.MaxValue || Y1 != int.MinValue ? new Bound<int>(X0, Y0, X1, Y1) : Bound<int>.Empty;
+            }
+        }
+
+        public ImageContourScanLine this[int Y]
+        {
+            get
+            {
+                if (!Contents.TryGetValue(Y, out ImageContourScanLine ScanLine))
                 {
-                    Enumerator.Dispose();
+                    ScanLine = new ImageContourScanLine();
+                    Contents.Add(Y, ScanLine);
+                }
+
+                return ScanLine;
+            }
+            private set => Contents[Y] = value;
+        }
+
+        public ImageContour()
+        {
+            Contents = new Dictionary<int, ImageContourScanLine>();
+        }
+        public ImageContour(IImageContour Contour)
+        {
+            Contour.EnsureContents();
+            Contents = new Dictionary<int, ImageContourScanLine>(Contour.Contents.ToDictionary(i => i.Key, i => i.Value.Clone()));
+            OffsetX = Contour.OffsetX;
+            OffsetY = Contour.OffsetY;
+        }
+
+        public void Union(IImageContour Contour)
+        {
+            int Ox = (int)Math.Round(Contour.OffsetX - OffsetX),
+                Oy = (int)Math.Round(Contour.OffsetY - OffsetY);
+
+            Contour.EnsureContents();
+            foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
+            {
+                int Y = Content.Key + Oy;
+                if (!Contents.TryGetValue(Y, out ImageContourScanLine ScanLine))
+                {
+                    ScanLine = new ImageContourScanLine();
+                    Contents.Add(Y, ScanLine);
+                }
+
+                List<int> Datas = Content.Value.Datas;
+                for (int i = 0; i < Datas.Count;)
+                    ScanLine.Union(Datas[i++] + Ox, Datas[i++] + Ox);
+            }
+        }
+
+        public void Intersection(IImageContour Contour)
+        {
+            int Ox = (int)Math.Round(Contour.OffsetX - OffsetX),
+                Oy = (int)Math.Round(Contour.OffsetY - OffsetY);
+
+            Contour.EnsureContents();
+            foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
+            {
+                int Y = Content.Key + Oy;
+                if (Contents.TryGetValue(Y, out ImageContourScanLine ScanLine))
+                    ScanLine.Intersection(ImageContourScanLine.Offset(Content.Value, Ox));
+            }
+        }
+
+        public void Difference(IImageContour Contour)
+        {
+            int Ox = (int)Math.Round(Contour.OffsetX - OffsetX),
+                Oy = (int)Math.Round(Contour.OffsetY - OffsetY);
+
+            Contour.EnsureContents();
+            foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
+            {
+                int Y = Content.Key + Oy;
+                if (Contents.TryGetValue(Y, out ImageContourScanLine ScanLine))
+                {
+                    List<int> Datas = Content.Value.Datas;
+                    for (int i = 0; i < Datas.Count;)
+                        ScanLine.Difference(Datas[i++] + Ox, Datas[i++] + Ox);
                 }
             }
         }
 
-        public ContourData this[int Y]
+        public void SymmetricDifference(IImageContour Contour)
         {
-            get
-            {
-                if (Datas.TryGetValue(Y, out ContourData Info))
-                    return Info;
+            int Ox = (int)Math.Round(Contour.OffsetX - OffsetX),
+                Oy = (int)Math.Round(Contour.OffsetY - OffsetY);
 
-                Info = new ContourData();
-
-                Datas[Y] = Info;
-                return Info;
-            }
-            set
+            Contour.EnsureContents();
+            foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
             {
-                if (value is null)
+                int Y = Content.Key + Oy;
+                if (!Contents.TryGetValue(Y, out ImageContourScanLine ScanLine))
                 {
-                    Datas.Remove(Y);
-                    return;
+                    ScanLine = new ImageContourScanLine();
+                    Contents.Add(Y, ScanLine);
                 }
 
-                Datas[Y] = value;
+                ScanLine.SymmetricDifference(ImageContourScanLine.Offset(Content.Value, Ox));
+            }
+        }
+
+        public void Flip(double CenterX, double CenterY, FlipMode Flip)
+        {
+            switch (Flip)
+            {
+                case FlipMode.Horizontal:
+                    {
+                        double TDx = CenterX * 2d;
+                        int Dx = (int)Math.Round(TDx);
+                        OffsetX += TDx - Dx;
+
+                        foreach (KeyValuePair<int, ImageContourScanLine> Data in Contents)
+                        {
+                            List<int> XDatas = Data.Value.Datas;
+                            int Count = XDatas.Count,
+                                Length = Count >> 1;
+                            Count--;
+                            for (int i = 0; i < Length; i++)
+                            {
+                                int Temp = Dx - XDatas[i];
+                                XDatas[i] = Dx - XDatas[Count - i];
+                                XDatas[Count - i] = Temp;
+                            }
+                        }
+                        break;
+                    }
+                case FlipMode.Vertical:
+                    {
+                        double TDy = CenterY * 2d;
+                        int Dy = (int)Math.Round(TDy);
+                        OffsetY += TDy - Dy;
+
+                        List<int> Keys = Contents.Keys.ToList();
+
+                        void Handler(int Ky)
+                        {
+                            ImageContourScanLine Value = Contents[Ky];
+                            Contents.Remove(Ky);
+                            Keys.Remove(Ky);
+
+                            int Ny = Dy - Ky;
+                            if (Keys.Contains(Ny))
+                                Handler(Ny);
+
+                            Contents.Add(Ny, Value);
+                        }
+
+                        while (Keys.Count > 0)
+                            Handler(Keys[0]);
+
+                        break;
+                    }
+                case FlipMode.Horizontal | FlipMode.Vertical:
+                    {
+                        double TDx = CenterX * 2d,
+                               TDy = CenterY * 2d;
+                        int Dx = (int)Math.Round(TDx),
+                            Dy = (int)Math.Round(TDy);
+                        OffsetX += TDx - Dx;
+                        OffsetY += TDy - Dy;
+
+                        List<int> Keys = Contents.Keys.ToList();
+
+                        void Handler(int Ky)
+                        {
+                            ImageContourScanLine Value = Contents[Ky];
+                            Contents.Remove(Ky);
+                            Keys.Remove(Ky);
+
+                            // FlipX
+                            List<int> XDatas = Value.Datas;
+                            int Count = XDatas.Count,
+                                Length = Count >> 1;
+                            Count--;
+                            for (int i = 0; i < Length; i++)
+                            {
+                                int Temp = Dx - XDatas[i];
+                                XDatas[i] = Dx - XDatas[Count - i];
+                                XDatas[Count - i] = Temp;
+                            }
+
+                            // New Y
+                            int Ny = Dy - Ky;
+                            if (Keys.Contains(Ny))
+                                Handler(Ny);
+
+                            Contents.Add(Ny, Value);
+                        }
+
+                        while (Keys.Count > 0)
+                            Handler(Keys[0]);
+
+                        break;
+                    }
+            }
+        }
+
+        public void Offset(double DeltaX, double DeltaY)
+        {
+            OffsetX += DeltaX;
+            OffsetY += DeltaY;
+        }
+
+        public void Crop(double MinX, double MaxX, double MinY, double MaxY)
+        {
+            MinX -= OffsetX;
+            MinY -= OffsetY;
+
+            int X0 = (int)Math.Round(MinX),
+                Y0 = (int)Math.Round(MinY);
+
+            OffsetX += MinX - X0;
+            OffsetY += MinY - Y0;
+
+            MaxX -= OffsetX;
+            MaxY -= OffsetY;
+
+            int X1 = (int)Math.Round(MaxX),
+                Y1 = (int)Math.Round(MaxY);
+
+            foreach (int Y in Contents.Keys.ToArray())
+            {
+                if (Y < Y0 || Y1 < Y)
+                    Contents.Remove(Y);
+                else
+                    Contents[Y].Crop(X0, X1);
             }
         }
 
         public bool Contain(int X, int Y)
-            => Datas.TryGetValue(Y, out ContourData Data) && Data.Contain(X);
+            => Contents.TryGetValue(Y, out ImageContourScanLine Data) && Data.Contain(X);
 
         public void Clear()
         {
-            foreach (ContourData Data in Datas.Values)
+            foreach (ImageContourScanLine Data in Contents.Values)
                 Data.Clear();
 
-            Datas.Clear();
+            Contents.Clear();
         }
 
-        public void Union(ImageContour Contour)
-        {
-            foreach (KeyValuePair<int, ContourData> Pair in Contour.Datas)
-                this[Pair.Key].Union(Pair.Value);
-        }
+        void IImageContour.EnsureContents() { }
 
-        public void Difference(ImageContour Contour)
-        {
-            foreach (KeyValuePair<int, ContourData> Pair in Contour.Datas)
-            {
-                ContourData Data = this[Pair.Key];
-                Data.Difference(Pair.Value);
-                if (Data.Count == 0)
-                    Datas.Remove(Pair.Key);
-            }
-        }
-
-        public void Flip(FlipMode Mode)
-        {
-            // Horizontal
-            if ((Mode & FlipMode.Horizontal) > 0)
-            {
-                Bound<int> Bound = this.Bound;
-                int Delta = Bound.Left + Bound.Right;
-                foreach (KeyValuePair<int, ContourData> Data in Datas)
-                {
-                    int Count = Data.Value.Count,
-                        Length = Count >> 1;
-                    Count--;
-                    for (int i = 0; i < Length; i++)
-                    {
-                        int Temp = Delta - Data.Value[i];
-                        Data.Value[i] = Delta - Data.Value[Count - i];
-                        Data.Value[Count - i] = Temp;
-                    }
-                }
-            }
-
-            // Vertical
-            if ((Mode & FlipMode.Vertical) > 0)
-            {
-                KeyValuePair<int, ContourData>[] TempDatas = Datas.ToArray();
-                Datas.Clear();
-
-                Bound<int> Bound = this.Bound;
-                int Delta = Bound.Top + Bound.Bottom;
-                foreach (KeyValuePair<int, ContourData> Data in TempDatas)
-                    Datas.Add(Delta - Data.Key, Data.Value);
-
-            }
-        }
-        public void Flip(int Center, FlipMode Mode)
-        {
-            // Horizontal
-            if ((Mode & FlipMode.Horizontal) > 0)
-            {
-                int Delta = Center << 1;
-                foreach (KeyValuePair<int, ContourData> Data in Datas)
-                {
-                    int Count = Data.Value.Count,
-                        Length = Count >> 1;
-                    Count--;
-                    for (int i = 0; i < Length; i++)
-                    {
-                        int Temp = Delta - Data.Value[i];
-                        Data.Value[i] = Delta - Data.Value[Count - i];
-                        Data.Value[Count - i] = Temp;
-                    }
-                }
-            }
-
-            // Vertical
-            if ((Mode & FlipMode.Vertical) > 0)
-            {
-                KeyValuePair<int, ContourData>[] TempDatas = Datas.ToArray();
-                Datas.Clear();
-
-                int Delta = Center << 1;
-                foreach (KeyValuePair<int, ContourData> Data in TempDatas)
-                    Datas.Add(Delta - Data.Key, Data.Value);
-            }
-        }
-        public static ImageContour Flip(ImageContour Source, int Center, FlipMode Mode)
-        {
-            ImageContour Contour = new ImageContour();
-
-            switch (Mode)
-            {
-                case FlipMode.Horizontal:
-                    {
-                        int Delta = Center << 1;
-                        foreach (KeyValuePair<int, ContourData> Data in Source.Datas)
-                        {
-                            ContourData SourData = Data.Value,
-                                        DestData = Contour[Data.Key];
-                            int Count = SourData.Count;
-                            for (int i = Count - 1; i >= 0; i--)
-                                DestData.Datas.Add(Delta - SourData.Datas[i]);
-                        }
-
-                        return Contour;
-                    }
-                case FlipMode.Vertical:
-                    {
-                        int Delta = Center << 1;
-                        foreach (KeyValuePair<int, ContourData> Data in Source.Datas)
-                            Contour[Delta - Data.Key].Datas.AddRange(Data.Value.Datas);
-
-                        return Contour;
-                    }
-                case FlipMode.Horizontal | FlipMode.Vertical:
-                    {
-                        int Delta = Center << 1;
-                        foreach (KeyValuePair<int, ContourData> Data in Source.Datas)
-                        {
-                            ContourData SourData = Data.Value,
-                                        DestData = Contour[Center - Data.Key];
-                            int Count = SourData.Count;
-                            for (int i = Count - 1; i >= 0; i--)
-                                DestData.Datas.Add(Delta - SourData.Datas[i]);
-                        }
-
-                        return Contour;
-                    }
-            }
-
-            return Source.Clone();
-        }
-
-        public void Offset(int X, int Y)
-        {
-            IList<int> Keys = Datas.Keys;
-            if (Y < 0)
-            {
-                for (int i = 0; i < Keys.Count; i++)
-                {
-                    int OldY = Keys[i];
-                    ContourData Data = Datas[OldY];
-                    Data.Offset(X);
-
-                    Datas.RemoveAt(i);
-                    Datas.Add(OldY + Y, Data);
-                }
-            }
-            else if (Y == 0)
-            {
-                foreach (int Key in Keys)
-                    Datas[Key].Offset(X);
-            }
-            else
-            {
-                for (int i = Keys.Count - 1; i >= 0; i--)
-                {
-                    int OldY = Keys[i];
-                    ContourData Data = Datas[OldY];
-                    Data.Offset(X);
-
-                    Datas.RemoveAt(i);
-                    Datas.Add(OldY + Y, Data);
-                }
-            }
-        }
-        public static ImageContour Offset(ImageContour Source, int X, int Y)
-        {
-            ImageContour Result = new ImageContour();
-            foreach (KeyValuePair<int, ContourData> Data in Source.Datas)
-                Result[Data.Key + Y] = ContourData.Offset(Data.Value, X);
-
-            return Result;
-        }
+        public IEnumerator<KeyValuePair<int, ImageContourScanLine>> GetEnumerator()
+            => new ImageContourEnumerator(this);
+        IEnumerator IEnumerable.GetEnumerator()
+            => GetEnumerator();
 
         public ImageContour Clone()
-        {
-            ImageContour Result = new ImageContour();
-
-            foreach (KeyValuePair<int, ContourData> Data in Datas)
-                Result[Data.Key] = Data.Value.Clone();
-
-            return Result;
-        }
+            => new ImageContour(this);
+        IImageContour IImageContour.Clone()
+            => Clone();
         object ICloneable.Clone()
             => Clone();
 
-        //public static ImageContour Rotate(ImageContour Source, int Ox, int Oy, int Angle)
-        //{
-        //    ImageContour r = new ImageContour();
+        public static ImageContour Flip(ImageContour Source, double CenterX, double CenterY, FlipMode Mode)
+        {
+            ImageContour Contour = new ImageContour(Source);
+            Contour.Flip(CenterX, CenterY, Mode);
+            return Contour;
+        }
 
-        //    double Theta = Angle * MathHelper.UnitTheta;
-
-        //    double vsin = Math.Sin(Theta),
-        //           vcos = Math.Cos(Theta);
-
-        //    //int x, y, nx2, ny2; //平移後之點
-        //    //for (int ny = 0; ny < height; ++ny)
-        //    //{
-        //    //    for (int nx = 0; nx < width; ++nx)
-        //    //    {
-        //    //        // 平移 ox,oy
-        //    //        nx2 = nx - Ox;
-        //    //        ny2 = ny - Oy;
-
-        //    //        // 再旋轉, 平移(-ox,-oy)
-        //    //        x = (int)(nx2 * vcos + ny2 * vsin + 0.5 + Ox);
-        //    //        y = (int)(-nx2 * vsin + ny2 * vcos + 0.5 + Oy);
-
-        //    //        // 寫入
-        //    //        if (y >= 0 && y < height && x >= 0 && x < width)
-        //    //        {
-        //    //            nr[ny][nx] = r[y][x];
-        //    //            ng[ny][nx] = g[y][x];
-        //    //            nb[ny][nx] = b[y][x];
-        //    //        }
-        //    //        else
-        //    //        {
-        //    //            nr[ny][nx] = ng[ny][nx] = nb[ny][nx] = 0;
-        //    //        }
-        //    //    }
-        //    //}
-
-
-        //    return r;
-        //}
-
-        public IEnumerator<KeyValuePair<int, ContourData>> GetEnumerator()
-            => Datas.GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator()
-            => GetEnumerator();
+        public static ImageContour Offset(ImageContour Source, double OffsetX, double OffsetY)
+        {
+            ImageContour Result = new ImageContour(Source);
+            Result.OffsetX += OffsetX;
+            Result.OffsetY += OffsetY;
+            return Result;
+        }
 
         public static ImageContour ParsePenContour(IImageContext Stroke, out IPixel StrokeColor)
         {
@@ -372,12 +374,10 @@ namespace MenthaAssembly.Media.Imaging
             {
                 int X1 = Cx - Dx,
                     X2 = Cx + Dx;
-                ContourData Data = Ellipse[Cy - Dy];
-                Data.Datas.Add(X1);
-                Data.Datas.Add(X2);
+                ImageContourScanLine Data = Ellipse[Cy - Dy];
+                Data.Union(X1, X2);
                 Data = Ellipse[Cy + Dy];
-                Data.Datas.Add(X1);
-                Data.Datas.Add(X2);
+                Data.Union(X1, X2);
             });
 
             return Ellipse;
@@ -389,8 +389,8 @@ namespace MenthaAssembly.Media.Imaging
 
             void AddData(int X, int Y)
             {
-                ContourData TData = Contour[Y];
-                if (TData.Count == 0)
+                ImageContourScanLine TData = Contour[Y];
+                if (TData.Length == 0)
                 {
                     TData.Datas.Add(X);
                     TData.Datas.Add(X);
@@ -431,7 +431,7 @@ namespace MenthaAssembly.Media.Imaging
                 {
                     int X1 = Cx - Dx - Length,
                         X2 = Cx + Dx + Length;
-                    ContourData Data = Obround[Cy - Dy];
+                    ImageContourScanLine Data = Obround[Cy - Dy];
                     Data.Datas.Add(X1);
                     Data.Datas.Add(X2);
                     Data = Obround[Cy + Dy];
@@ -448,7 +448,7 @@ namespace MenthaAssembly.Media.Imaging
             {
                 int X1 = Cx - Dx,
                     X2 = Cx + Dx;
-                ContourData Data = Obround[Cy - Dy - Length];
+                ImageContourScanLine Data = Obround[Cy - Dy - Length];
                 Data.Datas.Add(X1);
                 Data.Datas.Add(X2);
                 Data = Obround[Cy + Dy + Length];
@@ -571,8 +571,8 @@ namespace MenthaAssembly.Media.Imaging
             ImageContour Triangle = new ImageContour();
             void AddData(int X, int Y)
             {
-                ContourData TData = Triangle[Y];
-                if (TData.Count == 0)
+                ImageContourScanLine TData = Triangle[Y];
+                if (TData.Length == 0)
                 {
                     TData.Datas.Add(X);
                     TData.Datas.Add(X);
@@ -612,8 +612,8 @@ namespace MenthaAssembly.Media.Imaging
 
             for (int i = 0; i <= HalfHeight; i++)
             {
-                Rectangle[Cy - i] = new ContourData(Left, Right);
-                Rectangle[Cy + i] = new ContourData(Left, Right);
+                Rectangle[Cy - i] = new ImageContourScanLine(Left, Right);
+                Rectangle[Cy + i] = new ImageContourScanLine(Left, Right);
             }
 
             return Rectangle;
@@ -647,8 +647,8 @@ namespace MenthaAssembly.Media.Imaging
             ImageContour Rectangle = new ImageContour();
             void AddData(int X, int Y)
             {
-                ContourData TData = Rectangle[Y];
-                if (TData.Count == 0)
+                ImageContourScanLine TData = Rectangle[Y];
+                if (TData.Length == 0)
                 {
                     TData.Datas.Add(X);
                     TData.Datas.Add(X);
@@ -784,20 +784,20 @@ namespace MenthaAssembly.Media.Imaging
             for (int j = Y2; j <= Y3; j++)
                 Rectangle[j].AddRight(Right);
 
-            foreach (int j in Rectangle.Datas.Keys.ToArray())
+            foreach (int j in Rectangle.Contents.Keys.ToArray())
             {
                 if (j < Top || Bottom < j)
                 {
-                    Rectangle.Datas.Remove(j);
+                    Rectangle.Contents.Remove(j);
                     continue;
                 }
 
-                int Length = Rectangle.Datas[j].Count;
+                int Length = Rectangle.Contents[j].Length;
                 if (Length > 2)
                 {
                     Length--;
                     for (int i = 1; i < Length; i++)
-                        Rectangle.Datas[j].Datas.RemoveAt(1);
+                        Rectangle.Contents[j].Datas.RemoveAt(1);
                 }
             }
 
@@ -885,18 +885,18 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             // Filter
-            foreach (KeyValuePair<int, ContourData> Item in Rectangle.Datas)
+            foreach (KeyValuePair<int, ImageContourScanLine> Item in Rectangle.Contents)
             {
-                ContourData TData = Item.Value;
-                int Length = TData.Count;
+                ImageContourScanLine TData = Item.Value;
+                int Length = TData.Length;
                 for (int i = 2; i < Length; i++)
                     TData.Datas.RemoveAt(1);
             }
 
             void AddData(int X, int Y)
             {
-                ContourData TData = Rectangle[Y];
-                if (TData.Count == 0)
+                ImageContourScanLine TData = Rectangle[Y];
+                if (TData.Length == 0)
                 {
                     TData.Datas.Add(X);
                     TData.Datas.Add(X);
@@ -950,8 +950,8 @@ namespace MenthaAssembly.Media.Imaging
             ImageContour Polygon = new ImageContour();
             void AddData(int X, int Y)
             {
-                ContourData TData = Polygon[Y];
-                if (TData.Count == 0)
+                ImageContourScanLine TData = Polygon[Y];
+                if (TData.Length == 0)
                 {
                     TData.AddLeft(X);
                     return;
@@ -1065,7 +1065,7 @@ namespace MenthaAssembly.Media.Imaging
                     IntersectionsX[j] = t;
                 }
 
-                ContourData Data = Polygon[y];
+                ImageContourScanLine Data = Polygon[y];
                 // Add Intersections Datas
                 for (int i = 0; i < IntersectionCount - 1;)
                 {
@@ -1155,7 +1155,7 @@ namespace MenthaAssembly.Media.Imaging
                     IntersectionsX[j] = t;
                 }
 
-                ContourData Data = Polygon[y];
+                ImageContourScanLine Data = Polygon[y];
                 // Add Intersections Datas
                 for (int i = 0; i < IntersectionCount - 1;)
                 {
@@ -1199,11 +1199,11 @@ namespace MenthaAssembly.Media.Imaging
                 UpperDistance = 0,
                 LowerDistance = 0;
 
-            foreach (KeyValuePair<int, ContourData> Item in Pen)
+            foreach (KeyValuePair<int, ImageContourScanLine> Item in Pen)
             {
                 int j = Item.Key;
-                ContourData Data = Item.Value;
-                if (Data.Count > 2)
+                ImageContourScanLine Data = Item.Value;
+                if (Data.Length > 2)
                 {
                     IsHollow = true;
                     LineContour.Clear();
@@ -1242,7 +1242,7 @@ namespace MenthaAssembly.Media.Imaging
 
                 // Found Right Bound
                 {
-                    int Tx = Data[Data.Count - 1] - PCx,
+                    int Tx = Data[Data.Length - 1] - PCx,
                         Predict = DeltaX * Ty - DeltaY * Tx,
                         Distance = Math.Abs(Predict);
 
@@ -1281,13 +1281,13 @@ namespace MenthaAssembly.Media.Imaging
                     LastDy = 0;
 
                 GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, (Dx, Dy) =>
-                    {
-                        Stroke.Offset(Dx - LastDx, Dy - LastDy);
-                        LineContour.Union(Stroke);
+                {
+                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                    LineContour.Union(Stroke);
 
-                        LastDx = Dx;
-                        LastDy = Dy;
-                    });
+                    LastDx = Dx;
+                    LastDy = Dy;
+                });
                 #endregion
             }
             else
@@ -1333,7 +1333,7 @@ namespace MenthaAssembly.Media.Imaging
             if (Bound.IsEmpty)
                 return null;
 
-            bool IsHollow = Pen.Any(i => i.Value.Count > 2);
+            bool IsHollow = Pen.Any(i => i.Value.Length > 2);
             int PCx = (Bound.Left + Bound.Right) >> 1,
                 PCy = (Bound.Top + Bound.Bottom) >> 1,
                 DSx = Sx - Cx,
@@ -1371,9 +1371,9 @@ namespace MenthaAssembly.Media.Imaging
                             OffsetY = Dy + Cy - PCy;
                         if (Dx < 0)
                         {
-                            foreach (KeyValuePair<int, ContourData> item in Pen)
+                            foreach (KeyValuePair<int, ImageContourScanLine> item in Pen)
                             {
-                                ContourData Data = item.Value;
+                                ImageContourScanLine Data = item.Value;
                                 int Ty = item.Key + OffsetY;
 
                                 if (Ty < 0)
@@ -1391,9 +1391,9 @@ namespace MenthaAssembly.Media.Imaging
                         }
                         else
                         {
-                            foreach (KeyValuePair<int, ContourData> item in Pen)
+                            foreach (KeyValuePair<int, ImageContourScanLine> item in Pen)
                             {
-                                ContourData Data = item.Value;
+                                ImageContourScanLine Data = item.Value;
                                 int Ty = item.Key + OffsetY;
 
                                 if (Ty < 0)
@@ -1460,6 +1460,17 @@ namespace MenthaAssembly.Media.Imaging
             };
 
             return Graphic.CreateTextContour(X, Y, Text, Font);
+        }
+
+        public static ImageContour operator |(ImageContour This, ImageContour Contour)
+        {
+            This.Union(Contour);
+            return This;
+        }
+        public static ImageContour operator &(ImageContour This, ImageContour Contour)
+        {
+            This.Intersection(Contour);
+            return This;
         }
 
         public static ImageContour operator +(ImageContour This, ImageContour Contour)
