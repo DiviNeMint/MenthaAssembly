@@ -2,36 +2,30 @@
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal sealed unsafe class NearestResizePixelAdapter<T> : IPixelAdapter<T>
+    internal sealed unsafe class NearestResizePixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
-        private readonly IPixelAdapter<T> Source;
+        private readonly PixelAdapter<T> Source;
         private readonly float StepX, StepY;
         private float FracX, FracY;
 
-        public int X
-            => throw new NotImplementedException();
+        public override int MaxX { get; }
 
-        public int Y
-            => throw new NotImplementedException();
+        public override int MaxY { get; }
 
-        public int MaxX { get; }
-
-        public int MaxY { get; }
-
-        public byte A
+        public override byte A
             => Source.A;
 
-        public byte R
+        public override byte R
             => Source.R;
 
-        public byte G
+        public override byte G
             => Source.G;
 
-        public byte B
+        public override byte B
             => Source.B;
 
-        public int BitsPerPixel
+        public override int BitsPerPixel
             => Source.BitsPerPixel;
 
         public NearestResizePixelAdapter(IImageContext Context, int X, int Y, float StepX, float StepY)
@@ -50,33 +44,33 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracY -= Ty;
         }
 
-        public void Override(T Pixel)
+        public override void Override(T Pixel)
             => Source.Override(Pixel);
-        public void Override(IPixelAdapter<T> Adapter)
+        public override void Override(PixelAdapter<T> Adapter)
             => Source.Override(Adapter);
-        public void Override(byte A, byte R, byte G, byte B)
+        public override void Override(byte A, byte R, byte G, byte B)
             => Source.Override(A, R, G, B);
-        public void OverrideTo(T* pData)
+        public override void OverrideTo(T* pData)
             => Source.OverrideTo(pData);
-        public void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
             => Source.OverrideTo(pDataR, pDataG, pDataB);
-        public void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => Source.OverrideTo(pDataA, pDataR, pDataG, pDataB);
 
-        public void Overlay(T Pixel)
+        public override void Overlay(T Pixel)
             => Source.Overlay(Pixel);
-        public void Overlay(IPixelAdapter<T> Adapter)
+        public override void Overlay(PixelAdapter<T> Adapter)
             => Source.Overlay(Adapter);
-        public void Overlay(byte A, byte R, byte G, byte B)
+        public override void Overlay(byte A, byte R, byte G, byte B)
             => Source.Overlay(A, R, G, B);
-        public void OverlayTo(T* pData)
+        public override void OverlayTo(T* pData)
             => Source.OverlayTo(pData);
-        public void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
             => Source.OverlayTo(pDataR, pDataG, pDataB);
-        public void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => Source.OverlayTo(pDataA, pDataR, pDataG, pDataB);
 
-        public void Move(int Offset)
+        public override void Move(int Offset)
         {
             FracX += StepX * Offset;
 
@@ -85,10 +79,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             FracX -= Dx;
         }
-        public void Move(int X, int Y)
+        public override void Move(int X, int Y)
             => throw new NotImplementedException();
 
-        public void MoveNext()
+        public override void MoveNext()
         {
             FracX += StepX;
             while (FracX >= 1f)
@@ -97,7 +91,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Source.InternalMoveNext();
             }
         }
-        public void MovePrevious()
+        public override void MovePrevious()
         {
             FracX -= StepX;
             while (FracX < 0f)
@@ -107,7 +101,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public void MoveNextLine()
+        public override void MoveNextLine()
         {
             FracY += StepY;
             while (FracY >= 1f)
@@ -116,7 +110,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Source.InternalMoveNextLine();
             }
         }
-        public void MovePreviousLine()
+        public override void MovePreviousLine()
         {
             FracY -= StepY;
             while (FracY < 0f)
@@ -126,20 +120,22 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        void IPixelAdapter<T>.InternalMove(int Offset)
+        protected internal override void InternalMove(int Offset)
             => Move(Offset);
-        void IPixelAdapter<T>.InternalMove(int X, int Y)
+        protected internal override void InternalMove(int X, int Y)
             => Move(X, Y);
-        void IPixelAdapter<T>.InternalMoveNext()
+
+        protected internal override void InternalMoveNext()
             => MoveNext();
-        void IPixelAdapter<T>.InternalMovePrevious()
+        protected internal override void InternalMovePrevious()
             => MovePrevious();
-        void IPixelAdapter<T>.InternalMoveNextLine()
+
+        protected internal override void InternalMoveNextLine()
             => MoveNextLine();
-        void IPixelAdapter<T>.InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousLine()
             => MovePreviousLine();
 
-        public IPixelAdapter<T> Clone()
+        public override PixelAdapter<T> Clone()
             => throw new NotImplementedException();
 
     }

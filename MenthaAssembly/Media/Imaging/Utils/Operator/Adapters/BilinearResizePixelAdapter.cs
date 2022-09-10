@@ -2,32 +2,30 @@
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal sealed unsafe class BilinearResizePixelAdapter<T> : IPixelAdapter<T>
+    internal sealed unsafe class BilinearResizePixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
-        private readonly IPixelAdapter<T> Source;
+        private readonly PixelAdapter<T> Source;
         private readonly float StepX, StepY;
         private float FracX, FracY;
 
-        public int X
-            => throw new NotImplementedException();
+        public override int MaxX { get; }
 
-        public int Y
-            => throw new NotImplementedException();
+        public override int MaxY { get; }
 
-        public int MaxX { get; }
+        private byte _A;
+        public override byte A => _A;
 
-        public int MaxY { get; }
+        private byte _R;
+        public override byte R => _R;
 
-        public byte A { set; get; }
+        private byte _G;
+        public override byte G => _G;
 
-        public byte R { set; get; }
+        private byte _B;
+        public override byte B => _B;
 
-        public byte G { set; get; }
-
-        public byte B { set; get; }
-
-        public int BitsPerPixel
+        public override int BitsPerPixel
             => Source.BitsPerPixel;
 
         private readonly bool CalculateAlpth;
@@ -36,7 +34,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             CalculateAlpth = Context.Channels == 4 || (Context.Channels == 1 && Context.BitsPerPixel == 32);
 
             if (!CalculateAlpth)
-                A = byte.MaxValue;
+                _A = byte.MaxValue;
 
             MaxX = Context.Width - 1;
             MaxY = Context.Height - 1;
@@ -56,25 +54,25 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IFracY = 1f - FracY;
         }
 
-        public void Override(T Pixel)
+        public override void Override(T Pixel)
             => throw new NotSupportedException();
-        public void Override(IPixelAdapter<T> Adapter)
+        public override void Override(PixelAdapter<T> Adapter)
             => throw new NotSupportedException();
-        public void Override(byte A, byte R, byte G, byte B)
+        public override void Override(byte A, byte R, byte G, byte B)
             => throw new NotSupportedException();
-        public void OverrideTo(T* pData)
+        public override void OverrideTo(T* pData)
         {
             EnsurePixel();
             pData->Override(A, R, G, B);
         }
-        public void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
             *pDataR = R;
             *pDataG = G;
             *pDataB = B;
         }
-        public void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
             *pDataA = A;
@@ -83,23 +81,23 @@ namespace MenthaAssembly.Media.Imaging.Utils
             *pDataB = B;
         }
 
-        public void Overlay(T Pixel)
+        public override void Overlay(T Pixel)
             => throw new NotSupportedException();
-        public void Overlay(IPixelAdapter<T> Adapter)
+        public override void Overlay(PixelAdapter<T> Adapter)
             => throw new NotSupportedException();
-        public void Overlay(byte A, byte R, byte G, byte B)
+        public override void Overlay(byte A, byte R, byte G, byte B)
             => throw new NotSupportedException();
-        public void OverlayTo(T* pData)
+        public override void OverlayTo(T* pData)
         {
             EnsurePixel();
             pData->Overlay(A, R, G, B);
         }
-        public void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
             PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, A, R, G, B);
         }
-        public void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
             PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, A, R, G, B);
@@ -113,7 +111,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (IsPixelValid)
                 return;
 
-            IPixelAdapter<T> p00 = Source,
+            PixelAdapter<T> p00 = Source,
                              p10 = p00,
                              p01 = p00,
                              p11 = p10;
@@ -139,14 +137,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
                   FxFy = FracX * FracY;
 
             if (CalculateAlpth)
-                A = (byte)(p00.A * IFxIFy + p01.A * FxIFy + p10.A * IFxFy + p11.A * FxFy);
+                _A = (byte)(p00.A * IFxIFy + p01.A * FxIFy + p10.A * IFxFy + p11.A * FxFy);
 
-            R = (byte)(p00.R * IFxIFy + p01.R * FxIFy + p10.R * IFxFy + p11.R * FxFy);
-            G = (byte)(p00.G * IFxIFy + p01.G * FxIFy + p10.G * IFxFy + p11.G * FxFy);
-            B = (byte)(p00.B * IFxIFy + p01.B * FxIFy + p10.B * IFxFy + p11.B * FxFy);
+            _R = (byte)(p00.R * IFxIFy + p01.R * FxIFy + p10.R * IFxFy + p11.R * FxFy);
+            _G = (byte)(p00.G * IFxIFy + p01.G * FxIFy + p10.G * IFxFy + p11.G * FxFy);
+            _B = (byte)(p00.B * IFxIFy + p01.B * FxIFy + p10.B * IFxFy + p11.B * FxFy);
         }
 
-        public void Move(int Offset)
+        public override void Move(int Offset)
         {
             FracX += StepX * Offset;
 
@@ -156,10 +154,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracX -= Dx;
             IsPixelValid = false;
         }
-        public void Move(int X, int Y)
+        public override void Move(int X, int Y)
             => throw new NotImplementedException();
 
-        public void MoveNext()
+        public override void MoveNext()
         {
             FracX += StepX;
             while (FracX >= 1f)
@@ -169,7 +167,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
             IsPixelValid = false;
         }
-        public void MovePrevious()
+        public override void MovePrevious()
         {
             FracX -= StepX;
             while (FracX < 0f)
@@ -180,7 +178,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IsPixelValid = false;
         }
 
-        public void MoveNextLine()
+        public override void MoveNextLine()
         {
             FracY += StepY;
             while (FracY >= 1f)
@@ -192,7 +190,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IFracY = 1f - FracY;
             IsPixelValid = false;
         }
-        public void MovePreviousLine()
+        public override void MovePreviousLine()
         {
             FracY -= StepY;
             while (FracY < 0f)
@@ -205,20 +203,20 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IsPixelValid = false;
         }
 
-        void IPixelAdapter<T>.InternalMove(int Offset)
+        protected internal override void InternalMove(int Offset)
             => Move(Offset);
-        void IPixelAdapter<T>.InternalMove(int X, int Y)
+        protected internal override void InternalMove(int X, int Y)
             => Move(X, Y);
-        void IPixelAdapter<T>.InternalMoveNext()
+        protected internal override void InternalMoveNext()
             => MoveNext();
-        void IPixelAdapter<T>.InternalMovePrevious()
+        protected internal override void InternalMovePrevious()
             => MovePrevious();
-        void IPixelAdapter<T>.InternalMoveNextLine()
+        protected internal override void InternalMoveNextLine()
             => MoveNextLine();
-        void IPixelAdapter<T>.InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousLine()
             => MovePreviousLine();
 
-        public IPixelAdapter<T> Clone()
+        public override PixelAdapter<T> Clone()
             => throw new NotImplementedException();
 
     }

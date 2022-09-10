@@ -20,14 +20,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public static void ScanLine<T>(this IImageContext Context, int X, int Y, int Length, PixelAdapterAction<T> Handler)
             where T : unmanaged, IPixel
         {
-            IPixelAdapter<T> Adapter = Context.GetAdapter<T>(X, Y);
+            PixelAdapter<T> Adapter = Context.GetAdapter<T>(X, Y);
             for (int i = 0; i < Length; i++, Adapter.MoveNext())
                 Handler(Adapter);
         }
         public static void ScanLine<T>(this IImageContext Context, int X, int Y, int Length, PixelAdapterFunc<T, bool> Predicate)
             where T : unmanaged, IPixel
         {
-            IPixelAdapter<T> Adapter = Context.GetAdapter<T>(X, Y);
+            PixelAdapter<T> Adapter = Context.GetAdapter<T>(X, Y);
             for (int i = 0; i < Length; i++)
                 if (Predicate(Adapter))
                     Adapter.MoveNext();
@@ -35,7 +35,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public static void ScanLine<T>(this IImageContext Context, int X, int Y, ImageContourScanLine Range, PixelAdapterAction<T> Handler)
             where T : unmanaged, IPixel
         {
-            IPixelAdapter<T> Adapter = Context.GetAdapter<T>(0, Y);
+            PixelAdapter<T> Adapter = Context.GetAdapter<T>(0, Y);
             List<int> Data = Range.Datas;
 
             int MaxX = Context.Width - 1;
@@ -61,10 +61,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public static void ScanLineNearestResizeTo<T>(this IImageContext Context, int X, int Y, int Length, float FracX, float Step, IPixelAdapter<T> Dest, PixelAdapterAction2<T> Handler)
+        public static void ScanLineNearestResizeTo<T>(this IImageContext Context, int X, int Y, int Length, float FracX, float Step, PixelAdapter<T> Dest, PixelAdapterAction2<T> Handler)
             where T : unmanaged, IPixel
         {
-            IPixelAdapter<T> Sorc = Context.GetAdapter<T>(X, Y);
+            PixelAdapter<T> Sorc = Context.GetAdapter<T>(X, Y);
             for (int i = 0; i < Length; i++)
             {
                 Handler(Sorc, Dest);
@@ -79,10 +79,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public static void ScanLineBilinearResizeTo<T>(this IImageContext Context, int X, int Y, int Length, float FracX, float FracY, float Step, IPixelAdapter<T> Dest, PixelAdapterAction3<T> Handler)
+        public static void ScanLineBilinearResizeTo<T>(this IImageContext Context, int X, int Y, int Length, float FracX, float FracY, float Step, PixelAdapter<T> Dest, PixelAdapterAction3<T> Handler)
             where T : unmanaged, IPixel
         {
-            IPixelAdapter<T> p00 = Context.GetAdapter<T>(X, Y),
+            PixelAdapter<T> p00 = Context.GetAdapter<T>(X, Y),
                              p10 = p00.Clone();
 
             if (Y + 1 < Context.Height)
@@ -92,7 +92,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             int SourceW = Context.Width;
             for (int i = 0; i < Length; i++)
             {
-                IPixelAdapter<T> p01, p11;
+                PixelAdapter<T> p01, p11;
 
                 if (X < SourceW)
                 {
@@ -135,7 +135,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public static void Block<T>(this IImageContext<T> Context, int X, int Y, IImageContext Source, int SourceX, int SourceY, int Width, int Height, PixelAdapterAction2<T> Handler)
             where T : unmanaged, IPixel
         {
-            IPixelAdapter<T> Sorc = Source.GetAdapter<T>(SourceX, SourceY),
+            PixelAdapter<T> Sorc = Source.GetAdapter<T>(SourceX, SourceY),
                              Dest = Context.GetAdapter<T>(X, Y);
 
             for (int j = 0; j < Height; j++, Sorc.MoveNextLine(), Dest.MoveNextLine())
@@ -177,7 +177,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             int X, Y, SaveX, Rx, Lx;
 
-            IPixelAdapter<T> Seed, Pixel;
+            PixelAdapter<T> Seed, Pixel;
             while (StackX.Count > 0)
             {
                 X = StackX.Pop();

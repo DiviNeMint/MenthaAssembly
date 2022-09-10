@@ -2217,7 +2217,7 @@ namespace MenthaAssembly.Media.Imaging
 
             for (int j = 0; j < Lt; j++)
             {
-                IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
+                PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
                 double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
                        FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
 
@@ -2257,7 +2257,7 @@ namespace MenthaAssembly.Media.Imaging
 
             Parallel.For(0, Lt, Options ?? DefaultParallelOptions, j =>
             {
-                IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
+                PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
                 double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
                        FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
 
@@ -2283,7 +2283,7 @@ namespace MenthaAssembly.Media.Imaging
                     {
                         for (int j = 0; j < Height; j++)
                         {
-                            IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
+                            PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
                             Operator.ScanLineNearestResizeTo(0, (int)SumStepY, Width, 0f, StepX, Adapter);
 
                             SumStepY += StepY;
@@ -2295,7 +2295,7 @@ namespace MenthaAssembly.Media.Imaging
                         for (int j = 0; j < Height; j++)
                         {
                             int Y = (int)SumStepY;
-                            IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
+                            PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
                             this.Operator.ScanLineBilinearResizeTo(0, Y, Width, 0f, StepX, SumStepY - Y, Adapter);
 
                             SumStepY += StepY;
@@ -2319,7 +2319,7 @@ namespace MenthaAssembly.Media.Imaging
                     {
                         Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
                         {
-                            IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
+                            PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
                             Operator.ScanLineNearestResizeTo(0, (int)(StepY * j), Width, 0f, StepX, Adapter);
                         });
                         break;
@@ -2330,7 +2330,7 @@ namespace MenthaAssembly.Media.Imaging
                         {
                             float SumStepY = StepY * j;
                             int Y = (int)SumStepY;
-                            IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
+                            PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
                             this.Operator.ScanLineBilinearResizeTo(0, Y, Width, 0f, StepX, SumStepY - Y, Adapter);
                         });
                         break;
@@ -2650,7 +2650,7 @@ namespace MenthaAssembly.Media.Imaging
 
             for (int y = 0; y < Height; y++)
             {
-                IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, y);
+                PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, y);
                 Operator.ScanLineFilterTo(0, y, Width, Filter, Adapter);
             };
 
@@ -2663,7 +2663,7 @@ namespace MenthaAssembly.Media.Imaging
 
             Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
             {
-                IPixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, y);
+                PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, y);
                 Operator.ScanLineFilterTo(0, y, Width, Filter, Adapter);
             });
 
@@ -3102,7 +3102,7 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
-        public IPixelAdapter<T> GetAdapter<T>(int X, int Y)
+        public PixelAdapter<T> GetAdapter<T>(int X, int Y)
             where T : unmanaged, IPixel
             => Operator.GetAdapter<T>(X, Y);
 

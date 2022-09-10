@@ -1770,7 +1770,7 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
-        public IPixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel;
+        public PixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel;
 
     }
 

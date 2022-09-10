@@ -1,25 +1,21 @@
 ﻿namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal unsafe class PixelAdapter3<T> : IPixelAdapter<T>
+    internal unsafe class PixelAdapter3<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
-        public int X { get; private set; } = -1;
+        public override int MaxX { get; }
 
-        public int Y { get; private set; } = -1;
+        public override int MaxY { get; }
 
-        public int MaxX { get; }
+        public override byte A => byte.MaxValue;
 
-        public int MaxY { get; }
+        public override byte R => *pScanR;
 
-        public byte A => byte.MaxValue;
+        public override byte G => *pScanG;
 
-        public byte R => *pScanR;
+        public override byte B => *pScanB;
 
-        public byte G => *pScanG;
-
-        public byte B => *pScanB;
-
-        public int BitsPerPixel { get; }
+        public override int BitsPerPixel { get; }
 
         private readonly long Stride;
         private byte* pScanR, pScanG, pScanB;
@@ -47,25 +43,25 @@
             Move(X, Y);
         }
 
-        public void Override(T Pixel)
+        public override void Override(T Pixel)
             => Override(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
-        public void Override(IPixelAdapter<T> Adapter)
+        public override void Override(PixelAdapter<T> Adapter)
             => Override(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
-        public void Override(byte A, byte R, byte G, byte B)
+        public override void Override(byte A, byte R, byte G, byte B)
         {
             *pScanR = R;
             *pScanG = G;
             *pScanB = B;
         }
-        public void OverrideTo(T* pData)
+        public override void OverrideTo(T* pData)
             => pData->Override(byte.MaxValue, *pScanR, *pScanG, *pScanB);
-        public void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             *pDataR = *pScanR;
             *pDataG = *pScanG;
             *pDataB = *pScanB;
         }
-        public void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             *pDataA = byte.MaxValue;
             *pDataR = *pScanR;
@@ -73,27 +69,20 @@
             *pDataB = *pScanB;
         }
 
-        public void Overlay(T Pixel)
+        public override void Overlay(T Pixel)
             => Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
-        public void Overlay(IPixelAdapter<T> Adapter)
+        public override void Overlay(PixelAdapter<T> Adapter)
             => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
-        public void Overlay(byte A, byte R, byte G, byte B)
+        public override void Overlay(byte A, byte R, byte G, byte B)
             => PixelHelper.Overlay(ref pScanR, ref pScanG, ref pScanB, A, R, G, B);
-        public void OverlayTo(T* pData)
+        public override void OverlayTo(T* pData)
             => pData->Override(byte.MaxValue, *pScanR, *pScanG, *pScanB);
-        public void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
             => OverrideTo(pDataR, pDataG, pDataB);
-        public void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => OverrideTo(pDataA, pDataR, pDataG, pDataB);
 
-        public void Move(int Offset)
-        {
-            int Nx = MathHelper.Clamp(X + Offset, 0, MaxX),
-                Dx = Nx - X;
-            if (Dx != 0)
-                InternalMove(Dx);
-        }
-        public void Move(int X, int Y)
+        public override void Move(int X, int Y)
         {
             X = MathHelper.Clamp(X, 0, MaxX);
             Y = MathHelper.Clamp(Y, 0, MaxY);
@@ -101,14 +90,14 @@
             if (X != this.X || Y != this.Y)
                 InternalMove(X, Y);
         }
-        private void InternalMove(int Offset)
+
+        protected internal override void InternalMove(int Offset)
         {
-            X += Offset;
             pScanR += Offset;
             pScanG += Offset;
             pScanB += Offset;
         }
-        private void InternalMove(int X, int Y)
+        protected internal override void InternalMove(int X, int Y)
         {
             long Offset = Stride * (this.Y - Y) + (this.X - X);
 
@@ -120,70 +109,33 @@
             pScanB += Offset;
         }
 
-        public void MoveNext()
+        protected internal override void InternalMoveNext()
         {
-            if (X < MaxX)
-                InternalMoveNext();
-        }
-        public void MovePrevious()
-        {
-            if (0 < X)
-                InternalMovePrevious();
-        }
-        private void InternalMoveNext()
-        {
-            X++;
             pScanR++;
             pScanG++;
             pScanB++;
         }
-        private void InternalMovePrevious()
+        protected internal override void InternalMovePrevious()
         {
-            X--;
             pScanR--;
             pScanG--;
             pScanB--;
         }
 
-        public void MoveNextLine()
+        protected internal override void InternalMoveNextLine()
         {
-            if (Y < MaxY)
-                InternalMoveNextLine();
-        }
-        public void MovePreviousLine()
-        {
-            if (0 < Y)
-                InternalMovePreviousLine();
-        }
-        private void InternalMoveNextLine()
-        {
-            Y++;
             pScanR += Stride;
             pScanG += Stride;
             pScanB += Stride;
         }
-        private void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousLine()
         {
-            Y--;
             pScanR -= Stride;
             pScanG -= Stride;
             pScanB -= Stride;
         }
 
-        void IPixelAdapter<T>.InternalMove(int Offset)
-            => InternalMove(Offset);
-        void IPixelAdapter<T>.InternalMove(int X, int Y)
-            => InternalMove(X, Y);
-        void IPixelAdapter<T>.InternalMoveNext()
-            => InternalMoveNext();
-        void IPixelAdapter<T>.InternalMovePrevious()
-            => InternalMovePrevious();
-        void IPixelAdapter<T>.InternalMoveNextLine()
-            => InternalMoveNextLine();
-        void IPixelAdapter<T>.InternalMovePreviousLine()
-            => InternalMovePreviousLine();
-
-        public IPixelAdapter<T> Clone()
+        public override PixelAdapter<T> Clone()
             => new PixelAdapter3<T>(this);
 
     }

@@ -30,13 +30,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
             where U : unmanaged, IPixel
             => Context.ScanLine(X, Y, Range, Handler);
 
-        public void ScanLineNearestResizeTo(int X, int Y, int Length, float FracX, float Step, IPixelAdapter<T> Adapter)
+        public void ScanLineNearestResizeTo(int X, int Y, int Length, float FracX, float Step, PixelAdapter<T> Adapter)
             => Context.ScanLineNearestResizeTo(X, Y, Length, FracX, Step, Adapter, (s, d) => d.Override(s));
 
-        public void ScanLineBilinearResizeTo(int X, int Y, int Length, float FracX, float FracY, float Step, IPixelAdapter<T> Adapter)
+        public void ScanLineBilinearResizeTo(int X, int Y, int Length, float FracX, float FracY, float Step, PixelAdapter<T> Adapter)
             => Context.ScanLineBilinearResizeTo(X, Y, Length, FracX, FracY, Step, Adapter, (Adapter, A, R, G, B) => Adapter.Override(A, R, G, B));
 
-        public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, IPixelAdapter<T> Adapter)
+        public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, PixelAdapter<T> Adapter)
         {
             byte* pScan0 = (byte*)Context.Scan0;
 
@@ -139,7 +139,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, IPixelAdapter<T> Adapter)
+        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, PixelAdapter<T> Adapter)
         {
             byte* pScan0 = (byte*)Context.Scan0;
             long SourceStride = Context.Stride;
@@ -220,7 +220,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public ImageContour FindBound(int SeedX, int SeedY, ImagePredicate Predicate)
             => Context.FindBound(SeedX, SeedY, Predicate);
 
-        public IPixelAdapter<U> GetAdapter<U>(int X, int Y)
+        public PixelAdapter<U> GetAdapter<U>(int X, int Y)
             where U : unmanaged, IPixel
             => Context.PixelType == typeof(U) ? new PixelIndexedAdapter<U, Struct>(Context, X, Y) :
                                                 new PixelIndexedAdapter<T, U, Struct>(Context, X, Y);
