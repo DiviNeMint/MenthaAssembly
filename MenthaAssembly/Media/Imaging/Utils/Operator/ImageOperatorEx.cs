@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
@@ -97,15 +96,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
                 if (X < SourceW)
                 {
-                    p01 = p00;
-                    p11 = p10;
-                }
-                else
-                {
                     p01 = p00.Clone();
                     p11 = p10.Clone();
                     p01.MoveNext();
                     p11.MoveNext();
+                }
+                else
+                {
+                    p01 = p00;
+                    p11 = p10;
                 }
 
                 float IFracX = 1f - FracX,
@@ -266,150 +265,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             return Contour;
         }
 
-    }
-
-    public unsafe class NearestResizePixelAdapter<T> : IPixelAdapter<T>
-        where T : unmanaged, IPixel
-    {
-        private readonly IPixelAdapter<T> Source;
-        private readonly float StepX, StepY;
-        private float FracX, FracY;
-
-        public byte A
-            => Source.A;
-
-        public byte R
-            => Source.R;
-
-        public byte G
-            => Source.G;
-
-        public byte B
-            => Source.B;
-
-        public int BitsPerPixel
-            => Source.BitsPerPixel;
-
-        private NearestResizePixelAdapter(NearestResizePixelAdapter<T> Adapter)
-        {
-            this.Source = Adapter.Source;
-            this.FracX = Adapter.FracX;
-            this.FracY = Adapter.FracY;
-            this.StepX = Adapter.StepX;
-            this.StepY = Adapter.StepY;
-        }
-        public NearestResizePixelAdapter(IImageContext Context, int X, int Y, float StepX, float StepY)
-        {
-            this.StepX = StepX;
-            this.StepY = StepY;
-
-            FracX = X * StepX;
-            X = 0;
-            while (FracX >= 1f)
-            {
-                FracX -= 1f;
-                X++;
-            }
-
-            FracY = Y * StepY;
-            Y = 0;
-            while (FracY >= 1f)
-            {
-                FracY -= 1f;
-                Y++;
-            }
-
-            this.Source = Context.GetAdapter<T>(X, Y);
-        }
-        public NearestResizePixelAdapter(IPixelAdapter<T> Source, float StepX, float StepY, float FracX, float FracY)
-        {
-            this.Source = Source;
-            this.FracX = FracX;
-            this.FracY = FracY;
-            this.StepX = StepX;
-            this.StepY = StepY;
-        }
-
-        public void Override(T Pixel)
-            => Source.Override(Pixel);
-        public void Override(IPixelAdapter<T> Adapter)
-            => Source.Override(Adapter);
-        public void Override(byte A, byte R, byte G, byte B)
-            => Source.Override(A, R, G, B);
-        public void OverrideTo(T* pData)
-            => Source.OverrideTo(pData);
-        public void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
-            => Source.OverrideTo(pDataR, pDataG, pDataB);
-        public void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
-            => Source.OverrideTo(pDataA, pDataR, pDataG, pDataB);
-
-        public void Overlay(T Pixel)
-            => Source.Overlay(Pixel);
-        public void Overlay(IPixelAdapter<T> Adapter)
-            => Source.Overlay(Adapter);
-        public void Overlay(byte A, byte R, byte G, byte B)
-            => Source.Overlay(A, R, G, B);
-        public void OverlayTo(T* pData)
-            => Source.OverlayTo(pData);
-        public void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
-            => Source.OverlayTo(pDataR, pDataG, pDataB);
-        public void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
-            => Source.OverlayTo(pDataA, pDataR, pDataG, pDataB);
-
-        public void Move(int Offset)
-        {
-            FracX += StepX * Offset;
-            while (FracX >= 1f)
-            {
-                FracX -= 1f;
-                Source.MoveNext();
-            }
-
-            while (FracX < 0f)
-            {
-                FracX += 1f;
-                Source.MovePrevious();
-            }
-        }
-        public void MoveNext()
-        {
-            FracX += StepX;
-            while (FracX >= 1f)
-            {
-                FracX -= 1f;
-                Source.MoveNext();
-            }
-        }
-        public void MoveNextLine()
-        {
-            FracY += StepY;
-            while (FracY >= 1f)
-            {
-                FracY -= 1f;
-                Source.MoveNextLine();
-            }
-        }
-        public void MovePrevious()
-        {
-            FracX -= StepX;
-            while (FracX < 0f)
-            {
-                FracX += 1f;
-                Source.MovePrevious();
-            }
-        }
-        public void MovePreviousLine()
-        {
-            FracY -= StepY;
-            while (FracY < 0f)
-            {
-                FracY += 1f;
-                Source.MovePreviousLine();
-            }
-        }
-
-        public IPixelAdapter<T> Clone()
-            => new NearestResizePixelAdapter<T>(this);
     }
 
 }

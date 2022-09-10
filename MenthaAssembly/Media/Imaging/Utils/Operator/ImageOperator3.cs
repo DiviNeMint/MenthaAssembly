@@ -250,15 +250,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public IPixelAdapter<U> GetAdapter<U>(int X, int Y)
             where U : unmanaged, IPixel
-        {
-            long Stride = Context.Stride,
-                 Offset = Stride * Y + X;
-            byte* pScanR = (byte*)Context.ScanR + Offset,
-                  pScanG = (byte*)Context.ScanG + Offset,
-                  pScanB = (byte*)Context.ScanB + Offset;
-
-            return new PixelAdapter3<U>(pScanR, pScanG, pScanB, Stride);
-        }
+            => new PixelAdapter3<U>(Context, X, Y);
 
     }
 }

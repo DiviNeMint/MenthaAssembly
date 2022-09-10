@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
@@ -7,6 +6,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where T : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
+        public int X { get; private set; } = -1;
+
+        public int Y { get; private set; } = -1;
+
+        public int MaxX { get; }
+
+        public int MaxY { get; }
+
         public byte A
         {
             get
@@ -43,43 +50,41 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public int BitsPerPixel => pScan->BitsPerPixel;
+        public int BitsPerPixel { get; }
 
         public ImagePalette<T> Palette { get; }
 
         protected int XBit;
         private readonly int BitLength;
+        private readonly Struct* pScan0;
         private readonly long Stride;
         protected Struct* pScan;
         public PixelIndexedAdapterBase(PixelIndexedAdapterBase<T, Struct> Adapter)
         {
-            pScan = Adapter.pScan;
+            X = Adapter.X;
+            XBit = Adapter.XBit;
+            Y = Adapter.Y;
+            MaxX = Adapter.MaxX;
+            MaxY = Adapter.MaxY;
             Stride = Adapter.Stride;
             BitLength = Adapter.BitLength;
-            XBit = Adapter.XBit;
+            BitsPerPixel = Adapter.BitsPerPixel;
             Palette = Adapter.Palette;
+            pScan0 = Adapter.pScan0;
+            pScan = Adapter.pScan;
             GetPaletteIndexFunc = Adapter.GetPaletteIndexFunc;
         }
-        public PixelIndexedAdapterBase(Struct* pScan, long Stride, int XBit, ImagePalette<T> Palette)
+        public PixelIndexedAdapterBase(IImageContext Context, int X, int Y)
         {
-            this.pScan = pScan;
-            this.Stride = Stride;
-
-            this.XBit = XBit;
-            BitLength = pScan->Length;
-            while (this.XBit < 0)
-            {
-                this.XBit += BitLength;
-                this.pScan--;
-            }
-            while (BitLength <= this.XBit)
-            {
-                this.XBit -= BitLength;
-                this.pScan++;
-            }
-
-            this.Palette = Palette;
+            MaxX = Context.Width - 1;
+            MaxY = Context.Height - 1;
+            Stride = Context.Stride;
+            BitsPerPixel = Context.BitsPerPixel;
+            Palette = (ImagePalette<T>)Context.Palette.Handle.Target;
             GetPaletteIndexFunc = ResetGetPaletteIndex;
+            pScan0 = (Struct*)Context.Scan0;
+            BitLength = pScan0->Length;
+            Move(X, Y);
         }
 
         public void Override(byte A, byte R, byte G, byte B)
@@ -144,6 +149,22 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void Move(int Offset)
         {
+            int Nx = MathHelper.Clamp(X + Offset, 0, MaxX),
+                Dx = Nx - X;
+            if (Dx != 0)
+                InternalMove(Dx);
+        }
+        public void Move(int X, int Y)
+        {
+            X = MathHelper.Clamp(X, 0, MaxX);
+            Y = MathHelper.Clamp(Y, 0, MaxY);
+
+            if (X != this.X || Y != this.Y)
+                InternalMove(X, Y);
+        }
+        protected void InternalMove(int Offset)
+        {
+            X += Offset;
             XBit += Offset;
 
             if (BitLength <= XBit)
@@ -165,9 +186,31 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             GetPaletteIndexFunc = ResetGetPaletteIndex;
         }
+        protected void InternalMove(int X, int Y)
+        {
+            this.X = X;
+            this.Y = Y;
+
+            int XBits = X * BitsPerPixel,
+                OffsetX = XBits >> 3;
+
+            XBit = (XBits & 0x07) / BitsPerPixel;
+            pScan = pScan0 + Stride * Y + OffsetX;
+        }
 
         public void MoveNext()
         {
+            if (X < MaxX)
+                InternalMoveNext();
+        }
+        public void MovePrevious()
+        {
+            if (0 < X)
+                InternalMovePrevious();
+        }
+        protected void InternalMoveNext()
+        {
+            X++;
             XBit++;
             if (BitLength <= XBit)
             {
@@ -176,8 +219,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
             GetPaletteIndexFunc = ResetGetPaletteIndex;
         }
-        public void MovePrevious()
+        protected void InternalMovePrevious()
         {
+            X--;
             XBit--;
             if (XBit < 0)
             {
@@ -188,22 +232,39 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
 
         public void MoveNextLine()
-            => pScan = (Struct*)((byte*)pScan + Stride);
+        {
+            if (Y < MaxY)
+                InternalMoveNextLine();
+        }
         public void MovePreviousLine()
-            => pScan = (Struct*)((byte*)pScan - Stride);
+        {
+            if (0 < Y)
+                InternalMovePreviousLine();
+        }
+        protected void InternalMoveNextLine()
+        {
+            Y++;
+            pScan += Stride;
+        }
+        protected void InternalMovePreviousLine()
+        {
+            Y--;
+            pScan -= Stride;
+        }
+
     }
 
     internal unsafe class PixelIndexedAdapter<T, Struct> : PixelIndexedAdapterBase<T, Struct>, IPixelAdapter<T>
         where T : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
+
         public PixelIndexedAdapter(PixelIndexedAdapter<T, Struct> Adapter) : base(Adapter)
         {
 
         }
-        public PixelIndexedAdapter(Struct* pScan, long Stride, int XBit, GCHandle pPalette) : base(pScan, Stride, XBit, (ImagePalette<T>)pPalette.Target)
+        public PixelIndexedAdapter(IImageContext Context, int X, int Y) : base(Context, X, Y)
         {
-
         }
 
         public void Override(T Pixel)
@@ -236,9 +297,21 @@ namespace MenthaAssembly.Media.Imaging.Utils
             pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
 
+        void IPixelAdapter<T>.InternalMove(int Offset)
+            => InternalMove(Offset);
+        void IPixelAdapter<T>.InternalMove(int X, int Y)
+            => InternalMove(X, Y);
+        void IPixelAdapter<T>.InternalMoveNext()
+            => InternalMoveNext();
+        void IPixelAdapter<T>.InternalMovePrevious()
+            => InternalMovePrevious();
+        void IPixelAdapter<T>.InternalMoveNextLine()
+            => InternalMoveNextLine();
+        void IPixelAdapter<T>.InternalMovePreviousLine()
+            => InternalMovePreviousLine();
+
         public IPixelAdapter<T> Clone()
             => new PixelIndexedAdapter<T, Struct>(this);
-
     }
 
     internal unsafe class PixelIndexedAdapter<T, U, Struct> : PixelIndexedAdapterBase<T, Struct>, IPixelAdapter<U>
@@ -250,9 +323,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
 
         }
-        public PixelIndexedAdapter(Struct* pScan, long Stride, int XBit, GCHandle pPalette) : base(pScan, Stride, XBit, (ImagePalette<T>)pPalette.Target)
+        public PixelIndexedAdapter(IImageContext Context, int X, int Y) : base(Context, X, Y)
         {
-
         }
 
         public void Override(U Pixel)
@@ -276,6 +348,19 @@ namespace MenthaAssembly.Media.Imaging.Utils
             T Pixel = Palette[Index];
             pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
+
+        void IPixelAdapter<U>.InternalMove(int Offset)
+            => InternalMove(Offset);
+        void IPixelAdapter<U>.InternalMove(int X, int Y)
+            => InternalMove(X, Y);
+        void IPixelAdapter<U>.InternalMoveNext()
+            => InternalMoveNext();
+        void IPixelAdapter<U>.InternalMovePrevious()
+            => InternalMovePrevious();
+        void IPixelAdapter<U>.InternalMoveNextLine()
+            => InternalMoveNextLine();
+        void IPixelAdapter<U>.InternalMovePreviousLine()
+            => InternalMovePreviousLine();
 
         public IPixelAdapter<U> Clone()
             => new PixelIndexedAdapter<T, U, Struct>(this);

@@ -9,7 +9,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public int BitsPerPixel => 4;
 
-        public int Length => IndexMasks.Length;
+        public int Length => 2;
 
         private static readonly int MaxIndex;
         internal static readonly int BaseMask;
