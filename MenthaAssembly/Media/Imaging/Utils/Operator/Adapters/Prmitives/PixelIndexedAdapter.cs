@@ -10,12 +10,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int MaxY { get; }
 
+        private int Index;
+        private T Pixel;
+
         public override byte A
         {
             get
             {
-                int Index = GetPaletteIndex();
-                return Palette[Index].A;
+                EnsurePixel();
+                return Pixel.A;
             }
         }
 
@@ -23,8 +26,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             get
             {
-                int Index = GetPaletteIndex();
-                return Palette[Index].R;
+                EnsurePixel();
+                return Pixel.R;
             }
         }
 
@@ -32,8 +35,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             get
             {
-                int Index = GetPaletteIndex();
-                return Palette[Index].G;
+                EnsurePixel();
+                return Pixel.G;
             }
         }
 
@@ -41,8 +44,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             get
             {
-                int Index = GetPaletteIndex();
-                return Palette[Index].B;
+                EnsurePixel();
+                return Pixel.B;
             }
         }
 
@@ -68,7 +71,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Palette = Adapter.Palette;
             pScan0 = Adapter.pScan0;
             pScan = Adapter.pScan;
-            GetPaletteIndexFunc = Adapter.GetPaletteIndexFunc;
         }
         public PixelIndexedAdapter(IImageContext Context, int X, int Y)
         {
@@ -77,7 +79,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             Palette = (ImagePalette<T>)Context.Palette.Handle.Target;
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
             pScan0 = (Struct*)Context.Scan0;
             BitLength = pScan0->Length;
             Move(X, Y);
@@ -106,21 +107,19 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public override void OverrideTo(T* pData)
         {
-            int Index = GetPaletteIndex();
+            EnsurePixel();
             *pData = Palette[Index];
         }
         public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             *pDataR = Pixel.R;
             *pDataG = Pixel.G;
             *pDataB = Pixel.B;
         }
         public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             *pDataA = Pixel.A;
             *pDataR = Pixel.R;
             *pDataG = Pixel.G;
@@ -133,8 +132,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public override void Overlay(byte A, byte R, byte G, byte B)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             Pixel.Overlay(A, R, G, B);
 
             if (!Palette.TryGetOrAdd(Pixel, out Index))
@@ -144,31 +142,36 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public override void OverlayTo(T* pData)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
         public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
 
-        private Func<int> GetPaletteIndexFunc;
         public int GetPaletteIndex()
-            => GetPaletteIndexFunc();
-        private int ResetGetPaletteIndex()
         {
-            int Index = (*pScan)[XBit];
-            GetPaletteIndexFunc = () => Index;
+            EnsurePixel();
             return Index;
+        }
+
+        private bool IsPixelValid = false;
+        private void EnsurePixel()
+        {
+            if (IsPixelValid)
+                return;
+
+            Index = GetPaletteIndex();
+            Pixel = Palette[Index];
+
+            IsPixelValid = true;
         }
 
         protected internal override void InternalMove(int X, int Y)
@@ -200,12 +203,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 } while (XBit < 0);
             }
 
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
         protected internal override void InternalMoveY(int OffsetY)
         {
             pScan += Stride * OffsetY;
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
 
         protected internal override void InternalMoveNext()
@@ -216,7 +219,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 XBit -= BitLength;
                 pScan++;
             }
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
         protected internal override void InternalMovePrevious()
         {
@@ -226,18 +229,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 XBit += BitLength;
                 pScan--;
             }
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
 
         protected internal override void InternalMoveNextLine()
         {
             pScan += Stride;
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
         protected internal override void InternalMovePreviousLine()
         {
             pScan -= Stride;
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
 
         public override PixelAdapter<T> Clone()
@@ -254,12 +257,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int MaxY { get; }
 
+        private int Index;
+        private T Pixel;
+
         public override byte A
         {
             get
             {
-                int Index = GetPaletteIndex();
-                return Palette[Index].A;
+                EnsurePixel();
+                return Pixel.A;
             }
         }
 
@@ -267,8 +273,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             get
             {
-                int Index = GetPaletteIndex();
-                return Palette[Index].R;
+                EnsurePixel();
+                return Pixel.R;
             }
         }
 
@@ -276,8 +282,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             get
             {
-                int Index = GetPaletteIndex();
-                return Palette[Index].G;
+                EnsurePixel();
+                return Pixel.G;
             }
         }
 
@@ -285,8 +291,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             get
             {
-                int Index = GetPaletteIndex();
-                return Palette[Index].B;
+                EnsurePixel();
+                return Pixel.B;
             }
         }
 
@@ -312,7 +318,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Palette = Adapter.Palette;
             pScan0 = Adapter.pScan0;
             pScan = Adapter.pScan;
-            GetPaletteIndexFunc = Adapter.GetPaletteIndexFunc;
         }
         public PixelIndexedAdapter(IImageContext Context, int X, int Y)
         {
@@ -321,7 +326,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             Palette = (ImagePalette<T>)Context.Palette.Handle.Target;
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
             pScan0 = (Struct*)Context.Scan0;
             BitLength = pScan0->Length;
             Move(X, Y);
@@ -341,22 +346,19 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public override void OverrideTo(U* pData)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             pData->Override(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
         public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             *pDataR = Pixel.R;
             *pDataG = Pixel.G;
             *pDataB = Pixel.B;
         }
         public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             *pDataA = Pixel.A;
             *pDataR = Pixel.R;
             *pDataG = Pixel.G;
@@ -369,8 +371,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public override void Overlay(byte A, byte R, byte G, byte B)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             Pixel.Overlay(A, R, G, B);
 
             if (!Palette.TryGetOrAdd(Pixel, out Index))
@@ -380,31 +381,36 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public override void OverlayTo(U* pData)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
         public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            int Index = GetPaletteIndex();
-            T Pixel = Palette[Index];
+            EnsurePixel();
             PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
 
-        private Func<int> GetPaletteIndexFunc;
         public int GetPaletteIndex()
-            => GetPaletteIndexFunc();
-        private int ResetGetPaletteIndex()
         {
-            int Index = (*pScan)[XBit];
-            GetPaletteIndexFunc = () => Index;
+            EnsurePixel();
             return Index;
+        }
+
+        private bool IsPixelValid = false;
+        private void EnsurePixel()
+        {
+            if (IsPixelValid)
+                return;
+
+            Index = GetPaletteIndex();
+            Pixel = Palette[Index];
+
+            IsPixelValid = true;
         }
 
         protected internal override void InternalMove(int X, int Y)
@@ -414,6 +420,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             XBit = (XBits & 0x07) / BitsPerPixel;
             pScan = pScan0 + Stride * Y + OffsetX;
+
+            IsPixelValid = false;
         }
         protected internal override void InternalMoveX(int OffsetX)
         {
@@ -436,12 +444,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 } while (XBit < 0);
             }
 
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
         protected internal override void InternalMoveY(int OffsetY)
         {
             pScan += Stride * OffsetY;
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
 
         protected internal override void InternalMoveNext()
@@ -452,7 +460,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 XBit -= BitLength;
                 pScan++;
             }
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
         protected internal override void InternalMovePrevious()
         {
@@ -462,18 +470,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 XBit += BitLength;
                 pScan--;
             }
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
 
         protected internal override void InternalMoveNextLine()
         {
             pScan += Stride;
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
         protected internal override void InternalMovePreviousLine()
         {
             pScan -= Stride;
-            GetPaletteIndexFunc = ResetGetPaletteIndex;
+            IsPixelValid = false;
         }
 
         public override PixelAdapter<U> Clone()
