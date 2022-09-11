@@ -91,12 +91,6 @@
                 InternalMove(X, Y);
         }
 
-        protected internal override void InternalMove(int Offset)
-        {
-            pScanR += Offset;
-            pScanG += Offset;
-            pScanB += Offset;
-        }
         protected internal override void InternalMove(int X, int Y)
         {
             long Offset = Stride * (this.Y - Y) + (this.X - X);
@@ -104,6 +98,19 @@
             this.X = X;
             this.Y = Y;
 
+            pScanR += Offset;
+            pScanG += Offset;
+            pScanB += Offset;
+        }
+        protected internal override void InternalMoveX(int OffsetX)
+        {
+            pScanR += OffsetX;
+            pScanG += OffsetX;
+            pScanB += OffsetX;
+        }
+        protected internal override void InternalMoveY(int OffsetY)
+        {
+            long Offset = Stride * OffsetY;
             pScanR += Offset;
             pScanG += Offset;
             pScanB += Offset;

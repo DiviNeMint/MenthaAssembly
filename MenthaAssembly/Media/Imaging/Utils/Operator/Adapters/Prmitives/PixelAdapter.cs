@@ -45,27 +45,41 @@
 
         public abstract void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB);
 
-        public virtual void Move(int Offset)
+        public virtual void Move(int X, int Y)
         {
-            int Nx = MathHelper.Clamp(X + Offset, 0, MaxX),
+            if (this.X == X)
+                MoveY(this.Y - Y);
+            else if (this.Y == Y)
+                MoveX(this.X - X);
+            else
+            {
+                X = MathHelper.Clamp(X, 0, MaxX);
+                Y = MathHelper.Clamp(Y, 0, MaxY);
+                this.X = X;
+                this.Y = Y;
+                InternalMove(X, Y);
+            }
+        }
+
+        public virtual void MoveX(int OffsetX)
+        {
+            int Nx = MathHelper.Clamp(X + OffsetX, 0, MaxX),
                 Dx = Nx - X;
             if (Dx != 0)
             {
                 X = Nx;
-                InternalMove(Dx);
+                InternalMoveX(Dx);
             }
         }
 
-        public virtual void Move(int X, int Y)
+        public virtual void MoveY(int OffsetY)
         {
-            X = MathHelper.Clamp(X, 0, MaxX);
-            Y = MathHelper.Clamp(Y, 0, MaxY);
-
-            if (X != this.X || Y != this.Y)
+            int Ny = MathHelper.Clamp(Y + OffsetY, 0, MaxY),
+                Dy = Ny - Y;
+            if (Dy != 0)
             {
-                this.X = X;
-                this.Y = Y;
-                InternalMove(X, Y);
+                Y = Ny;
+                InternalMoveY(Dy);
             }
         }
 
@@ -105,9 +119,11 @@
             }
         }
 
-        protected internal abstract void InternalMove(int Offset);
-
         protected internal abstract void InternalMove(int X, int Y);
+
+        protected internal abstract void InternalMoveX(int OffsetX);
+
+        protected internal abstract void InternalMoveY(int OffsetY);
 
         protected internal abstract void InternalMoveNext();
 

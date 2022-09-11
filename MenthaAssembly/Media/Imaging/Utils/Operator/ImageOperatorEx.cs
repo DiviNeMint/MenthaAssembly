@@ -53,7 +53,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Sx = Math.Max(Sx, 0);
                 Ex = Math.Min(Ex, MaxX);
 
-                Adapter.Move(Sx - CurrentX);
+                Adapter.MoveX(Sx - CurrentX);
                 for (int j = Sx; j <= Ex; j++, Adapter.MoveNext())
                     Handler(Adapter);
 
@@ -143,8 +143,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 for (int i = 0; i < Width; i++, Sorc.MoveNext(), Dest.MoveNext())
                     Handler(Sorc, Dest);
 
-                Sorc.Move(-Width);
-                Dest.Move(-Width);
+                Sorc.MoveX(-Width);
+                Dest.MoveX(-Width);
             }
         }
 
@@ -266,5 +266,4 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
 
     }
-
 }

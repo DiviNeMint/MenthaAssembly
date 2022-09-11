@@ -86,10 +86,12 @@
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, pScan->A, pScan->R, pScan->G, pScan->B);
 
-        protected internal override void InternalMove(int Offset)
-            => pScan += Offset;
         protected internal override void InternalMove(int X, int Y)
             => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
+        protected internal override void InternalMoveX(int OffsetX)
+            => pScan += OffsetX;
+        protected internal override void InternalMoveY(int OffsetY)
+            => pScan = (T*)((byte*)pScan + Stride * OffsetY);
 
         protected internal override void InternalMoveNext()
             => pScan++;
@@ -183,10 +185,12 @@
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, pScan->A, pScan->R, pScan->G, pScan->B);
 
-        protected internal override void InternalMove(int Offset)
-            => pScan += Offset;
         protected internal override void InternalMove(int X, int Y)
             => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
+        protected internal override void InternalMoveX(int OffsetX)
+            => pScan += OffsetX;
+        protected internal override void InternalMoveY(int OffsetY)
+            => pScan = (T*)((byte*)pScan + Stride * OffsetY);
 
         protected internal override void InternalMoveNext()
             => pScan++;

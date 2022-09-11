@@ -2434,36 +2434,32 @@ namespace MenthaAssembly.Media.Imaging
             {
                 case InterpolationTypes.Nearest:
                     {
-                        float StepX = (float)this.Width / Width,
-                              StepY = (float)this.Height / Height;
-                        PixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, 0, 0, StepX, StepY),
-                                         Dest = Result.GetAdapter<T>(0, 0);
+                        PixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, Width, Height),
+                                        Dest = Result.GetAdapter<T>(0, 0);
 
                         for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
                         {
                             for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMove(-Width);
-                            Dest.InternalMove(-Width);
+                            Sorc.InternalMoveX(-Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         break;
                     }
                 case InterpolationTypes.Bilinear:
                     {
-                        float StepX = (float)this.Width / Width,
-                              StepY = (float)this.Height / Height;
-                        PixelAdapter<T> Sorc = new BilinearResizePixelAdapter<T>(this, 0, 0, StepX, StepY),
-                                         Dest = Result.GetAdapter<T>(0, 0);
+                        PixelAdapter<T> Sorc = new BilinearResizePixelAdapter<T>(this, Width, Height),
+                                        Dest = Result.GetAdapter<T>(0, 0);
 
                         for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
                         {
                             for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMove(-Width);
-                            Dest.InternalMove(-Width);
+                            Sorc.InternalMoveX(-Width);
+                            Dest.InternalMoveX(-Width);
                         }
                         break;
                     }
@@ -2484,7 +2480,7 @@ namespace MenthaAssembly.Media.Imaging
                         Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
                         {
                             PixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, 0, j, StepX, StepY),
-                                             Dest = Result.GetAdapter<T>(0, j);
+                                            Dest = Result.GetAdapter<T>(0, j);
 
                             for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
@@ -2499,7 +2495,7 @@ namespace MenthaAssembly.Media.Imaging
                         Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
                         {
                             PixelAdapter<T> Sorc = new BilinearResizePixelAdapter<T>(this, 0, j, StepX, StepY),
-                                             Dest = Result.GetAdapter<T>(0, j);
+                                            Dest = Result.GetAdapter<T>(0, j);
 
                             for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
@@ -2530,8 +2526,8 @@ namespace MenthaAssembly.Media.Imaging
                             for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMove(-Width);
-                            Dest.InternalMove(-Width);
+                            Sorc.InternalMoveX(-Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         return Result;
@@ -2547,8 +2543,8 @@ namespace MenthaAssembly.Media.Imaging
                             for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMove(Width);
-                            Dest.InternalMove(-Width);
+                            Sorc.InternalMoveX(Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         return Result;
@@ -2564,8 +2560,8 @@ namespace MenthaAssembly.Media.Imaging
                             for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMove(Width);
-                            Dest.InternalMove(-Width);
+                            Sorc.InternalMoveX(Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         return Result;
@@ -2647,8 +2643,8 @@ namespace MenthaAssembly.Media.Imaging
                             for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMove(-Width);
-                            Dest.InternalMove(-Width);
+                            Sorc.InternalMoveX(-Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         return Result;
@@ -2664,8 +2660,8 @@ namespace MenthaAssembly.Media.Imaging
                             for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMove(Width);
-                            Dest.InternalMove(-Width);
+                            Sorc.InternalMoveX(Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         return Result;
@@ -2681,8 +2677,8 @@ namespace MenthaAssembly.Media.Imaging
                             for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMove(Width);
-                            Dest.InternalMove(-Width);
+                            Sorc.InternalMoveX(Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         return Result;
@@ -2773,8 +2769,8 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                     Dest.Override(Sorc);
 
-                Sorc.InternalMove(-Width);
-                Dest.InternalMove(-Width);
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
             }
 
             return Result;
@@ -2831,8 +2827,8 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                     Dest.Override(Sorc);
 
-                Sorc.InternalMove(-Width);
-                Dest.InternalMove(-Width);
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
             }
 
             return Result;
@@ -2921,8 +2917,8 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                     Dest.Override(Sorc);
 
-                Sorc.InternalMove(-Width);
-                Dest.InternalMove(-Width);
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
             }
 
             return Result;
@@ -2957,8 +2953,8 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                     Dest.Override(Sorc);
 
-                Sorc.InternalMove(-Width);
-                Dest.InternalMove(-Width);
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
             }
 
             return Result;
@@ -2992,7 +2988,7 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 0; i < Width; i++, Adapter.InternalMoveNext())
                     Adapter.Override(Color);
 
-                Adapter.InternalMove(-Width);
+                Adapter.InternalMoveX(-Width);
             }
         }
         public void Clear(Pixel Color, ParallelOptions Options)

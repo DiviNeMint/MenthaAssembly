@@ -28,7 +28,32 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override int BitsPerPixel
             => Source.BitsPerPixel;
 
-        public NearestResizePixelAdapter(IImageContext Context, int X, int Y, float StepX, float StepY)
+        public NearestResizePixelAdapter(NearestResizePixelAdapter<T> Adapter)
+        {
+            Source = Adapter.Source.Clone();
+            StepX = Adapter.StepX;
+            StepY = Adapter.StepY;
+            FracX = Adapter.FracX;
+            FracY = Adapter.FracY;
+        }
+        public NearestResizePixelAdapter(IImageContext Context, int NewWidth, int NewHeight)
+        {
+            Source = Context.GetAdapter<T>(0, 0);
+            StepX = (float)Context.Width / NewWidth;
+            StepY = (float)Context.Height / NewHeight;
+            MaxX = NewWidth - 1;
+            MaxY = NewHeight - 1;
+        }
+        public NearestResizePixelAdapter(PixelAdapter<T> Adapter, int NewWidth, int NewHeight)
+        {
+            Source = Adapter;
+            StepX = (float)(Adapter.MaxX + 1) / NewWidth;
+            StepY = (float)(Adapter.MaxY + 1) / NewHeight;
+            MaxX = NewWidth - 1;
+            MaxY = NewHeight - 1;
+            Adapter.InternalMove(0, 0);
+        }
+        internal NearestResizePixelAdapter(IImageContext Context, int X, int Y, float StepX, float StepY)
         {
             this.StepX = StepX;
             this.StepY = StepY;
@@ -70,19 +95,38 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => Source.OverlayTo(pDataA, pDataR, pDataG, pDataB);
 
-        public override void Move(int Offset)
+        protected internal override void InternalMove(int X, int Y)
         {
-            FracX += StepX * Offset;
+            FracX = X * StepX;
+            FracY = Y * StepY;
+
+            int Tx = (int)Math.Floor(FracX),
+                Ty = (int)Math.Floor(FracY);
+            Source.InternalMove(Tx, Ty);
+
+            FracX -= Tx;
+            FracY -= Ty;
+        }
+        protected internal override void InternalMoveX(int OffsetX)
+        {
+            FracX += StepX * OffsetX;
 
             int Dx = (int)Math.Floor(FracX);
-            Source.InternalMove(Dx);
+            Source.InternalMoveX(Dx);
 
             FracX -= Dx;
         }
-        public override void Move(int X, int Y)
-            => throw new NotImplementedException();
+        protected internal override void InternalMoveY(int OffsetY)
+        {
+            FracY += StepY * OffsetY;
 
-        public override void MoveNext()
+            int Dy = (int)Math.Floor(FracY);
+            Source.InternalMoveY(Dy);
+
+            FracY -= Dy;
+        }
+
+        protected internal override void InternalMoveNext()
         {
             FracX += StepX;
             while (FracX >= 1f)
@@ -91,7 +135,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Source.InternalMoveNext();
             }
         }
-        public override void MovePrevious()
+        protected internal override void InternalMovePrevious()
         {
             FracX -= StepX;
             while (FracX < 0f)
@@ -101,7 +145,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public override void MoveNextLine()
+        protected internal override void InternalMoveNextLine()
         {
             FracY += StepY;
             while (FracY >= 1f)
@@ -110,7 +154,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Source.InternalMoveNextLine();
             }
         }
-        public override void MovePreviousLine()
+        protected internal override void InternalMovePreviousLine()
         {
             FracY -= StepY;
             while (FracY < 0f)
@@ -120,23 +164,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        protected internal override void InternalMove(int Offset)
-            => Move(Offset);
-        protected internal override void InternalMove(int X, int Y)
-            => Move(X, Y);
-
-        protected internal override void InternalMoveNext()
-            => MoveNext();
-        protected internal override void InternalMovePrevious()
-            => MovePrevious();
-
-        protected internal override void InternalMoveNextLine()
-            => MoveNextLine();
-        protected internal override void InternalMovePreviousLine()
-            => MovePreviousLine();
-
         public override PixelAdapter<T> Clone()
-            => throw new NotImplementedException();
+            => new NearestResizePixelAdapter<T>(this);
 
     }
 }

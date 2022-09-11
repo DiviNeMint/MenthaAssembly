@@ -78,10 +78,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => Source.OverlayTo(pDataA, pDataR, pDataG, pDataB);
 
-        protected internal override void InternalMove(int Offset)
-            => Source.InternalMove(Offset);
         protected internal override void InternalMove(int X, int Y)
             => Source.InternalMove(Sx + X, Sy + Y);
+        protected internal override void InternalMoveX(int OffsetX)
+            => Source.InternalMoveX(OffsetX);
+        protected internal override void InternalMoveY(int OffsetY)
+            => Source.InternalMoveY(OffsetY);
 
         protected internal override void InternalMoveNext()
             => Source.InternalMoveNext();
