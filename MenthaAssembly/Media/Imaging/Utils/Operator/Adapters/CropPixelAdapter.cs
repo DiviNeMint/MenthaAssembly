@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal sealed unsafe class CropPixelAdapter<T> : PixelAdapter<T>
+    public sealed unsafe class CropPixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
         private readonly PixelAdapter<T> Source;

@@ -2,8 +2,8 @@
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal sealed unsafe class FlipPixelAdapter<T> : PixelAdapter<T>
-            where T : unmanaged, IPixel
+    public sealed unsafe class FlipPixelAdapter<T> : PixelAdapter<T>
+        where T : unmanaged, IPixel
     {
         private readonly PixelAdapter<T> Source;
 

@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal sealed unsafe class BilinearResizePixelAdapter<T> : PixelAdapter<T>
+    public sealed unsafe class BilinearResizePixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
         private readonly PixelAdapter<T> Source;
@@ -14,16 +14,44 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override int MaxY { get; }
 
         private byte _A;
-        public override byte A => _A;
+        public override byte A
+        {
+            get
+            {
+                EnsurePixel();
+                return _A;
+            }
+        }
 
         private byte _R;
-        public override byte R => _R;
+        public override byte R
+        {
+            get
+            {
+                EnsurePixel();
+                return _R;
+            }
+        }
 
         private byte _G;
-        public override byte G => _G;
+        public override byte G
+        {
+            get
+            {
+                EnsurePixel();
+                return _G;
+            }
+        }
 
         private byte _B;
-        public override byte B => _B;
+        public override byte B
+        {
+            get
+            {
+                EnsurePixel();
+                return _B;
+            }
+        }
 
         public override int BitsPerPixel
             => Source.BitsPerPixel;
@@ -91,6 +119,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IFracY = 1f - FracY;
         }
 
+
         public override void Override(T Pixel)
             => throw new NotSupportedException();
         public override void Override(PixelAdapter<T> Adapter)
@@ -100,22 +129,22 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverrideTo(T* pData)
         {
             EnsurePixel();
-            pData->Override(A, R, G, B);
+            pData->Override(_A, _R, _G, _B);
         }
         public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            *pDataR = R;
-            *pDataG = G;
-            *pDataB = B;
+            *pDataR = _R;
+            *pDataG = _G;
+            *pDataB = _B;
         }
         public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            *pDataA = A;
-            *pDataR = R;
-            *pDataG = G;
-            *pDataB = B;
+            *pDataA = _A;
+            *pDataR = _R;
+            *pDataG = _G;
+            *pDataB = _B;
         }
 
         public override void Overlay(T Pixel)
@@ -127,17 +156,17 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverlayTo(T* pData)
         {
             EnsurePixel();
-            pData->Overlay(A, R, G, B);
+            pData->Overlay(_A, _R, _G, _B);
         }
         public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, A, R, G, B);
+            PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, _A, _R, _G, _B);
         }
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, A, R, G, B);
+            PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, _A, _R, _G, _B);
         }
 
         private float IFracY = 1f;
