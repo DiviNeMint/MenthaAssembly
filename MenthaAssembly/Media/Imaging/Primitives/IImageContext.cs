@@ -788,18 +788,18 @@ namespace MenthaAssembly.Media.Imaging
         /// Creates a new rotated <see cref="ImageContext{T}"/>.
         /// </summary>
         /// <typeparam name="T"></typeparam>
+        /// <param name="Interpolation">The algorithm of interpolation.</param>
         /// <param name="Angle">Arbitrary angle (positive = clockwise).</param>
-        /// <param name="Crop">if true: keep the size, false: adjust canvas to new size</param>
-        public ImageContext<T> Rotate<T>(double Angle, bool Crop) where T : unmanaged, IPixel;
+        public ImageContext<T> Rotate<T>(double Angle, InterpolationTypes Interpolation) where T : unmanaged, IPixel;
         /// <summary>
         /// Creates a new rotated <see cref="ImageContext{T}"/>.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="Angle">Arbitrary angle (positive = clockwise).</param>
-        /// <param name="Crop">if true: keep the size, false: adjust canvas to new size</param>
+        /// <param name="Interpolation">The algorithm of interpolation.</param>
         /// <param name="Options">An object that configures the behavior of this operation.<para/>
         /// If it is null, the function will run with default options. </param>
-        public ImageContext<T> Rotate<T>(double Angle, bool Crop, ParallelOptions Options) where T : unmanaged, IPixel;
+        public ImageContext<T> Rotate<T>(double Angle, InterpolationTypes Interpolation, ParallelOptions Options) where T : unmanaged, IPixel;
 
         #endregion
 

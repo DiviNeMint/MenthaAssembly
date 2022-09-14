@@ -2342,84 +2342,58 @@ namespace MenthaAssembly.Media.Imaging
         #region Transform Processing
 
         #region Rotate
-        public ImageContext<T> Rotate<T>(double Angle, bool Crop) where T : unmanaged, IPixel
+        public ImageContext<T> Rotate<T>(double Angle, InterpolationTypes Interpolation) where T : unmanaged, IPixel
         {
             if (Angle % 360d == 0)
                 return Cast<T>();
 
-            double Theta = Angle * MathHelper.UnitTheta,
-                   Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
-
-            int Wo = Width,
-                Lo = Height,
-                Wt, Lt;
-
-            if (Crop)
+            PixelAdapter<T> Sorc = Interpolation switch
             {
-                Wt = Wo;
-                Lt = Lo;
-            }
-            else
+                InterpolationTypes.Nearest => new NearestRotatePixelAdapter<T>(this, Angle),
+                InterpolationTypes.Bilinear => new BilinearRotatePixelAdapter<T>(this, Angle),
+                _ => throw new NotSupportedException($"Not support InterpolationTypes.{Interpolation}."),
+            };
+
+            ImageContext<T> Result = new ImageContext<T>(Sorc.MaxX + 1, Sorc.MaxY + 1);
+            PixelAdapter<T> Dest = Result.GetAdapter<T>(0, 0);
+
+            int Nw = Result.Width;
+            for (int j = 0; j < Result.Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
             {
-                Wt = (int)(Math.Abs(Wo * Cos) + Math.Abs(Lo * Sin));
-                Lt = (int)(Math.Abs(Wo * Sin) + Math.Abs(Lo * Cos));
+                for (int i = 0; i < Nw; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+
+                Sorc.InternalMoveX(-Nw);
+                Dest.InternalMoveX(-Nw);
             }
 
-            ImageContext<T> Result = new ImageContext<T>(Wt, Lt);
-            double MaxWt = Wt - 1,
-                   MaxLt = Lt - 1,
-                   MaxWo = Wo - 1,
-                   MaxLo = Lo - 1;
-
-            for (int j = 0; j < Lt; j++)
-            {
-                PixelAdapter<Pixel> Adapter = Result.GetAdapter<Pixel>(0, j);
-                double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
-                       FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
-
-                Operator.ScanLineRotateTo(0, 0, Wt, FracX, FracY, Sin, Cos, Adapter);
-            }
             return Result;
         }
-        public ImageContext<T> Rotate<T>(double Angle, bool Crop, ParallelOptions Options) where T : unmanaged, IPixel
+        public ImageContext<T> Rotate<T>(double Angle, InterpolationTypes Interpolation, ParallelOptions Options) where T : unmanaged, IPixel
         {
             if (Angle % 360d == 0)
                 return Cast<T>(Options ?? DefaultParallelOptions);
 
-            double Theta = Angle * MathHelper.UnitTheta,
-                   Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
-
-            int Wo = Width,
-                Lo = Height,
-                Wt, Lt;
-
-            if (Crop)
+            PixelAdapter<T> RotateAdapter = Interpolation switch
             {
-                Wt = Wo;
-                Lt = Lo;
-            }
-            else
+                InterpolationTypes.Nearest => new NearestRotatePixelAdapter<T>(this, Angle),
+                InterpolationTypes.Bilinear => new BilinearRotatePixelAdapter<T>(this, Angle),
+                _ => throw new NotSupportedException($"Not support InterpolationTypes.{Interpolation}."),
+            };
+
+            ImageContext<T> Result = new ImageContext<T>(RotateAdapter.MaxX + 1, RotateAdapter.MaxY + 1);
+
+            int Width = Result.Width;
+            Parallel.For(0, Result.Height, Options ?? DefaultParallelOptions, j =>
             {
-                Wt = (int)(Math.Abs(Wo * Cos) + Math.Abs(Lo * Sin));
-                Lt = (int)(Math.Abs(Wo * Sin) + Math.Abs(Lo * Cos));
-            }
+                PixelAdapter<T> Sorc = RotateAdapter.Clone(),
+                                Dest = Result.GetAdapter<T>(0, j);
 
-            ImageContext<T> Result = new ImageContext<T>(Wt, Lt);
-            double MaxWt = Wt - 1,
-                   MaxLt = Lt - 1,
-                   MaxWo = Wo - 1,
-                   MaxLo = Lo - 1;
-
-            Parallel.For(0, Lt, Options ?? DefaultParallelOptions, j =>
-            {
-                PixelAdapter<Pixel> Adapter = Result.GetAdapter<Pixel>(0, j);
-                double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
-                       FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
-
-                Operator.ScanLineRotateTo(0, 0, Wt, FracX, FracY, Sin, Cos, Adapter);
+                Sorc.InternalMoveY(j);
+                for (int i = 0; i < Width ; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
             });
+
             return Result;
         }
 

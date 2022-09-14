@@ -410,13 +410,13 @@ namespace MenthaAssembly.Media.Imaging
                     LastDy = 0;
 
                 GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, (Dx, Dy) =>
-                    {
-                        Stroke.Offset(Dx - LastDx, Dy - LastDy);
-                        LineContour.Union(Stroke);
+                {
+                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                    LineContour.Union(Stroke);
 
-                        LastDx = Dx;
-                        LastDy = Dy;
-                    });
+                    LastDx = Dx;
+                    LastDy = Dy;
+                });
                 #endregion
 
                 Operator.ContourOverlay(LineContour, Fill, 0, 0);
@@ -551,8 +551,7 @@ namespace MenthaAssembly.Media.Imaging
             }
 
             bool IsHollow = Contour.Any(i => i.Value.Length > 2);
-            int MaxX = Width - 1,
-                PCx = (Bound.Left + Bound.Right) >> 1,
+            int PCx = (Bound.Left + Bound.Right) >> 1,
                 PCy = (Bound.Top + Bound.Bottom) >> 1,
                 DSx = Sx - Cx,
                 DSy = Sy - Cy,
@@ -565,15 +564,15 @@ namespace MenthaAssembly.Media.Imaging
 
                 int LastDx = 0,
                     LastDy = 0;
-                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise,
-                    false, (Dx, Dy) =>
-{
-    Stroke.Offset(Dx - LastDx, Dy - LastDy);
-    ArcContour.Union(Stroke);
+                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, false,
+                    (Dx, Dy) =>
+                    {
+                        Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                        ArcContour.Union(Stroke);
 
-    LastDx = Dx;
-    LastDy = Dy;
-});
+                        LastDx = Dx;
+                        LastDy = Dy;
+                    });
             }
             else
             {
@@ -582,58 +581,58 @@ namespace MenthaAssembly.Media.Imaging
                                      SmallLeftBound = new Dictionary<int, int>(),
                                      SmallRightBound = new Dictionary<int, int>();
 
-                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise,
-                   false, (Dx, Dy) =>
-{
-    int OffsetX = Dx + Cx - PCx,
-        OffsetY = Dy + Cy - PCy;
-    if (Dx < 0)
-    {
-        foreach (KeyValuePair<int, ImageContourScanLine> item in Contour)
-        {
-            ImageContourScanLine Data = item.Value;
-            int Ty = item.Key + OffsetY;
+                GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, false,
+                    (Dx, Dy) =>
+                    {
+                        int OffsetX = Dx + Cx - PCx,
+                            OffsetY = Dy + Cy - PCy;
+                        if (Dx < 0)
+                        {
+                            foreach (KeyValuePair<int, ImageContourScanLine> item in Contour)
+                            {
+                                ImageContourScanLine Data = item.Value;
+                                int Ty = item.Key + OffsetY;
 
-            if (Ty < 0)
-                continue;
+                                if (Ty < 0)
+                                    continue;
 
-            if (Height <= Ty)
-                break;
+                                if (Height <= Ty)
+                                    break;
 
-            int LLTx = Data[0] + OffsetX,
-                MLTx = Data[1] + OffsetX;
+                                int LLTx = Data[0] + OffsetX,
+                                    MLTx = Data[1] + OffsetX;
 
-            if (!LargeLeftBound.TryGetValue(Ty, out int RLLx) || LLTx < RLLx)
-                LargeLeftBound[Ty] = LLTx;
+                                if (!LargeLeftBound.TryGetValue(Ty, out int RLLx) || LLTx < RLLx)
+                                    LargeLeftBound[Ty] = LLTx;
 
-            if (!SmallLeftBound.TryGetValue(Ty, out int RMLx) || RMLx < MLTx)
-                SmallLeftBound[Ty] = MLTx;
-        }
-    }
-    else
-    {
-        foreach (KeyValuePair<int, ImageContourScanLine> item in Contour)
-        {
-            ImageContourScanLine Data = item.Value;
-            int Ty = item.Key + OffsetY;
+                                if (!SmallLeftBound.TryGetValue(Ty, out int RMLx) || RMLx < MLTx)
+                                    SmallLeftBound[Ty] = MLTx;
+                            }
+                        }
+                        else
+                        {
+                            foreach (KeyValuePair<int, ImageContourScanLine> item in Contour)
+                            {
+                                ImageContourScanLine Data = item.Value;
+                                int Ty = item.Key + OffsetY;
 
-            if (Ty < 0)
-                continue;
+                                if (Ty < 0)
+                                    continue;
 
-            if (Height <= Ty)
-                break;
+                                if (Height <= Ty)
+                                    break;
 
-            int LRTx = Data[1] + OffsetX,
-                MRTx = Data[0] + OffsetX;
+                                int LRTx = Data[1] + OffsetX,
+                                    MRTx = Data[0] + OffsetX;
 
-            if (!LargeRightBound.TryGetValue(Ty, out int RLRx) || RLRx < LRTx)
-                LargeRightBound[Ty] = LRTx;
+                                if (!LargeRightBound.TryGetValue(Ty, out int RLRx) || RLRx < LRTx)
+                                    LargeRightBound[Ty] = LRTx;
 
-            if (!SmallRightBound.TryGetValue(Ty, out int RMRx) || MRTx < RMRx)
-                SmallRightBound[Ty] = MRTx;
-        }
-    }
-});
+                                if (!SmallRightBound.TryGetValue(Ty, out int RMRx) || MRTx < RMRx)
+                                    SmallRightBound[Ty] = MRTx;
+                            }
+                        }
+                    });
 
                 foreach (KeyValuePair<int, int> item in LargeLeftBound)
                 {
@@ -1912,7 +1911,9 @@ namespace MenthaAssembly.Media.Imaging
             Point<int>[] Datas = GraphicAlgorithm.CropPolygon(Vertices, -OffsetX - 1, -OffsetY - 1, Width - OffsetX, Height - OffsetY);
 
             int Length = Datas.Length;
-            int[] intersectionsX = new int[Length - 1];
+
+            int[] IntersectionsX = new int[Length - 1],
+                  HorizontalX = new int[Length << 1];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
             int yMin = Height,
@@ -1938,50 +1939,77 @@ namespace MenthaAssembly.Media.Imaging
             {
                 // Initial point x, y
                 Point<int> P0 = Datas[0];
-                float vxi = P0.X + OffsetX,
-                      vyi = P0.Y + OffsetY;
+                float X0 = P0.X + OffsetX,
+                      Y0 = P0.Y + OffsetY;
 
                 // Find all intersections
                 // Based on http://alienryderflex.com/polygon_fill/
-                int intersectionCount = 0;
+                int IntersectionCount = 0,
+                    HorizontalCount = 0;
                 for (int i = 1; i < Length; i++)
                 {
                     // Next point x, y
                     Point<int> P1 = Datas[i];
-                    float vxj = P1.X + OffsetX,
-                          vyj = P1.Y + OffsetY;
+                    float X1 = P1.X + OffsetX,
+                          Y1 = P1.Y + OffsetY;
 
                     // Is the scanline between the two points
-                    if (vyi < y && vyj >= y ||
-                        vyj < y && vyi >= y)
+                    if (Y0 < y && y <= Y1 ||
+                        Y1 < y && y <= Y0)
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
-                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
+                        IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
                     }
-                    vxi = vxj;
-                    vyi = vyj;
+                    else if (Y0 == Y1 && Y0 == y)
+                    {
+                        HorizontalX[HorizontalCount++] = (int)X0;
+                        HorizontalX[HorizontalCount++] = (int)X1;
+                    }
+
+                    X0 = X1;
+                    Y0 = Y1;
                 }
 
                 // Sort the intersections from left to right using Insertion sort 
                 // It's faster than Array.Sort for this small data set
                 int t, j;
-                for (int i = 1; i < intersectionCount; i++)
+                for (int i = 1; i < IntersectionCount; i++)
                 {
-                    t = intersectionsX[i];
+                    t = IntersectionsX[i];
                     j = i;
-                    while (j > 0 && intersectionsX[j - 1] > t)
+                    while (j > 0 && IntersectionsX[j - 1] > t)
                     {
-                        intersectionsX[j] = intersectionsX[j - 1];
+                        IntersectionsX[j] = IntersectionsX[j - 1];
                         j -= 1;
                     }
-                    intersectionsX[j] = t;
+                    IntersectionsX[j] = t;
                 }
 
                 // Fill the pixels between the intersections
-                for (int i = 0; i < intersectionCount - 1; i += 2)
+                for (int i = 0; i < IntersectionCount - 1; i += 2)
                 {
-                    int x0 = intersectionsX[i],
-                        x1 = intersectionsX[i + 1];
+                    int x0 = IntersectionsX[i],
+                        x1 = IntersectionsX[i + 1];
+
+                    // Check boundary
+                    if (x1 > 0 && x0 < Width)
+                    {
+                        if (x0 < 0)
+                            x0 = 0;
+
+                        if (x1 >= Width)
+                            x1 = Width - 1;
+
+                        // Fill the pixels
+                        Operator.ScanLine<Pixel>(x0, y, x1 - x0 + 1, a => a.Overlay(Fill));
+                    }
+                }
+
+                // Fill the pixels between the horizontals
+                for (int i = 0; i < HorizontalCount - 1; i += 2)
+                {
+                    int x0 = HorizontalX[i],
+                        x1 = HorizontalX[i + 1];
 
                     // Check boundary
                     if (x1 > 0 && x0 < Width)
@@ -2005,7 +2033,8 @@ namespace MenthaAssembly.Media.Imaging
             int pn = Datas.Length,
                 pnh = pn >> 1;
 
-            int[] intersectionsX = new int[pnh - 1];
+            int[] IntersectionsX = new int[pnh - 1],
+                  HorizontalX = new int[pn];
 
             // Find y min and max (slightly faster than scanning from 0 to height)
             int yMin = Height,
@@ -2030,49 +2059,76 @@ namespace MenthaAssembly.Media.Imaging
             for (int y = yMin; y <= yMax; y++)
             {
                 // Initial point x, y
-                float vxi = Datas[0] + OffsetX,
-                      vyi = Datas[1] + OffsetY;
+                float X0 = Datas[0] + OffsetX,
+                      Y0 = Datas[1] + OffsetY;
 
                 // Find all intersections
                 // Based on http://alienryderflex.com/polygon_fill/
-                int intersectionCount = 0;
+                int IntersectionCount = 0,
+                    HorizontalCount = 0;
                 for (int i = 2; i < pn; i += 2)
                 {
                     // Next point x, y
-                    float vxj = Datas[i] + OffsetX,
-                          vyj = Datas[i + 1] + OffsetY;
+                    float X1 = Datas[i] + OffsetX,
+                          Y1 = Datas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
-                    if (vyi < y && vyj >= y ||
-                        vyj < y && vyi >= y)
+                    if (Y0 < y && y <= Y1 ||
+                        Y1 < y && y <= Y0)
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
-                        intersectionsX[intersectionCount++] = (int)(vxi + (y - vyi) * (vxj - vxi) / (vyj - vyi));
+                        IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
                     }
-                    vxi = vxj;
-                    vyi = vyj;
+                    else if (Y0 == Y1 && Y0 == y)
+                    {
+                        HorizontalX[HorizontalCount++] = (int)X0;
+                        HorizontalX[HorizontalCount++] = (int)X1;
+                    }
+
+                    X0 = X1;
+                    Y0 = Y1;
                 }
 
                 // Sort the intersections from left to right using Insertion sort 
                 // It's faster than Array.Sort for this small data set
                 int t, j;
-                for (int i = 1; i < intersectionCount; i++)
+                for (int i = 1; i < IntersectionCount; i++)
                 {
-                    t = intersectionsX[i];
+                    t = IntersectionsX[i];
                     j = i;
-                    while (j > 0 && intersectionsX[j - 1] > t)
+                    while (j > 0 && IntersectionsX[j - 1] > t)
                     {
-                        intersectionsX[j] = intersectionsX[j - 1];
+                        IntersectionsX[j] = IntersectionsX[j - 1];
                         j -= 1;
                     }
-                    intersectionsX[j] = t;
+                    IntersectionsX[j] = t;
                 }
 
                 // Fill the pixels between the intersections
-                for (int i = 0; i < intersectionCount - 1; i += 2)
+                for (int i = 0; i < IntersectionCount - 1; i += 2)
                 {
-                    int x0 = intersectionsX[i],
-                        x1 = intersectionsX[i + 1];
+                    int x0 = IntersectionsX[i],
+                        x1 = IntersectionsX[i + 1];
+
+                    // Check boundary
+                    if (x1 > 0 && x0 < Width)
+                    {
+                        if (x0 < 0)
+                            x0 = 0;
+
+                        if (x1 >= Width)
+                            x1 = Width - 1;
+
+                        // Fill the pixels
+                        Operator.ScanLine<Pixel>(x0, y, x1 - x0 + 1, a => a.Overlay(Fill));
+                    }
+                }
+
+                // Fill the pixels between the horizontals
+                for (int i = 0; i < HorizontalCount - 1; i += 2)
+                {
+                    int x0 = HorizontalX[i],
+                        x1 = HorizontalX[i + 1];
 
                     // Check boundary
                     if (x1 > 0 && x0 < Width)
@@ -2102,32 +2158,36 @@ namespace MenthaAssembly.Media.Imaging
             => DrawStamp(Position.X, Position.Y, Stamp);
         public void DrawStamp(int X, int Y, IImageContext Stamp)
         {
-            int Bx = X + Stamp.Width,
-                By = Y + Stamp.Height,
-                OffsetX = 0,
-                OffsetY = 0;
+            int Width = Stamp.Width,
+                Height = Stamp.Height,
+                Sx = X - (Width >> 1),
+                Sy = Y - (Height >> 1),
+                Ex = Sx + Width,
+                Ey = Sy + Height,
+                SourceX = 0,
+                SourceY = 0;
 
-            if (X < 0)
+            if (Sx < 0)
             {
-                OffsetX -= X;
-                X = 0;
+                SourceX -= Sx;
+                Sx = 0;
             }
 
-            if (Y < 0)
+            if (Sy < 0)
             {
-                OffsetY -= Y;
-                Y = 0;
+                SourceY -= Sy;
+                Sy = 0;
             }
 
-            int Width = Math.Min(Bx, this.Width) - X;
+            Width = Math.Min(Ex, this.Width - 1) - Sx;
             if (Width < 1)
                 return;
 
-            int Height = Math.Min(By, this.Width) - Y;
+            Height = Math.Min(Ey, this.Height - 1) - Sy;
             if (Height < 1)
                 return;
 
-            Operator.BlockOverlay(X, Y, Stamp, OffsetX, OffsetY, Width, Height);
+            Operator.BlockOverlay(Sx, Sy, Stamp, SourceX, SourceY, Width, Height);
         }
 
         public void FillContour(ImageContour Contour, Pixel Fill, int OffsetX, int OffsetY)
@@ -2185,84 +2245,58 @@ namespace MenthaAssembly.Media.Imaging
         #region Transform Processing
 
         #region Rotate
-        public ImageContext<T> Rotate<T>(double Angle, bool Crop) where T : unmanaged, IPixel
+        public ImageContext<T> Rotate<T>(double Angle, InterpolationTypes Interpolation) where T : unmanaged, IPixel
         {
             if (Angle % 360d == 0)
                 return Cast<T>();
 
-            double Theta = Angle * MathHelper.UnitTheta,
-                   Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
-
-            int Wo = Width,
-                Lo = Height,
-                Wt, Lt;
-
-            if (Crop)
+            PixelAdapter<T> Sorc = Interpolation switch
             {
-                Wt = Wo;
-                Lt = Lo;
-            }
-            else
+                InterpolationTypes.Nearest => new NearestRotatePixelAdapter<T>(this, Angle),
+                InterpolationTypes.Bilinear => new BilinearRotatePixelAdapter<T>(this, Angle),
+                _ => throw new NotSupportedException($"Not support InterpolationTypes.{Interpolation}."),
+            };
+
+            ImageContext<T> Result = new ImageContext<T>(Sorc.MaxX + 1, Sorc.MaxY + 1);
+            PixelAdapter<T> Dest = Result.GetAdapter<T>(0, 0);
+
+            int Nw = Result.Width;
+            for (int j = 0; j < Result.Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
             {
-                Wt = (int)(Math.Abs(Wo * Cos) + Math.Abs(Lo * Sin));
-                Lt = (int)(Math.Abs(Wo * Sin) + Math.Abs(Lo * Cos));
+                for (int i = 0; i < Nw; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+
+                Sorc.InternalMoveX(-Nw);
+                Dest.InternalMoveX(-Nw);
             }
 
-            ImageContext<T> Result = new ImageContext<T>(Wt, Lt);
-            double MaxWt = Wt - 1,
-                   MaxLt = Lt - 1,
-                   MaxWo = Wo - 1,
-                   MaxLo = Lo - 1;
-
-            for (int j = 0; j < Lt; j++)
-            {
-                PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
-                       FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
-
-                Operator.ScanLineRotateTo(0, 0, Wt, FracX, FracY, Sin, Cos, Adapter);
-            }
             return Result;
         }
-        public ImageContext<T> Rotate<T>(double Angle, bool Crop, ParallelOptions Options) where T : unmanaged, IPixel
+        public ImageContext<T> Rotate<T>(double Angle, InterpolationTypes Interpolation, ParallelOptions Options) where T : unmanaged, IPixel
         {
             if (Angle % 360d == 0)
                 return Cast<T>(Options ?? DefaultParallelOptions);
 
-            double Theta = Angle * MathHelper.UnitTheta,
-                   Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta);
-
-            int Wo = Width,
-                Lo = Height,
-                Wt, Lt;
-
-            if (Crop)
+            PixelAdapter<T> RotateAdapter = Interpolation switch
             {
-                Wt = Wo;
-                Lt = Lo;
-            }
-            else
+                InterpolationTypes.Nearest => new NearestRotatePixelAdapter<T>(this, Angle),
+                InterpolationTypes.Bilinear => new BilinearRotatePixelAdapter<T>(this, Angle),
+                _ => throw new NotSupportedException($"Not support InterpolationTypes.{Interpolation}."),
+            };
+
+            ImageContext<T> Result = new ImageContext<T>(RotateAdapter.MaxX + 1, RotateAdapter.MaxY + 1);
+
+            int Width = Result.Width;
+            Parallel.For(0, Result.Height, Options ?? DefaultParallelOptions, j =>
             {
-                Wt = (int)(Math.Abs(Wo * Cos) + Math.Abs(Lo * Sin));
-                Lt = (int)(Math.Abs(Wo * Sin) + Math.Abs(Lo * Cos));
-            }
+                PixelAdapter<T> Sorc = RotateAdapter.Clone(),
+                                Dest = Result.GetAdapter<T>(0, j);
 
-            ImageContext<T> Result = new ImageContext<T>(Wt, Lt);
-            double MaxWt = Wt - 1,
-                   MaxLt = Lt - 1,
-                   MaxWo = Wo - 1,
-                   MaxLo = Lo - 1;
-
-            Parallel.For(0, Lt, Options ?? DefaultParallelOptions, j =>
-            {
-                PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                double FracX = j * Sin - (MaxWt * Cos + MaxLt * Sin - MaxWo) * 0.5d,
-                       FracY = j * Cos + (MaxWt * Sin - MaxLt * Cos + MaxLo) * 0.5d;
-
-                Operator.ScanLineRotateTo(0, 0, Wt, FracX, FracY, Sin, Cos, Adapter);
+                Sorc.InternalMoveY(j);
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
             });
+
             return Result;
         }
 
@@ -2273,32 +2307,36 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
-            float StepX = (float)this.Width / Width,
-                  StepY = (float)this.Height / Height,
-                  SumStepY = 0f;
             switch (Interpolation)
             {
                 case InterpolationTypes.Nearest:
                     {
-                        for (int j = 0; j < Height; j++)
-                        {
-                            PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                            Operator.ScanLineNearestResizeTo(0, (int)SumStepY, Width, 0f, StepX, Adapter);
+                        PixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, Width, Height),
+                                        Dest = Result.GetAdapter<T>(0, 0);
 
-                            SumStepY += StepY;
+                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+                        {
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
+
+                            Sorc.InternalMoveX(-Width);
+                            Dest.InternalMoveX(-Width);
                         }
+
                         break;
                     }
                 case InterpolationTypes.Bilinear:
                     {
-                        for (int j = 0; j < Height; j++)
-                        {
-                            int Y = (int)SumStepY;
-                            PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                            this.Operator.ScanLineBilinearResizeTo(0, Y, Width, 0f, StepX, SumStepY - Y, Adapter);
+                        PixelAdapter<T> Sorc = new BilinearResizePixelAdapter<T>(this, Width, Height),
+                                        Dest = Result.GetAdapter<T>(0, 0);
 
-                            SumStepY += StepY;
+                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+                        {
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
+
+                            Sorc.InternalMoveX(-Width);
+                            Dest.InternalMoveX(-Width);
                         }
                         break;
                     }
@@ -2310,28 +2348,34 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
-            float StepX = (float)this.Width / Width,
-                  StepY = (float)this.Height / Height;
             switch (Interpolation)
             {
                 case InterpolationTypes.Nearest:
                     {
+                        float StepX = (float)this.Width / Width,
+                              StepY = (float)this.Height / Height;
                         Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
                         {
-                            PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                            Operator.ScanLineNearestResizeTo(0, (int)(StepY * j), Width, 0f, StepX, Adapter);
+                            PixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, 0, j, StepX, StepY),
+                                            Dest = Result.GetAdapter<T>(0, j);
+
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
                         });
                         break;
                     }
                 case InterpolationTypes.Bilinear:
                     {
+                        float StepX = (float)this.Width / Width,
+                              StepY = (float)this.Height / Height;
+
                         Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
                         {
-                            float SumStepY = StepY * j;
-                            int Y = (int)SumStepY;
-                            PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, j);
-                            this.Operator.ScanLineBilinearResizeTo(0, Y, Width, 0f, StepX, SumStepY - Y, Adapter);
+                            PixelAdapter<T> Sorc = new BilinearResizePixelAdapter<T>(this, 0, j, StepX, StepY),
+                                            Dest = Result.GetAdapter<T>(0, j);
+
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
                         });
                         break;
                     }
@@ -2351,13 +2395,16 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Vertical:
                     {
                         ImageContext<T> Result = new ImageContext<T>(Width, Height);
-                        long DestStride = Result.Stride;
-                        byte* Dest0 = (byte*)Result.Scan0;
 
-                        for (int y = 0; y < Height; y++)
+                        PixelAdapter<T> Sorc = GetAdapter<T>(0, Height - 1),
+                                        Dest = Result.GetAdapter<T>(0, 0);
+                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousLine(), Dest.InternalMoveNextLine())
                         {
-                            T* pDest = (T*)(Dest0 + DestStride * (Height - 1 - y));
-                            Operator.ScanLine<T>(0, y, Width, a => a.OverrideTo(pDest++));
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
+
+                            Sorc.InternalMoveX(-Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         return Result;
@@ -2365,13 +2412,16 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Horizontal:
                     {
                         ImageContext<T> Result = new ImageContext<T>(Width, Height);
-                        long DestStride = Result.Stride;
-                        byte* Dest0 = (byte*)Result.Scan0 + DestStride - sizeof(T);
 
-                        for (int y = 0; y < Height; y++)
+                        PixelAdapter<T> Sorc = GetAdapter<T>(Width - 1, 0),
+                                        Dest = Result.GetAdapter<T>(0, 0);
+                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
                         {
-                            T* pDest = (T*)(Dest0 + DestStride * y);
-                            Operator.ScanLine<T>(0, y, Width, a => a.OverrideTo(pDest--));
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
+
+                            Sorc.InternalMoveX(Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         return Result;
@@ -2379,13 +2429,16 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Vertical | FlipMode.Horizontal:
                     {
                         ImageContext<T> Result = new ImageContext<T>(Width, Height);
-                        long DestStride = Result.Stride;
-                        byte* Dest0 = (byte*)Result.Scan0 + DestStride - sizeof(T);
 
-                        for (int y = 0; y < Height; y++)
+                        PixelAdapter<T> Sorc = GetAdapter<T>(Width - 1, Height - 1),
+                                        Dest = Result.GetAdapter<T>(0, 0);
+                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousLine(), Dest.InternalMoveNextLine())
                         {
-                            T* pDest = (T*)(Dest0 + DestStride * (Height - 1 - y));
-                            Operator.ScanLine<T>(0, y, Width, a => a.OverrideTo(pDest--));
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
+
+                            Sorc.InternalMoveX(Width);
+                            Dest.InternalMoveX(-Width);
                         }
 
                         return Result;
@@ -2402,13 +2455,14 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Vertical:
                     {
                         ImageContext<T> Result = new ImageContext<T>(Width, Height);
-                        long DestStride = Result.Stride;
-                        byte* Dest0 = (byte*)Result.Scan0;
 
-                        Parallel.For(0, Height, Options, (y) =>
+                        int MaxY = Height - 1;
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
-                            T* pDest = (T*)(Dest0 + DestStride * (Height - 1 - y));
-                            Operator.ScanLine<T>(0, y, Width, a => a.OverrideTo(pDest++));
+                            PixelAdapter<T> Sorc = GetAdapter<T>(0, MaxY - y),
+                                             Dest = Result.GetAdapter<T>(0, y);
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
                         });
 
                         return Result;
@@ -2416,13 +2470,14 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Horizontal:
                     {
                         ImageContext<T> Result = new ImageContext<T>(Width, Height);
-                        long DestStride = Result.Stride;
-                        byte* Dest0 = (byte*)Result.Scan0 + DestStride - sizeof(T);
 
-                        Parallel.For(0, Height, Options, (y) =>
+                        int MaxX = Width - 1;
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
-                            T* pDest = (T*)(Dest0 + DestStride * y);
-                            Operator.ScanLine<T>(0, y, Width, a => a.OverrideTo(pDest--));
+                            PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, y),
+                                             Dest = Result.GetAdapter<T>(0, y);
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
                         });
 
                         return Result;
@@ -2430,13 +2485,15 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Vertical | FlipMode.Horizontal:
                     {
                         ImageContext<T> Result = new ImageContext<T>(Width, Height);
-                        long DestStride = Result.Stride;
-                        byte* Dest0 = (byte*)Result.Scan0 + DestStride - sizeof(T);
 
-                        Parallel.For(0, Height, Options, (y) =>
+                        int MaxX = Width - 1,
+                            MaxY = Height - 1;
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
-                            T* pDest = (T*)(Dest0 + DestStride * (Height - 1 - y));
-                            Operator.ScanLine<T>(0, y, Width, a => a.OverrideTo(pDest--));
+                            PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, MaxY - y),
+                                             Dest = Result.GetAdapter<T>(0, y);
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
                         });
 
                         return Result;
@@ -2455,27 +2512,51 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Vertical:
                     {
                         ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-                        for (int Y = 0; Y < Height; Y++)
-                            for (int X = 0; X < Width; X++)
-                                Result.Operator.SetPixel(X, Height - 1 - Y, Operator.GetPixel(X, Y).ToPixel<T>());
+
+                        PixelAdapter<T> Sorc = GetAdapter<T>(0, Height - 1),
+                                         Dest = Result.GetAdapter<T>(0, 0);
+                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousLine(), Dest.InternalMoveNextLine())
+                        {
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
+
+                            Sorc.InternalMoveX(-Width);
+                            Dest.InternalMoveX(-Width);
+                        }
 
                         return Result;
                     }
                 case FlipMode.Horizontal:
                     {
                         ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-                        for (int Y = 0; Y < Height; Y++)
-                            for (int X = 0; X < Width; X++)
-                                Result.Operator.SetPixel(Width - 1 - X, Y, Operator.GetPixel(X, Y).ToPixel<T>());
+
+                        PixelAdapter<T> Sorc = GetAdapter<T>(Width - 1, 0),
+                                         Dest = Result.GetAdapter<T>(0, 0);
+                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+                        {
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
+
+                            Sorc.InternalMoveX(Width);
+                            Dest.InternalMoveX(-Width);
+                        }
 
                         return Result;
                     }
                 case FlipMode.Vertical | FlipMode.Horizontal:
                     {
                         ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-                        for (int Y = 0; Y < Height; Y++)
-                            for (int X = 0; X < Width; X++)
-                                Result.Operator.SetPixel(Width - 1 - X, Height - 1 - Y, Operator.GetPixel(X, Y).ToPixel<T>());
+
+                        PixelAdapter<T> Sorc = GetAdapter<T>(Width - 1, Height - 1),
+                                         Dest = Result.GetAdapter<T>(0, 0);
+                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousLine(), Dest.InternalMoveNextLine())
+                        {
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
+
+                            Sorc.InternalMoveX(Width);
+                            Dest.InternalMoveX(-Width);
+                        }
 
                         return Result;
                     }
@@ -2492,10 +2573,14 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Vertical:
                     {
                         ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, Y =>
+
+                        int MaxY = Height - 1;
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
-                            for (int X = 0; X < Width; X++)
-                                Result.Operator.SetPixel(X, Height - 1 - Y, Operator.GetPixel(X, Y).ToPixel<T>());
+                            PixelAdapter<T> Sorc = GetAdapter<T>(0, MaxY - y),
+                                             Dest = Result.GetAdapter<T>(0, y);
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
                         });
 
                         return Result;
@@ -2503,10 +2588,14 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Horizontal:
                     {
                         ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, Y =>
+
+                        int MaxX = Width - 1;
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
-                            for (int X = 0; X < Width; X++)
-                                Result.Operator.SetPixel(Width - 1 - X, Y, Operator.GetPixel(X, Y).ToPixel<T>());
+                            PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, y),
+                                             Dest = Result.GetAdapter<T>(0, y);
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
                         });
 
                         return Result;
@@ -2514,10 +2603,15 @@ namespace MenthaAssembly.Media.Imaging
                 case FlipMode.Vertical | FlipMode.Horizontal:
                     {
                         ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, Y =>
+
+                        int MaxX = Width - 1,
+                            MaxY = Height - 1;
+                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
-                            for (int X = 0; X < Width; X++)
-                                Result.Operator.SetPixel(Width - 1 - X, Height - 1 - Y, Operator.GetPixel(X, Y).ToPixel<T>());
+                            PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, MaxY - y),
+                                             Dest = Result.GetAdapter<T>(0, y);
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                Dest.Override(Sorc);
                         });
 
                         return Result;
@@ -2540,13 +2634,21 @@ namespace MenthaAssembly.Media.Imaging
             // Clamp to boundaries
             X = Math.Max(X, 0);
             Y = Math.Max(Y, 0);
-            Width = Width.Clamp(0, this.Width - X);// Math.Max(Math.Min(Width, this.Width - X), 0);
-            Height = Height.Clamp(0, this.Height - Y);// Math.Max(Math.Min(Height, this.Height - Y), 0);
+            Width = Width.Clamp(0, this.Width - X);
+            Height = Height.Clamp(0, this.Height - Y);
 
             // Create Result
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
+            PixelAdapter<T> Sorc = GetAdapter<T>(X, Y),
+                             Dest = Result.GetAdapter<T>(0, 0);
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
 
-            BlockCopy<T>(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride);
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
+            }
 
             return Result;
         }
@@ -2566,7 +2668,14 @@ namespace MenthaAssembly.Media.Imaging
             // Create Result
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-            BlockCopy<T>(X, Y, Width, Height, (byte*)Result.Scan0, Result.Stride, Options);
+            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            {
+                PixelAdapter<T> Sorc = GetAdapter<T>(X, Y + j),
+                                 Dest = Result.GetAdapter<T>(0, j);
+
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+            });
 
             return Result;
         }
@@ -2588,14 +2697,15 @@ namespace MenthaAssembly.Media.Imaging
             // Create Result
             ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
 
-            for (int j = 0; j < Height; j++)
+            PixelAdapter<T> Sorc = GetAdapter<T>(X, Y),
+                             Dest = Result.GetAdapter<T>(0, 0);
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
             {
-                Pixel SourcePixel;
-                for (int i = 0; i < Width; i++)
-                {
-                    SourcePixel = Operator.GetPixel(X + i, Y + j);
-                    Result.Operator.SetPixel(i, j, SourcePixel.ToPixel<T>());
-                }
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
             }
 
             return Result;
@@ -2619,12 +2729,11 @@ namespace MenthaAssembly.Media.Imaging
 
             Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
-                Pixel SourcePixel;
-                for (int i = 0; i < Width; i++)
-                {
-                    SourcePixel = Operator.GetPixel(X + i, Y + j);
-                    Result.Operator.SetPixel(i, j, SourcePixel.ToPixel<T>());
-                }
+                PixelAdapter<T> Sorc = GetAdapter<T>(X, Y + j),
+                                 Dest = Result.GetAdapter<T>(0, j);
+
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
             });
 
             return Result;
@@ -2650,7 +2759,7 @@ namespace MenthaAssembly.Media.Imaging
 
             for (int y = 0; y < Height; y++)
             {
-                PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, y);
+                PixelAdapter<Pixel> Adapter = Result.GetAdapter<Pixel>(0, y);
                 Operator.ScanLineFilterTo(0, y, Width, Filter, Adapter);
             };
 
@@ -2663,7 +2772,7 @@ namespace MenthaAssembly.Media.Imaging
 
             Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
             {
-                PixelAdapter<Pixel> Adapter = Result.Operator.GetAdapter<Pixel>(0, y);
+                PixelAdapter<Pixel> Adapter = Result.GetAdapter<Pixel>(0, y);
                 Operator.ScanLineFilterTo(0, y, Width, Filter, Adapter);
             });
 
@@ -2677,14 +2786,34 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
-            BlockCopy<T>(0, 0, Width, Height, (byte*)Result.Scan0, Result.Stride);
+
+            PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
+                             Dest = Result.GetAdapter<T>(0, 0);
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
+            }
+
             return Result;
         }
         public ImageContext<T> Cast<T>(ParallelOptions Options)
             where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
-            BlockCopy<T>(0, 0, Width, Height, (byte*)Result.Scan0, Result.Stride, Options);
+
+            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            {
+                PixelAdapter<T> Sorc = GetAdapter<T>(0, j),
+                                 Dest = Result.GetAdapter<T>(0, j);
+
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+            });
+
             return Result;
         }
 
@@ -2694,14 +2823,15 @@ namespace MenthaAssembly.Media.Imaging
         {
             ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
 
-            for (int Y = 0; Y < Height; Y++)
+            PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
+                             Dest = Result.GetAdapter<T>(0, 0);
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
             {
-                Pixel SourcePixel;
-                for (int X = 0; X < Width; X++)
-                {
-                    SourcePixel = Operator.GetPixel(X, Y);
-                    Result.Operator.SetPixel(X, Y, SourcePixel.ToPixel<T>());
-                }
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
             }
 
             return Result;
@@ -2711,14 +2841,14 @@ namespace MenthaAssembly.Media.Imaging
             where U : unmanaged, IPixelIndexed
         {
             ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, Y =>
+
+            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
-                Pixel SourcePixel;
-                for (int X = 0; X < Width; X++)
-                {
-                    SourcePixel = Operator.GetPixel(X, Y);
-                    Result.Operator.SetPixel(X, Y, SourcePixel.ToPixel<T>());
-                }
+                PixelAdapter<T> Sorc = GetAdapter<T>(0, j),
+                                 Dest = Result.GetAdapter<T>(0, j);
+
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
             });
 
             return Result;
@@ -2729,11 +2859,22 @@ namespace MenthaAssembly.Media.Imaging
         #region Clear
         public void Clear(Pixel Color)
         {
-            for (int j = 0; j < Height; j++)
-                Operator.ScanLine<Pixel>(0, j, Width, a => a.Override(Color));
+            PixelAdapter<Pixel> Adapter = GetAdapter<Pixel>(0, 0);
+            for (int j = 0; j < Height; j++, Adapter.InternalMoveNextLine())
+            {
+                for (int i = 0; i < Width; i++, Adapter.InternalMoveNext())
+                    Adapter.Override(Color);
+
+                Adapter.InternalMoveX(-Width);
+            }
         }
         public void Clear(Pixel Color, ParallelOptions Options)
-            => Parallel.For(0, Height, Options ?? DefaultParallelOptions, j => Operator.ScanLine<Pixel>(0, j, Width, a => a.Override(Color)));
+            => Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            {
+                PixelAdapter<Pixel> Adapter = GetAdapter<Pixel>(0, j);
+                for (int i = 0; i < Width; i++, Adapter.InternalMoveNext())
+                    Adapter.Override(Color);
+            });
 
         void IImageContext.Clear(IPixel Color)
             => Clear(Color.ToPixel<Pixel>());
