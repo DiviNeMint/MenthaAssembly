@@ -45,8 +45,8 @@ namespace MenthaAssembly.Media.Imaging
             Kernel[Level, Level] = Vx * Vx;
 
             Matrix = Kernel;
-            base.PatchWidth = L;
-            base.PatchHeight = L;
+            PatchWidth = L;
+            PatchHeight = L;
             KernelSum = RowSum * RowSum;
             HalfWidth = Level;
             HalfHeight = Level;

@@ -119,7 +119,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IFracY = 1f - FracY;
         }
 
-
         public override void Override(T Pixel)
             => throw new NotSupportedException();
         public override void Override(PixelAdapter<T> Adapter)

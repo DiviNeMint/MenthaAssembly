@@ -6,38 +6,11 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public unsafe interface IImageContext
+    public unsafe interface IImageContext : IReadOnlyImageContext
     {
         internal IImageOperator Operator { get; }
 
-        public int Width { get; }
-
-        public int Height { get; }
-
-        public long Stride { get; }
-
-        public int BitsPerPixel { get; }
-
-        public int Channels { get; }
-
-        public Type PixelType { get; }
-
-        public Type StructType { get; }
-
-        public IPixel this[int X, int Y] { set; get; }
-
-        public IntPtr Scan0 { get; }
-
-        public IntPtr ScanA { get; }
-
-        public IntPtr ScanR { get; }
-
-        public IntPtr ScanG { get; }
-
-        public IntPtr ScanB { get; }
-
-        public IImagePalette Palette { get; }
-
+        public new IPixel this[int X, int Y] { set; get; }
 
         #region Graphic Processing
 

@@ -29,22 +29,22 @@ namespace MenthaAssembly.Media.Imaging
             HalfHeight = Level;
         }
 
-        public override void Filter<T>(T[][] Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
+        public override void Filter(ImagePatch Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
         {
             float Tr, Tg, Tb,
                   Lr, Lg, Lb;
 
-            T[] Data;
+            IReadOnlyPixel p;
 
             // Left
             Lr = Lg = Lb = 0;
 
-            Data = Patch[0];
             for (int j = 0; j < Height; j++)
             {
-                Lr += Data[j].R;
-                Lg += Data[j].G;
-                Lb += Data[j].B;
+                p = Patch[0, j];
+                Lr += p.R;
+                Lg += p.G;
+                Lb += p.B;
             }
 
             // Body
@@ -55,12 +55,12 @@ namespace MenthaAssembly.Media.Imaging
                 Tb = Args.TokenB;
 
                 int Index = Width - 1;
-                Data = Patch[Index];
                 for (int j = 0; j < Height; j++)
                 {
-                    Tr += Data[j].R;
-                    Tg += Data[j].G;
-                    Tb += Data[j].B;
+                    p = Patch[Index, j];
+                    Tr += p.R;
+                    Tg += p.G;
+                    Tb += p.B;
                 }
 
                 // Token
@@ -73,12 +73,12 @@ namespace MenthaAssembly.Media.Imaging
                 Tr = Tg = Tb = 0;
                 for (int i = 1; i < Width; i++)
                 {
-                    Data = Patch[i];
                     for (int j = 0; j < Height; j++)
                     {
-                        Tr += Data[j].R;
-                        Tg += Data[j].G;
-                        Tb += Data[j].B;
+                        p = Patch[i, j];
+                        Tr += p.R;
+                        Tg += p.G;
+                        Tb += p.B;
                     }
                 }
 
@@ -94,144 +94,10 @@ namespace MenthaAssembly.Media.Imaging
                 Tb += Lb;
             }
 
-            A = Patch[HalfWidth][HalfHeight].A;
+            A = Patch[HalfWidth, HalfHeight].A;
             R = (byte)(Tr / KernelSum);
             G = (byte)(Tg / KernelSum);
             B = (byte)(Tb / KernelSum);
-        }
-        public override void Filter3<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
-        {
-            float Tr, Tg, Tb,
-                  Lr, Lg, Lb;
-
-            byte[] DataR, DataG, DataB;
-
-            // Left
-            Lr = Lg = Lb = 0;
-
-            DataR = Patch.DataR[0];
-            DataG = Patch.DataG[0];
-            DataB = Patch.DataB[0];
-            for (int j = 0; j < Height; j++)
-            {
-                Lr += DataR[j];
-                Lg += DataG[j];
-                Lb += DataB[j];
-            }
-
-            // Body
-            if (Args.Handled)
-            {
-                Tr = Args.TokenR;
-                Tg = Args.TokenG;
-                Tb = Args.TokenB;
-
-                int Index = Width - 1;
-                DataR = Patch.DataR[Index];
-                DataG = Patch.DataG[Index];
-                DataB = Patch.DataB[Index];
-                for (int j = 0; j < Height; j++)
-                {
-                    Tr += DataR[j];
-                    Tg += DataG[j];
-                    Tb += DataB[j];
-                }
-
-                // Token
-                Args.TokenR = Tr - Lr;
-                Args.TokenG = Tg - Lg;
-                Args.TokenB = Tb - Lb;
-            }
-            else
-            {
-                Tr = Tg = Tb = 0;
-                for (int i = 1; i < Width; i++)
-                {
-                    DataR = Patch.DataR[i];
-                    DataG = Patch.DataG[i];
-                    DataB = Patch.DataB[i];
-                    for (int j = 0; j < Height; j++)
-                    {
-                        Tr += DataR[j];
-                        Tg += DataG[j];
-                        Tb += DataB[j];
-                    }
-                }
-
-                // Token
-                Args.TokenR = Tr;
-                Args.TokenG = Tg;
-                Args.TokenB = Tb;
-                Args.Handled = true;
-
-                // Merge
-                Tr += Lr;
-                Tg += Lg;
-                Tb += Lb;
-            }
-
-            A = byte.MaxValue;
-            R = (byte)(Tr / KernelSum);
-            G = (byte)(Tg / KernelSum);
-            B = (byte)(Tb / KernelSum);
-        }
-        //public override void Filter4<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
-        //{
-        //    Filter3(Patch, Args, out _, out R, out G, out B);
-        //    A = Patch.DataA[HalfWidth][HalfHeight];
-        //}
-
-        public override void Filter4<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
-        {
-            byte[] DataA, DataR, DataG, DataB;
-            float Ta = Args.TokenA,
-                  Tr = Args.TokenR,
-                  Tg = Args.TokenG,
-                  Tb = Args.TokenB;
-
-            int W = base.PatchWidth,
-                H = base.PatchHeight;
-
-            // Datas
-            for (int i = Args.Handled ? W - 1 : 0; i < W; i++)
-            {
-                DataA = Patch.DataA[i];
-                DataR = Patch.DataR[i];
-                DataG = Patch.DataG[i];
-                DataB = Patch.DataB[i];
-                for (int j = 0; j < H; j++)
-                {
-                    Ta += DataA[j];
-                    Tr += DataR[j];
-                    Tg += DataG[j];
-                    Tb += DataB[j];
-                }
-            }
-
-            A = (byte)(Ta / KernelSum);
-            R = (byte)(Tr / KernelSum);
-            G = (byte)(Tg / KernelSum);
-            B = (byte)(Tb / KernelSum);
-
-            // Remove Left
-            DataA = Patch.DataA[0];
-            DataR = Patch.DataR[0];
-            DataG = Patch.DataG[0];
-            DataB = Patch.DataB[0];
-            for (int j = 0; j < H; j++)
-            {
-                Ta -= DataA[j];
-                Tr -= DataR[j];
-                Tg -= DataG[j];
-                Tb -= DataB[j];
-            }
-
-            // Args
-            Args.TokenA = Ta;
-            Args.TokenR = Tr;
-            Args.TokenG = Tg;
-            Args.TokenB = Tb;
-            Args.Handled = true;
         }
 
     }

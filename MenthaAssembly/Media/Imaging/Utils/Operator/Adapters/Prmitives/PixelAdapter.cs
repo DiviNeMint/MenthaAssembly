@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public abstract unsafe class PixelAdapter<T> : IPixel
+    public abstract unsafe class PixelAdapter<T> : IReadOnlyPixelAdapter, IPixel
         where T : unmanaged, IPixel
     {
         public int X { protected set; get; } = -1;
@@ -48,9 +48,9 @@
         public virtual void Move(int X, int Y)
         {
             if (this.X == X)
-                MoveY(this.Y - Y);
+                MoveY(Y - this.Y);
             else if (this.Y == Y)
-                MoveX(this.X - X);
+                MoveX(X - this.X);
             else
             {
                 X = MathHelper.Clamp(X, 0, MaxX);
@@ -134,6 +134,8 @@
         protected internal abstract void InternalMovePreviousLine();
 
         public abstract PixelAdapter<T> Clone();
+        IReadOnlyPixelAdapter IReadOnlyPixelAdapter.Clone()
+            => Clone();
 
     }
 }

@@ -38,17 +38,18 @@ namespace MenthaAssembly.Media.Imaging
             Kernel[Level, Level] = -Sum * 4f;
 
             Matrix = Kernel;
-            base.PatchWidth = L;
-            base.PatchHeight = L;
+            PatchWidth = L;
+            PatchHeight = L;
             HalfWidth = Level;
             HalfHeight = Level;
         }
 
         protected override byte CalculateR(float FactorR)
-            => (byte)FactorR;
+            => (byte)FactorR.Clamp(0f, 255f);
         protected override byte CalculateG(float FactorG)
-            => (byte)FactorG;
+            => (byte)FactorG.Clamp(0f, 255f);
         protected override byte CalculateB(float FactorB)
-            => (byte)FactorB;
+            => (byte)FactorB.Clamp(0f, 255f);
+
     }
 }

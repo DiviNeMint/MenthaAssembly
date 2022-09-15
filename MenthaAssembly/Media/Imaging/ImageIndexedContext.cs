@@ -26,9 +26,9 @@ namespace MenthaAssembly.Media.Imaging
 
         public int Channels { get; }
 
-        Type IImageContext.PixelType => typeof(Pixel);
+        Type IReadOnlyImageContext.PixelType => typeof(Pixel);
 
-        Type IImageContext.StructType => typeof(Struct);
+        Type IReadOnlyImageContext.StructType => typeof(Struct);
 
         public Pixel this[int X, int Y]
         {
@@ -54,18 +54,21 @@ namespace MenthaAssembly.Media.Imaging
             get => this[X, Y];
             set => this[X, Y] = value.ToPixel<Pixel>();
         }
+        IPixel IReadOnlyImageContext.this[int X, int Y]
+            => this[X, Y];
 
         internal readonly byte[] Data0;
         private readonly IntPtr _Scan0;
         private readonly Func<IntPtr> GetScan0;
         public IntPtr Scan0 => GetScan0();
-        IntPtr IImageContext.ScanA => throw new NotSupportedException();
-        IntPtr IImageContext.ScanR => throw new NotSupportedException();
-        IntPtr IImageContext.ScanG => throw new NotSupportedException();
-        IntPtr IImageContext.ScanB => throw new NotSupportedException();
+        IntPtr IReadOnlyImageContext.ScanA => throw new NotSupportedException();
+        IntPtr IReadOnlyImageContext.ScanR => throw new NotSupportedException();
+        IntPtr IReadOnlyImageContext.ScanG => throw new NotSupportedException();
+        IntPtr IReadOnlyImageContext.ScanB => throw new NotSupportedException();
 
         public ImagePalette<Pixel> Palette { get; }
-        IImagePalette IImageContext.Palette => this.Palette;
+        IImagePalette IReadOnlyImageContext.Palette
+            => this.Palette;
 
         private ImageContext()
         {
@@ -171,6 +174,7 @@ namespace MenthaAssembly.Media.Imaging
 
             this.Palette = Palette ?? ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
+
 
         #region Graphic Processing
 
@@ -2757,11 +2761,15 @@ namespace MenthaAssembly.Media.Imaging
         {
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-            for (int y = 0; y < Height; y++)
+            PixelAdapter<T> Sorc = new FilterPixelAdapter<T>(this, Filter),
+                            Dest = Result.GetAdapter<T>(0, 0);
+            for (int j = 0; j < Height; j++, Sorc.InternalMove(0, j), Dest.InternalMoveNextLine())
             {
-                PixelAdapter<Pixel> Adapter = Result.GetAdapter<Pixel>(0, y);
-                Operator.ScanLineFilterTo(0, y, Width, Filter, Adapter);
-            };
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+
+                Dest.InternalMoveX(-Width);
+            }
 
             return Result;
         }
@@ -2772,8 +2780,11 @@ namespace MenthaAssembly.Media.Imaging
 
             Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
             {
-                PixelAdapter<Pixel> Adapter = Result.GetAdapter<Pixel>(0, y);
-                Operator.ScanLineFilterTo(0, y, Width, Filter, Adapter);
+                PixelAdapter<T> Sorc = new FilterPixelAdapter<T>(this, 0, y, Filter),
+                                Dest = Result.GetAdapter<T>(0, y);
+
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
             });
 
             return Result;
@@ -3246,6 +3257,8 @@ namespace MenthaAssembly.Media.Imaging
         public PixelAdapter<T> GetAdapter<T>(int X, int Y)
             where T : unmanaged, IPixel
             => Operator.GetAdapter<T>(X, Y);
+        IReadOnlyPixelAdapter IReadOnlyImageContext.GetAdapter(int X, int Y)
+            => GetAdapter<Pixel>(X, Y);
 
         object ICloneable.Clone()
             => this.Clone();

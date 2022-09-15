@@ -36,8 +36,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void ScanLineRotateTo(int X, int Y, int Length, double FracX, double FracY, double Sin, double Cos, PixelAdapter<T> Adapter);
 
-        public void ScanLineFilterTo(int X, int Y, int Length, ImageFilter Filter, PixelAdapter<T> Adapter);
-
         public void ContourOverlay(IImageContour Contour, T Color, double OffsetX, double OffsetY);
 
     }

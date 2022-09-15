@@ -132,9 +132,9 @@ namespace MenthaAssembly.Media.Imaging
 
         public virtual float[,] Matrix { get; }
 
-        public int Width => base.PatchWidth;
+        public int Width => PatchWidth;
 
-        public int Height => base.PatchHeight;
+        public int Height => PatchHeight;
 
         protected float KernelSum;
         protected int HalfWidth, HalfHeight;
@@ -148,8 +148,8 @@ namespace MenthaAssembly.Media.Imaging
             if ((Height & 1) == 0)
                 throw new InvalidOperationException("Kernel height must be odd!");
 
-            base.PatchWidth = Width;
-            base.PatchHeight = Height;
+            PatchWidth = Width;
+            PatchHeight = Height;
         }
         public ConvoluteKernel(float[,] Datas)
         {
@@ -168,106 +168,45 @@ namespace MenthaAssembly.Media.Imaging
                     Sum += Datas[j, i];
 
             Matrix = Datas;
-            base.PatchWidth = W;
-            base.PatchHeight = H;
-            KernelSum = Sum == 0d ? 1 : Sum;
+            PatchWidth = W;
+            PatchHeight = H;
+            KernelSum = Sum == 0f ? 1f : Sum;
             HalfWidth = W >> 1;
             HalfHeight = H >> 1;
         }
 
-        public override void Filter<T>(T[][] Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
+        public override void Filter(ImagePatch Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
         {
             float Tr = 0,
-                   Tg = 0,
-                   Tb = 0;
-            T[] Data;
+                  Tg = 0,
+                  Tb = 0;
             for (int i = 0; i < Width; i++)
             {
-                Data = Patch[i];
                 for (int j = 0; j < Height; j++)
                 {
                     float k = Matrix[j, i];
                     if (k == 0)
                         continue;
 
-                    T Pixel = Data[j];
-
+                    IReadOnlyPixel Pixel = Patch[i, j];
                     Tr += Pixel.R * k;
                     Tg += Pixel.G * k;
                     Tb += Pixel.B * k;
                 }
             }
 
-            A = Patch[HalfWidth][HalfHeight].A;
-            R = CalculateR(Tr);
-            G = CalculateG(Tg);
-            B = CalculateB(Tb);
-        }
-        public override void Filter3<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
-        {
-            float Tr = 0,
-                   Tg = 0,
-                   Tb = 0;
-
-            byte[] DataR, DataG, DataB;
-            for (int i = 0; i < Width; i++)
-            {
-                DataR = Patch.DataR[i];
-                DataG = Patch.DataG[i];
-                DataB = Patch.DataB[i];
-                for (int j = 0; j < Height; j++)
-                {
-                    float k = Matrix[j, i];
-                    if (k == 0)
-                        continue;
-
-                    Tr += DataR[j] * k;
-                    Tg += DataG[j] * k;
-                    Tb += DataB[j] * k;
-                }
-            }
-
-            A = byte.MaxValue;
-            R = CalculateR(Tr);
-            G = CalculateG(Tg);
-            B = CalculateB(Tb);
-        }
-        public override void Filter4<T>(ImagePatch<T> Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
-        {
-            float Tr = 0,
-                   Tg = 0,
-                   Tb = 0;
-
-            byte[] DataR, DataG, DataB;
-            for (int i = 0; i < Width; i++)
-            {
-                DataR = Patch.DataR[i];
-                DataG = Patch.DataG[i];
-                DataB = Patch.DataB[i];
-                for (int j = 0; j < Height; j++)
-                {
-                    float k = Matrix[j, i];
-                    if (k == 0d)
-                        continue;
-
-                    Tr += DataR[j] * k;
-                    Tg += DataG[j] * k;
-                    Tb += DataB[j] * k;
-                }
-            }
-
-            A = Patch.DataA[HalfWidth][HalfHeight];
+            A = Patch[HalfWidth, HalfHeight].A;
             R = CalculateR(Tr);
             G = CalculateG(Tg);
             B = CalculateB(Tb);
         }
 
         protected virtual byte CalculateR(float FactorR)
-            => (byte)MathHelper.Clamp(FactorR / KernelSum, 0d, 255d);
+            => (byte)MathHelper.Clamp(FactorR / KernelSum, 0f, 255f);
         protected virtual byte CalculateG(float FactorG)
-            => (byte)MathHelper.Clamp(FactorG / KernelSum, 0d, 255d);
+            => (byte)MathHelper.Clamp(FactorG / KernelSum, 0f, 255f);
         protected virtual byte CalculateB(float FactorB)
-            => (byte)MathHelper.Clamp(FactorB / KernelSum, 0d, 255d);
+            => (byte)MathHelper.Clamp(FactorB / KernelSum, 0f, 255f);
 
     }
 }
