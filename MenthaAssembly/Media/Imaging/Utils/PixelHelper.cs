@@ -2,7 +2,7 @@
 {
     public unsafe static class PixelHelper
     {
-        public static T ToPixel<T>(this IPixel Color)
+        public static T ToPixel<T>(this IReadOnlyPixel Color)
             where T : unmanaged, IPixel
             => ToPixel<T>(Color.A, Color.R, Color.G, Color.B);
 

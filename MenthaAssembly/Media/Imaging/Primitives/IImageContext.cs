@@ -8,9 +8,7 @@ namespace MenthaAssembly.Media.Imaging
 {
     public unsafe interface IImageContext : IReadOnlyImageContext
     {
-        internal IImageOperator Operator { get; }
-
-        public new IPixel this[int X, int Y] { set; get; }
+        public new IReadOnlyPixel this[int X, int Y] { set; get; }
 
         #region Graphic Processing
 

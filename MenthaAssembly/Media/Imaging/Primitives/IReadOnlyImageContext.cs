@@ -19,7 +19,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public Type StructType { get; }
 
-        public IPixel this[int X, int Y] { get; }
+        public IReadOnlyPixel this[int X, int Y] { get; }
 
         public IntPtr Scan0 { get; }
 

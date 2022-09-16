@@ -324,7 +324,7 @@ namespace MenthaAssembly.Media.Imaging
             return Result;
         }
 
-        public static ImageContour ParsePenContour(IImageContext Stroke, out IPixel StrokeColor)
+        public static ImageContour ParsePenContour(IImageContext Stroke, out IReadOnlyPixel StrokeColor)
         {
             StrokeColor = default;
             bool FoundColor = false;
@@ -334,7 +334,7 @@ namespace MenthaAssembly.Media.Imaging
                 bool IsFoundLeft = false;
                 for (int i = 0; i < Stroke.Width; i++)
                 {
-                    IPixel Pixel = Stroke[i, j];
+                    IReadOnlyPixel Pixel = Stroke[i, j];
                     if (IsFoundLeft)
                     {
                         if (Pixel.A == 0)
