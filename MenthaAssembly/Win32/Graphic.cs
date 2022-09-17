@@ -1,6 +1,5 @@
 ﻿using MenthaAssembly.Media.Imaging;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 
@@ -174,12 +173,12 @@ namespace MenthaAssembly.Win32
                     // https://stackoverflow.com/questions/46562369/winapi-gdi-how-to-use-getdibits-to-get-color-table-synthesized-for-a-bitmap
                     case 1:
                         {
-                            List<BGR> Palettes = new List<BGR>();
+                            ImagePalette<BGR> Palettes = new ImagePalette<BGR>(Data.bmBitsPixel);
                             int ColorStep = byte.MaxValue / ((1 << Data.bmBitsPixel) - 1);
                             for (int i = 0; i < 256; i += ColorStep)
                             {
                                 byte Value = (byte)i;
-                                Palettes.Add(new BGR(Value, Value, Value));
+                                Palettes.Datas.Add(new BGR(Value, Value, Value));
                             }
 
                             Bitmap = new ImageContext<BGR, Indexed1>(Data.bmWidth, Data.bmHeight, Data.bmBits, Data.bmWidthBytes, Palettes);
@@ -187,12 +186,12 @@ namespace MenthaAssembly.Win32
                         }
                     case 4:
                         {
-                            List<BGR> Palettes = new List<BGR>();
+                            ImagePalette<BGR> Palettes = new ImagePalette<BGR>(Data.bmBitsPixel);
                             int ColorStep = byte.MaxValue / ((1 << Data.bmBitsPixel) - 1);
                             for (int i = 0; i < 256; i += ColorStep)
                             {
                                 byte Value = (byte)i;
-                                Palettes.Add(new BGR(Value, Value, Value));
+                                Palettes.Datas.Add(new BGR(Value, Value, Value));
                             }
 
                             Bitmap = new ImageContext<BGR, Indexed4>(Data.bmWidth, Data.bmHeight, Data.bmBits, Data.bmWidthBytes, Palettes);
@@ -250,12 +249,12 @@ namespace MenthaAssembly.Win32
                         // https://stackoverflow.com/questions/46562369/winapi-gdi-how-to-use-getdibits-to-get-color-table-synthesized-for-a-bitmap
                         case 1:
                             {
-                                List<BGR> Palettes = new List<BGR>();
+                                ImagePalette<BGR> Palettes = new ImagePalette<BGR>(Header.biBitCount);
                                 int ColorStep = byte.MaxValue / ((1 << Data.bmBitsPixel) - 1);
                                 for (int i = 0; i < 256; i += ColorStep)
                                 {
                                     byte Value = (byte)i;
-                                    Palettes.Add(new BGR(Value, Value, Value));
+                                    Palettes.Datas.Add(new BGR(Value, Value, Value));
                                 }
 
                                 Bitmap = new ImageContext<BGR, Indexed1>(Header.biWidth, Header.biHeight.Abs(), Datas, Palettes);
@@ -263,12 +262,12 @@ namespace MenthaAssembly.Win32
                             }
                         case 4:
                             {
-                                List<BGR> Palettes = new List<BGR>();
+                                ImagePalette<BGR> Palettes = new ImagePalette<BGR>(Header.biBitCount);
                                 int ColorStep = byte.MaxValue / ((1 << Data.bmBitsPixel) - 1);
                                 for (int i = 0; i < 256; i += ColorStep)
                                 {
                                     byte Value = (byte)i;
-                                    Palettes.Add(new BGR(Value, Value, Value));
+                                    Palettes.Datas.Add(new BGR(Value, Value, Value));
                                 }
                                 Bitmap = new ImageContext<BGR, Indexed4>(Header.biWidth, Header.biHeight.Abs(), Datas, Palettes);
                                 return true;

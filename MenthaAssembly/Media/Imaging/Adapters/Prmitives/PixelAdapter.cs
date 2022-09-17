@@ -7,9 +7,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
     {
         private static readonly ParallelOptions DefaultParallelOptions = new ParallelOptions();
 
-        public int X { protected set; get; } = -1;
+        public int X { protected set; get; } = int.MinValue;
 
-        public int Y { protected set; get; } = -1;
+        public int Y { protected set; get; } = int.MinValue;
 
         public abstract int MaxX { get; }
 

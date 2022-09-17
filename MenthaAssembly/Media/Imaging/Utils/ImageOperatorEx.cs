@@ -4,11 +4,10 @@ using System.Collections.Generic;
 namespace MenthaAssembly.Media.Imaging.Utils
 {
     public delegate bool ImagePredicate(int X, int Y, IReadOnlyPixel Pixel);
-    public delegate void PixelAdapterAction<T>(PixelAdapter<T> Source) where T : unmanaged, IPixel;
 
     internal static unsafe class ImageOperatorEx
     {
-        public static void ScanLine<T>(this IImageContext Context, int X, int Y, int Length, PixelAdapterAction<T> Handler)
+        public static void ScanLine<T>(this IImageContext Context, int X, int Y, int Length, Action<PixelAdapter<T>> Handler)
             where T : unmanaged, IPixel
         {
             PixelAdapter<T> Adapter = Context.GetAdapter<T>(X, Y);
@@ -16,7 +15,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Handler(Adapter);
         }
 
-        public static void Contour<T>(this IImageContext Context, IImageContour Contour, double OffsetX, double OffsetY, PixelAdapterAction<T> Handler)
+        public static void Contour<T>(this IImageContext Context, IImageContour Contour, double OffsetX, double OffsetY, Action<PixelAdapter<T>> Handler)
             where T : unmanaged, IPixel
         {
             Contour.EnsureContents();

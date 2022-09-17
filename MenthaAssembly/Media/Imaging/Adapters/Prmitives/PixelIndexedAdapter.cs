@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
@@ -57,7 +58,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private readonly int BitLength;
         private readonly Struct* pScan0;
         private readonly long Stride;
-        protected Struct* pScan;
+        private Struct* pScan;
         public PixelIndexedAdapter(PixelIndexedAdapter<T, Struct> Adapter)
         {
             X = Adapter.X;
@@ -78,7 +79,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             MaxY = Context.Height - 1;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
-            Palette = (ImagePalette<T>)Context.Palette.Handle.Target;
+            Palette = (ImagePalette<T>)Context.Palette;
             pScan0 = (Struct*)Context.Scan0;
             BitLength = pScan0->Length;
             Move(X, Y);
@@ -328,7 +329,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             MaxY = Context.Height - 1;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
-            Palette = (ImagePalette<T>)Context.Palette.Handle.Target;
+            Palette = (ImagePalette<T>)Context.Palette;
             IsPixelValid = false;
             pScan0 = (Struct*)Context.Scan0;
             BitLength = pScan0->Length;
@@ -412,7 +413,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (IsPixelValid)
                 return;
 
-            Index = GetPaletteIndex();
+            Index = (*pScan)[XBit];
             Pixel = Palette[Index];
 
             IsPixelValid = true;

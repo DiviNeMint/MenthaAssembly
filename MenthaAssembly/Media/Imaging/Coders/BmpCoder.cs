@@ -61,10 +61,10 @@ namespace MenthaAssembly.Media.Imaging
             //int Compression = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
 
             // Palette
-            IList<BGRA> Palette = null;
+            ImagePalette<BGRA> Palette = null;
             if (Offset > HeaderSize)
             {
-                Palette = new List<BGRA>();
+                Palette = new ImagePalette<BGRA>(Bits);
 
                 // NColors
                 Stream.Seek(46, SeekOrigin.Begin);
@@ -82,25 +82,30 @@ namespace MenthaAssembly.Media.Imaging
                     Stream.Read(Datas, 0, Datas.Length);
                     Color = new BGRA(Datas[0], Datas[1], Datas[2], byte.MaxValue);
 
-                    if (!(Color == BlackColor && Datas[3] == 0) &&
-                        !Palette.Contains(Color))
-                        Palette.Add(Color);
+                    if (Color == BlackColor && Datas[3] == 0)
+                        continue;
+
+                    Palette.TryGetOrAdd(Color, out _);
                 }
             }
-
-            // ImageDatas
-            byte[] ImageDatas = new byte[Stride * Height];
 
             bool IsHeightNegative = Height < 0;
             if (IsHeightNegative)
                 Height = ~Height + 1;   // Abs
 
+            // ImageDatas
+            byte[] ImageDatas = new byte[Stride * Height];
+
             Stream.Seek(Offset, SeekOrigin.Begin);
             if (IsHeightNegative)
+            {
                 Stream.Read(ImageDatas, 0, ImageDatas.Length);
+            }
             else
+            {
                 for (int j = Height - 1; j >= 0; j--)
                     Stream.Read(ImageDatas, j * Stride, Stride);
+            }
 
             switch (Bits)
             {

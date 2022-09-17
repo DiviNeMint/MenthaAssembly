@@ -2,8 +2,8 @@
 using MenthaAssembly.Utils;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
@@ -60,28 +60,23 @@ namespace MenthaAssembly.Media.Imaging
         IReadOnlyPixel IReadOnlyImageContext.this[int X, int Y]
             => this[X, Y];
 
-        internal readonly byte[] Data0;
-        private readonly IntPtr _Scan0;
+        private readonly SafeHandle UnmanagedScan0;
         private readonly Func<IntPtr> GetScan0;
         public IntPtr Scan0 => GetScan0();
 
-        internal readonly byte[] DataA;
-        private readonly IntPtr _ScanA;
+        private readonly SafeHandle UnmanagedScanA;
         private readonly Func<IntPtr> GetScanA;
         public IntPtr ScanA => GetScanA();
 
-        internal readonly byte[] DataR;
-        private readonly IntPtr _ScanR;
+        private readonly SafeHandle UnmanagedScanR;
         private readonly Func<IntPtr> GetScanR;
         public IntPtr ScanR => GetScanR();
 
-        internal readonly byte[] DataG;
-        private readonly IntPtr _ScanG;
+        private readonly SafeHandle UnmanagedScanG;
         private readonly Func<IntPtr> GetScanG;
         public IntPtr ScanG => GetScanG();
 
-        internal readonly byte[] DataB;
-        internal readonly IntPtr _ScanB;
+        private readonly SafeHandle UnmanagedScanB;
         private readonly Func<IntPtr> GetScanB;
         public IntPtr ScanB => GetScanB();
 
@@ -90,7 +85,6 @@ namespace MenthaAssembly.Media.Imaging
             BitsPerPixel = default(Pixel).BitsPerPixel;
         }
 
-        private readonly HGlobalIntPtr UnmanagedScan0;
         public ImageContext(int Width, int Height) : this()
         {
             this.Width = Width;
@@ -99,22 +93,12 @@ namespace MenthaAssembly.Media.Imaging
             Stride = (Width * BitsPerPixel + 7) >> 3;
             Channels = 1;
 
-            long Size = Stride * Height;
-            if (Size <= int.MaxValue || Environment.Is64BitProcess)
-            {
-                UnmanagedScan0 = new HGlobalIntPtr(Size);
-                _Scan0 = UnmanagedScan0.DangerousGetHandle();
-                GetScan0 = () => _Scan0;
-            }
-            else
-            {
-                GetScan0 = () => throw new OutOfMemoryException("Can't allocate buffer more than 2GB in 32bit process.");
-            }
-
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () => throw new NotImplementedException();
-            GetScanG = () => throw new NotImplementedException();
-            GetScanB = () => throw new NotImplementedException();
+            UnmanagedScan0 = new HGlobalIntPtr(Stride * Height);
+            GetScan0 = () => UnmanagedScan0.DangerousGetHandle();
+            GetScanA = () => throw new InvalidOperationException();
+            GetScanR = () => throw new InvalidOperationException();
+            GetScanG = () => throw new InvalidOperationException();
+            GetScanB = () => throw new InvalidOperationException();
 
             AdapterGenerator = PixelAdapterGenerator.Instance1;
         }
@@ -130,12 +114,11 @@ namespace MenthaAssembly.Media.Imaging
             this.Stride = Stride;
             Channels = 1;
 
-            _Scan0 = Scan0;
-            GetScan0 = () => _Scan0;
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () => throw new NotImplementedException();
-            GetScanG = () => throw new NotImplementedException();
-            GetScanB = () => throw new NotImplementedException();
+            GetScan0 = () => Scan0;
+            GetScanA = () => throw new InvalidOperationException();
+            GetScanR = () => throw new InvalidOperationException();
+            GetScanG = () => throw new InvalidOperationException();
+            GetScanB = () => throw new InvalidOperationException();
 
             AdapterGenerator = PixelAdapterGenerator.Instance1;
         }
@@ -150,14 +133,11 @@ namespace MenthaAssembly.Media.Imaging
             this.Stride = Stride;
             Channels = 3;
 
-            _ScanR = ScanR;
-            _ScanG = ScanG;
-            _ScanB = ScanB;
-            GetScan0 = () => throw new NotImplementedException();
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () => _ScanR;
-            GetScanG = () => _ScanG;
-            GetScanB = () => _ScanB;
+            GetScan0 = () => throw new InvalidOperationException();
+            GetScanA = () => throw new InvalidOperationException();
+            GetScanR = () => ScanR;
+            GetScanG = () => ScanG;
+            GetScanB = () => ScanB;
 
             AdapterGenerator = PixelAdapterGenerator.Instance3;
         }
@@ -172,15 +152,11 @@ namespace MenthaAssembly.Media.Imaging
             this.Stride = Stride;
             Channels = 4;
 
-            _ScanA = ScanA;
-            _ScanR = ScanR;
-            _ScanG = ScanG;
-            _ScanB = ScanB;
-            GetScan0 = () => throw new NotImplementedException();
-            GetScanA = () => _ScanA;
-            GetScanR = () => _ScanR;
-            GetScanG = () => _ScanG;
-            GetScanB = () => _ScanB;
+            GetScan0 = () => throw new InvalidOperationException();
+            GetScanA = () => ScanA;
+            GetScanR = () => ScanR;
+            GetScanG = () => ScanG;
+            GetScanB = () => ScanB;
 
             AdapterGenerator = PixelAdapterGenerator.Instance4;
         }
@@ -193,12 +169,8 @@ namespace MenthaAssembly.Media.Imaging
             Stride = Data.Length / Height;
             Channels = 1;
 
-            Data0 = Data;
-            GetScan0 = () =>
-            {
-                fixed (byte* pScan0 = &Data0[0])
-                    return (IntPtr)pScan0;
-            };
+            UnmanagedScan0 = new PinnedIntPtr(Data);
+            GetScan0 = () => UnmanagedScan0.DangerousGetHandle();
             GetScanA = () => throw new NotImplementedException();
             GetScanR = () => throw new NotImplementedException();
             GetScanG = () => throw new NotImplementedException();
@@ -213,26 +185,15 @@ namespace MenthaAssembly.Media.Imaging
             Stride = DataR.Length / Height;
             Channels = 3;
 
-            this.DataR = DataR;
-            this.DataG = DataG;
-            this.DataB = DataB;
+            UnmanagedScanR = new PinnedIntPtr(DataR);
+            UnmanagedScanG = new PinnedIntPtr(DataG);
+            UnmanagedScanB = new PinnedIntPtr(DataB);
+
             GetScan0 = () => throw new NotImplementedException();
             GetScanA = () => throw new NotImplementedException();
-            GetScanR = () =>
-            {
-                fixed (byte* pScanR = &this.DataR[0])
-                    return (IntPtr)pScanR;
-            };
-            GetScanG = () =>
-            {
-                fixed (byte* pScanG = &this.DataG[0])
-                    return (IntPtr)pScanG;
-            };
-            GetScanB = () =>
-            {
-                fixed (byte* pScanB = &this.DataB[0])
-                    return (IntPtr)pScanB;
-            };
+            GetScanR = () => UnmanagedScanR.DangerousGetHandle();
+            GetScanG = () => UnmanagedScanG.DangerousGetHandle();
+            GetScanB = () => UnmanagedScanB.DangerousGetHandle();
 
             AdapterGenerator = PixelAdapterGenerator.Instance3;
         }
@@ -243,31 +204,16 @@ namespace MenthaAssembly.Media.Imaging
             Stride = DataA.Length / Height;
             Channels = 4;
 
-            this.DataA = DataA;
-            this.DataR = DataR;
-            this.DataG = DataG;
-            this.DataB = DataB;
+            UnmanagedScanA = new PinnedIntPtr(DataA);
+            UnmanagedScanR = new PinnedIntPtr(DataR);
+            UnmanagedScanG = new PinnedIntPtr(DataG);
+            UnmanagedScanB = new PinnedIntPtr(DataB);
+            
             GetScan0 = () => throw new NotImplementedException();
-            GetScanA = () =>
-            {
-                fixed (byte* pScanA = &this.DataA[0])
-                    return (IntPtr)pScanA;
-            };
-            GetScanR = () =>
-            {
-                fixed (byte* pScanR = &this.DataR[0])
-                    return (IntPtr)pScanR;
-            };
-            GetScanG = () =>
-            {
-                fixed (byte* pScanG = &this.DataG[0])
-                    return (IntPtr)pScanG;
-            };
-            GetScanB = () =>
-            {
-                fixed (byte* pScanB = &this.DataB[0])
-                    return (IntPtr)pScanB;
-            };
+            GetScanA = () => UnmanagedScanA.DangerousGetHandle();
+            GetScanR = () => UnmanagedScanR.DangerousGetHandle();
+            GetScanG = () => UnmanagedScanG.DangerousGetHandle();
+            GetScanB = () => UnmanagedScanB.DangerousGetHandle();
 
             AdapterGenerator = PixelAdapterGenerator.Instance4;
         }
@@ -277,12 +223,17 @@ namespace MenthaAssembly.Media.Imaging
         #region Line Rendering
 
         #region Line
-        public void DrawLine<T>(Point<int> P0, Point<int> P1, T Color)
-            where T : unmanaged, IPixel
+        public void DrawLine<T>(Point<int> P0, Point<int> P1, T Color) where T : unmanaged, IPixel
             => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Color);
         public void DrawLine<T>(int X0, int Y0, int X1, int Y1, T Color)
             where T : unmanaged, IPixel
         {
+            if (Color.A == byte.MinValue)
+                return;
+
+            Action<PixelAdapter<T>> Handler = Color.A == byte.MaxValue ? a => a.Override(Color) :
+                                                                         a => a.Overlay(Color);
+
             if (X1 < X0)
             {
                 MathHelper.Swap(ref X0, ref X1);
@@ -343,12 +294,12 @@ namespace MenthaAssembly.Media.Imaging
 
                     Adapter.InternalMove(TLx, Y);
                     for (; TLx <= TRx; TLx++, Adapter.InternalMoveNext())
-                        Adapter.Overlay(Color);
+                        Handler(Adapter);
                 }
                 else
                 {
                     Adapter.InternalMove(TRx, Y);
-                    Adapter.Overlay(Color);
+                    Handler(Adapter);
                 }
             }
             RightBound.Clear();
@@ -356,19 +307,24 @@ namespace MenthaAssembly.Media.Imaging
             foreach (KeyValuePair<int, int> Data in LeftBound)
             {
                 Adapter.InternalMove(Data.Value, Data.Key);
-                Adapter.Overlay(Color);
+                Handler(Adapter);
             }
 
             LeftBound.Clear();
 
             #endregion
         }
-        public void DrawLine<T>(Point<int> P0, Point<int> P1, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
+        public void DrawLine<T>(Point<int> P0, Point<int> P1, ImageContour Contour, T Fill) where T : unmanaged, IPixel
             => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, Fill);
         public void DrawLine<T>(int X0, int Y0, int X1, int Y1, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
+            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
+                                                                        a => a.Overlay(Fill);
+
             Bound<int> Bound = Contour.Bound;
             if (Bound.IsEmpty)
                 return;
@@ -519,7 +475,7 @@ namespace MenthaAssembly.Media.Imaging
                     });
                 #endregion
 
-                this.Contour<T>(Contour, 0d, 0d, a => a.Overlay(Fill));
+                this.Contour(Contour, 0d, 0d, Handler);
             }
             else
             {
@@ -586,12 +542,12 @@ namespace MenthaAssembly.Media.Imaging
 
                         Adapter.InternalMove(TLx, Y);
                         for (; TLx <= TRx; TLx++, Adapter.InternalMoveNext())
-                            Adapter.Overlay(Fill);
+                            Handler(Adapter);
                     }
                     else
                     {
                         Adapter.InternalMove(TRx, Y);
-                        Adapter.Overlay(Fill);
+                        Handler(Adapter);
                     }
                 }
                 RightBound.Clear();
@@ -599,7 +555,7 @@ namespace MenthaAssembly.Media.Imaging
                 foreach (KeyValuePair<int, int> Data in LeftBound)
                 {
                     Adapter.InternalMove(Data.Value, Data.Key);
-                    Adapter.Overlay(Fill);
+                    Handler(Adapter);
                 }
 
                 LeftBound.Clear();
@@ -623,12 +579,16 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region Arc
-        public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, T Color)
-            where T : unmanaged, IPixel
+        public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, T Color) where T : unmanaged, IPixel
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Color);
         public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, T Color)
             where T : unmanaged, IPixel
         {
+            if (Color.A == byte.MinValue)
+                return;
+
+            Action<PixelAdapter<T>> Handler = Color.A == byte.MaxValue ? a => a.Override(Color) :
+                                                                         a => a.Overlay(Color);
             int Tx, Ty;
             PixelAdapter<T> Adapter = GetAdapter<T>(0, 0);
             GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy,
@@ -647,15 +607,20 @@ namespace MenthaAssembly.Media.Imaging
                                                            return;
 
                                                        Adapter.InternalMove(Tx, Ty);
-                                                       Adapter.Override(Color);
+                                                       Handler(Adapter);
                                                    });
         }
-        public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
+        public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill) where T : unmanaged, IPixel
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, Fill);
         public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
+            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
+                                                                        a => a.Overlay(Fill);
+
             ImageContour ArcContour = new ImageContour();
             Bound<int> Bound = Contour.Bound;
 
@@ -786,7 +751,7 @@ namespace MenthaAssembly.Media.Imaging
                 SmallRightBound.Clear();
             }
 
-            this.Contour<T>(ArcContour, 0d, 0d, a => a.Overlay(Fill));
+            this.Contour(ArcContour, 0d, 0d, Handler);
         }
         public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
             => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
@@ -806,6 +771,9 @@ namespace MenthaAssembly.Media.Imaging
         public void DrawCurve<T>(IList<int> Points, float Tension, T Color)
             where T : unmanaged, IPixel
         {
+            if (Color.A == byte.MinValue)
+                return;
+
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
 
@@ -838,6 +806,9 @@ namespace MenthaAssembly.Media.Imaging
         public void DrawCurve<T>(IList<Point<int>> Points, float Tension, T Color)
             where T : unmanaged, IPixel
         {
+            if (Color.A == byte.MinValue)
+                return;
+
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
 
@@ -902,6 +873,9 @@ namespace MenthaAssembly.Media.Imaging
         public void DrawCurve<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
 
@@ -997,6 +971,9 @@ namespace MenthaAssembly.Media.Imaging
         public void DrawCurveClosed<T>(IList<int> Points, float Tension, T Color)
             where T : unmanaged, IPixel
         {
+            if (Color.A == byte.MinValue)
+                return;
+
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
 
@@ -1041,6 +1018,9 @@ namespace MenthaAssembly.Media.Imaging
         public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, T Color)
             where T : unmanaged, IPixel
         {
+            if (Color.A == byte.MinValue)
+                return;
+
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Color);
 
@@ -1084,6 +1064,9 @@ namespace MenthaAssembly.Media.Imaging
         public void DrawCurveClosed<T>(IList<int> Points, float Tension, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
 
@@ -1128,6 +1111,9 @@ namespace MenthaAssembly.Media.Imaging
         public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
                 => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
 
@@ -1259,18 +1245,30 @@ namespace MenthaAssembly.Media.Imaging
         #region Bezier
         public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, T Color)
             where T : unmanaged, IPixel
-            => GraphicAlgorithm.CalculateBezierLinePoints(X1, Y1,
-                                                          Cx1, Cy1,
-                                                          Cx2, Cy2,
-                                                          X2, Y2,
-                                                          (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Color));
+        {
+            if (Color.A == byte.MinValue)
+                return;
+
+            GraphicAlgorithm.CalculateBezierLinePoints(X1, Y1,
+                                                       Cx1, Cy1,
+                                                       Cx2, Cy2,
+                                                       X2, Y2,
+                                                       (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Color));
+        }
+
         public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
-            => GraphicAlgorithm.CalculateBezierLinePoints(X1, Y1,
-                                                          Cx1, Cy1,
-                                                          Cx2, Cy2,
-                                                          X2, Y2,
-                                                          (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill));
+        {
+            if (Fill.A == byte.MinValue)
+                return;
+
+            GraphicAlgorithm.CalculateBezierLinePoints(X1, Y1,
+                                                       Cx1, Cy1,
+                                                       Cx2, Cy2,
+                                                       X2, Y2,
+                                                       (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill));
+        }
+
         public void DrawBezier(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, IImageContext Pen)
             => GraphicAlgorithm.CalculateBezierLinePoints(X1, Y1,
                                                           Cx1, Cy1,
@@ -1486,13 +1484,6 @@ namespace MenthaAssembly.Media.Imaging
         #region Shape Rendering
 
         #region Triangle
-        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, T Color)
-            where T : unmanaged, IPixel
-        {
-            DrawLine(X1, Y1, X2, Y2, Color);
-            DrawLine(X2, Y2, X3, Y3, Color);
-            DrawLine(X3, Y3, X1, Y1, Color);
-        }
         public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, T Color)
             where T : unmanaged, IPixel
         {
@@ -1500,12 +1491,15 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(P2.X, P2.Y, P3.X, P3.Y, Color);
             DrawLine(P3.X, P3.Y, P1.X, P1.Y, Color);
         }
-        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, ImageContour Contour, T Fill)
+        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, T Color)
             where T : unmanaged, IPixel
         {
-            DrawLine(X1, Y1, X2, Y2, Contour, Fill);
-            DrawLine(X2, Y2, X3, Y3, Contour, Fill);
-            DrawLine(X3, Y3, X1, Y1, Contour, Fill);
+            if (Color.A == byte.MinValue)
+                return;
+
+            DrawLine(X1, Y1, X2, Y2, Color);
+            DrawLine(X2, Y2, X3, Y3, Color);
+            DrawLine(X3, Y3, X1, Y1, Color);
         }
         public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
@@ -1514,11 +1508,15 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(P2.X, P2.Y, P3.X, P3.Y, Contour, Fill);
             DrawLine(P3.X, P3.Y, P1.X, P1.Y, Contour, Fill);
         }
-        public void DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, IImageContext Pen)
+        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, ImageContour Contour, T Fill)
+            where T : unmanaged, IPixel
         {
-            DrawLine(X1, Y1, X2, Y2, Pen);
-            DrawLine(X2, Y2, X3, Y3, Pen);
-            DrawLine(X3, Y3, X1, Y1, Pen);
+            if (Fill.A == byte.MinValue)
+                return;
+
+            DrawLine(X1, Y1, X2, Y2, Contour, Fill);
+            DrawLine(X2, Y2, X3, Y3, Contour, Fill);
+            DrawLine(X3, Y3, X1, Y1, Contour, Fill);
         }
         public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, IImageContext Pen)
         {
@@ -1526,10 +1524,18 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(P2.X, P2.Y, P3.X, P3.Y, Pen);
             DrawLine(P3.X, P3.Y, P1.X, P1.Y, Pen);
         }
+        public void DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, IImageContext Pen)
+        {
+            DrawLine(X1, Y1, X2, Y2, Pen);
+            DrawLine(X2, Y2, X3, Y3, Pen);
+            DrawLine(X3, Y3, X1, Y1, Pen);
+        }
 
         #endregion
 
         #region Rectangle
+        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, T Color) where T : unmanaged, IPixel
+            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Color);
         public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, T Color)
             where T : unmanaged, IPixel
         {
@@ -1538,6 +1544,9 @@ namespace MenthaAssembly.Media.Imaging
                 (Y1 < 0 && Y2 < 0) ||
                 (X1 >= Width && X2 >= Width) ||
                 (Y1 >= Height && Y2 >= Height))
+                return;
+
+            if (Color.A == byte.MinValue)
                 return;
 
             // Clamp boundaries
@@ -1549,9 +1558,8 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(L, Ty, L, By, Color);
             DrawLine(R, Ty, R, By, Color);
         }
-        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, T Color)
-            where T : unmanaged, IPixel
-            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Color);
+        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Contour, Fill);
         public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
         {
@@ -1560,6 +1568,9 @@ namespace MenthaAssembly.Media.Imaging
                 (Y1 < 0 && Y2 < 0) ||
                 (X1 >= Width && X2 >= Width) ||
                 (Y1 >= Height && Y2 >= Height))
+                return;
+
+            if (Fill.A == byte.MinValue)
                 return;
 
             // Clamp boundaries
@@ -1571,9 +1582,8 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(L, Ty, L, By, Contour, Fill);
             DrawLine(R, Ty, R, By, Contour, Fill);
         }
-        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
-            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Contour, Fill);
+        public void DrawRectangle(Point<int> P1, Point<int> P2, IImageContext Pen)
+            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Pen);
         public void DrawRectangle(int X1, int Y1, int X2, int Y2, IImageContext Pen)
         {
             // Check boundaries
@@ -1592,34 +1602,38 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(L, T, L, B, Pen);
             DrawLine(R, T, R, B, Pen);
         }
-        public void DrawRectangle(Point<int> P1, Point<int> P2, IImageContext Pen)
-            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Pen);
 
         #endregion
 
         #region Quad
+        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, T Color) where T : unmanaged, IPixel
+            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Color);
         public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, T Color)
             where T : unmanaged, IPixel
         {
+            if (Color.A == byte.MinValue)
+                return;
+
             DrawLine(X1, Y1, X2, Y2, Color);
             DrawLine(X2, Y2, X3, Y3, Color);
             DrawLine(X3, Y3, X4, Y4, Color);
             DrawLine(X4, Y4, X1, Y1, Color);
         }
-        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, T Color)
-            where T : unmanaged, IPixel
-            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Color);
+        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Contour, Fill);
         public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
             DrawLine(X1, Y1, X2, Y2, Contour, Fill);
             DrawLine(X2, Y2, X3, Y3, Contour, Fill);
             DrawLine(X3, Y3, X4, Y4, Contour, Fill);
             DrawLine(X4, Y4, X1, Y1, Contour, Fill);
         }
-        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
-            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Contour, Fill);
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IImageContext Pen)
+            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Pen);
         public void DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, IImageContext Pen)
         {
             DrawLine(X1, Y1, X2, Y2, Pen);
@@ -1627,8 +1641,6 @@ namespace MenthaAssembly.Media.Imaging
             DrawLine(X3, Y3, X4, Y4, Pen);
             DrawLine(X4, Y4, X1, Y1, Pen);
         }
-        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IImageContext Pen)
-            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Pen);
 
         #endregion
 
@@ -1641,12 +1653,17 @@ namespace MenthaAssembly.Media.Imaging
 
             DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Color);
         }
-        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, T Color)
-            where T : unmanaged, IPixel
+        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, T Color) where T : unmanaged, IPixel
             => DrawEllipse(Center.X, Center.Y, Rx, Ry, Color);
         public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Color)
             where T : unmanaged, IPixel
         {
+            if (Color.A == byte.MinValue)
+                return;
+
+            Action<PixelAdapter<T>> Handler = Color.A == byte.MaxValue ? a => a.Override(Color) :
+                                                                         a => a.Overlay(Color);
+
             int Tx, Ty;
             PixelAdapter<T> Adapter = GetAdapter<T>(0, 0);
             GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry,
@@ -1661,7 +1678,7 @@ namespace MenthaAssembly.Media.Imaging
                         return;
 
                     Adapter.InternalMove(Tx, Ty);
-                    Adapter.Override(Color);
+                    Handler(Adapter);
                 });
         }
         public void DrawEllipse<T>(Bound<int> Bound, ImageContour Contour, T Fill)
@@ -1672,12 +1689,17 @@ namespace MenthaAssembly.Media.Imaging
 
             DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Contour, Fill);
         }
-        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
+        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, ImageContour Contour, T Fill) where T : unmanaged, IPixel
             => DrawEllipse(Center.X, Center.Y, Rx, Ry, Contour, Fill);
         public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
+            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
+                                                                        a => a.Overlay(Fill);
+
             ImageContour EllipseContour = new ImageContour();
 
             Bound<int> Bound = Contour.Bound;
@@ -1695,7 +1717,7 @@ namespace MenthaAssembly.Media.Imaging
                     LastDy = Dy;
                 });
 
-            this.Contour<T>(EllipseContour, 0d, 0d, a => a.Overlay(Fill));
+            this.Contour(EllipseContour, 0d, 0d, Handler);
         }
         public void DrawEllipse(Bound<int> Bound, IImageContext Pen)
         {
@@ -1722,8 +1744,7 @@ namespace MenthaAssembly.Media.Imaging
 
             FillEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Fill);
         }
-        public void FillEllipse<T>(Point<int> Center, int Rx, int Ry, T Fill)
-            where T : unmanaged, IPixel
+        public void FillEllipse<T>(Point<int> Center, int Rx, int Ry, T Fill) where T : unmanaged, IPixel
             => FillEllipse(Center.X, Center.Y, Rx, Ry, Fill);
         public void FillEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Fill)
             where T : unmanaged, IPixel
@@ -1738,6 +1759,12 @@ namespace MenthaAssembly.Media.Imaging
                 Cy - Ry >= Height ||
                 Cy + Ry < 0)
                 return;
+
+            if (Fill.A == byte.MinValue)
+                return;
+
+            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
+                                                                        a => a.Overlay(Fill);
 
             checked
             {
@@ -1791,8 +1818,8 @@ namespace MenthaAssembly.Media.Imaging
                         lx = Width - 1;
 
                     int Length = rx - lx + 1;
-                    this.ScanLine<T>(lx, uy, Length, a => a.Overlay(Fill));
-                    this.ScanLine<T>(lx, ly, Length, a => a.Overlay(Fill));
+                    this.ScanLine(lx, uy, Length, Handler);
+                    this.ScanLine(lx, ly, Length, Handler);
 
                     y++;
                     yStopping += xrSqTwo;
@@ -1854,8 +1881,8 @@ namespace MenthaAssembly.Media.Imaging
 
                     // Draw line
                     int Length = rx - lx + 1;
-                    this.ScanLine<T>(lx, uy, Length, a => a.Overlay(Fill));
-                    this.ScanLine<T>(lx, ly, Length, a => a.Overlay(Fill));
+                    this.ScanLine(lx, uy, Length, Handler);
+                    this.ScanLine(lx, ly, Length, Handler);
 
                     x++;
                     xStopping += yrSqTwo;
@@ -1885,14 +1912,16 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region Polygon
-        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, T Color, double StartAngle = 0d)
-            where T : unmanaged, IPixel
+        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, T Color, double StartAngle = 0d) where T : unmanaged, IPixel
             => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Color, StartAngle);
         public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, T Color, double StartAngle = 0d)
             where T : unmanaged, IPixel
         {
             if (VertexNum < 3)
                 throw new ArgumentException($"VertexNum must more than or equal 3.");
+
+            if (Color.A == byte.MinValue)
+                return;
 
             double DeltaTheta = 360d / VertexNum,
                    LastAngle = StartAngle;
@@ -1916,14 +1945,16 @@ namespace MenthaAssembly.Media.Imaging
 
             DrawLine(LastPx, LastPy, P0x, P0y, Color);
         }
-        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, T Fill, double StartAngle = 0d)
-            where T : unmanaged, IPixel
+        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, T Fill, double StartAngle = 0d) where T : unmanaged, IPixel
             => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Contour, Fill, StartAngle);
         public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, T Fill, double StartAngle = 0d)
             where T : unmanaged, IPixel
         {
             if (VertexNum < 3)
                 throw new ArgumentException($"VertexNum must more than or equal 3.");
+
+            if (Fill.A == byte.MinValue)
+                return;
 
             double DeltaTheta = 360d / VertexNum,
                    LastAngle = StartAngle;
@@ -1980,6 +2011,12 @@ namespace MenthaAssembly.Media.Imaging
         public void FillPolygon<T>(IEnumerable<Point<int>> Vertices, T Fill, int OffsetX, int OffsetY)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
+            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
+                                                                        a => a.Overlay(Fill);
+
             Point<int>[] Datas = GraphicAlgorithm.CropPolygon(Vertices, -OffsetX - 1, -OffsetY - 1, Width - OffsetX, Height - OffsetY);
 
             int Length = Datas.Length;
@@ -2076,7 +2113,7 @@ namespace MenthaAssembly.Media.Imaging
                         // Fill the pixels
                         Adapter.InternalMove(x0, y);
                         for (; x0 <= x1; x0++, Adapter.InternalMoveNext())
-                            Adapter.Overlay(Fill);
+                            Handler(Adapter);
                     }
                 }
 
@@ -2098,7 +2135,7 @@ namespace MenthaAssembly.Media.Imaging
                         // Fill the pixels
                         Adapter.InternalMove(x0, y);
                         for (; x0 <= x1; x0++, Adapter.InternalMoveNext())
-                            Adapter.Overlay(Fill);
+                            Handler(Adapter);
                     }
                 }
             }
@@ -2106,6 +2143,12 @@ namespace MenthaAssembly.Media.Imaging
         public void FillPolygon<T>(IEnumerable<int> VerticeDatas, T Fill, int OffsetX, int OffsetY)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
+            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
+                                                                        a => a.Overlay(Fill);
+
             int[] Datas = GraphicAlgorithm.CropPolygon(VerticeDatas, -OffsetX - 1, -OffsetY - 1, Width - OffsetX, Height - OffsetY);
 
             int pn = Datas.Length,
@@ -2201,7 +2244,7 @@ namespace MenthaAssembly.Media.Imaging
                         // Fill the pixels
                         Adapter.InternalMove(x0, y);
                         for (; x0 <= x1; x0++, Adapter.InternalMoveNext())
-                            Adapter.Overlay(Fill);
+                            Handler(Adapter);
                     }
                 }
 
@@ -2223,7 +2266,7 @@ namespace MenthaAssembly.Media.Imaging
                         // Fill the pixels
                         Adapter.InternalMove(x0, y);
                         for (; x0 <= x1; x0++, Adapter.InternalMoveNext())
-                            Adapter.Overlay(Fill);
+                            Handler(Adapter);
                     }
                 }
             }
@@ -2270,26 +2313,46 @@ namespace MenthaAssembly.Media.Imaging
             for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
             {
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    Dest.Overlay(Sorc);
+                {
+                    if (Sorc.A == byte.MinValue)
+                        continue;
+
+                    else if (Sorc.A == byte.MaxValue)
+                        Dest.Overlay(Sorc);
+
+                    else
+                        Dest.Overlay(Sorc);
+                }
 
                 Sorc.MoveX(-Width);
                 Dest.MoveX(-Width);
             }
         }
 
-        public void FillContour<T>(ImageContour Contour, T Fill, int OffsetX, int OffsetY)
+        public void FillContour<T>(ImageContour Contour, T Fill, double OffsetX, double OffsetY)
             where T : unmanaged, IPixel
-            => this.Contour<T>(Contour, OffsetX, OffsetY, a => a.Overlay(Fill));
+        {
+            if (Fill.A == byte.MinValue)
+                return;
 
-        public void SeedFill<T>(Point<int> SeedPoint, T Fill, ImagePredicate Predicate)
-            where T : unmanaged, IPixel
+            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
+                                                                        a => a.Overlay(Fill);
+            this.Contour(Contour, OffsetX, OffsetY, Handler);
+        }
+
+        public void SeedFill<T>(Point<int> SeedPoint, T Fill, ImagePredicate Predicate) where T : unmanaged, IPixel
             => SeedFill(SeedPoint.X, SeedPoint.Y, Fill, Predicate);
         public void SeedFill<T>(int SeedX, int SeedY, T Fill, ImagePredicate Predicate)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
             if (this.FindBound(SeedX, SeedY, Predicate) is ImageContour Contour)
             {
-                FillContour(Contour, Fill, 0, 0);
+                Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
+                                                                            a => a.Overlay(Fill);
+                this.Contour(Contour, 0d, 0d, Handler);
                 Contour.Clear();
             }
         }
@@ -2311,8 +2374,14 @@ namespace MenthaAssembly.Media.Imaging
         public void DrawText<T>(int X, int Y, string Text, string FontName, int CharSize, T Fill, double Angle, FontWeightType Weight, bool Italic)
             where T : unmanaged, IPixel
         {
+            if (Fill.A == byte.MinValue)
+                return;
+
             ImageContour Contour = ImageContour.CreateTextContour(X, Y, Text, FontName, CharSize, Angle, Weight, Italic);
-            this.Contour<T>(Contour, 0d, 0d, a => a.Overlay(Fill));
+            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
+                                                                        a => a.Overlay(Fill);
+
+            this.Contour<T>(Contour, 0d, 0d, Handler);
         }
 
         #endregion
@@ -2967,6 +3036,24 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region Binarization Processing
+        public ImageContext<T, Indexed1> Thresholding<T>(byte Threshold)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            PixelAdapter<T> Sorc = new ThresholdingPixelAdapter<T>(this, Threshold),
+                            Dest = Image.GetAdapter<T>(0, 0);
+
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
+            }
+
+            return Image;
+        }
 
         #endregion
 
