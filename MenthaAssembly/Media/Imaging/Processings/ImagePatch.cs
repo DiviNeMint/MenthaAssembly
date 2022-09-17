@@ -44,7 +44,7 @@ namespace MenthaAssembly.Media.Imaging
                 for (int j = 0; j < Height; j++)
                     Adapters[j, i] = Patch.Adapters[j, i]?.Clone();
         }
-        public ImagePatch(IImageContext Context, int PatchWidth, int PatchHeight)
+        public ImagePatch(IReadOnlyImageContext Context, int PatchWidth, int PatchHeight)
         {
             Width = PatchWidth;
             Height = PatchHeight;
@@ -60,7 +60,7 @@ namespace MenthaAssembly.Media.Imaging
             MaxX = Adapter.MaxX;
             MaxY = Adapter.MaxY;
         }
-        public ImagePatch(IImageContext Context, int X, int Y, int PatchWidth, int PatchHeight)
+        public ImagePatch(IReadOnlyImageContext Context, int X, int Y, int PatchWidth, int PatchHeight)
         {
             if (X < 0 || Context.Width <= X ||
                 Y < 0 || Context.Height <= Y)

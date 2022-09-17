@@ -72,7 +72,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             pScan0 = Adapter.pScan0;
             pScan = Adapter.pScan;
         }
-        public PixelIndexedAdapter(IImageContext Context, int X, int Y)
+        public PixelIndexedAdapter(IImageIndexedContext Context, int X, int Y)
         {
             MaxX = Context.Width - 1;
             MaxY = Context.Height - 1;
@@ -322,7 +322,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             pScan0 = Adapter.pScan0;
             pScan = Adapter.pScan;
         }
-        public PixelIndexedAdapter(IImageContext Context, int X, int Y)
+        public PixelIndexedAdapter(IImageIndexedContext Context, int X, int Y)
         {
             MaxX = Context.Width - 1;
             MaxY = Context.Height - 1;

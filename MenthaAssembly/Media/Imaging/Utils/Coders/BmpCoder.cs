@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public static class BmpCoder
+    public unsafe static class BmpCoder
     {
         public const int IdentifyHeaderSize = 2;
 
@@ -164,25 +165,13 @@ namespace MenthaAssembly.Media.Imaging
             // Palette
             if (HeaderOffset > 54)
             {
-                IImagePalette Palette = Image.Palette;
                 byte[] Datas = new byte[sizeof(int)];
-                if (Palette is null ||
-                    Palette.Count == 0)
+                if (Image is IImageIndexedContext IndexedContext)
                 {
-                    int ColorStep = byte.MaxValue / ((1 << Image.BitsPerPixel) - 1);
-                    for (int i = 0; i < 256; i += ColorStep)
-                    {
-                        Datas[0] = (byte)i;
-                        Datas[1] = Datas[0];
-                        Datas[2] = Datas[0];
-                        Stream.Write(Datas, 0, Datas.Length);
-                    }
-                }
-                else
-                {
+                    IImagePalette Palette = IndexedContext.Palette;
                     for (int i = 0; i < Palette.Count; i++)
                     {
-                        IPixel Value = Palette[i];
+                        IReadOnlyPixel Value = Palette[i];
                         Datas[0] = Value.B;
                         Datas[1] = Value.G;
                         Datas[2] = Value.R;
@@ -196,20 +185,31 @@ namespace MenthaAssembly.Media.Imaging
                         Stream.Write(new byte[EmptyLength], 0, EmptyLength);
                     }
                 }
+                else
+                {
+                    int ColorStep = byte.MaxValue / ((1 << Image.BitsPerPixel) - 1);
+                    for (int i = 0; i < 256; i += ColorStep)
+                    {
+                        Datas[0] = (byte)i;
+                        Datas[1] = Datas[0];
+                        Datas[2] = Datas[0];
+                        Stream.Write(Datas, 0, Datas.Length);
+                    }
+                }
             }
 
             // Datas
             byte[] ImageDatas = new byte[Stride];
-            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ? new Action<int>((j) => Image.ScanLineCopy<BGRA>(0, j, Image.Width, ImageDatas, 0)) :
-                                         Image.BitsPerPixel == 8 ? (y) => Image.ScanLineCopy<Gray8>(0, y, Image.Width, ImageDatas, 0) :
-                                         (y) => Image.ScanLineCopy<BGR>(0, y, Image.Width, ImageDatas, 0);
+            byte* pImageDatas = ImageDatas.ToPointer();
 
+            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ? y => Image.ScanLineCopy<BGRA>(0, y, Image.Width, pImageDatas) :
+                                         Image.BitsPerPixel == 8 ? y => Image.ScanLineCopy<Gray8>(0, y, Image.Width, pImageDatas) :
+                                         y => Image.ScanLineCopy<BGR>(0, y, Image.Width, pImageDatas);
             for (int j = Image.Height - 1; j >= 0; j--)
             {
                 DataCopyAction(j);
-                Stream.Write(ImageDatas, 0, ImageDatas.Length);
+                Stream.Write(ImageDatas, 0, Stride);
             }
-
         }
 
         public static bool Identify(byte[] Data)

@@ -105,7 +105,9 @@ namespace MenthaAssembly.Media.Imaging
                 byte* pBytes = pBuffer;
                 *pBytes++ = (byte)(Width == 256 ? 0 : Width);       // ImageWidth  , 1 Bytes
                 *pBytes++ = (byte)(Height == 256 ? 0 : Height);     // ImageHeight , 1 Bytes
-                *pBytes++ = (byte)(Image.Palette?.Count ?? 0);      // Palette     , 1 Bytes
+
+                int PaletteCount = Image is IImageIndexedContext IndexedImage ? IndexedImage.Palette.Count : 0;
+                *pBytes++ = (byte)PaletteCount;                     // Palette     , 1 Bytes
                 pBytes++;                                           // Reserved    , 1 Bytes
 
                 ushort* pUShorts = (ushort*)pBytes;

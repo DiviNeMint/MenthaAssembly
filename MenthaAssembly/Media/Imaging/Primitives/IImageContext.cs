@@ -6,9 +6,68 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public unsafe interface IImageContext : IReadOnlyImageContext
+    public unsafe interface IImageContext
     {
-        public new IReadOnlyPixel this[int X, int Y] { set; get; }
+        /// <summary>
+        /// Gets the Width of image.
+        /// </summary>
+        public int Width { get; }
+
+        /// <summary>
+        /// Gets the Height of image.
+        /// </summary>
+        public int Height { get; }
+
+        /// <summary>
+        /// Gets the bytes length of a scanline.
+        /// </summary>
+        public long Stride { get; }
+
+        /// <summary>
+        /// Gets the bits length of a pixel.
+        /// </summary>
+        public int BitsPerPixel { get; }
+
+        /// <summary>
+        /// Get the channels of image.
+        /// </summary>
+        public int Channels { get; }
+
+        /// <summary>
+        /// Get the pixel type of image.
+        /// </summary>
+        public Type PixelType { get; }
+
+        /// <summary>
+        /// Get the struct type of image.
+        /// </summary>
+        public Type StructType { get; }
+
+        public IntPtr Scan0 { get; }
+
+        public IntPtr ScanA { get; }
+
+        public IntPtr ScanR { get; }
+
+        public IntPtr ScanG { get; }
+
+        public IntPtr ScanB { get; }
+
+        //public IImagePalette Palette { get; }
+
+        /// <summary>
+        /// Gets & Setters the pixel at the special location in image.
+        /// </summary>
+        /// <param name="X">The x-coordinate of the special location.</param>
+        /// <param name="Y">The y-coordinate of the special location.</param>
+        public IReadOnlyPixel this[int X, int Y] { set; get; }
+
+        /// <summary>
+        /// Creates a PixelAdapter.
+        /// </summary>
+        /// <param name="X">The x-coordinate of start point at adapter.</param>
+        /// <param name="Y">The y-coordinate of start point at adapter.</param>
+        public PixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel;
 
         #region Graphic Processing
 
@@ -21,7 +80,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P0">The coordinate of the start.</param>
         /// <param name="P1">The coordinate of the end.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawLine(Point<int> P0, Point<int> P1, IPixel Color);
+        public void DrawLine<T>(Point<int> P0, Point<int> P1, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draw an line.
         /// </summary>
@@ -30,7 +89,25 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="X1">The x-coordinate of the end.</param>
         /// <param name="Y1">The y-coordinate of the end.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawLine(int X0, int Y0, int X1, int Y1, IPixel Color);
+        public void DrawLine<T>(int X0, int Y0, int X1, int Y1, T Color) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draw an line.
+        /// </summary>
+        /// <param name="P0">The coordinate of the start.</param>
+        /// <param name="P1">The coordinate of the end.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawLine<T>(Point<int> P0, Point<int> P1, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draw an line.
+        /// </summary>
+        /// <param name="X0">The x-coordinate of the start.</param>
+        /// <param name="Y0">The y-coordinate of the start.</param>
+        /// <param name="X1">The x-coordinate of the end.</param>
+        /// <param name="Y1">The y-coordinate of the end.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawLine<T>(int X0, int Y0, int X1, int Y1, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Draw an line.
         /// </summary>
@@ -47,24 +124,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Y1">The y-coordinate of the end.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
         public void DrawLine(int X0, int Y0, int X1, int Y1, IImageContext Pen);
-        /// <summary>
-        /// Draw an line.
-        /// </summary>
-        /// <param name="P0">The coordinate of the start.</param>
-        /// <param name="P1">The coordinate of the end.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawLine(Point<int> P0, Point<int> P1, ImageContour Contour, IPixel Fill);
-        /// <summary>
-        /// Draw an line.
-        /// </summary>
-        /// <param name="X0">The x-coordinate of the start.</param>
-        /// <param name="Y0">The y-coordinate of the start.</param>
-        /// <param name="X1">The x-coordinate of the end.</param>
-        /// <param name="Y1">The y-coordinate of the end.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawLine(int X0, int Y0, int X1, int Y1, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -79,7 +138,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Ry">The y-length of the radius.</param>
         /// <param name="Clockwise">The clockwise for the arc.</param>
         /// <param name="Color">The color for the arc.</param>
-        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IPixel Color);
+        public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draw an Arc.
         /// </summary>
@@ -93,7 +152,34 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Ry">The y-length of the radius.</param>
         /// <param name="Clockwise">The clockwise for the arc.</param>
         /// <param name="Color">The color for the arc.</param>
-        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IPixel Color);
+        public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, T Color) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draw an Arc.
+        /// </summary>
+        /// <param name="Start">The coordinate of the start.</param>
+        /// <param name="End">The coordinate of the end.</param>
+        /// <param name="Center">The coordinate of the arc center point.</param>
+        /// <param name="Rx">The x-length of the radius.</param>
+        /// <param name="Ry">The y-length of the radius.</param>
+        /// <param name="Clockwise">The clockwise for the arc.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draw an Arc.
+        /// </summary>
+        /// <param name="Sx">The x-coordinate of the start.</param>
+        /// <param name="Sy">The y-coordinate of the start.</param>
+        /// <param name="Ex">The x-coordinate of the end.</param>
+        /// <param name="Ey">The y-coordinate of the end.</param>
+        /// <param name="Cx">The x-coordinate of the arc center point.</param>
+        /// <param name="Cy">The y-coordinate of the arc center point.</param>
+        /// <param name="Rx">The x-length of the radius.</param>
+        /// <param name="Ry">The y-length of the radius.</param>
+        /// <param name="Clockwise">The clockwise for the arc.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Draw an Arc.
         /// </summary>
@@ -119,33 +205,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Clockwise">The clockwise for the arc.</param>
         /// <param name="Pen">The pen with transparent background for the arc.</param>
         public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen);
-        /// <summary>
-        /// Draw an Arc.
-        /// </summary>
-        /// <param name="Start">The coordinate of the start.</param>
-        /// <param name="End">The coordinate of the end.</param>
-        /// <param name="Center">The coordinate of the arc center point.</param>
-        /// <param name="Rx">The x-length of the radius.</param>
-        /// <param name="Ry">The y-length of the radius.</param>
-        /// <param name="Clockwise">The clockwise for the arc.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, IPixel Fill);
-        /// <summary>
-        /// Draw an Arc.
-        /// </summary>
-        /// <param name="Sx">The x-coordinate of the start.</param>
-        /// <param name="Sy">The y-coordinate of the start.</param>
-        /// <param name="Ex">The x-coordinate of the end.</param>
-        /// <param name="Ey">The y-coordinate of the end.</param>
-        /// <param name="Cx">The x-coordinate of the arc center point.</param>
-        /// <param name="Cy">The y-coordinate of the arc center point.</param>
-        /// <param name="Rx">The x-length of the radius.</param>
-        /// <param name="Ry">The y-length of the radius.</param>
-        /// <param name="Clockwise">The clockwise for the arc.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -157,7 +216,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurve(IList<int> Points, float Tension, IPixel Color);
+        public void DrawCurve<T>(IList<int> Points, float Tension, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -165,7 +224,25 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurve(IList<Point<int>> Points, float Tension, IPixel Color);
+        public void DrawCurve<T>(IList<Point<int>> Points, float Tension, T Color) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a Cardinal spline (cubic) defined by a point collection. 
+        /// The cardinal spline passes through each point in the collection.
+        /// </summary>
+        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
+        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawCurve<T>(IList<int> Points, float Tension, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a Cardinal spline (cubic) defined by a point collection. 
+        /// The cardinal spline passes through each point in the collection.
+        /// </summary>
+        /// <param name="Points">The points for the curve in x and y.</param>
+        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawCurve<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -182,24 +259,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Pen">The pen with transparent background for the arc.</param>
         public void DrawCurve(IList<Point<int>> Points, float Tension, IImageContext Pen);
-        /// <summary>
-        /// Draws a Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawCurve(IList<int> Points, float Tension, ImageContour Contour, IPixel Fill);
-        /// <summary>
-        /// Draws a Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y.</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawCurve(IList<Point<int>> Points, float Tension, ImageContour Contour, IPixel Fill);
 
         /// <summary>
         /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
@@ -209,7 +268,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="color">The color for the spline.</param>
-        public void DrawCurveClosed(IList<int> Points, float Tension, IPixel Color);
+        public void DrawCurveClosed<T>(IList<int> Points, float Tension, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -217,7 +276,25 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y.</param>
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, IPixel Color);
+        public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, T Color) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
+        /// The cardinal spline passes through each point in the collection.
+        /// </summary>
+        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
+        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawCurveClosed<T>(IList<int> Points, float Tension, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
+        /// The cardinal spline passes through each point in the collection.
+        /// </summary>
+        /// <param name="Points">The points for the curve in x and y.</param>
+        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
         /// The cardinal spline passes through each point in the collection.
@@ -234,24 +311,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
         /// <param name="Pen">The pen with transparent background for the arc.</param>
         public void DrawCurveClosed(IList<Point<int>> Points, float Tension, IImageContext Pen);
-        /// <summary>
-        /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawCurveClosed(IList<int> Points, float Tension, ImageContour Contour, IPixel Fill);
-        /// <summary>
-        /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y.</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -268,7 +327,21 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="X2">The x-coordinate of the end point.</param>
         /// <param name="Y2">The y-coordinate of the end point.</param>
         /// <param name="Color">The color.</param>
-        public void DrawBezier(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, IPixel Color);
+        public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, T Color) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a cubic Beziér spline defined by start, end and two control points.
+        /// </summary>
+        /// <param name="X1">The x-coordinate of the start point.</param>
+        /// <param name="Y1">The y-coordinate of the start point.</param>
+        /// <param name="Cx1">The x-coordinate of the 1st control point.</param>
+        /// <param name="Cy1">The y-coordinate of the 1st control point.</param>
+        /// <param name="Cx2">The x-coordinate of the 2nd control point.</param>
+        /// <param name="Cy2">The y-coordinate of the 2nd control point.</param>
+        /// <param name="X2">The x-coordinate of the end point.</param>
+        /// <param name="Y2">The y-coordinate of the end point.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a cubic Beziér spline defined by start, end and two control points.
         /// </summary>
@@ -282,20 +355,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Y2">The y-coordinate of the end point.</param>
         /// <param name="Pen">The pen with transparent background for the arc.</param>
         public void DrawBezier(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, IImageContext Pen);
-        /// <summary>
-        /// Draws a cubic Beziér spline defined by start, end and two control points.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the start point.</param>
-        /// <param name="Y1">The y-coordinate of the start point.</param>
-        /// <param name="Cx1">The x-coordinate of the 1st control point.</param>
-        /// <param name="Cy1">The y-coordinate of the 1st control point.</param>
-        /// <param name="Cx2">The x-coordinate of the 2nd control point.</param>
-        /// <param name="Cy2">The y-coordinate of the 2nd control point.</param>
-        /// <param name="X2">The x-coordinate of the end point.</param>
-        /// <param name="Y2">The y-coordinate of the end point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawBezier(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, ImageContour Contour, IPixel Fill);
 
         /// <summary>
         /// Draws a series of cubic Beziér splines each defined by start, end and two control points. 
@@ -304,15 +363,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, cx1, cy1, cx2, cy2, x2, y2, cx3, cx4 ..., xn, yn).</param>
         /// <param name="Color">The color for the spline.</param>
-        public void DrawBeziers(IList<int> Points, IPixel Color);
-        /// <summary>
-        /// Draws a series of cubic Beziér splines each defined by start, end and two control points. 
-        /// The ending point of the previous curve is used as starting point for the next. 
-        /// Therefore the initial curve needs four points and the subsequent 3 (2 control and 1 end point).
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, cx1, cy1, cx2, cy2, x2, y2, cx3, cx4 ..., xn, yn).</param>
-        /// <param name="Pen">The pen with transparent background for the arc.</param>
-        public void DrawBeziers(IList<int> Points, IImageContext Pen);
+        public void DrawBeziers<T>(IList<int> Points, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a series of cubic Beziér splines each defined by start, end and two control points. 
         /// The ending point of the previous curve is used as starting point for the next. 
@@ -321,7 +372,15 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, cx1, cy1, cx2, cy2, x2, y2, cx3, cx4 ..., xn, yn).</param>
         /// <param name="Contour">The stroke for the line.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void DrawBeziers(IList<int> Points, ImageContour Contour, IPixel Fill);
+        public void DrawBeziers<T>(IList<int> Points, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a series of cubic Beziér splines each defined by start, end and two control points. 
+        /// The ending point of the previous curve is used as starting point for the next. 
+        /// Therefore the initial curve needs four points and the subsequent 3 (2 control and 1 end point).
+        /// </summary>
+        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, cx1, cy1, cx2, cy2, x2, y2, cx3, cx4 ..., xn, yn).</param>
+        /// <param name="Pen">The pen with transparent background for the arc.</param>
+        public void DrawBeziers(IList<int> Points, IImageContext Pen);
 
         #endregion
 
@@ -340,7 +399,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="X3">The x-coordinate of the 3rd point.</param>
         /// <param name="Y3">The y-coordinate of the 3rd point.</param>
         /// <param name="Color">The color.</param>
-        public void DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, IPixel Color);
+        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a triangle.
         /// </summary>
@@ -348,7 +407,28 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P2">The coordinate of the 2nd point.</param>
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="Color">The color.</param>
-        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, IPixel Color);
+        public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, T Color) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a triangle.
+        /// </summary>
+        /// <param name="X1">The x-coordinate of the 1st point.</param>
+        /// <param name="Y1">The y-coordinate of the 1st point.</param>
+        /// <param name="X2">The x-coordinate of the 2nd point.</param>
+        /// <param name="Y2">The y-coordinate of the 2nd point.</param>
+        /// <param name="X3">The x-coordinate of the 3rd point.</param>
+        /// <param name="Y3">The y-coordinate of the 3rd point.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a triangle.
+        /// </summary>
+        /// <param name="P1">The coordinate of the 1st point.</param>
+        /// <param name="P2">The coordinate of the 2nd point.</param>
+        /// <param name="P3">The coordinate of the 3rd point.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a triangle.
         /// </summary>
@@ -368,27 +448,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
         public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, IImageContext Pen);
-        /// <summary>
-        /// Draws a triangle.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the 1st point.</param>
-        /// <param name="Y1">The y-coordinate of the 1st point.</param>
-        /// <param name="X2">The x-coordinate of the 2nd point.</param>
-        /// <param name="Y2">The y-coordinate of the 2nd point.</param>
-        /// <param name="X3">The x-coordinate of the 3rd point.</param>
-        /// <param name="Y3">The y-coordinate of the 3rd point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, ImageContour Contour, IPixel Fill);
-        /// <summary>
-        /// Draws a triangle.
-        /// </summary>
-        /// <param name="P1">The coordinate of the 1st point.</param>
-        /// <param name="P2">The coordinate of the 2nd point.</param>
-        /// <param name="P3">The coordinate of the 3rd point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -401,14 +460,32 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="X2">The x-coordinate of the bounding rectangle's right side.</param>
         /// <param name="Y2">The y-coordinate of the bounding rectangle's bottom side.</param>
         /// <param name="Color">The color.</param>
-        public void DrawRectangle(int X1, int Y1, int X2, int Y2, IPixel Color);
+        public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a rectangle.
         /// </summary>
         /// <param name="P1">The coordinate of the bounding rectangle's left-top.</param>
         /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
         /// <param name="Color">The color.</param>
-        public void DrawRectangle(Point<int> P1, Point<int> P2, IPixel Color);
+        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, T Color) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a rectangle.
+        /// </summary>
+        /// <param name="X1">The x-coordinate of the bounding rectangle's left side.</param>
+        /// <param name="Y1">The y-coordinate of the bounding rectangle's top side.</param>
+        /// <param name="X2">The x-coordinate of the bounding rectangle's right side.</param>
+        /// <param name="Y2">The y-coordinate of the bounding rectangle's bottom side.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a rectangle.
+        /// </summary>
+        /// <param name="P1">The coordinate of the bounding rectangle's left-top.</param>
+        /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a rectangle.
         /// </summary>
@@ -425,24 +502,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
         public void DrawRectangle(Point<int> P1, Point<int> P2, IImageContext Pen);
-        /// <summary>
-        /// Draws a rectangle.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the bounding rectangle's left side.</param>
-        /// <param name="Y1">The y-coordinate of the bounding rectangle's top side.</param>
-        /// <param name="X2">The x-coordinate of the bounding rectangle's right side.</param>
-        /// <param name="Y2">The y-coordinate of the bounding rectangle's bottom side.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawRectangle(int X1, int Y1, int X2, int Y2, ImageContour Contour, IPixel Fill);
-        /// <summary>
-        /// Draws a rectangle.
-        /// </summary>
-        /// <param name="P1">The coordinate of the bounding rectangle's left-top.</param>
-        /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawRectangle(Point<int> P1, Point<int> P2, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -459,7 +518,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="X4">The x-coordinate of the 4th point.</param>
         /// <param name="Y4">The y-coordinate of the 4th point.</param>
         /// <param name="Color">The color.</param>
-        public void DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, IPixel Color);
+        public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a quad.
         /// </summary>
@@ -468,7 +527,31 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P3">The coordinate of the 3rd point.</param>
         /// <param name="P4">The coordinate of the 4th point.</param>
         /// <param name="Color">The color.</param>
-        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IPixel Color);
+        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, T Color) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a quad.
+        /// </summary>
+        /// <param name="X1">The x-coordinate of the 1st point.</param>
+        /// <param name="Y1">The y-coordinate of the 1st point.</param>
+        /// <param name="X2">The x-coordinate of the 2nd point.</param>
+        /// <param name="Y2">The y-coordinate of the 2nd point.</param>
+        /// <param name="X3">The x-coordinate of the 3rd point.</param>
+        /// <param name="Y3">The y-coordinate of the 3rd point.</param>
+        /// <param name="X4">The x-coordinate of the 4th point.</param>
+        /// <param name="Y4">The y-coordinate of the 4th point.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draws a quad.
+        /// </summary>
+        /// <param name="P1">The coordinate of the 1st point.</param>
+        /// <param name="P2">The coordinate of the 2nd point.</param>
+        /// <param name="P3">The coordinate of the 3rd point.</param>
+        /// <param name="P4">The coordinate of the 4th point.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Draws a quad.
         /// </summary>
@@ -491,30 +574,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="P4">The coordinate of the 4th point.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
         public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IImageContext Pen);
-        /// <summary>
-        /// Draws a quad.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the 1st point.</param>
-        /// <param name="Y1">The y-coordinate of the 1st point.</param>
-        /// <param name="X2">The x-coordinate of the 2nd point.</param>
-        /// <param name="Y2">The y-coordinate of the 2nd point.</param>
-        /// <param name="X3">The x-coordinate of the 3rd point.</param>
-        /// <param name="Y3">The y-coordinate of the 3rd point.</param>
-        /// <param name="X4">The x-coordinate of the 4th point.</param>
-        /// <param name="Y4">The y-coordinate of the 4th point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, ImageContour Contour, IPixel Fill);
-        /// <summary>
-        /// Draws a quad.
-        /// </summary>
-        /// <param name="P1">The coordinate of the 1st point.</param>
-        /// <param name="P2">The coordinate of the 2nd point.</param>
-        /// <param name="P3">The coordinate of the 3rd point.</param>
-        /// <param name="P4">The coordinate of the 4th point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, IPixel Fill);
 
         #endregion
 
@@ -524,7 +583,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <param name="Bound">The bounding rectangle of ellipse.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(Bound<int> Bound, IPixel Color);
+        public void DrawEllipse<T>(Bound<int> Bound, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -532,7 +591,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Rx">The radius of the ellipse in x-direction.</param>
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(Point<int> Center, int Rx, int Ry, IPixel Color);
+        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, T Color) where T : unmanaged, IPixel;
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -541,7 +600,33 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Rx">The radius of the ellipse in x-direction.</param>
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IPixel Color);
+        public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Color) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Bound">The bounding rectangle of ellipse.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawEllipse<T>(Bound<int> Bound, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Center">The coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draw an ellipse.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
+        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
+        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
+        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Draw an ellipse.
         /// </summary>
@@ -565,39 +650,13 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Pen">The pen with transparent background for the line.</param>
         public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen);
-        /// <summary>
-        /// Draw an ellipse.
-        /// </summary>
-        /// <param name="Bound">The bounding rectangle of ellipse.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(Bound<int> Bound, ImageContour Contour, IPixel Fill);
-        /// <summary>
-        /// Draw an ellipse.
-        /// </summary>
-        /// <param name="Center">The coordinate of the ellipses center.</param>
-        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
-        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(Point<int> Center, int Rx, int Ry, ImageContour Contour, IPixel Fill);
-        /// <summary>
-        /// Draw an ellipse.
-        /// </summary>
-        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
-        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
-        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
-        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, IPixel Fill);
 
         /// <summary>
         /// Fill an ellipse.
         /// </summary>
         /// <param name="Bound">The bounding rectangle of ellipse.</param>
         /// <param name="Fill">The color for the line.</param>
-        public void FillEllipse(Bound<int> Bound, IPixel Fill);
+        public void FillEllipse<T>(Bound<int> Bound, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Fill an ellipse.
         /// </summary>
@@ -605,7 +664,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Rx">The radius of the ellipse in x-direction.</param>
         /// <param name="Ry">The radius of the ellipse in y-direction.</param>
         /// <param name="Fill">The color for the ellipses.</param>
-        public void FillEllipse(Point<int> Center, int Rx, int Ry, IPixel Fill);
+        public void FillEllipse<T>(Point<int> Center, int Rx, int Ry, T Fill) where T : unmanaged, IPixel;
         /// <summary>
         /// Fill an ellipse.
         /// </summary>
@@ -614,7 +673,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="LRx">The radius of the ellipse in x-direction.</param>
         /// <param name="LRy">The radius of the ellipse in y-direction.</param>
         /// <param name="Fill">The color for the ellipses.</param>
-        public void FillEllipse(int Cx, int Cy, int Rx, int Ry, IPixel Fill);
+        public void FillEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Fill) where T : unmanaged, IPixel;
 
         #endregion
 
@@ -627,7 +686,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="VertexNum">The number of the polygons vertex.</param>
         /// <param name="Color">The color for the line.</param>
         /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, IPixel Color, double StartAngle);
+        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, T Color, double StartAngle) where T : unmanaged, IPixel;
         /// <summary>
         /// Draw a regular polygon.
         /// </summary>
@@ -637,7 +696,28 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="VertexNum">The number of the polygons vertex.</param>
         /// <param name="Color">The color for the line.</param>
         /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IPixel Color, double StartAngle);
+        public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, T Color, double StartAngle) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Center">The coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, T Fill, double StartAngle) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Draw a regular polygon.
+        /// </summary>
+        /// <param name="Cx">The x-coordinate of the polygon center.</param>
+        /// <param name="Cy">The y-coordinate of the polygon center.</param>
+        /// <param name="Radius">The radius of the polygon.</param>
+        /// <param name="VertexNum">The number of the polygons vertex.</param>
+        /// <param name="Contour">The stroke for the line.</param>
+        /// <param name="Fill">The color for the line.</param>
+        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
+        public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, T Fill, double StartAngle) where T : unmanaged, IPixel;
         /// <summary>
         /// Draw a regular polygon.
         /// </summary>
@@ -657,27 +737,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Pen">The pen with transparent background for the line.</param>
         /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
         public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IImageContext Pen, double StartAngle);
-        /// <summary>
-        /// Draw a regular polygon.
-        /// </summary>
-        /// <param name="Center">The coordinate of the polygon center.</param>
-        /// <param name="Radius">The radius of the polygon.</param>
-        /// <param name="VertexNum">The number of the polygons vertex.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle);
-        /// <summary>
-        /// Draw a regular polygon.
-        /// </summary>
-        /// <param name="Cx">The x-coordinate of the polygon center.</param>
-        /// <param name="Cy">The y-coordinate of the polygon center.</param>
-        /// <param name="Radius">The radius of the polygon.</param>
-        /// <param name="VertexNum">The number of the polygons vertex.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, IPixel Fill, double StartAngle);
 
         /// <summary>
         /// Fill a polygon.
@@ -686,7 +745,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IEnumerable<Point<int>> Vertices, IPixel Fill, int OffsetX, int OffsetY);
+        public void FillPolygon<T>(IEnumerable<Point<int>> Vertices, T Fill, int OffsetX, int OffsetY) where T : unmanaged, IPixel;
         /// <summary>
         /// Fill a polygon.
         /// </summary>
@@ -694,7 +753,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The color for the line.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IEnumerable<int> VerticeDatas, IPixel Fill, int OffsetX, int OffsetY);
+        public void FillPolygon<T>(IEnumerable<int> VerticeDatas, T Fill, int OffsetX, int OffsetY) where T : unmanaged, IPixel;
 
         #endregion
 
@@ -720,7 +779,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The fill color for the contour.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillContour(ImageContour Contour, IPixel Fill, int OffsetX, int OffsetY);
+        public void FillContour<T>(ImageContour Contour, T Fill, int OffsetX, int OffsetY) where T : unmanaged, IPixel;
 
         /// <summary>
         /// Fill a region by <paramref name="Predicate"/>.
@@ -728,7 +787,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="SeedPoint">The coordinate of seed.</param>
         /// <param name="Fill">The fill color for the region.</param>
         /// <param name="Predicate">The decider of bound.</param>
-        public void SeedFill(Point<int> SeedPoint, IPixel Fill, ImagePredicate Predicate);
+        public void SeedFill<T>(Point<int> SeedPoint, T Fill, ImagePredicate Predicate) where T : unmanaged, IPixel;
         /// <summary>
         /// Fill a region by <paramref name="Predicate"/>.
         /// </summary>
@@ -736,17 +795,17 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="SeedY">The y-coordinate of seed.</param>
         /// <param name="Fill">The fill color for the region.</param>
         /// <param name="Predicate">The decider of bound.</param>
-        public void SeedFill(int SeedX, int SeedY, IPixel Fill, ImagePredicate Predicate);
+        public void SeedFill<T>(int SeedX, int SeedY, T Fill, ImagePredicate Predicate) where T : unmanaged, IPixel;
 
         #endregion
 
         #endregion
 
         #region Text Rendering
-        public void DrawText(int X, int Y, string Text, int CharSize, IPixel Fill);
-        public void DrawText(int X, int Y, string Text, int CharSize, IPixel Fill, double Angle, FontWeightType Weight, bool Italic);
-        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, IPixel Fill);
-        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, IPixel Fill, double Angle, FontWeightType Weight, bool Italic);
+        public void DrawText<T>(int X, int Y, string Text, int CharSize, T Fill) where T : unmanaged, IPixel;
+        public void DrawText<T>(int X, int Y, string Text, int CharSize, T Fill, double Angle, FontWeightType Weight, bool Italic) where T : unmanaged, IPixel;
+        public void DrawText<T>(int X, int Y, string Text, string FontName, int CharSize, T Fill) where T : unmanaged, IPixel;
+        public void DrawText<T>(int X, int Y, string Text, string FontName, int CharSize, T Fill, double Angle, FontWeightType Weight, bool Italic) where T : unmanaged, IPixel;
 
         #endregion
 
@@ -946,8 +1005,8 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region Clear
-        public void Clear(IPixel Color);
-        public void Clear(IPixel Color, ParallelOptions Options);
+        public void Clear<T>(T Color) where T : unmanaged, IPixel;
+        public void Clear<T>(T Color, ParallelOptions Options) where T : unmanaged, IPixel;
 
         #endregion
 
@@ -1741,562 +1800,5 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
-        public PixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel;
-
     }
-
-    internal unsafe interface IImageContext<Pixel> : IImageContext
-        where Pixel : unmanaged, IPixel
-    {
-        public new Pixel this[int X, int Y] { set; get; }
-
-        #region Graphic Processing
-
-        #region Line Rendering
-
-        #region Line
-        /// <summary>
-        /// Draw an line.
-        /// </summary>
-        /// <param name="P0">The coordinate of the start.</param>
-        /// <param name="P1">The coordinate of the end.</param>
-        /// <param name="Color">The color for the line.</param>
-        public void DrawLine(Point<int> P0, Point<int> P1, Pixel Color);
-        /// <summary>
-        /// Draw an line.
-        /// </summary>
-        /// <param name="X0">The x-coordinate of the start.</param>
-        /// <param name="Y0">The y-coordinate of the start.</param>
-        /// <param name="X1">The x-coordinate of the end.</param>
-        /// <param name="Y1">The y-coordinate of the end.</param>
-        /// <param name="Color">The color for the line.</param>
-        public void DrawLine(int X0, int Y0, int X1, int Y1, Pixel Color);
-        /// <summary>
-        /// Draw an line.
-        /// </summary>
-        /// <param name="P0">The coordinate of the start.</param>
-        /// <param name="P1">The coordinate of the end.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawLine(Point<int> P0, Point<int> P1, ImageContour Contour, Pixel Fill);
-        /// <summary>
-        /// Draw an line.
-        /// </summary>
-        /// <param name="X0">The x-coordinate of the start.</param>
-        /// <param name="Y0">The y-coordinate of the start.</param>
-        /// <param name="X1">The x-coordinate of the end.</param>
-        /// <param name="Y1">The y-coordinate of the end.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawLine(int X0, int Y0, int X1, int Y1, ImageContour Contour, Pixel Fill);
-
-        #endregion
-
-        #region Arc
-        /// <summary>
-        /// Draw an Arc.
-        /// </summary>
-        /// <param name="Start">The coordinate of the start.</param>
-        /// <param name="End">The coordinate of the end.</param>
-        /// <param name="Center">The coordinate of the arc center point.</param>
-        /// <param name="Rx">The x-length of the radius.</param>
-        /// <param name="Ry">The y-length of the radius.</param>
-        /// <param name="Clockwise">The clockwise for the arc.</param>
-        /// <param name="Color">The color for the arc.</param>
-        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, Pixel Color);
-        /// <summary>
-        /// Draw an Arc.
-        /// </summary>
-        /// <param name="Sx">The x-coordinate of the start.</param>
-        /// <param name="Sy">The y-coordinate of the start.</param>
-        /// <param name="Ex">The x-coordinate of the end.</param>
-        /// <param name="Ey">The y-coordinate of the end.</param>
-        /// <param name="Cx">The x-coordinate of the arc center point.</param>
-        /// <param name="Cy">The y-coordinate of the arc center point.</param>
-        /// <param name="Rx">The x-length of the radius.</param>
-        /// <param name="Ry">The y-length of the radius.</param>
-        /// <param name="Clockwise">The clockwise for the arc.</param>
-        /// <param name="Color">The color for the arc.</param>
-        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, Pixel Color);
-        /// <summary>
-        /// Draw an Arc.
-        /// </summary>
-        /// <param name="Start">The coordinate of the start.</param>
-        /// <param name="End">The coordinate of the end.</param>
-        /// <param name="Center">The coordinate of the arc center point.</param>
-        /// <param name="Rx">The x-length of the radius.</param>
-        /// <param name="Ry">The y-length of the radius.</param>
-        /// <param name="Clockwise">The clockwise for the arc.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill);
-        /// <summary>
-        /// Draw an Arc.
-        /// </summary>
-        /// <param name="Sx">The x-coordinate of the start.</param>
-        /// <param name="Sy">The y-coordinate of the start.</param>
-        /// <param name="Ex">The x-coordinate of the end.</param>
-        /// <param name="Ey">The y-coordinate of the end.</param>
-        /// <param name="Cx">The x-coordinate of the arc center point.</param>
-        /// <param name="Cy">The y-coordinate of the arc center point.</param>
-        /// <param name="Rx">The x-length of the radius.</param>
-        /// <param name="Ry">The y-length of the radius.</param>
-        /// <param name="Clockwise">The clockwise for the arc.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, Pixel Fill);
-
-        #endregion
-
-        #region Curve
-        /// <summary>
-        /// Draws a Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Color">The color for the spline.</param>
-        public void DrawCurve(IList<int> Points, float Tension, Pixel Color);
-        /// <summary>
-        /// Draws a Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y.</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Color">The color for the spline.</param>
-        public void DrawCurve(IList<Point<int>> Points, float Tension, Pixel Color);
-        /// <summary>
-        /// Draws a Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawCurve(IList<int> Points, float Tension, ImageContour Contour, Pixel Fill);
-        /// <summary>
-        /// Draws a Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y.</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawCurve(IList<Point<int>> Points, float Tension, ImageContour Contour, Pixel Fill);
-
-        /// <summary>
-        /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="bmp">The WriteableBitmap.</param>
-        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="color">The color for the spline.</param>
-        public void DrawCurveClosed(IList<int> Points, float Tension, Pixel Color);
-        /// <summary>
-        /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y.</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Color">The color for the spline.</param>
-        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, Pixel Color);
-        /// <summary>
-        /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, x3, y3, x4, y4, x1, x2 ..., xn, yn).</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawCurveClosed(IList<int> Points, float Tension, ImageContour Contour, Pixel Fill);
-        /// <summary>
-        /// Draws a closed Cardinal spline (cubic) defined by a point collection. 
-        /// The cardinal spline passes through each point in the collection.
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y.</param>
-        /// <param name="Tension">The tension of the curve defines the shape. Usually between 0 and 1. 0 would be a straight line.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, ImageContour Contour, Pixel Fill);
-
-        #endregion
-
-        #region Bezier
-        /// <summary>
-        /// Draws a cubic Beziér spline defined by start, end and two control points.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the start point.</param>
-        /// <param name="Y1">The y-coordinate of the start point.</param>
-        /// <param name="Cx1">The x-coordinate of the 1st control point.</param>
-        /// <param name="Cy1">The y-coordinate of the 1st control point.</param>
-        /// <param name="Cx2">The x-coordinate of the 2nd control point.</param>
-        /// <param name="Cy2">The y-coordinate of the 2nd control point.</param>
-        /// <param name="X2">The x-coordinate of the end point.</param>
-        /// <param name="Y2">The y-coordinate of the end point.</param>
-        /// <param name="Color">The color.</param>
-        public void DrawBezier(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, Pixel Color);
-        /// <summary>
-        /// Draws a cubic Beziér spline defined by start, end and two control points.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the start point.</param>
-        /// <param name="Y1">The y-coordinate of the start point.</param>
-        /// <param name="Cx1">The x-coordinate of the 1st control point.</param>
-        /// <param name="Cy1">The y-coordinate of the 1st control point.</param>
-        /// <param name="Cx2">The x-coordinate of the 2nd control point.</param>
-        /// <param name="Cy2">The y-coordinate of the 2nd control point.</param>
-        /// <param name="X2">The x-coordinate of the end point.</param>
-        /// <param name="Y2">The y-coordinate of the end point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawBezier(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, ImageContour Contour, Pixel Fill);
-
-        /// <summary>
-        /// Draws a series of cubic Beziér splines each defined by start, end and two control points. 
-        /// The ending point of the previous curve is used as starting point for the next. 
-        /// Therefore the initial curve needs four points and the subsequent 3 (2 control and 1 end point).
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, cx1, cy1, cx2, cy2, x2, y2, cx3, cx4 ..., xn, yn).</param>
-        /// <param name="Color">The color for the spline.</param>
-        public void DrawBeziers(IList<int> Points, Pixel Color);
-        /// <summary>
-        /// Draws a series of cubic Beziér splines each defined by start, end and two control points. 
-        /// The ending point of the previous curve is used as starting point for the next. 
-        /// Therefore the initial curve needs four points and the subsequent 3 (2 control and 1 end point).
-        /// </summary>
-        /// <param name="Points">The points for the curve in x and y pairs, therefore the array is interpreted as (x1, y1, cx1, cy1, cx2, cy2, x2, y2, cx3, cx4 ..., xn, yn).</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawBeziers(IList<int> Points, ImageContour Contour, Pixel Fill);
-
-        #endregion
-
-        #endregion
-
-        #region Shape Rendering
-
-        #region Triangle
-        /// <summary>
-        /// Draws a triangle.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the 1st point.</param>
-        /// <param name="Y1">The y-coordinate of the 1st point.</param>
-        /// <param name="X2">The x-coordinate of the 2nd point.</param>
-        /// <param name="Y2">The y-coordinate of the 2nd point.</param>
-        /// <param name="X3">The x-coordinate of the 3rd point.</param>
-        /// <param name="Y3">The y-coordinate of the 3rd point.</param>
-        /// <param name="Color">The color.</param>
-        public void DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, Pixel Color);
-        /// <summary>
-        /// Draws a triangle.
-        /// </summary>
-        /// <param name="P1">The coordinate of the 1st point.</param>
-        /// <param name="P2">The coordinate of the 2nd point.</param>
-        /// <param name="P3">The coordinate of the 3rd point.</param>
-        /// <param name="Color">The color.</param>
-        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, Pixel Color);
-        /// <summary>
-        /// Draws a triangle.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the 1st point.</param>
-        /// <param name="Y1">The y-coordinate of the 1st point.</param>
-        /// <param name="X2">The x-coordinate of the 2nd point.</param>
-        /// <param name="Y2">The y-coordinate of the 2nd point.</param>
-        /// <param name="X3">The x-coordinate of the 3rd point.</param>
-        /// <param name="Y3">The y-coordinate of the 3rd point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        public void DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, ImageContour Contour, Pixel Fill);
-        /// <summary>
-        /// Draws a triangle.
-        /// </summary>
-        /// <param name="P1">The coordinate of the 1st point.</param>
-        /// <param name="P2">The coordinate of the 2nd point.</param>
-        /// <param name="P3">The coordinate of the 3rd point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, Pixel Fill);
-
-        #endregion
-
-        #region Rectangle
-        /// <summary>
-        /// Draws a rectangle.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the bounding rectangle's left side.</param>
-        /// <param name="Y1">The y-coordinate of the bounding rectangle's top side.</param>
-        /// <param name="X2">The x-coordinate of the bounding rectangle's right side.</param>
-        /// <param name="Y2">The y-coordinate of the bounding rectangle's bottom side.</param>
-        /// <param name="Color">The color.</param>
-        public void DrawRectangle(int X1, int Y1, int X2, int Y2, Pixel Color);
-        /// <summary>
-        /// Draws a rectangle.
-        /// </summary>
-        /// <param name="P1">The coordinate of the bounding rectangle's left-top.</param>
-        /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
-        /// <param name="Color">The color.</param>
-        public void DrawRectangle(Point<int> P1, Point<int> P2, Pixel Color);
-        /// <summary>
-        /// Draws a rectangle.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the bounding rectangle's left side.</param>
-        /// <param name="Y1">The y-coordinate of the bounding rectangle's top side.</param>
-        /// <param name="X2">The x-coordinate of the bounding rectangle's right side.</param>
-        /// <param name="Y2">The y-coordinate of the bounding rectangle's bottom side.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawRectangle(int X1, int Y1, int X2, int Y2, ImageContour Contour, Pixel Fill);
-        /// <summary>
-        /// Draws a rectangle.
-        /// </summary>
-        /// <param name="P1">The coordinate of the bounding rectangle's left-top.</param>
-        /// <param name="P2">The coordinate of the bounding rectangle's right-bottom.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawRectangle(Point<int> P1, Point<int> P2, ImageContour Contour, Pixel Fill);
-
-        #endregion
-
-        #region Quad
-        /// <summary>
-        /// Draws a quad.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the 1st point.</param>
-        /// <param name="Y1">The y-coordinate of the 1st point.</param>
-        /// <param name="X2">The x-coordinate of the 2nd point.</param>
-        /// <param name="Y2">The y-coordinate of the 2nd point.</param>
-        /// <param name="X3">The x-coordinate of the 3rd point.</param>
-        /// <param name="Y3">The y-coordinate of the 3rd point.</param>
-        /// <param name="X4">The x-coordinate of the 4th point.</param>
-        /// <param name="Y4">The y-coordinate of the 4th point.</param>
-        /// <param name="Color">The color.</param>
-        public void DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, Pixel Color);
-        /// <summary>
-        /// Draws a quad.
-        /// </summary>
-        /// <param name="P1">The coordinate of the 1st point.</param>
-        /// <param name="P2">The coordinate of the 2nd point.</param>
-        /// <param name="P3">The coordinate of the 3rd point.</param>
-        /// <param name="P4">The coordinate of the 4th point.</param>
-        /// <param name="Color">The color.</param>
-        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, Pixel Color);
-        /// <summary>
-        /// Draws a quad.
-        /// </summary>
-        /// <param name="X1">The x-coordinate of the 1st point.</param>
-        /// <param name="Y1">The y-coordinate of the 1st point.</param>
-        /// <param name="X2">The x-coordinate of the 2nd point.</param>
-        /// <param name="Y2">The y-coordinate of the 2nd point.</param>
-        /// <param name="X3">The x-coordinate of the 3rd point.</param>
-        /// <param name="Y3">The y-coordinate of the 3rd point.</param>
-        /// <param name="X4">The x-coordinate of the 4th point.</param>
-        /// <param name="Y4">The y-coordinate of the 4th point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, ImageContour Contour, Pixel Fill);
-        /// <summary>
-        /// Draws a quad.
-        /// </summary>
-        /// <param name="P1">The coordinate of the 1st point.</param>
-        /// <param name="P2">The coordinate of the 2nd point.</param>
-        /// <param name="P3">The coordinate of the 3rd point.</param>
-        /// <param name="P4">The coordinate of the 4th point.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, Pixel Fill);
-
-        #endregion
-
-        #region Ellipse
-        /// <summary>
-        /// Draw an ellipse.
-        /// </summary>
-        /// <param name="Bound">The bounding rectangle of ellipse.</param>
-        /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(Bound<int> Bound, Pixel Color);
-        /// <summary>
-        /// Draw an ellipse.
-        /// </summary>
-        /// <param name="Center">The coordinate of the ellipses center.</param>
-        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
-        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
-        /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(Point<int> Center, int Rx, int Ry, Pixel Color);
-        /// <summary>
-        /// Draw an ellipse.
-        /// </summary>
-        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
-        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
-        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
-        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
-        /// <param name="Color">The color for the line.</param>
-        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, Pixel Color);
-        /// <summary>
-        /// Draw an ellipse.
-        /// </summary>
-        /// <param name="Bound">The bounding rectangle of ellipse.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(Bound<int> Bound, ImageContour Contour, Pixel Fill);
-        /// <summary>
-        /// Draw an ellipse.
-        /// </summary>
-        /// <param name="Center">The coordinate of the ellipses center.</param>
-        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
-        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(Point<int> Center, int Rx, int Ry, ImageContour Contour, Pixel Fill);
-        /// <summary>
-        /// Draw an ellipse.
-        /// </summary>
-        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
-        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
-        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
-        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, Pixel Fill);
-
-        /// <summary>
-        /// Fill an ellipse.
-        /// </summary>
-        /// <param name="Bound">The bounding rectangle of ellipse.</param>
-        /// <param name="Fill">The color for the line.</param>
-        public void FillEllipse(Bound<int> Bound, Pixel Fill);
-        /// <summary>
-        /// Fill an ellipse.
-        /// </summary>
-        /// <param name="Center">The coordinate of the ellipses center.</param>
-        /// <param name="Rx">The radius of the ellipse in x-direction.</param>
-        /// <param name="Ry">The radius of the ellipse in y-direction.</param>
-        /// <param name="Fill">The color for the ellipses.</param>
-        public void FillEllipse(Point<int> Center, int Rx, int Ry, Pixel Fill);
-        /// <summary>
-        /// Fill an ellipse.
-        /// </summary>
-        /// <param name="Cx">The x-coordinate of the ellipses center.</param>
-        /// <param name="Cy">The y-coordinate of the ellipses center.</param>
-        /// <param name="LRx">The radius of the ellipse in x-direction.</param>
-        /// <param name="LRy">The radius of the ellipse in y-direction.</param>
-        /// <param name="Fill">The color for the ellipses.</param>
-        public void FillEllipse(int Cx, int Cy, int Rx, int Ry, Pixel Fill);
-
-        #endregion
-
-        #region Polygon
-        /// <summary>
-        /// Draw a regular polygon.
-        /// </summary>
-        /// <param name="Center">The coordinate of the polygon center.</param>
-        /// <param name="Radius">The radius of the polygon.</param>
-        /// <param name="VertexNum">The number of the polygons vertex.</param>
-        /// <param name="Color">The color for the line.</param>
-        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, Pixel Color, double StartAngle);
-        /// <summary>
-        /// Draw a regular polygon.
-        /// </summary>
-        /// <param name="Cx">The x-coordinate of the polygon center.</param>
-        /// <param name="Cy">The y-coordinate of the polygon center.</param>
-        /// <param name="Radius">The radius of the polygon.</param>
-        /// <param name="VertexNum">The number of the polygons vertex.</param>
-        /// <param name="Color">The color for the line.</param>
-        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, Pixel Color, double StartAngle);
-        /// <summary>
-        /// Draw a regular polygon.
-        /// </summary>
-        /// <param name="Center">The coordinate of the polygon center.</param>
-        /// <param name="Radius">The radius of the polygon.</param>
-        /// <param name="VertexNum">The number of the polygons vertex.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, Pixel Fill, double StartAngle);
-        /// <summary>
-        /// Draw a regular polygon.
-        /// </summary>
-        /// <param name="Cx">The x-coordinate of the polygon center.</param>
-        /// <param name="Cy">The y-coordinate of the polygon center.</param>
-        /// <param name="Radius">The radius of the polygon.</param>
-        /// <param name="VertexNum">The number of the polygons vertex.</param>
-        /// <param name="Contour">The stroke for the line.</param>
-        /// <param name="Fill">The color for the line.</param>
-        /// <param name="StartAngle">The angle of first vertex in the polygon.</param>
-        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, Pixel Fill, double StartAngle);
-
-        /// <summary>
-        /// Fill a polygon.
-        /// </summary>
-        /// <param name="Vertices">The vertices of the polygon.</param>
-        /// <param name="Fill">The color for the line.</param>
-        /// <param name="OffsetX">The offset of x-coordinate.</param>
-        /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IEnumerable<Point<int>> Vertices, Pixel Fill, int OffsetX, int OffsetY);
-        /// <summary>
-        /// Fill a polygon.
-        /// </summary>
-        /// <param name="VerticeDatas">The vertices of the polygon in x and y pairs, therefore the array is interpreted as (x1, y1, x2, y2, ..., xn, yn).</param>
-        /// <param name="Fill">The color for the line.</param>
-        /// <param name="OffsetX">The offset of x-coordinate.</param>
-        /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillPolygon(IEnumerable<int> VerticeDatas, Pixel Fill, int OffsetX, int OffsetY);
-
-        #endregion
-
-        #region Other
-        /// <summary>
-        /// Fill a contour.
-        /// </summary>
-        /// <param name="Contour">The contour to draw.</param>
-        /// <param name="Fill">The fill color for the contour.</param>
-        /// <param name="OffsetX">The offset of x-coordinate.</param>
-        /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillContour(ImageContour Contour, Pixel Fill, int OffsetX, int OffsetY);
-
-        /// <summary>
-        /// Fill a region by <paramref name="Predicate"/>.
-        /// </summary>
-        /// <param name="SeedPoint">The coordinate of seed.</param>
-        /// <param name="Fill">The fill color for the region.</param>
-        /// <param name="Predicate">The decider of bound.</param>
-        public void SeedFill(Point<int> SeedPoint, Pixel Fill, ImagePredicate Predicate);
-        /// <summary>
-        /// Fill a region by <paramref name="Predicate"/>.
-        /// </summary>
-        /// <param name="SeedX">The x-coordinate of seed.</param>
-        /// <param name="SeedY">The y-coordinate of seed.</param>
-        /// <param name="Fill">The fill color for the region.</param>
-        /// <param name="Predicate">The decider of bound.</param>
-        public void SeedFill(int SeedX, int SeedY, Pixel Fill, ImagePredicate Predicate);
-
-        #endregion
-
-        #endregion
-
-        #region Text Rendering
-        public void DrawText(int X, int Y, string Text, int CharSize, Pixel Fill);
-        public void DrawText(int X, int Y, string Text, int CharSize, Pixel Fill, double Angle, FontWeightType Weight, bool Italic);
-        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, Pixel Fill);
-        public void DrawText(int X, int Y, string Text, string FontName, int CharSize, Pixel Fill, double Angle, FontWeightType Weight, bool Italic);
-
-        #endregion
-
-        #endregion
-
-        #region Transform Processing
-        public void Clear(Pixel Color);
-        public void Clear(Pixel Color, ParallelOptions Options);
-
-        #endregion
-
-    }
-
-    internal unsafe interface IImageContext<Pixel, Struct> : IImageContext<Pixel>
-        where Pixel : unmanaged, IPixel
-        where Struct : unmanaged, IPixelBase
-    {
-        public new ImagePalette<Pixel> Palette { get; }
-
-    }
-
 }

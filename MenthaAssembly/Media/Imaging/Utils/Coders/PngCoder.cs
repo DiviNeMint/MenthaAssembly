@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -11,7 +12,7 @@ namespace MenthaAssembly.Media.Imaging
 {
     // PNG Specification
     // https://www.w3.org/TR/PNG/
-    public static class PngCoder
+    public unsafe static class PngCoder
     {
         public const int IdentifyHeaderSize = 8;
 
@@ -354,9 +355,19 @@ namespace MenthaAssembly.Media.Imaging
             #region PLTE
             if (Image.BitsPerPixel <= 8)
             {
-                IImagePalette Palette = Image.Palette;
-                if (Palette is null ||
-                    Palette.Count == 0)
+                if (Image is IImageIndexedContext IndexedContext)
+                {
+                    IImagePalette Palette = IndexedContext.Palette;
+                    Datas = new byte[Palette.Count * 3];
+                    for (int i = 0; i < Palette.Count; i++)
+                    {
+                        IReadOnlyPixel Value = Palette[i];
+                        Datas[i * 3] = Value.R;
+                        Datas[i * 3 + 1] = Value.G;
+                        Datas[i * 3 + 2] = Value.B;
+                    }
+                }
+                else
                 {
                     Datas = new byte[3 << Image.BitsPerPixel];
                     int ColorStep = byte.MaxValue / ((1 << Image.BitsPerPixel) - 1);
@@ -365,17 +376,6 @@ namespace MenthaAssembly.Media.Imaging
                         Datas[i * 3] = (byte)i;
                         Datas[i * 3 + 1] = Datas[0];
                         Datas[i * 3 + 2] = Datas[0];
-                    }
-                }
-                else
-                {
-                    Datas = new byte[Palette.Count * 3];
-                    for (int i = 0; i < Palette.Count; i++)
-                    {
-                        IPixel Value = Palette[i];
-                        Datas[i * 3] = Value.R;
-                        Datas[i * 3 + 1] = Value.G;
-                        Datas[i * 3 + 2] = Value.B;
                     }
                 }
 
@@ -397,9 +397,9 @@ namespace MenthaAssembly.Media.Imaging
 
             Stream Compressor = new DeflateStream(DataStream, CompressionLevel.Optimal, true);
 
-            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ?
-                                         new Action<int>((j) => Image.ScanLineCopy<RGBA>(0, j, Image.Width, ImageDatas, 1)) :
-                                         (y) => Image.ScanLineCopy<RGB>(0, y, Image.Width, ImageDatas, 1);
+            byte* pImageDatas = ImageDatas.ToPointer(1);
+            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ? y => Image.ScanLineCopy<RGBA>(0, y, Image.Width, pImageDatas) :
+                                                                    y => Image.ScanLineCopy<RGB>(0, y, Image.Width, pImageDatas);
             for (int j = 0; j < Image.Height; j++)
             {
                 DataCopyAction(j);

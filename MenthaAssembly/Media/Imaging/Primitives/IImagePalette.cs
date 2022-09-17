@@ -7,11 +7,11 @@ namespace MenthaAssembly.Media.Imaging
     {
         public GCHandle Handle { get; }
 
-        int this[IPixel Color] { get; }
+        int this[IReadOnlyPixel Color] { get; }
 
-        IPixel this[int Index] { get; }
+        IReadOnlyPixel this[int Index] { get; }
 
-        bool TryGetOrAdd(IPixel Color, out int Index);
+        bool TryGetOrAdd(IReadOnlyPixel Color, out int Index);
 
         int Count { get; }
 

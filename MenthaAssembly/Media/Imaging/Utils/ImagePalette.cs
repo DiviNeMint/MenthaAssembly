@@ -17,22 +17,22 @@ namespace MenthaAssembly.Media.Imaging
         public int Capacity { get; }
 
         public Pixel this[int Index] => Datas[Index];
-        IPixel IImagePalette.this[int Index] => this[Index];
+        IReadOnlyPixel IImagePalette.this[int Index] => this[Index];
 
         public int this[Pixel Color] => Datas.IndexOf(Color);
-        int IImagePalette.this[IPixel Color] => Datas.FindIndex(i => i.A == Color.A && i.R == Color.R && i.G == Color.G && i.B == Color.B);
+        int IImagePalette.this[IReadOnlyPixel Color] => Datas.FindIndex(i => i.A == Color.A && i.R == Color.R && i.G == Color.G && i.B == Color.B);
 
         public ImagePalette(int BitsPerPixel)
         {
-            this.Capacity = 1 << BitsPerPixel;
-            this.Datas = new List<Pixel>(Capacity);
-            this.Handle = GCHandle.Alloc(this);
+            Capacity = 1 << BitsPerPixel;
+            Datas = new List<Pixel>(Capacity);
+            Handle = GCHandle.Alloc(this);
         }
         public ImagePalette(int BitsPerPixel, IEnumerable<Pixel> Palette)
         {
-            this.Capacity = 1 << BitsPerPixel;
-            this.Datas = new List<Pixel>(Palette);
-            this.Handle = GCHandle.Alloc(this);
+            Capacity = 1 << BitsPerPixel;
+            Datas = new List<Pixel>(Palette);
+            Handle = GCHandle.Alloc(this);
         }
 
         public bool TryGetOrAdd(Pixel Color, out int Index)
@@ -41,7 +41,7 @@ namespace MenthaAssembly.Media.Imaging
             if (Index != -1)
                 return true;
 
-            if (this.Count < Capacity)
+            if (Count < Capacity)
             {
                 Datas.Add(Color);
                 Index = Count - 1;
@@ -51,8 +51,8 @@ namespace MenthaAssembly.Media.Imaging
             Index = -1;
             return false;
         }
-        bool IImagePalette.TryGetOrAdd(IPixel Color, out int Index)
-            => this.TryGetOrAdd(Color.ToPixel<Pixel>(), out Index);
+        bool IImagePalette.TryGetOrAdd(IReadOnlyPixel Color, out int Index)
+            => TryGetOrAdd(Color.ToPixel<Pixel>(), out Index);
 
         public static ImagePalette<Pixel> GetSystemPalette<Struct>()
             where Struct : unmanaged, IPixelIndexed
