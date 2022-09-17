@@ -59,10 +59,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private readonly bool CalculateAlpth;
         public BilinearResizePixelAdapter(BilinearResizePixelAdapter<T> Adapter)
         {
-            _A = Adapter._A;
-            _R = Adapter._R;
-            _G = Adapter._G;
-            _B = Adapter._B;
+            if (Adapter.IsPixelValid)
+            {
+                IsPixelValid = true;
+                _A = Adapter._A;
+                _R = Adapter._R;
+                _G = Adapter._G;
+                _B = Adapter._B;
+            }
+
             MaxX = Adapter.MaxX;
             MaxY = Adapter.MaxY;
             StepX = Adapter.StepX;
@@ -71,7 +76,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracY = Adapter.FracY;
             IFracY = Adapter.IFracY;
             Source = Adapter.Source.Clone();
-            IsPixelValid = Adapter.IsPixelValid;
             CalculateAlpth = Adapter.CalculateAlpth;
         }
         public BilinearResizePixelAdapter(IImageContext Context, int NewWidth, int NewHeight)
@@ -206,6 +210,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             _R = (byte)(p00.R * IFxIFy + p01.R * FxIFy + p10.R * IFxFy + p11.R * FxFy);
             _G = (byte)(p00.G * IFxIFy + p01.G * FxIFy + p10.G * IFxFy + p11.G * FxFy);
             _B = (byte)(p00.B * IFxIFy + p01.B * FxIFy + p10.B * IFxFy + p11.B * FxFy);
+
+            IsPixelValid = true;
         }
 
         protected internal override void InternalMove(int X, int Y)

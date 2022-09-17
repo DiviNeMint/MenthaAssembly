@@ -2,15 +2,16 @@
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public sealed unsafe class FilterPixelAdapter<T> : PixelAdapter<T>
+    public sealed unsafe class ThresholdingPixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
-        internal readonly ImagePatch Source;
-        private readonly ImageFilter Filter;
+        private static readonly Type GrayType = typeof(Gray8);
 
-        public override int MaxX { get; }
+        private readonly PixelAdapter<T> Source;
 
-        public override int MaxY { get; }
+        public override int MaxX => Source.MaxX;
+
+        public override int MaxY => Source.MaxY;
 
         private byte _A;
         public override byte A
@@ -52,53 +53,46 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public override int BitsPerPixel { get; }
+        public override int BitsPerPixel
+            => Source.BitsPerPixel;
 
-        public FilterPixelAdapter(FilterPixelAdapter<T> Adapter)
+        private readonly byte Threshold;
+        public ThresholdingPixelAdapter(ThresholdingPixelAdapter<T> Adapter)
         {
-            if (IsPixelValid)
+            if (Adapter.IsPixelValid)
             {
+                IsPixelValid = true;
                 _A = Adapter._A;
                 _R = Adapter._R;
                 _G = Adapter._G;
                 _B = Adapter._B;
-                IsPixelValid = true;
             }
-            Args = Adapter.Args?.Clone();
 
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
-            BitsPerPixel = Adapter.BitsPerPixel;
-
+            Threshold = Adapter.Threshold;
             Source = Adapter.Source.Clone();
-            Filter = Adapter.Filter;
+            InternalEnsurePixel = Adapter.InternalEnsurePixel;
         }
-        public FilterPixelAdapter(IReadOnlyImageContext Context, ImageFilter Filter)
+        public ThresholdingPixelAdapter(IImageContext Context, byte Threshold)
         {
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
-            BitsPerPixel = Context.BitsPerPixel;
-
-            this.Filter = Filter;
-            Source = new ImagePatch(Context, Filter.PatchWidth, Filter.PatchHeight);
+            this.Threshold = Threshold;
+            Source = Context.GetAdapter<T>(0, 0);
+            InternalEnsurePixel = typeof(T) == GrayType ? a => a.R :
+                                                          a => a.ToGray();
         }
-        public FilterPixelAdapter(PixelAdapter<T> Adapter, ImageFilter Filter)
+        public ThresholdingPixelAdapter(PixelAdapter<T> Adapter, byte Threshold)
         {
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
-            BitsPerPixel = Adapter.BitsPerPixel;
-
-            this.Filter = Filter;
-            Source = new ImagePatch(Adapter, Filter.PatchWidth, Filter.PatchHeight);
+            Adapter.InternalMove(0, 0);
+            this.Threshold = Threshold;
+            Source = Adapter;
+            InternalEnsurePixel = typeof(T) == GrayType ? a => a.R :
+                                                          a => a.ToGray();
         }
-        internal FilterPixelAdapter(IReadOnlyImageContext Context, int X, int Y, ImageFilter Filter)
+        internal ThresholdingPixelAdapter(IImageContext Context, int X, int Y, byte Threshold)
         {
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
-            BitsPerPixel = Context.BitsPerPixel;
-
-            this.Filter = Filter;
-            Source = new ImagePatch(Context, X, Y, Filter.PatchWidth, Filter.PatchHeight);
+            this.Threshold = Threshold;
+            Source = Context.GetAdapter<T>(X, Y);
+            InternalEnsurePixel = typeof(T) == GrayType ? a => a.R :
+                                                          a => a.ToGray();
         }
 
         public override void Override(T Pixel)
@@ -150,66 +144,57 @@ namespace MenthaAssembly.Media.Imaging.Utils
             PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, _A, _R, _G, _B);
         }
 
-        private ImageFilterArgs Args;
         private bool IsPixelValid = false;
+        private readonly Func<PixelAdapter<T>, byte> InternalEnsurePixel;
         private void EnsurePixel()
         {
             if (IsPixelValid)
                 return;
 
-            if (Args is null)
-                Args = new ImageFilterArgs();
-
-            Filter.Filter(Source, Args, out _A, out _R, out _G, out _B);
+            _A = _R = _G = _B = InternalEnsurePixel(Source) < Threshold ? byte.MinValue : byte.MaxValue;
             IsPixelValid = true;
         }
 
         protected internal override void InternalMove(int X, int Y)
         {
-            Source.Move(X, Y);
-            Args = null;
+            Source.InternalMove(X, Y);
             IsPixelValid = false;
         }
         protected internal override void InternalMoveX(int OffsetX)
         {
-            Source.Move(Source.X + OffsetX, Source.Y);
-            Args = null;
+            Source.InternalMoveX(OffsetX);
             IsPixelValid = false;
         }
         protected internal override void InternalMoveY(int OffsetY)
         {
-            Source.Move(Source.X, Source.Y + OffsetY);
-            Args = null;
+            Source.InternalMoveY(OffsetY);
             IsPixelValid = false;
         }
 
         protected internal override void InternalMoveNext()
         {
-            Source.MoveNext();
+            Source.InternalMoveNext();
             IsPixelValid = false;
         }
         protected internal override void InternalMovePrevious()
         {
-            Source.MovePrevious();
-            Args = null;
+            Source.InternalMovePrevious();
             IsPixelValid = false;
         }
 
         protected internal override void InternalMoveNextLine()
         {
-            Source.MoveNextLine();
-            Args = null;
+            Source.InternalMoveNextLine();
             IsPixelValid = false;
         }
         protected internal override void InternalMovePreviousLine()
         {
-            Source.MovePreviousLine();
-            Args = null;
+            Source.InternalMovePreviousLine();
             IsPixelValid = false;
         }
 
         public override PixelAdapter<T> Clone()
-            => new FilterPixelAdapter<T>(this);
+            => new ThresholdingPixelAdapter<T>(this);
 
     }
 }

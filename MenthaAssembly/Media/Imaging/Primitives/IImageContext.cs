@@ -53,8 +53,6 @@ namespace MenthaAssembly.Media.Imaging
 
         public IntPtr ScanB { get; }
 
-        //public IImagePalette Palette { get; }
-
         /// <summary>
         /// Gets & Setters the pixel at the special location in image.
         /// </summary>

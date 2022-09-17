@@ -2966,6 +2966,10 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        #region Binarization Processing
+
+        #endregion
+
         #region Buffer Processing
 
         #region BlockCopy

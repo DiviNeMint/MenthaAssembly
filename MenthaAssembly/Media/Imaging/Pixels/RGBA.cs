@@ -30,9 +30,6 @@
 
         void IPixel.Overlay(byte A, byte R, byte G, byte B)
         {
-            if (A == 0)
-                return;
-
             int A1 = this.A,
                 rA = 255 - A,
                 Alpha = 65025 - rA * (255 - A1);
@@ -44,7 +41,7 @@
         }
 
         public override string ToString()
-            => $"R : {this.R}, G : {this.G}, B : {this.B}, A : {this.A}";
+            => $"R : {R}, G : {G}, B : {B}, A : {A}";
 
         public static implicit operator RGBA(RGB Target) => new RGBA(Target.R, Target.G, Target.B, 0xFF);
         public static implicit operator RGBA(BGR Target) => new RGBA(Target.R, Target.G, Target.B, 0xFF);
@@ -52,6 +49,6 @@
         public static implicit operator RGBA(ABGR Target) => new RGBA(Target.R, Target.G, Target.B, Target.A);
         public static implicit operator RGBA(BGRA Target) => new RGBA(Target.R, Target.G, Target.B, Target.A);
         public static implicit operator RGBA(Gray8 Target) => new RGBA(Target.R, Target.G, Target.B, 0xFF);
-    
+
     }
 }

@@ -14,39 +14,20 @@
             return Pixel;
         }
 
+        public static byte ToGray(this IReadOnlyPixel Pixel)
+            => ToGray(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        public static byte ToGray(byte A, byte R, byte G, byte B)
+            => (byte)((R * 30 + G * 59 + B * 11 + 50) * A / 25500);
+
         public static void Overlay(ref byte* pDestR, ref byte* pDestG, ref byte* pDestB, byte A, byte R, byte G, byte B)
         {
-            if (A == 0)
-                return;
-
-            if (A == byte.MaxValue)
-            {
-                *pDestR = R;
-                *pDestG = G;
-                *pDestB = B;
-                return;
-            }
-
             int rA = 255 - A;
-
             *pDestR = (byte)((R * A + *pDestR * rA) / 255);
             *pDestG = (byte)((G * A + *pDestG * rA) / 255);
             *pDestB = (byte)((B * A + *pDestB * rA) / 255);
         }
         public static void Overlay(ref byte* pDestA, ref byte* pDestR, ref byte* pDestG, ref byte* pDestB, byte A, byte R, byte G, byte B)
         {
-            if (A == 0)
-                return;
-
-            if (A == byte.MaxValue)
-            {
-                *pDestA = A;
-                *pDestR = R;
-                *pDestG = G;
-                *pDestB = B;
-                return;
-            }
-
             int A1 = *pDestA,
                 rA = 255 - A,
                 Alpha = 65025 - rA * (255 - A1);

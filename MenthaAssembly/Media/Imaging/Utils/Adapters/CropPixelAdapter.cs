@@ -40,16 +40,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Source = Context.GetAdapter<T>(X, Y);
             Sx = X;
             Sy = Y;
-            MaxX = Math.Max(X + Width - 1, Source.MaxX);
-            MaxY = Math.Max(Y + Height - 1, Source.MaxY);
+            MaxX = Math.Min(Width - 1, Source.MaxX - X);
+            MaxY = Math.Min(Height - 1, Source.MaxY - Y);
         }
         public CropPixelAdapter(PixelAdapter<T> Adapter, int X, int Y, int Width, int Height)
         {
             Source = Adapter;
-            Sx = Adapter.X - X;
-            Sy = Adapter.Y - Y;
-            MaxX = Math.Max(X + Width - 1, Source.MaxX);
-            MaxY = Math.Max(Y + Height - 1, Source.MaxY);
+            Sx = X;
+            Sy = Y;
+            MaxX = Math.Min(Width - 1, Source.MaxX - X);
+            MaxY = Math.Min(Height - 1, Source.MaxY - Y);
         }
 
         public override void Override(T Pixel)

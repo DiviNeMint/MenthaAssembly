@@ -29,9 +29,6 @@
         }
         void IPixel.Overlay(byte A, byte R, byte G, byte B)
         {
-            if (A == 0)
-                return;
-
             int A1 = this.A,
                 rA = 255 - A,
                 Alpha = 65025 - rA * (255 - A1);
@@ -43,7 +40,7 @@
         }
 
         public override string ToString()
-            => $"A : {this.A}, B : {this.B}, G : {this.G}, R : {this.R}";
+            => $"A : {A}, B : {B}, G : {G}, R : {R}";
 
 
         public static implicit operator ABGR(RGB Target) => new ABGR(0xFF, Target.B, Target.G, Target.R);

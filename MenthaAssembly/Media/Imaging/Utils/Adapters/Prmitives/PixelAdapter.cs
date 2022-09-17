@@ -1,8 +1,12 @@
-﻿namespace MenthaAssembly.Media.Imaging.Utils
+﻿using System.Threading.Tasks;
+
+namespace MenthaAssembly.Media.Imaging.Utils
 {
     public abstract unsafe class PixelAdapter<T> : IReadOnlyPixelAdapter, IPixel
         where T : unmanaged, IPixel
     {
+        private static readonly ParallelOptions DefaultParallelOptions = new ParallelOptions();
+
         public int X { protected set; get; } = -1;
 
         public int Y { protected set; get; } = -1;
@@ -132,6 +136,43 @@
         protected internal abstract void InternalMoveNextLine();
 
         protected internal abstract void InternalMovePreviousLine();
+
+        public virtual ImageContext<T> ToImageContext()
+        {
+            int W = MaxX + 1,
+                H = MaxY + 1;
+            ImageContext<T> Context = new ImageContext<T>(W, H);
+            PixelAdapter<T> Dest = Context.GetAdapter<T>(0, 0);
+
+            InternalMove(0, 0);
+            for (int j = 0; j < H; j++, InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i < W; i++, InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(this);
+
+                InternalMoveX(-W);
+                Dest.InternalMoveX(-W);
+            }
+
+            return Context;
+        }
+        public virtual ImageContext<T> ToImageContext(ParallelOptions Options)
+        {
+            int H = MaxY + 1;
+            ImageContext<T> Context = new ImageContext<T>(MaxX + 1, H);
+            Parallel.For(0, H, Options ?? DefaultParallelOptions, j =>
+            {
+                PixelAdapter<T> Sorc = Clone(),
+                                Dest = Context.GetAdapter<T>(0, j);
+
+                Sorc.InternalMove(0, j);
+                for (int i = 0; i <= MaxX; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Sorc);
+
+            });
+
+            return Context;
+        }
 
         public abstract PixelAdapter<T> Clone();
         IReadOnlyPixelAdapter IReadOnlyPixelAdapter.Clone()
