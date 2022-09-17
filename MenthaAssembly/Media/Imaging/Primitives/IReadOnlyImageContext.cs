@@ -6,22 +6,53 @@ namespace MenthaAssembly.Media.Imaging
 {
     public unsafe interface IReadOnlyImageContext
     {
+        /// <summary>
+        /// Gets the Width of image.
+        /// </summary>
         public int Width { get; }
 
+        /// <summary>
+        /// Gets the Height of image.
+        /// </summary>
         public int Height { get; }
 
+        /// <summary>
+        /// Gets the bytes length of a scanline.
+        /// </summary>
         public long Stride { get; }
 
+        /// <summary>
+        /// Gets the bits length of a pixel.
+        /// </summary>
         public int BitsPerPixel { get; }
 
+        /// <summary>
+        /// Get the channels of image.
+        /// </summary>
         public int Channels { get; }
 
+        /// <summary>
+        /// Get the pixel type of image.
+        /// </summary>
         public Type PixelType { get; }
 
+        /// <summary>
+        /// Get the struct type of image.
+        /// </summary>
         public Type StructType { get; }
 
+        /// <summary>
+        /// Gets the pixel at the special location in image.
+        /// </summary>
+        /// <param name="X">The x-coordinate of the special location.</param>
+        /// <param name="Y">The y-coordinate of the special location.</param>
         public IReadOnlyPixel this[int X, int Y] { get; }
 
+        /// <summary>
+        /// Creates a IReadOnlyPixelAdapter.
+        /// </summary>
+        /// <param name="X">The x-coordinate of start point at adapter.</param>
+        /// <param name="Y">The y-coordinate of start point at adapter.</param>
         public IReadOnlyPixelAdapter GetAdapter(int X, int Y);
 
         #region Buffer Processing

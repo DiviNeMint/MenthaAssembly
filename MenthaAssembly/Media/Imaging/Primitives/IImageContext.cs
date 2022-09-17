@@ -1,5 +1,4 @@
-﻿using MenthaAssembly.Media.Imaging.Primitives;
-using MenthaAssembly.Media.Imaging.Utils;
+﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -43,14 +42,29 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         public Type StructType { get; }
 
+        /// <summary>
+        /// Gets the data pointer to the image.
+        /// </summary>
         public IntPtr Scan0 { get; }
 
+        /// <summary>
+        /// Gets the Alpha-channel data pointer to the image.
+        /// </summary>
         public IntPtr ScanA { get; }
 
+        /// <summary>
+        /// Gets the R-channel data pointer to the image.
+        /// </summary>
         public IntPtr ScanR { get; }
 
+        /// <summary>
+        /// Gets the G-channel data pointer to the image.
+        /// </summary>
         public IntPtr ScanG { get; }
 
+        /// <summary>
+        /// Gets the B-channel data pointer to the image.
+        /// </summary>
         public IntPtr ScanB { get; }
 
         /// <summary>
