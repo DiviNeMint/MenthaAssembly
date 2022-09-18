@@ -56,21 +56,6 @@
             *pScanG = G;
             *pScanB = B;
         }
-        public override void OverrideTo(T* pData)
-            => pData->Override(*pScanA, *pScanR, *pScanG, *pScanB);
-        public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
-        {
-            *pDataR = *pScanR;
-            *pDataG = *pScanG;
-            *pDataB = *pScanB;
-        }
-        public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
-        {
-            *pDataA = *pScanA;
-            *pDataR = *pScanR;
-            *pDataG = *pScanG;
-            *pDataB = *pScanB;
-        }
 
         public override void Overlay(T Pixel)
             => Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
@@ -78,12 +63,6 @@
             => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public override void Overlay(byte A, byte R, byte G, byte B)
             => PixelHelper.Overlay(ref pScanA, ref pScanR, ref pScanG, ref pScanB, A, R, G, B);
-        public override void OverlayTo(T* pData)
-            => pData->Overlay(*pScanA, *pScanR, *pScanG, *pScanB);
-        public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
-            => PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, *pScanA, *pScanR, *pScanG, *pScanB);
-        public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
-            => PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, *pScanA, *pScanR, *pScanG, *pScanB);
 
         public override void Move(int X, int Y)
         {

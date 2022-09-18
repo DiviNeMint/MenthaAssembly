@@ -112,7 +112,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverrideTo(T* pData)
         {
             EnsurePixel();
-            *pData = Palette[Index];
+            *pData = Pixel;
         }
         public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
@@ -147,17 +147,39 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverlayTo(T* pData)
         {
             EnsurePixel();
-            pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            if (Pixel.A == byte.MaxValue)
+                *pData = Pixel;
+            else
+                pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
         public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            if (Pixel.A == byte.MaxValue)
+            {
+                *pDataR = Pixel.R;
+                *pDataG = Pixel.G;
+                *pDataB = Pixel.B;
+            }
+            else
+            {
+                PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            }
         }
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            if (Pixel.A == byte.MaxValue)
+            {
+                *pDataA = byte.MaxValue;
+                *pDataR = Pixel.R;
+                *pDataG = Pixel.G;
+                *pDataB = Pixel.B;
+            }
+            else
+            {
+                PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            }
         }
 
         public int GetPaletteIndex()
@@ -339,7 +361,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void Override(U Pixel)
             => Override(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         public override void Override(PixelAdapter<U> Adapter)
-            => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
+            => Override(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public override void Override(byte A, byte R, byte G, byte B)
         {
             Pixel.Override(A, R, G, B);
@@ -388,17 +410,39 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverlayTo(U* pData)
         {
             EnsurePixel();
-            pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            if (Pixel.A == byte.MaxValue)
+                pData->Override(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            else
+                pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         }
         public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            if (Pixel.A == byte.MaxValue)
+            {
+                *pDataR = Pixel.R;
+                *pDataG = Pixel.G;
+                *pDataB = Pixel.B;
+            }
+            else
+            {
+                PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            }
         }
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            if (Pixel.A == byte.MaxValue)
+            {
+                *pDataA = byte.MaxValue;
+                *pDataR = Pixel.R;
+                *pDataG = Pixel.G;
+                *pDataB = Pixel.B;
+            }
+            else
+            {
+                PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            }
         }
 
         public int GetPaletteIndex()

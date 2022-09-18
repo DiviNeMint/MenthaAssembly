@@ -13,43 +13,40 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int MaxY => Source.MaxY;
 
-        private byte _A;
+        private byte _Value;
         public override byte A
         {
             get
             {
                 EnsurePixel();
-                return _A;
+                return _Value;
             }
         }
 
-        private byte _R;
         public override byte R
         {
             get
             {
                 EnsurePixel();
-                return _R;
+                return _Value;
             }
         }
 
-        private byte _G;
         public override byte G
         {
             get
             {
                 EnsurePixel();
-                return _G;
+                return _Value;
             }
         }
 
-        private byte _B;
         public override byte B
         {
             get
             {
                 EnsurePixel();
-                return _B;
+                return _Value;
             }
         }
 
@@ -62,10 +59,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (Adapter.IsPixelValid)
             {
                 IsPixelValid = true;
-                _A = Adapter._A;
-                _R = Adapter._R;
-                _G = Adapter._G;
-                _B = Adapter._B;
+                _Value = Adapter._Value;
             }
 
             Threshold = Adapter.Threshold;
@@ -104,22 +98,22 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverrideTo(T* pData)
         {
             EnsurePixel();
-            pData->Override(_A, _R, _G, _B);
+            pData->Override(_Value, _Value, _Value, _Value);
         }
         public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            *pDataR = _R;
-            *pDataG = _G;
-            *pDataB = _B;
+            *pDataR = _Value;
+            *pDataG = _Value;
+            *pDataB = _Value;
         }
         public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            *pDataA = _A;
-            *pDataR = _R;
-            *pDataG = _G;
-            *pDataB = _B;
+            *pDataA = _Value;
+            *pDataR = _Value;
+            *pDataG = _Value;
+            *pDataB = _Value;
         }
 
         public override void Overlay(T Pixel)
@@ -131,17 +125,29 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverlayTo(T* pData)
         {
             EnsurePixel();
-            pData->Overlay(_A, _R, _G, _B);
+            if (_Value == byte.MaxValue)
+                pData->Override(_Value, _Value, _Value, _Value);
         }
         public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, _A, _R, _G, _B);
+            if (_Value == byte.MaxValue)
+            {
+                *pDataR = _Value;
+                *pDataG = _Value;
+                *pDataB = _Value;
+            }
         }
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, _A, _R, _G, _B);
+            if (_Value == byte.MaxValue)
+            {
+                *pDataA = _Value;
+                *pDataR = _Value;
+                *pDataG = _Value;
+                *pDataB = _Value;
+            }
         }
 
         private bool IsPixelValid = false;
@@ -151,7 +157,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (IsPixelValid)
                 return;
 
-            _A = _R = _G = _B = InternalEnsurePixel(Source) < Threshold ? byte.MinValue : byte.MaxValue;
+            _Value = InternalEnsurePixel(Source) < Threshold ? byte.MinValue : byte.MaxValue;
             IsPixelValid = true;
         }
 

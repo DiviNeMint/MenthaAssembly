@@ -55,12 +55,6 @@
         }
         public override void OverrideTo(T* pData)
             => pData->Override(byte.MaxValue, *pScanR, *pScanG, *pScanB);
-        public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
-        {
-            *pDataR = *pScanR;
-            *pDataG = *pScanG;
-            *pDataB = *pScanB;
-        }
         public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             *pDataA = byte.MaxValue;

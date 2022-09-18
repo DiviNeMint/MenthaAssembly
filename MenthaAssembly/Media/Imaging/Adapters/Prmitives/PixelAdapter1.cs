@@ -49,19 +49,6 @@
             => pScan->Override(A, R, G, B);
         public override void OverrideTo(T* pData)
             => *pData = *pScan;
-        public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
-        {
-            *pDataR = pScan->R;
-            *pDataG = pScan->G;
-            *pDataB = pScan->B;
-        }
-        public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
-        {
-            *pDataA = pScan->A;
-            *pDataR = pScan->R;
-            *pDataG = pScan->G;
-            *pDataB = pScan->B;
-        }
 
         public override void Overlay(T Pixel)
         {
@@ -74,17 +61,6 @@
             => Adapter.OverlayTo(pScan);
         public override void Overlay(byte A, byte R, byte G, byte B)
             => pScan->Overlay(A, R, G, B);
-        public override void OverlayTo(T* pData)
-        {
-            if (pScan->A == byte.MaxValue)
-                OverrideTo(pData);
-            else
-                pData->Overlay(pScan->A, pScan->R, pScan->G, pScan->B);
-        }
-        public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
-            => PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, pScan->A, pScan->R, pScan->G, pScan->B);
-        public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
-            => PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, pScan->A, pScan->R, pScan->G, pScan->B);
 
         protected internal override void InternalMove(int X, int Y)
             => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
@@ -116,13 +92,46 @@
 
         public override int MaxY { get; }
 
-        public override byte A => pScan->A;
+#pragma warning disable IDE0044 // 新增唯讀修飾元
+        // If sets readonly, it will cause pixel's value can't change.
+        private U Pixel;
+#pragma warning restore IDE0044 // 新增唯讀修飾元
 
-        public override byte R => pScan->R;
+        public override byte A
+        {
+            get
+            {
+                EnsurePixel();
+                return Pixel.A;
+            }
+        }
 
-        public override byte G => pScan->G;
+        public override byte R
+        {
+            get
+            {
+                EnsurePixel();
+                return Pixel.R;
+            }
+        }
 
-        public override byte B => pScan->B;
+        public override byte G
+        {
+            get
+            {
+                EnsurePixel();
+                return Pixel.G;
+            }
+        }
+
+        public override byte B
+        {
+            get
+            {
+                EnsurePixel();
+                return Pixel.B;
+            }
+        }
 
         public override int BitsPerPixel { get; }
 
@@ -139,6 +148,12 @@
             BitsPerPixel = Adapter.BitsPerPixel;
             pScan0 = Adapter.pScan0;
             pScan = Adapter.pScan;
+
+            if (Adapter.IsPixelValid)
+            {
+                IsPixelValid = true;
+                Pixel = Adapter.Pixel;
+            }
         }
         public PixelAdapter1(IImageContext Context, int X, int Y)
         {
@@ -157,19 +172,24 @@
         public override void Override(byte A, byte R, byte G, byte B)
             => pScan->Override(A, R, G, B);
         public override void OverrideTo(U* pData)
-            => pData->Override(pScan->A, pScan->R, pScan->G, pScan->B);
+        {
+            EnsurePixel();
+            *pData = Pixel;
+        }
         public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            *pDataR = pScan->R;
-            *pDataG = pScan->G;
-            *pDataB = pScan->B;
+            EnsurePixel();
+            *pDataR = Pixel.R;
+            *pDataG = Pixel.G;
+            *pDataB = Pixel.B;
         }
         public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
-            *pDataA = pScan->A;
-            *pDataR = pScan->R;
-            *pDataG = pScan->G;
-            *pDataB = pScan->B;
+            EnsurePixel();
+            *pDataA = Pixel.A;
+            *pDataR = Pixel.R;
+            *pDataG = Pixel.G;
+            *pDataB = Pixel.B;
         }
 
         public override void Overlay(U Pixel)
@@ -179,28 +199,90 @@
         public override void Overlay(byte A, byte R, byte G, byte B)
             => pScan->Overlay(A, R, G, B);
         public override void OverlayTo(U* pData)
-            => pData->Overlay(pScan->A, pScan->R, pScan->G, pScan->B);
+        {
+            EnsurePixel();
+            if (Pixel.A == byte.MaxValue)
+                *pData = Pixel;
+            else
+                pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        }
         public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
-            => PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, pScan->A, pScan->R, pScan->G, pScan->B);
+        {
+            EnsurePixel();
+            if (Pixel.A == byte.MaxValue)
+            {
+                *pDataR = Pixel.R;
+                *pDataG = Pixel.G;
+                *pDataB = Pixel.B;
+            }
+            else
+            {
+                PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            }
+        }
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
-            => PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, pScan->A, pScan->R, pScan->G, pScan->B);
+        {
+            EnsurePixel();
+            if (Pixel.A == byte.MaxValue)
+            {
+                *pDataA = byte.MaxValue;
+                *pDataR = Pixel.R;
+                *pDataG = Pixel.G;
+                *pDataB = Pixel.B;
+            }
+            else
+            {
+                PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            }
+        }
+
+        private bool IsPixelValid = false;
+        private void EnsurePixel()
+        {
+            if (IsPixelValid)
+                return;
+
+            Pixel.Override(pScan->A, pScan->R, pScan->G, pScan->B);
+            IsPixelValid = true;
+        }
 
         protected internal override void InternalMove(int X, int Y)
-            => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
+        {
+            pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
+            IsPixelValid = false;
+        }
         protected internal override void InternalMoveX(int OffsetX)
-            => pScan += OffsetX;
+        {
+            pScan += OffsetX;
+            IsPixelValid = false;
+        }
         protected internal override void InternalMoveY(int OffsetY)
-            => pScan = (T*)((byte*)pScan + Stride * OffsetY);
+        {
+            pScan = (T*)((byte*)pScan + Stride * OffsetY);
+            IsPixelValid = false;
+        }
 
         protected internal override void InternalMoveNext()
-            => pScan++;
+        {
+            pScan++;
+            IsPixelValid = false;
+        }
         protected internal override void InternalMovePrevious()
-            => pScan--;
+        {
+            pScan--;
+            IsPixelValid = false;
+        }
 
         protected internal override void InternalMoveNextLine()
-            => pScan = (T*)((byte*)pScan + Stride);
+        {
+            pScan = (T*)((byte*)pScan + Stride);
+            IsPixelValid = false;
+        }
         protected internal override void InternalMovePreviousLine()
-            => pScan = (T*)((byte*)pScan - Stride);
+        {
+            pScan = (T*)((byte*)pScan - Stride);
+            IsPixelValid = false;
+        }
 
         public override PixelAdapter<U> Clone()
             => new PixelAdapter1<T, U>(this);

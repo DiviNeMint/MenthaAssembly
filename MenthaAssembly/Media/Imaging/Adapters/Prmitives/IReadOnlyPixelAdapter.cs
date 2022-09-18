@@ -1,4 +1,6 @@
-﻿namespace MenthaAssembly.Media.Imaging.Utils
+﻿using System;
+
+namespace MenthaAssembly.Media.Imaging.Utils
 {
     public unsafe interface IReadOnlyPixelAdapter : IReadOnlyPixel
     {
@@ -9,6 +11,8 @@
         public int MaxX { get; }
 
         public int MaxY { get; }
+
+        public Type PixelType { get; }
 
         public void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB);
 

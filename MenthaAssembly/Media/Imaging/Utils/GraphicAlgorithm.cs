@@ -2128,7 +2128,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Handler(DEx, DEy);
         }
 
-
         public static void CalculateArcPolygonPoints(double DSx, double DSy, double DEx, double DEy, double Rx, double Ry, bool Clockwise, bool IgnoreEndPoint, GraphicDoubleDeltaHandler Handler)
         {
             double Sa = Math.Atan2(DSy, DSx),
@@ -2910,6 +2909,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             throw new ArgumentException("All the points in the polygon are colinear");
         }
+
     }
 
 }

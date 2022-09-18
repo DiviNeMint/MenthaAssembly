@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
@@ -6,6 +7,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where T : unmanaged, IPixel
     {
         private static readonly ParallelOptions DefaultParallelOptions = new ParallelOptions();
+        private static readonly Type PixelType = typeof(T);
 
         public int X { protected set; get; } = int.MinValue;
 
@@ -14,6 +16,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public abstract int MaxX { get; }
 
         public abstract int MaxY { get; }
+
+        Type IReadOnlyPixelAdapter.PixelType
+            => typeof(T);
 
         public abstract byte A { get; }
 
@@ -31,11 +36,23 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public abstract void Override(byte A, byte R, byte G, byte B);
 
-        public abstract void OverrideTo(T* pData);
+        public virtual void OverrideTo(T* pData)
+            => pData->Override(A, R, G, B);
 
-        public abstract void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB);
+        public virtual void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
+        {
+            *pDataR = R;
+            *pDataG = G;
+            *pDataB = B;
+        }
 
-        public abstract void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB);
+        public virtual void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        {
+            *pDataA = A;
+            *pDataR = R;
+            *pDataG = G;
+            *pDataB = B;
+        }
 
         public abstract void Overlay(T Pixel);
 
@@ -43,11 +60,32 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public abstract void Overlay(byte A, byte R, byte G, byte B);
 
-        public abstract void OverlayTo(T* pData);
+        public virtual void OverlayTo(T* pData)
+        {
+            byte A = this.A;
+            if (A == byte.MaxValue)
+                OverrideTo(pData);
+            else
+                pData->Overlay(A, R, G, B);
+        }
 
-        public abstract void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB);
+        public virtual void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
+        {
+            byte A = this.A;
+            if (A == byte.MaxValue)
+                OverrideTo(pDataR, pDataG, pDataB);
+            else
+                PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, A, R, G, B);
+        }
 
-        public abstract void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB);
+        public virtual void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        {
+            byte A = this.A;
+            if (A == byte.MaxValue)
+                OverrideTo(pDataA, pDataR, pDataG, pDataB);
+            else
+                PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, A, R, G, B);
+        }
 
         public virtual void Move(int X, int Y)
         {

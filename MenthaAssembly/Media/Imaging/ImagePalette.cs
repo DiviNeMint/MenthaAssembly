@@ -13,8 +13,10 @@ namespace MenthaAssembly.Media.Imaging
 
         public int Capacity { get; }
 
-        public Pixel this[int Index] => Datas[Index];
-        IReadOnlyPixel IImagePalette.this[int Index] => this[Index];
+        public Pixel this[int Index]
+            => Index < Datas.Count ? Datas[Index] : default;
+        IReadOnlyPixel IImagePalette.this[int Index]
+            => this[Index];
 
         public int this[Pixel Color] => Datas.IndexOf(Color);
         int IImagePalette.this[IReadOnlyPixel Color] => Datas.FindIndex(i => i.A == Color.A && i.R == Color.R && i.G == Color.G && i.B == Color.B);

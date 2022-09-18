@@ -180,20 +180,48 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverlayTo(T* pData)
         {
             EnsurePixel();
-            if (!IsEmptyPixel)
+            if (IsEmptyPixel)
+                return;
+
+            if (_A == byte.MaxValue)
+                pData->Override(byte.MaxValue, _R, _G, _B);
+            else
                 pData->Overlay(_A, _R, _G, _B);
         }
         public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            if (!IsEmptyPixel)
+            if (IsEmptyPixel)
+                return;
+
+            if (_A == byte.MaxValue)
+            {
+                *pDataR = _R;
+                *pDataG = _G;
+                *pDataB = _B;
+            }
+            else
+            {
                 PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, _A, _R, _G, _B);
+            }
         }
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            if (!IsEmptyPixel)
+            if (IsEmptyPixel)
+                return;
+
+            if (_A == byte.MaxValue)
+            {
+                *pDataA = byte.MaxValue;
+                *pDataR = _R;
+                *pDataG = _G;
+                *pDataB = _B;
+            }
+            else
+            {
                 PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, _A, _R, _G, _B);
+            }
         }
 
         private bool IsPixelValid = false,
