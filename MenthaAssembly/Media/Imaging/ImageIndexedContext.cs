@@ -2932,29 +2932,6 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
-        #region Binarization Processing
-        public ImageContext<T, Indexed1> Thresholding<T>(byte Threshold)
-            where T : unmanaged, IPixel
-        {
-            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
-
-            PixelAdapter<T> Sorc = new ThresholdingPixelAdapter<T>(this, Threshold),
-                            Dest = Image.GetAdapter<T>(0, 0);
-
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
-            {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    Dest.Override(Sorc);
-
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
-            }
-
-            return Image;
-        }
-
-        #endregion
-
         #region Buffer Processing
 
         #region BlockCopy

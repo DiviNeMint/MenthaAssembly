@@ -1,19 +1,18 @@
-﻿namespace MenthaAssembly.Media.Imaging
+﻿using MenthaAssembly.Media.Imaging.Utils;
+
+namespace MenthaAssembly.Media.Imaging
 {
     public sealed class ConstThreshold : ImageThreshold
     {
         public byte Threshold { get; }
 
-        public ConstThreshold(byte Threshold) : base(true)
+        public ConstThreshold(byte Threshold)
         {
             this.Threshold = Threshold;
         }
 
-        protected internal override bool InternalPredict(int X, int Y, byte Gray)
-            => Threshold <= Gray;
-
-        public override ImageThreshold Clone()
-            => this;
+        public override PixelAdapter<T> CreateAdapter<T>(PixelAdapter<T> Source)
+            => new RangesThresholdingPixelAdapter<T>(Source, Threshold, byte.MaxValue);
 
     }
 }

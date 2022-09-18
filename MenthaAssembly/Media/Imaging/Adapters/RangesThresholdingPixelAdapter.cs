@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public sealed unsafe class ThresholdingPixelAdapter<T> : PixelAdapter<T>
+    public sealed unsafe class RangesThresholdingPixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
         private static readonly Type GrayType = typeof(Gray8);
@@ -53,8 +53,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override int BitsPerPixel
             => Source.BitsPerPixel;
 
-        private readonly byte Threshold;
-        public ThresholdingPixelAdapter(ThresholdingPixelAdapter<T> Adapter)
+        private readonly byte[] Ranges;
+        public RangesThresholdingPixelAdapter(RangesThresholdingPixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
             {
@@ -62,31 +62,30 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 _Value = Adapter._Value;
             }
 
-            Threshold = Adapter.Threshold;
+            Ranges = Adapter.Ranges;
             Source = Adapter.Source.Clone();
-            InternalEnsurePixel = Adapter.InternalEnsurePixel;
+            GetGray = Adapter.GetGray;
         }
-        public ThresholdingPixelAdapter(IImageContext Context, byte Threshold)
+        public RangesThresholdingPixelAdapter(IImageContext Context, params byte[] Ranges)
         {
-            this.Threshold = Threshold;
+            if ((Ranges.Length & 0x01) > 1)
+                throw new ArgumentException("The length of the range must be an even number.");
+
+            this.Ranges = Ranges;
             Source = Context.GetAdapter<T>(0, 0);
-            InternalEnsurePixel = typeof(T) == GrayType ? a => a.R :
-                                                          a => a.ToGray();
+            GetGray = typeof(T) == GrayType ? a => a.R :
+                                              a => a.ToGray();
         }
-        public ThresholdingPixelAdapter(PixelAdapter<T> Adapter, byte Threshold)
+        public RangesThresholdingPixelAdapter(PixelAdapter<T> Adapter, params byte[] Ranges)
         {
+            if ((Ranges.Length & 0x01) > 1)
+                throw new ArgumentException("The length of the range must be an even number.");
+
             Adapter.InternalMove(0, 0);
-            this.Threshold = Threshold;
+            this.Ranges = Ranges;
             Source = Adapter;
-            InternalEnsurePixel = typeof(T) == GrayType ? a => a.R :
-                                                          a => a.ToGray();
-        }
-        internal ThresholdingPixelAdapter(IImageContext Context, int X, int Y, byte Threshold)
-        {
-            this.Threshold = Threshold;
-            Source = Context.GetAdapter<T>(X, Y);
-            InternalEnsurePixel = typeof(T) == GrayType ? a => a.R :
-                                                          a => a.ToGray();
+            GetGray = typeof(T) == GrayType ? a => a.R :
+                                              a => a.ToGray();
         }
 
         public override void Override(T Pixel)
@@ -151,13 +150,28 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
 
         private bool IsPixelValid = false;
-        private readonly Func<PixelAdapter<T>, byte> InternalEnsurePixel;
+        private readonly Func<PixelAdapter<T>, byte> GetGray;
         private void EnsurePixel()
         {
             if (IsPixelValid)
                 return;
 
-            _Value = InternalEnsurePixel(Source) < Threshold ? byte.MinValue : byte.MaxValue;
+            byte Gray = GetGray(Source);
+
+            bool IsContain = false;
+            for (int i = 0; i < Ranges.Length;)
+            {
+                int Sv = Ranges[i++],
+                    Ev = Ranges[i++];
+                if (Sv <= Gray && Gray <= Ev)
+                {
+                    IsContain = true;
+                    break;
+                }
+
+            }
+
+            _Value = IsContain ? byte.MaxValue : byte.MinValue;
             IsPixelValid = true;
         }
 
@@ -200,7 +214,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
 
         public override PixelAdapter<T> Clone()
-            => new ThresholdingPixelAdapter<T>(this);
+            => new RangesThresholdingPixelAdapter<T>(this);
 
     }
 }

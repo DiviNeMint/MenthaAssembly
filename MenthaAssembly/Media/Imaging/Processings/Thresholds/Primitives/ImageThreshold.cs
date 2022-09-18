@@ -1,57 +1,65 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
+using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public abstract class ImageThreshold : ICloneable
+    public abstract class ImageThreshold
     {
-        protected static readonly Type GrayType = typeof(Gray8);
+        /// <summary>
+        /// Create the adapter of thresholding image.
+        /// </summary>
+        /// <typeparam name="T">The pixel type of adapter.</typeparam>
+        /// <param name="Source">The adapter of image.</param>
+        public abstract PixelAdapter<T> CreateAdapter<T>(PixelAdapter<T> Source)
+            where T : unmanaged, IPixel;
 
-        public bool IsThreadingSafe { get; }
-
-        protected ImageThreshold(bool IsThreadingSafe)
-        {
-            this.IsThreadingSafe = IsThreadingSafe;
-        }
-
-        public virtual bool Predict(IReadOnlyPixelAdapter Adapter)
-            => InternalPredict(Adapter.X, Adapter.Y, Adapter.PixelType == GrayType ? Adapter.A : Adapter.ToGray());
-
-        protected internal abstract bool InternalPredict(int X, int Y, byte Gray);
-
-        protected int[] CreateHistogram<T>(PixelAdapter<T> Adapter, out byte AverageGray)
+        protected IEnumerable<byte> EnumGrays<T>(PixelAdapter<T> Adapter)
             where T : unmanaged, IPixel
         {
             int Width = Adapter.MaxX + 1,
                 Height = Adapter.MaxY + 1;
             Func<byte> GetGray = typeof(T) == typeof(Gray8) ? () => Adapter.R : () => Adapter.ToGray();
 
-            long S = 0;
-            int[] Histogram = new int[256];
-
             Adapter.InternalMove(0, 0);
             for (int j = 0; j < Height; j++, Adapter.InternalMoveNextLine())
             {
                 for (int i = 0; i < Width; i++, Adapter.InternalMoveNext())
-                {
-                    byte Gray = GetGray();
-                    Histogram[Gray]++;
-                    S += Gray;
-                }
+                    yield return GetGray();
 
                 Adapter.InternalMoveX(-Width);
             }
-
-            AverageGray = (byte)(S / ((long)Width * Height));
-            return Histogram;
         }
 
-        public abstract ImageThreshold Clone();
-        object ICloneable.Clone()
-            => Clone();
+        /// <summary>
+        /// The special threshold calculated by iteration algorithm.
+        /// </summary>
+        public static ImageThreshold Iteration { get; } = new IterationThreshold();
 
-        public static implicit operator ImageThreshold(int Threshold) => new ConstThreshold((byte)Threshold);
-        public static implicit operator ImageThreshold(byte Threshold) => new ConstThreshold(Threshold);
+        /// <summary>
+        /// The special threshold calculated by averaging all gray.
+        /// </summary>
+        public static ImageThreshold GrayMean { get; } = new MeanThreshold();
+
+        /// <summary>
+        /// The special threshold calculated by 25% of background area in image.
+        /// </summary>
+        public static ImageThreshold PTile25 { get; } = new PTileThreshold(0.25d);
+
+        /// <summary>
+        /// The special threshold calculated by 50% of background area in image.
+        /// </summary>
+        public static ImageThreshold PTile50 { get; } = new PTileThreshold(0.5d);
+
+        /// <summary>
+        /// The special threshold calculated by 75% of background area in image.
+        /// </summary>
+        public static ImageThreshold PTile75 { get; } = new PTileThreshold(0.75d);
+
+        public static implicit operator ImageThreshold(int Threshold)
+            => new ConstThreshold((byte)Threshold.Clamp(byte.MinValue, byte.MaxValue));
+        public static implicit operator ImageThreshold(byte Threshold)
+            => new ConstThreshold(Threshold);
 
     }
 }
