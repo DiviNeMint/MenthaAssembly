@@ -791,7 +791,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Fill">The fill color for the contour.</param>
         /// <param name="OffsetX">The offset of x-coordinate.</param>
         /// <param name="OffsetY">The offset of y-coordinate.</param>
-        public void FillContour<T>(ImageContour Contour, T Fill, double OffsetX, double OffsetY) where T : unmanaged, IPixel;
+        public void FillContour<T>(IImageContour Contour, T Fill, double OffsetX, double OffsetY) where T : unmanaged, IPixel;
 
         /// <summary>
         /// Fill a region by <paramref name="Predicate"/>.

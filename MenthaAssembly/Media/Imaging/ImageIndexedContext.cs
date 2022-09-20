@@ -2226,7 +2226,7 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        public void FillContour<T>(ImageContour Contour, T Fill, double OffsetX, double OffsetY)
+        public void FillContour<T>(IImageContour Contour, T Fill, double OffsetX, double OffsetY)
             where T : unmanaged, IPixel
         {
             if (Fill.A == byte.MinValue)

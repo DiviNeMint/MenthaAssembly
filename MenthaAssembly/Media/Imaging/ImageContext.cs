@@ -2329,7 +2329,7 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        public void FillContour<T>(ImageContour Contour, T Fill, double OffsetX, double OffsetY)
+        public void FillContour<T>(IImageContour Contour, T Fill, double OffsetX, double OffsetY)
             where T : unmanaged, IPixel
         {
             if (Fill.A == byte.MinValue)
@@ -2934,6 +2934,59 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        #region Binarize
+        /// <summary>
+        /// Creates a new binarized image by the special threshold.
+        /// </summary>
+        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            PixelAdapter<T> Sorc = Threshold.CreateAdapter(GetAdapter<T>(0, 0)),
+                            Dest = Image.GetAdapter<T>(0, 0);
+
+            T Color0 = default;
+            Image.Palette.Datas.Add(Color0);
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
+                        Dest.Override(Sorc);
+
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
+            }
+
+            return Image;
+        }
+        /// <summary>
+        /// Creates a new binarized image by the custom predicate.
+        /// </summary>
+        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
+                            Dest = Image.GetAdapter<T>(0, 0);
+
+            T Max = PixelHelper.ToPixel<T>(255, 255, 255, 255);
+            Image.Palette.Datas.Add(default);
+
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Predicate(i, j, Sorc))
+                        Dest.Override(Max);
+
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
+            }
+
+            return Image;
+        }
+
+        #endregion
+
         #region Cast
         public ImageContext<T> Cast<T>()
             where T : unmanaged, IPixel
@@ -3032,59 +3085,6 @@ namespace MenthaAssembly.Media.Imaging
             });
 
         #endregion
-
-        #endregion
-
-        #region Binarize
-        /// <summary>
-        /// Creates a new binarized image by the special threshold.
-        /// </summary>
-        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold)
-            where T : unmanaged, IPixel
-        {
-            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
-            PixelAdapter<T> Sorc = Threshold.CreateAdapter(GetAdapter<T>(0, 0)),
-                            Dest = Image.GetAdapter<T>(0, 0);
-
-            T Color0 = default;
-            Image.Palette.TryGetOrAdd(Color0, out _);
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
-            {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
-                        Dest.Override(Sorc);
-
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
-            }
-
-            return Image;
-        }
-        /// <summary>
-        /// Creates a new binarized image by the custom predicate.
-        /// </summary>
-        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate)
-            where T : unmanaged, IPixel
-        {
-            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
-            PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
-                            Dest = Image.GetAdapter<T>(0, 0);
-
-            T Max = PixelHelper.ToPixel<T>(255, 255, 255, 255);
-            Image.Palette.TryGetOrAdd(default, out _);
-
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
-            {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    if (Predicate(i, j, Sorc))
-                        Dest.Override(Max);
-
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
-            }
-
-            return Image;
-        }
 
         #endregion
 

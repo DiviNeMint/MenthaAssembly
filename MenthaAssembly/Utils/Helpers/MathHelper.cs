@@ -325,6 +325,68 @@ namespace MenthaAssembly
         }
 
         /// <summary>
+        /// Smooths the special Histogram.
+        /// </summary>
+        /// <param name="Histo">The special Histogram to be smoothed.</param>
+        public static IEnumerable<double> SmoothHistogram(IEnumerable<double> Histogram)
+        {
+            double[] Histo = Histogram is double[] Array ? Array : Histogram.ToArray();
+
+            if (Histo.Length < 2)
+                yield break;
+
+            yield return (Histo[0] + Histo[0] + Histo[1]) / 3d;
+
+            int Length = Histo.Length - 1;
+            for (int i = 1; i < Length; i++)
+                yield return (Histo[i - 1] + Histo[i] + Histo[i + 1]) / 3d;
+
+            yield return (Histo[Length - 1] + Histo[Length] + Histo[Length]) / 3d;
+        }
+
+        /// <summary>
+        /// Checks the special histogram has the special amount of peaks.
+        /// </summary>
+        /// <typeparam name="T">The type of datas.</typeparam>
+        /// <param name="Histogram">The special histogram.</param>
+        /// <param name="Amount">The special amount of peak.</param>
+        public static bool IsMultiPeaks<T>(IEnumerable<T> Histogram, int Amount)
+            where T : IComparable<T>
+        {
+            using IEnumerator<T> Iter = Histogram.GetEnumerator();
+
+            T[] Values = new T[3];
+            for (int i = 0; i < 3; i++)
+            {
+                if (!Iter.MoveNext())
+                    return false;
+
+                Values[i] = Iter.Current;
+            }
+
+            int Peaks = 0;
+            do
+            {
+                if (Values[0].CompareTo(Values[1]) < 0 && Values[1].CompareTo(Values[2]) < 0)
+                {
+                    Peaks++;
+                    if (Peaks > Amount)
+                        return false;
+                }
+
+                if (!Iter.MoveNext())
+                    break;
+
+                Values[0] = Values[1];
+                Values[1] = Values[2];
+                Values[2] = Iter.Current;
+
+            } while (true);
+
+            return Peaks == Amount;
+        }
+
+        /// <summary>
         /// Normalization Angle
         /// </summary>
         /// <returns>-180° &lt;= Angle &lt; 180° </returns>
