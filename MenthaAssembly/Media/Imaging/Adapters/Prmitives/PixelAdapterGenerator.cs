@@ -1,4 +1,7 @@
-﻿namespace MenthaAssembly.Media.Imaging.Utils
+﻿using System;
+using System.Reflection;
+
+namespace MenthaAssembly.Media.Imaging.Utils
 {
     internal abstract class PixelAdapterGenerator
     {
@@ -16,22 +19,27 @@
         private sealed class PixelAdapterGenerator1 : PixelAdapterGenerator
         {
             public override PixelAdapter<U> GetAdapter<T, U>(IImageContext Context, int X, int Y)
-                => Context.PixelType == typeof(U) ? new PixelAdapter1<U>(Context, X, Y) :
-                                                    new PixelAdapter1<T, U>(Context, X, Y);
-
+            {
+                Type PixelType = typeof(U);
+                return Context.PixelType == PixelType ? new PixelAdapter1<U>(Context, X, Y) :
+                                                        PixelType.IsBaseOn<ICalculatedPixel>() ? new CalculatedPixelAdapter1<T, U>(Context, X, Y) :
+                                                                                                 new PixelAdapter1<T, U>(Context, X, Y);
+            }
         }
 
         private sealed class PixelAdapterGenerator3 : PixelAdapterGenerator
         {
             public override PixelAdapter<U> GetAdapter<T, U>(IImageContext Context, int X, int Y)
-                => new PixelAdapter3<U>(Context, X, Y);
+                => typeof(U).IsBaseOn<ICalculatedPixel>() ? new CalculatedPixelAdapter3<U>(Context, X, Y) :
+                                                            new PixelAdapter3<U>(Context, X, Y);
 
         }
 
         private sealed class PixelAdapterGenerator4 : PixelAdapterGenerator
         {
             public override PixelAdapter<U> GetAdapter<T, U>(IImageContext Context, int X, int Y)
-                => new PixelAdapter4<U>(Context, X, Y);
+                => typeof(U).IsBaseOn<ICalculatedPixel>() ? new CalculatedPixelAdapter4<U>(Context, X, Y) :
+                                                            new PixelAdapter4<U>(Context, X, Y);
 
         }
     }

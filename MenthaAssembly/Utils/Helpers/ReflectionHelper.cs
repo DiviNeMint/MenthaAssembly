@@ -346,6 +346,10 @@ namespace System.Reflection
             => IsBaseOn(This, typeof(T));
         public static bool IsBaseOn(this Type This, Type BaseOn)
         {
+            if (BaseOn.IsInterface)
+                return This.GetInterfaces()
+                           .Any(i => i == BaseOn || (i.IsGenericType && i.GetGenericTypeDefinition() == BaseOn));
+
             Type BaseType = This;
             while (BaseType != BaseOn)
             {

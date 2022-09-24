@@ -8,11 +8,11 @@ namespace System.IO
     public static unsafe class StreamHelper
     {
         /// <summary>
-        /// Writes a data of special type to the stream.
+        /// Writes a data of specified type to the stream.
         /// </summary>
-        /// <typeparam name="T">The special type of data.</typeparam>
+        /// <typeparam name="T">The specified type of data.</typeparam>
         /// <param name="This">The current stream.</param>
-        /// <param name="Data">The special type of data to write to the stream.</param>
+        /// <param name="Data">The specified type of data to write to the stream.</param>
         public static void Write<T>(this Stream This, T Data)
             where T : unmanaged
         {
@@ -29,22 +29,22 @@ namespace System.IO
             }
         }
         /// <summary>
-        /// Writes an array of special type to the stream.
+        /// Writes an array of specified type to the stream.
         /// </summary>
-        /// <typeparam name="T">The special type of array.</typeparam>
+        /// <typeparam name="T">The specified type of array.</typeparam>
         /// <param name="This">The current stream.</param>
-        /// <param name="Datas">The array of special type to write to the stream.</param>
+        /// <param name="Datas">The array of specified type to write to the stream.</param>
         public static void Write<T>(this Stream This, T[] Datas)
             where T : unmanaged
             => Write(This, Datas, 0, Datas.Length);
         /// <summary>
-        /// Writes an array of special type to the stream.
+        /// Writes an array of specified type to the stream.
         /// </summary>
-        /// <typeparam name="T">The special type of array.</typeparam>
+        /// <typeparam name="T">The specified type of array.</typeparam>
         /// <param name="This">The current stream.</param>
-        /// <param name="Datas">The array of special type to be written.</param>
+        /// <param name="Datas">The array of specified type to be written.</param>
         /// <param name="Offset">The zero-based byte offset in datas at which to begin writing to the stream.</param>
-        /// <param name="Length">The special length of datas to be written.</param>
+        /// <param name="Length">The specified length of datas to be written.</param>
         public static void Write<T>(this Stream This, T[] Datas, int Offset, int Length)
             where T : unmanaged
         {
@@ -65,11 +65,11 @@ namespace System.IO
             }
         }
         /// <summary>
-        /// Writes datas from a pointer of special type to the stream.
+        /// Writes datas from a pointer of specified type to the stream.
         /// </summary>
         /// <typeparam name="T">The sepecial type of pointer.</typeparam>
         /// <param name="This">The current stream.</param>
-        /// <param name="pBuffer">The pointer of special type. This method copies datas from the pointer to the current stream.</param>
+        /// <param name="pBuffer">The pointer of specified type. This method copies datas from the pointer to the current stream.</param>
         /// <param name="Length">The number of bytes to be written to the current stream.</param>
         public static void Write<T>(this Stream This, T* pBuffer, int Length)
             where T : unmanaged
@@ -88,11 +88,11 @@ namespace System.IO
         }
 
         /// <summary>
-        /// Asynchronously writes a data of special type to the stream.
+        /// Asynchronously writes a data of specified type to the stream.
         /// </summary>
-        /// <typeparam name="T">The special type of data.</typeparam>
+        /// <typeparam name="T">The specified type of data.</typeparam>
         /// <param name="This">The current stream.</param>
-        /// <param name="Data">The special type of data to write to the stream.</param>
+        /// <param name="Data">The specified type of data to write to the stream.</param>
         public static Task WriteAsync<T>(this Stream This, T Data)
             where T : unmanaged
         {
@@ -102,22 +102,22 @@ namespace System.IO
             return This.WriteAsync(Buffer, 0, Buffer.Length);
         }
         /// <summary>
-        /// Asynchronously writes an array of special type to the stream.
+        /// Asynchronously writes an array of specified type to the stream.
         /// </summary>
-        /// <typeparam name="T">The special type of array.</typeparam>
+        /// <typeparam name="T">The specified type of array.</typeparam>
         /// <param name="This">The current stream.</param>
-        /// <param name="Datas">The array of special type to write to the stream.</param>
+        /// <param name="Datas">The array of specified type to write to the stream.</param>
         public static Task WriteAsync<T>(this Stream This, T[] Datas)
             where T : unmanaged
             => WriteAsync(This, Datas, 0, Datas.Length);
         /// <summary>
-        /// Asynchronously writes an array of special type to the stream.
+        /// Asynchronously writes an array of specified type to the stream.
         /// </summary>
-        /// <typeparam name="T">The special type of array.</typeparam>
+        /// <typeparam name="T">The specified type of array.</typeparam>
         /// <param name="This">The current stream.</param>
-        /// <param name="Datas">The array of special type to be written.</param>
+        /// <param name="Datas">The array of specified type to be written.</param>
         /// <param name="Offset">The zero-based byte offset in datas at which to begin writing to the stream.</param>
-        /// <param name="Length">The special length of datas to be written.</param>
+        /// <param name="Length">The specified length of datas to be written.</param>
         public static Task WriteAsync<T>(this Stream This, T[] Datas, int Offset, int Length)
             where T : unmanaged
         {
@@ -130,7 +130,7 @@ namespace System.IO
         }
 
         /// <summary>
-        /// Reads a data of special type from the stream.
+        /// Reads a data of specified type from the stream.
         /// </summary>
         /// <typeparam name="T">The sepecial type of data.</typeparam>
         /// <param name="This">The current stream.</param>

@@ -194,7 +194,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (IsPixelValid)
                 return;
 
-            Index = GetPaletteIndex();
+            Index = (*pScan)[XBit];
             Pixel = Palette[Index];
 
             IsPixelValid = true;

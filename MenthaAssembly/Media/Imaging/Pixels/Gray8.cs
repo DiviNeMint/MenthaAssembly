@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Media.Imaging
 {
-    public struct Gray8 : IPixel
+    public struct Gray8 : ICalculatedPixel
     {
         public byte Gray { set; get; }
 

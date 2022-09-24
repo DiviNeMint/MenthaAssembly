@@ -42,10 +42,10 @@ namespace MenthaAssembly.Media.Imaging
         public Type StructType { get; }
 
         /// <summary>
-        /// Gets the pixel at the special location in image.
+        /// Gets the pixel at the specified location in image.
         /// </summary>
-        /// <param name="X">The x-coordinate of the special location.</param>
-        /// <param name="Y">The y-coordinate of the special location.</param>
+        /// <param name="X">The x-coordinate of the specified location.</param>
+        /// <param name="Y">The y-coordinate of the specified location.</param>
         public IReadOnlyPixel this[int X, int Y] { get; }
 
         /// <summary>

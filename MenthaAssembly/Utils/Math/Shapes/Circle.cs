@@ -16,13 +16,13 @@ namespace MenthaAssembly
         public static Circle<T> Empty => new();
 
         public bool IsEmpty
-            => this.Radius is 0d || double.IsNaN(this.Radius) || double.IsInfinity(this.Radius);
+            => Radius is 0d || double.IsNaN(Radius) || double.IsInfinity(Radius);
 
         public Point<T> Center { set; get; }
 
         public double Radius { set; get; }
 
-        public double Area => this.Radius * this.Radius * Math.PI;
+        public double Area => Radius * Radius * Math.PI;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Circle{T}"/> structure.
@@ -72,9 +72,9 @@ namespace MenthaAssembly
             }
 
             CalculateCenter(Px1, Py1, Px2, Py2, Px3, Py3, out T Cx, out T Cy);
-                                       
-            this.Center = new Point<T>(Cx, Cy);
-            this.Radius = Point<T>.Distance(Px1, Py1, Cx, Cy);
+
+            Center = new Point<T>(Cx, Cy);
+            Radius = Point<T>.Distance(Px1, Py1, Cx, Cy);
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Circle{T}"/> structure.
@@ -84,7 +84,7 @@ namespace MenthaAssembly
         /// <param name="Radius">The radius of the new circle.</param>
         public Circle(T Cx, T Cy, double Radius)
         {
-            this.Center = new Point<T>(Cx, Cy);
+            Center = new Point<T>(Cx, Cy);
             this.Radius = Radius;
         }
         /// <summary>
@@ -99,31 +99,31 @@ namespace MenthaAssembly
         }
 
         public bool Contain(Point<T> Point)
-            => this.Contain(Point.X, Point.Y);
+            => Contain(Point.X, Point.Y);
         public bool Contain(T Px, T Py)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return false;
 
-            Point<T> C = this.Center;
+            Point<T> C = Center;
             T Dx = Sub(C.X, Px),
               Dy = Sub(C.Y, Py);
 
-            return ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))) <= this.Radius * this.Radius;
+            return ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))) <= Radius * Radius;
         }
 
         public void Offset(Vector<T> Vector)
-            => this.Offset(Vector.X, Vector.Y);
+            => Offset(Vector.X, Vector.Y);
         public void Offset(T Dx, T Dy)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
-            this.Center.Offset(Dx, Dy);
+            Center.Offset(Dx, Dy);
         }
 
         public void Scale(T Scale)
-            => this.Radius *= ToDouble(Scale);
+            => Radius *= ToDouble(Scale);
         void IShape<T>.Scale(T ScaleX, T ScaleY) => throw new NotSupportedException();
         void IShape<T>.Scale(Point<T> Center, T Scale) => throw new NotSupportedException();
         void IShape<T>.Scale(Point<T> Center, T ScaleX, T ScaleY) => throw new NotSupportedException();
@@ -132,19 +132,19 @@ namespace MenthaAssembly
 
         public void Rotate(double Theta)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
-            this.Center.Rotate(Theta);
+            Center.Rotate(Theta);
         }
         public void Rotate(Point<T> Center, double Theta)
-            => this.Rotate(Center.X, Center.Y, Theta);
+            => Rotate(Center.X, Center.Y, Theta);
         public void Rotate(T Cx, T Cy, double Theta)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
-            this.Center.Rotate(Cx, Cy, Theta);
+            Center.Rotate(Cx, Cy, Theta);
         }
 
         public void Reflect(Line<T> Line)
@@ -155,16 +155,16 @@ namespace MenthaAssembly
             Point<T> P1 = Line.Points[0],
                      P2 = Line.Points[1];
 
-            this.Reflect(P1.X, P1.Y, P2.X, P2.Y);
+            Reflect(P1.X, P1.Y, P2.X, P2.Y);
         }
         public void Reflect(Point<T> LinePoint1, Point<T> LinePoint2)
-            => this.Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+            => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
         public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
-            this.Center.Reflect(Lx1, Ly1, Lx2, Ly2);
+            Center.Reflect(Lx1, Ly1, Lx2, Ly2);
         }
 
         /// <summary>
@@ -172,26 +172,26 @@ namespace MenthaAssembly
         /// </summary>
         /// <returns></returns>
         public Circle<U> Cast<U>() where U : unmanaged
-            => this.IsEmpty ? Circle<U>.Empty : new Circle<U>(this.Center.Cast<U>(), this.Radius);
+            => IsEmpty ? Circle<U>.Empty : new Circle<U>(Center.Cast<U>(), Radius);
         IShape<U> IShape<T>.Cast<U>()
-            => this.Cast<U>();
+            => Cast<U>();
         IMathObject<U> IMathObject<T>.Cast<U>()
-            => this.Cast<U>();
+            => Cast<U>();
 
         /// <summary>
         /// Creates a new <see cref="Circle{T}"/> that is a copy of the current instance.
         /// </summary>
         public Circle<T> Clone()
-            => this.IsEmpty ? Empty : new Circle<T>(this.Center, this.Radius);
+            => IsEmpty ? Empty : new Circle<T>(Center, Radius);
         IShape<T> IShape<T>.Clone()
-            => this.Clone();
+            => Clone();
         IMathObject<T> IMathObject<T>.Clone()
-            => this.Clone();
+            => Clone();
         object ICloneable.Clone()
-            => this.Clone();
+            => Clone();
 
         public override int GetHashCode()
-            => this.Center.GetHashCode() ^ this.Radius.GetHashCode();
+            => Center.GetHashCode() ^ Radius.GetHashCode();
 
         /// <summary>
         /// Returns a value indicating whether this instance is equal to a specified <see cref="Circle{T}"/>
@@ -199,24 +199,24 @@ namespace MenthaAssembly
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Circle<T> obj)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return obj.IsEmpty;
 
             if (obj.IsEmpty)
                 return false;
 
-            return this.Center.Equals(obj.Center) && this.Radius.Equals(obj.Radius);
+            return Center.Equals(obj.Center) && Radius.Equals(obj.Radius);
         }
         bool IShape<T>.Equals(IShape<T> obj)
-            => obj is Circle<T> Tri && this.Equals(Tri);
+            => obj is Circle<T> Tri && Equals(Tri);
         bool IMathObject<T>.Equals(IMathObject<T> obj)
-            => obj is Circle<T> Tri && this.Equals(Tri);
+            => obj is Circle<T> Tri && Equals(Tri);
         public override bool Equals(object obj)
-            => obj is Circle<T> Tri && this.Equals(Tri);
+            => obj is Circle<T> Tri && Equals(Tri);
 
         public override string ToString()
-            => this.IsEmpty ? $"{nameof(Circle<T>)}<{typeof(T).Name}>.Empty" :
-                              $"Center : {this.Center}, Radius : {this.Radius}";
+            => IsEmpty ? $"{nameof(Circle<T>)}<{typeof(T).Name}>.Empty" :
+                              $"Center : {Center}, Radius : {Radius}";
 
         private static readonly Func<T, T, T> Add, Sub, Mul;
         private static readonly Func<T, double> ToDouble;

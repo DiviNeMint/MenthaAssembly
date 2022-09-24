@@ -334,7 +334,7 @@ namespace MenthaAssembly.Win32
                               ScreenArea.Height);
         }
         /// <summary>
-        /// Screenshot all screen at special rectangle.
+        /// Screenshot all screen at specified rectangle.
         /// </summary>
         /// <param name="X">X-coordinate of Screen.</param>
         /// <param name="Y">Y-coordinate of Screen.</param>

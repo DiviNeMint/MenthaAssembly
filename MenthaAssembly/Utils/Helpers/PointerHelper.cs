@@ -26,17 +26,17 @@
         }
 
         /// <summary>
-        /// Cast the ponter to a special type instance.
+        /// Cast the ponter to a specified type instance.
         /// </summary>
-        /// <typeparam name="T">The special type instance.</typeparam>
+        /// <typeparam name="T">The specified type instance.</typeparam>
         public static T Cast<T>(this IntPtr This)
             where T : unmanaged
             => *(T*)This;
 
         /// <summary>
-        /// Cast the ponter to a special type instance by <see cref="Marshal.PtrToStructure{T}(IntPtr)"/>
+        /// Cast the ponter to a specified type instance by <see cref="Marshal.PtrToStructure{T}(IntPtr)"/>
         /// </summary>
-        /// <typeparam name="T">The special type instance.</typeparam>
+        /// <typeparam name="T">The specified type instance.</typeparam>
         public static T CastByMarshal<T>(this IntPtr This)
             where T : unmanaged
             => Marshal.PtrToStructure<T>(This);

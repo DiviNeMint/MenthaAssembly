@@ -55,7 +55,7 @@ namespace MenthaAssembly
         {
             get
             {
-                if (this.IsEmpty)
+                if (IsEmpty)
                     return new Point<T>();
 
                 Point<T> p0 = Points[0],
@@ -69,7 +69,7 @@ namespace MenthaAssembly
         /// The length of this line segment.
         /// </summary>
         public double Length
-            => this.IsEmpty ? 0d : Point<T>.Distance(Points[0], Points[1]);
+            => IsEmpty ? 0d : Point<T>.Distance(Points[0], Points[1]);
 
         double IShape<T>.Area
             => 0d;
@@ -81,7 +81,7 @@ namespace MenthaAssembly
         {
             get
             {
-                if (this.IsEmpty)
+                if (IsEmpty)
                     return Vector<T>.Zero;
 
                 Point<T> p0 = Points[0],
@@ -95,7 +95,7 @@ namespace MenthaAssembly
         /// The directional vector of this line segment.
         /// </summary>
         public Vector<T> DirectionalVector
-            => this.IsEmpty ? Vector<T>.Zero : new Vector<T>(Points[0], Points[1]);
+            => IsEmpty ? Vector<T>.Zero : new Vector<T>(Points[0], Points[1]);
 
         /// <summary>
         /// Gets a value that indicates whether the line segment is the empty line segment.
@@ -110,7 +110,7 @@ namespace MenthaAssembly
         {
             get
             {
-                if (this.IsEmpty)
+                if (IsEmpty)
                     return double.NaN;
 
                 Point<T> p0 = Points[0],
@@ -169,15 +169,15 @@ namespace MenthaAssembly
         }
 
         public bool Contain(Point<T> Point)
-            => this.Contain(Point.X, Point.Y);
+            => Contain(Point.X, Point.Y);
         public bool Contain(T Px, T Py)
             => Contain(this, Px, Py);
 
         public void Offset(Vector<T> Vector)
-            => this.Offset(Vector.X, Vector.Y);
+            => Offset(Vector.X, Vector.Y);
         public void Offset(T Dx, T Dy)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
             fixed (Point<T>* pPoints = &Points[0])
@@ -187,18 +187,18 @@ namespace MenthaAssembly
         }
 
         public void Scale(T Scale)
-            => this.Scale(this.Center, Scale);
+            => this.Scale(Center, Scale);
         public void Scale(T ScaleX, T ScaleY)
-            => this.Scale(this.Center, ScaleX, ScaleY);
+            => Scale(Center, ScaleX, ScaleY);
         public void Scale(Point<T> Center, T Scale)
             => this.Scale(Center.X, Center.Y, Scale, Scale);
         public void Scale(Point<T> Center, T ScaleX, T ScaleY)
-            => this.Scale(Center.X, Center.Y, ScaleX, ScaleY);
+            => Scale(Center.X, Center.Y, ScaleX, ScaleY);
         public void Scale(T Cx, T Cy, T Scale)
             => this.Scale(Cx, Cy, Scale, Scale);
         public void Scale(T Cx, T Cy, T ScaleX, T ScaleY)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
             fixed (Point<T>* pPoints = &Points[0])
@@ -209,7 +209,7 @@ namespace MenthaAssembly
 
         public void Rotate(double Theta)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
             fixed (Point<T>* pPoints = &Points[0])
@@ -218,10 +218,10 @@ namespace MenthaAssembly
             }
         }
         public void Rotate(Point<T> Center, double Theta)
-            => this.Rotate(Center.X, Center.Y, Theta);
+            => Rotate(Center.X, Center.Y, Theta);
         public void Rotate(T Cx, T Cy, double Theta)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
             fixed (Point<T>* pPoints = &Points[0])
@@ -238,13 +238,13 @@ namespace MenthaAssembly
             Point<T> P1 = Line.Points[0],
                      P2 = Line.Points[1];
 
-            this.Reflect(P1.X, P1.Y, P2.X, P2.Y);
+            Reflect(P1.X, P1.Y, P2.X, P2.Y);
         }
         public void Reflect(Point<T> LinePoint1, Point<T> LinePoint2)
-            => this.Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+            => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
         public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
             fixed (Point<T>* pPoints = &Points[0])
@@ -257,23 +257,23 @@ namespace MenthaAssembly
         /// Creates a new casted line segment.
         /// </summary>
         public LineSegment<U> Cast<U>() where U : unmanaged
-            => this.IsEmpty ? LineSegment<U>.Empty : new LineSegment<U>(Points[0].Cast<U>(), Points[1].Cast<U>());
+            => IsEmpty ? LineSegment<U>.Empty : new LineSegment<U>(Points[0].Cast<U>(), Points[1].Cast<U>());
         IShape<U> IShape<T>.Cast<U>()
-            => this.Cast<U>();
+            => Cast<U>();
         IMathObject<U> IMathObject<T>.Cast<U>()
-            => this.Cast<U>();
+            => Cast<U>();
 
         /// <summary>
         /// Creates a new line segment that is a copy of the current instance.
         /// </summary>
         public LineSegment<T> Clone()
-            => this.IsEmpty ? Empty : new LineSegment<T>(Points[0], Points[1]);
+            => IsEmpty ? Empty : new LineSegment<T>(Points[0], Points[1]);
         IShape<T> IShape<T>.Clone()
-            => this.Clone();
+            => Clone();
         IMathObject<T> IMathObject<T>.Clone()
-            => this.Clone();
+            => Clone();
         object ICloneable.Clone()
-            => this.Clone();
+            => Clone();
 
         public override int GetHashCode()
             => (Points is null || Points.Length < 2) ? base.GetHashCode() : Points[0].GetHashCode() ^ Points[1].GetHashCode();
@@ -284,7 +284,7 @@ namespace MenthaAssembly
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(LineSegment<T> obj)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return obj.IsEmpty;
 
             if (obj.IsEmpty)
@@ -303,15 +303,15 @@ namespace MenthaAssembly
             return Counter == 2;
         }
         bool IShape<T>.Equals(IShape<T> obj)
-            => obj is LineSegment<T> Target && this.Equals(Target);
+            => obj is LineSegment<T> Target && Equals(Target);
         bool IMathObject<T>.Equals(IMathObject<T> obj)
-            => obj is LineSegment<T> Target && this.Equals(Target);
+            => obj is LineSegment<T> Target && Equals(Target);
         public override bool Equals(object obj)
-            => obj is LineSegment<T> Target && this.Equals(Target);
+            => obj is LineSegment<T> Target && Equals(Target);
 
         public override string ToString()
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return $"{nameof(LineSegment<T>)}<{typeof(T).Name}>.Empty";
 
             Point<T> S = Points[0],

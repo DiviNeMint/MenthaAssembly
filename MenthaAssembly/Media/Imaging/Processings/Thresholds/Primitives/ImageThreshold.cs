@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents a threshold in image.
+    /// </summary>
     public abstract class ImageThreshold
     {
         /// <summary>
@@ -32,29 +35,39 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         /// <summary>
-        /// The special threshold calculated by iteration algorithm.
+        /// Represents a threshold decided by the iteration algorithm.
         /// </summary>
         public static ImageThreshold Iteration { get; } = new IterationThreshold();
 
         /// <summary>
-        /// The special threshold calculated by averaging all gray.
+        /// Represents a threshold decided by averaging the grays of image.
         /// </summary>
         public static ImageThreshold GrayMean { get; } = new MeanThreshold();
 
         /// <summary>
-        /// The special threshold calculated by 25% of background area in image.
+        /// Represents a threshold decided by 25& of background area in image.
         /// </summary>
         public static ImageThreshold PTile25 { get; } = new PTileThreshold(0.25d);
 
         /// <summary>
-        /// The special threshold calculated by 50% of background area in image.
+        /// Represents a threshold decided by 50& of background area in image.
         /// </summary>
         public static ImageThreshold PTile50 { get; } = new PTileThreshold(0.5d);
 
         /// <summary>
-        /// The special threshold calculated by 75% of background area in image.
+        /// Represents a threshold decided by 75& of background area in image.
         /// </summary>
         public static ImageThreshold PTile75 { get; } = new PTileThreshold(0.75d);
+
+        /// <summary>
+        /// Represents a threshold decided by averaging the neighbor grays(3 * 3).
+        /// </summary>
+        public static ImageThreshold MeanNeighbor { get; } = new MeanNeighborThreshold(1);
+
+        /// <summary>
+        /// Represents a threshold decided by the median of the neighbor grays (3 * 3).
+        /// </summary>
+        public static ImageThreshold MedianNeighbor { get; } = new MedianNeighborThreshold(1);
 
         public static implicit operator ImageThreshold(int Threshold)
             => new ConstThreshold((byte)Threshold.Clamp(byte.MinValue, byte.MaxValue));

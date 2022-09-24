@@ -325,9 +325,9 @@ namespace MenthaAssembly
         }
 
         /// <summary>
-        /// Smooths the special Histogram.
+        /// Smooths the specified Histogram.
         /// </summary>
-        /// <param name="Histo">The special Histogram to be smoothed.</param>
+        /// <param name="Histo">The specified Histogram to be smoothed.</param>
         public static IEnumerable<double> SmoothHistogram(IEnumerable<double> Histogram)
         {
             double[] Histo = Histogram is double[] Array ? Array : Histogram.ToArray();
@@ -345,11 +345,11 @@ namespace MenthaAssembly
         }
 
         /// <summary>
-        /// Checks the special histogram has the special amount of peaks.
+        /// Checks the specified histogram has the specified amount of peaks.
         /// </summary>
         /// <typeparam name="T">The type of datas.</typeparam>
-        /// <param name="Histogram">The special histogram.</param>
-        /// <param name="Amount">The special amount of peak.</param>
+        /// <param name="Histogram">The specified histogram.</param>
+        /// <param name="Amount">The specified amount of peak.</param>
         public static bool IsMultiPeaks<T>(IEnumerable<T> Histogram, int Amount)
             where T : IComparable<T>
         {

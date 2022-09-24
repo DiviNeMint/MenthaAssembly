@@ -68,10 +68,10 @@ namespace MenthaAssembly.Media.Imaging
         public IntPtr ScanB { get; }
 
         /// <summary>
-        /// Gets & Setters the pixel at the special location in image.
+        /// Gets & Setters the pixel at the specified location in image.
         /// </summary>
-        /// <param name="X">The x-coordinate of the special location.</param>
-        /// <param name="Y">The y-coordinate of the special location.</param>
+        /// <param name="X">The x-coordinate of the specified location.</param>
+        /// <param name="Y">The y-coordinate of the specified location.</param>
         public IReadOnlyPixel this[int X, int Y] { set; get; }
 
         /// <summary>
@@ -982,6 +982,39 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Options">An object that configures the behavior of this operation.<para/>
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T> Filter<T>(ImageFilter Filter, ParallelOptions Options) where T : unmanaged, IPixel;
+
+        #endregion
+
+        #region Binarize
+        /// <summary>
+        /// Creates a new binarized image by the specified threshold.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Threshold">The specified threshold.</param>
+        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Creates a new binarized image by the specified threshold.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Threshold">The specified threshold.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold, ParallelOptions Options) where T : unmanaged, IPixel;
+
+        /// <summary>
+        /// Creates a new binarized image by the custom predicate.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Predicate">The specified custom predicate to threshold.</param>
+        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Creates a new binarized image by the custom predicate.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Predicate">The specified custom predicate to threshold.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate, ParallelOptions Options) where T : unmanaged, IPixel;
 
         #endregion
 

@@ -19,23 +19,23 @@ namespace MenthaAssembly
         public Point<T>[] Points { set; get; }
 
         public bool IsEmpty
-            => this.Points is null || Line<T>.IsCollinear(this.Points);
+            => Points is null || Line<T>.IsCollinear(Points);
 
         public Point<T> Center
         {
             get
             {
-                if (this.IsEmpty)
+                if (IsEmpty)
                     return new Point<T>();
 
-                Point<T> p = this.Points[0];
+                Point<T> p = Points[0];
                 T Cx = p.X,
                   Cy = p.Y;
 
-                int Length = this.Points.Length;
+                int Length = Points.Length;
                 for (int i = 1; i < Length; i++)
                 {
-                    p = this.Points[i];
+                    p = Points[i];
                     Cx = Add(Cx, p.X);
                     Cy = Add(Cy, p.Y);
                 }
@@ -48,17 +48,17 @@ namespace MenthaAssembly
         {
             get
             {
-                if (this.IsEmpty)
+                if (IsEmpty)
                     return default;
 
-                Point<T> p = this.Points[0];
+                Point<T> p = Points[0];
                 T LPx = p.X,
                   LPy = p.Y,
                   Sum = default;
 
-                for (int i = 1; i < this.Points.Length; i++)
+                for (int i = 1; i < Points.Length; i++)
                 {
-                    p = this.Points[i];
+                    p = Points[i];
                     T CPx = p.X,
                       CPy = p.Y;
 
@@ -67,7 +67,7 @@ namespace MenthaAssembly
                     LPy = CPy;
                 }
 
-                p = this.Points[0];
+                p = Points[0];
                 Sum = Add(Sum, Vector<T>.Cross(LPx, LPy, p.X, p.Y));
 
                 return ToDouble(Abs(Sum)) / 2d;
@@ -102,19 +102,19 @@ namespace MenthaAssembly
                 return;
             }
 
-            this.Points = new Point<T>[Length];
+            Points = new Point<T>[Length];
 
             Length <<= 1;
             int j = 0;
             for (int i = 0; i < Length; i++)
             {
-                this.Points[j] = new Point<T>(PointDatas[i++], PointDatas[i]);
+                Points[j] = new Point<T>(PointDatas[i++], PointDatas[i]);
                 j++;
             }
 
             if (Sort)
             {
-                fixed (Point<T>* pPoints = &this.Points[0])
+                fixed (Point<T>* pPoints = &Points[0])
                 {
                     Point<T>.Sort(pPoints, Length);
                 }
@@ -146,15 +146,15 @@ namespace MenthaAssembly
         }
 
         public bool Contain(Point<T> Point)
-            => this.Contain(Point.X, Point.Y);
+            => Contain(Point.X, Point.Y);
         public bool Contain(T Px, T Py)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return false;
 
             bool IsBetweenPoints = false;
-            int Length = this.Points.Length;
-            Point<T> p = this.Points[0];
+            int Length = Points.Length;
+            Point<T> p = Points[0];
             T LPx = p.X,
               LPy = p.Y,
               CPx, CPy,
@@ -205,7 +205,7 @@ namespace MenthaAssembly
             CrossPoints<T> Cross;
             for (int i = 1; i < Length; i++)
             {
-                p = this.Points[i];
+                p = Points[i];
                 CPx = p.X;
                 CPy = p.Y;
 
@@ -232,7 +232,7 @@ namespace MenthaAssembly
                 LPy = CPy;
             }
 
-            p = this.Points[0];
+            p = Points[0];
             CPx = p.X;
             CPy = p.Y;
 
@@ -259,59 +259,59 @@ namespace MenthaAssembly
         }
 
         public void Offset(Vector<T> Vector)
-            => this.Offset(Vector.X, Vector.Y);
+            => Offset(Vector.X, Vector.Y);
         public void Offset(T Dx, T Dy)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
-            fixed (Point<T>* pPoints = &this.Points[0])
+            fixed (Point<T>* pPoints = &Points[0])
             {
-                Point<T>.Offset(pPoints, this.Points.Length, Dx, Dy);
+                Point<T>.Offset(pPoints, Points.Length, Dx, Dy);
             }
         }
 
         public void Scale(T Scale)
-            => this.Scale(this.Center, Scale);
+            => this.Scale(Center, Scale);
         public void Scale(T ScaleX, T ScaleY)
-            => this.Scale(this.Center, ScaleX, ScaleY);
+            => Scale(Center, ScaleX, ScaleY);
         public void Scale(Point<T> Center, T Scale)
             => this.Scale(Center.X, Center.Y, Scale, Scale);
         public void Scale(Point<T> Center, T ScaleX, T ScaleY)
-            => this.Scale(Center.X, Center.Y, ScaleX, ScaleY);
+            => Scale(Center.X, Center.Y, ScaleX, ScaleY);
         public void Scale(T Cx, T Cy, T Scale)
             => this.Scale(Cx, Cy, Scale, Scale);
         public void Scale(T Cx, T Cy, T ScaleX, T ScaleY)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
-            fixed (Point<T>* pPoints = &this.Points[0])
+            fixed (Point<T>* pPoints = &Points[0])
             {
-                LineSegment<T>.Scale(pPoints, this.Points.Length, Cx, Cy, ScaleX, ScaleY);
+                LineSegment<T>.Scale(pPoints, Points.Length, Cx, Cy, ScaleX, ScaleY);
             }
         }
 
         public void Rotate(double Theta)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
-            fixed (Point<T>* pPoints = &this.Points[0])
+            fixed (Point<T>* pPoints = &Points[0])
             {
-                Point<T>.Rotate(pPoints, this.Points.Length, Theta);
+                Point<T>.Rotate(pPoints, Points.Length, Theta);
             }
         }
         public void Rotate(Point<T> Center, double Theta)
-            => this.Rotate(Center.X, Center.Y, Theta);
+            => Rotate(Center.X, Center.Y, Theta);
         public void Rotate(T Cx, T Cy, double Theta)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
-            fixed (Point<T>* pPoints = &this.Points[0])
+            fixed (Point<T>* pPoints = &Points[0])
             {
-                Point<T>.Rotate(pPoints, this.Points.Length, Cx, Cy, Theta);
+                Point<T>.Rotate(pPoints, Points.Length, Cx, Cy, Theta);
             }
         }
 
@@ -323,18 +323,18 @@ namespace MenthaAssembly
             Point<T> P1 = Line.Points[0],
                      P2 = Line.Points[1];
 
-            this.Reflect(P1.X, P1.Y, P2.X, P2.Y);
+            Reflect(P1.X, P1.Y, P2.X, P2.Y);
         }
         public void Reflect(Point<T> LinePoint1, Point<T> LinePoint2)
-            => this.Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
+            => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
         public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return;
 
-            fixed (Point<T>* pPoints = &this.Points[0])
+            fixed (Point<T>* pPoints = &Points[0])
             {
-                Point<T>.Reflect(pPoints, this.Points.Length, Lx1, Ly1, Lx2, Ly2);
+                Point<T>.Reflect(pPoints, Points.Length, Lx1, Ly1, Lx2, Ly2);
             }
         }
 
@@ -343,32 +343,32 @@ namespace MenthaAssembly
         /// </summary>
         /// <returns></returns>
         public Polygon<U> Cast<U>() where U : unmanaged
-            => this.IsEmpty ? Polygon<U>.Empty : new Polygon<U> { Points = this.Points.Select(i => i.Cast<U>()).ToArray() };
+            => IsEmpty ? Polygon<U>.Empty : new Polygon<U> { Points = Points.Select(i => i.Cast<U>()).ToArray() };
         IShape<U> IShape<T>.Cast<U>()
-            => this.Cast<U>();
+            => Cast<U>();
         IMathObject<U> IMathObject<T>.Cast<U>()
-            => this.Cast<U>();
+            => Cast<U>();
 
         /// <summary>
         /// Creates a new <see cref="Polygon{T}"/> that is a copy of the current instance.
         /// </summary>
         public Polygon<T> Clone()
-            => this.IsEmpty ? Empty : new Polygon<T> { Points = new[] { this.Points[0], this.Points[1], this.Points[2], this.Points[3] } };
+            => IsEmpty ? Empty : new Polygon<T> { Points = new[] { Points[0], Points[1], Points[2], Points[3] } };
         IShape<T> IShape<T>.Clone()
-            => this.Clone();
+            => Clone();
         IMathObject<T> IMathObject<T>.Clone()
-            => this.Clone();
+            => Clone();
         object ICloneable.Clone()
-            => this.Clone();
+            => Clone();
 
         public override int GetHashCode()
         {
-            if (this.Points is null)
+            if (Points is null)
                 return base.GetHashCode();
 
-            int Code = this.Points[0].GetHashCode();
-            for (int i = 1; i < this.Points.Length; i++)
-                Code ^= this.Points[i].GetHashCode();
+            int Code = Points[0].GetHashCode();
+            for (int i = 1; i < Points.Length; i++)
+                Code ^= Points[i].GetHashCode();
 
             return Code;
         }
@@ -379,7 +379,7 @@ namespace MenthaAssembly
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Polygon<T> obj)
         {
-            if (this.IsEmpty)
+            if (IsEmpty)
                 return obj.IsEmpty;
 
             if (obj.IsEmpty)
@@ -387,7 +387,7 @@ namespace MenthaAssembly
 
             int Index = -1,
                 Length = Points.Length;
-            Point<T> p = this.Points[0];
+            Point<T> p = Points[0];
             for (int i = 0; i < Length; i++)
             {
                 if (p.Equals(obj.Points[i]))
@@ -407,7 +407,7 @@ namespace MenthaAssembly
                 if (i >= Length)
                     i %= Length;
 
-                if (!this.Points[j].Equals(obj.Points[i]))
+                if (!Points[j].Equals(obj.Points[i]))
                 {
                     Reverse = true;
                     break;
@@ -417,26 +417,26 @@ namespace MenthaAssembly
             if (Reverse)
             {
                 for (int i = Index - 1; i >= 0; i--, j++)
-                    if (!this.Points[j].Equals(obj.Points[i]))
+                    if (!Points[j].Equals(obj.Points[i]))
                         return false;
 
                 for (int i = Length - 1; i > Index; i--, j++)
-                    if (!this.Points[j].Equals(obj.Points[i]))
+                    if (!Points[j].Equals(obj.Points[i]))
                         return false;
             }
 
             return true;
         }
         bool IShape<T>.Equals(IShape<T> obj)
-            => obj is Polygon<T> Poly && this.Equals(Poly);
+            => obj is Polygon<T> Poly && Equals(Poly);
         bool IMathObject<T>.Equals(IMathObject<T> obj)
-            => obj is Polygon<T> Poly && this.Equals(Poly);
+            => obj is Polygon<T> Poly && Equals(Poly);
         public override bool Equals(object obj)
-            => obj is Polygon<T> Poly && this.Equals(Poly);
+            => obj is Polygon<T> Poly && Equals(Poly);
 
         public override string ToString()
-            => this.IsEmpty ? $"{nameof(Polygon<T>)}<{typeof(T).Name}>.Empty" :
-                              string.Join(", ", this.Points.Select(i => $"{{{i}}}"));
+            => IsEmpty ? $"{nameof(Polygon<T>)}<{typeof(T).Name}>.Empty" :
+                              string.Join(", ", Points.Select(i => $"{{{i}}}"));
 
         private static readonly Func<T, T> Abs;
         private static readonly Func<T, T, T> Add, Sub, Mul;

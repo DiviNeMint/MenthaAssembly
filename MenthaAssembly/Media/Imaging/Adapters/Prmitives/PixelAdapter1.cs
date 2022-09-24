@@ -60,7 +60,12 @@
         public override void Overlay(PixelAdapter<T> Adapter)
             => Adapter.OverlayTo(pScan);
         public override void Overlay(byte A, byte R, byte G, byte B)
-            => pScan->Overlay(A, R, G, B);
+        {
+            if (A == byte.MaxValue)
+                pScan->Override(A, R, G, B);
+            else
+                pScan->Overlay(A, R, G, B);
+        }
 
         protected internal override void InternalMove(int X, int Y)
             => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
@@ -85,6 +90,119 @@
     }
 
     internal unsafe class PixelAdapter1<T, U> : PixelAdapter<U>
+        where T : unmanaged, IPixel
+        where U : unmanaged, IPixel
+    {
+        public override int MaxX { get; }
+
+        public override int MaxY { get; }
+
+        public override byte A => pScan->A;
+
+        public override byte R => pScan->R;
+
+        public override byte G => pScan->G;
+
+        public override byte B => pScan->B;
+
+        public override int BitsPerPixel { get; }
+
+        private readonly long Stride;
+        private readonly byte* pScan0;
+        protected T* pScan;
+        public PixelAdapter1(PixelAdapter1<T, U> Adapter)
+        {
+            X = Adapter.X;
+            Y = Adapter.Y;
+            MaxX = Adapter.MaxX;
+            MaxY = Adapter.MaxY;
+            Stride = Adapter.Stride;
+            BitsPerPixel = Adapter.BitsPerPixel;
+            pScan0 = Adapter.pScan0;
+            pScan = Adapter.pScan;
+        }
+        public PixelAdapter1(IImageContext Context, int X, int Y)
+        {
+            MaxX = Context.Width - 1;
+            MaxY = Context.Height - 1;
+            Stride = Context.Stride;
+            BitsPerPixel = Context.BitsPerPixel;
+            pScan0 = (byte*)Context.Scan0;
+            Move(X, Y);
+        }
+
+        public override void Override(U Pixel)
+            => Override(pScan->A, pScan->R, pScan->G, pScan->B);
+        public override void Override(PixelAdapter<U> Adapter)
+            => Override(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
+        public override void Override(byte A, byte R, byte G, byte B)
+            => pScan->Override(A, R, G, B);
+        public override void OverrideTo(U* pData)
+            => pData->Override(A, R, G, B);
+
+        public override void Overlay(U Pixel)
+            => Overlay(pScan->A, pScan->R, pScan->G, pScan->B);
+        public override void Overlay(PixelAdapter<U> Adapter)
+            => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
+        public override void Overlay(byte A, byte R, byte G, byte B)
+        {
+            if (A == byte.MaxValue)
+                pScan->Override(A, R, G, B);
+            else
+                pScan->Overlay(A, R, G, B);
+        }
+
+        public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
+        {
+            if (pScan->A == byte.MaxValue)
+            {
+                *pDataR = pScan->R;
+                *pDataG = pScan->G;
+                *pDataB = pScan->B;
+            }
+            else
+            {
+                PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, pScan->A, pScan->R, pScan->G, pScan->B);
+            }
+        }
+        public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
+        {
+            if (pScan->A == byte.MaxValue)
+            {
+                *pDataA = byte.MaxValue;
+                *pDataR = pScan->R;
+                *pDataG = pScan->G;
+                *pDataB = pScan->B;
+            }
+            else
+            {
+                PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, pScan->A, pScan->R, pScan->G, pScan->B);
+            }
+        }
+
+        protected internal override void InternalMove(int X, int Y)
+            => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
+        protected internal override void InternalMoveX(int OffsetX)
+            => pScan += OffsetX;
+        protected internal override void InternalMoveY(int OffsetY)
+            => pScan = (T*)((byte*)pScan + Stride * OffsetY);
+
+        protected internal override void InternalMoveNext()
+            => pScan++;
+        protected internal override void InternalMovePrevious()
+            => pScan--;
+
+        protected internal override void InternalMoveNextLine()
+            => pScan = (T*)((byte*)pScan + Stride);
+        protected internal override void InternalMovePreviousLine()
+            => pScan = (T*)((byte*)pScan - Stride);
+
+        public override PixelAdapter<U> Clone()
+            => new PixelAdapter1<T, U>(this);
+
+    }
+
+    internal unsafe class CalculatedPixelAdapter1<T, U> : PixelAdapter<U>
         where T : unmanaged, IPixel
         where U : unmanaged, IPixel
     {
@@ -138,7 +256,7 @@
         private readonly long Stride;
         private readonly byte* pScan0;
         protected T* pScan;
-        public PixelAdapter1(PixelAdapter1<T, U> Adapter)
+        public CalculatedPixelAdapter1(CalculatedPixelAdapter1<T, U> Adapter)
         {
             X = Adapter.X;
             Y = Adapter.Y;
@@ -155,7 +273,7 @@
                 Pixel = Adapter.Pixel;
             }
         }
-        public PixelAdapter1(IImageContext Context, int X, int Y)
+        public CalculatedPixelAdapter1(IImageContext Context, int X, int Y)
         {
             MaxX = Context.Width - 1;
             MaxY = Context.Height - 1;
@@ -197,7 +315,13 @@
         public override void Overlay(PixelAdapter<U> Adapter)
             => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public override void Overlay(byte A, byte R, byte G, byte B)
-            => pScan->Overlay(A, R, G, B);
+        {
+            if (A == byte.MaxValue)
+                pScan->Override(A, R, G, B);
+            else
+                pScan->Overlay(A, R, G, B);
+        }
+
         public override void OverlayTo(U* pData)
         {
             EnsurePixel();
@@ -285,7 +409,7 @@
         }
 
         public override PixelAdapter<U> Clone()
-            => new PixelAdapter1<T, U>(this);
+            => new CalculatedPixelAdapter1<T, U>(this);
 
     }
 

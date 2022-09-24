@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace MenthaAssembly.Media.Imaging
 {
     public class ImagePalette<Pixel> : IImagePalette, IDisposable
         where Pixel : unmanaged, IPixel
     {
+        protected readonly object LockObject = new object();
         internal readonly List<Pixel> Datas;
 
         public int Count => Datas.Count;
@@ -34,19 +36,30 @@ namespace MenthaAssembly.Media.Imaging
 
         public bool TryGetOrAdd(Pixel Color, out int Index)
         {
-            Index = Datas.IndexOf(Color);
-            if (Index != -1)
-                return true;
-
-            if (Count < Capacity)
+            bool Token = false;
+            try
             {
-                Datas.Add(Color);
-                Index = Count - 1;
-                return true;
-            }
+                Monitor.Enter(LockObject, ref Token);
 
-            Index = -1;
-            return false;
+                Index = Datas.IndexOf(Color);
+                if (Index != -1)
+                    return true;
+
+                if (Count < Capacity)
+                {
+                    Datas.Add(Color);
+                    Index = Count - 1;
+                    return true;
+                }
+
+                Index = -1;
+                return false;
+            }
+            finally
+            {
+                if (Token)
+                    Monitor.Exit(LockObject);
+            }
         }
         bool IImagePalette.TryGetOrAdd(IReadOnlyPixel Color, out int Index)
             => TryGetOrAdd(Color.ToPixel<Pixel>(), out Index);

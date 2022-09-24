@@ -118,6 +118,9 @@ namespace MenthaAssembly.Media.Imaging
 
         public void Move(int X, int Y)
         {
+            X = X.Clamp(0, MaxX);
+            Y = Y.Clamp(0, MaxX);
+
             for (int i = 0; i < Width; i++)
             {
                 int Tx = X + i - Cx;

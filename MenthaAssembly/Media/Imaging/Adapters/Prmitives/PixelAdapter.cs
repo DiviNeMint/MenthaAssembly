@@ -7,7 +7,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where T : unmanaged, IPixel
     {
         private static readonly ParallelOptions DefaultParallelOptions = new ParallelOptions();
-        private static readonly Type PixelType = typeof(T);
+        protected static readonly Type PixelType = typeof(T);
 
         public int X { protected set; get; } = int.MinValue;
 

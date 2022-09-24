@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public sealed class IterationThreshold : ImageThreshold
+    internal sealed class IterationThreshold : ImageThreshold
     {
         public override PixelAdapter<T> CreateAdapter<T>(PixelAdapter<T> Source)
         {
@@ -39,7 +39,7 @@ namespace MenthaAssembly.Media.Imaging
             return new RangesThresholdingPixelAdapter<T>(Source, Threshold, byte.MaxValue);
         }
 
-        private int[] CreateHistogram<T>(PixelAdapter<T> Adapter, out byte AverageGray)
+        private int[] CreateHistogram<T>(PixelAdapter<T> Adapter, out byte MeanGray)
             where T : unmanaged, IPixel
         {
             int[] Histogram = new int[256];
@@ -50,7 +50,7 @@ namespace MenthaAssembly.Media.Imaging
                 S += Gray;
             }
 
-            AverageGray = (byte)(S / ((long)(Adapter.MaxX + 1) * (Adapter.MaxY + 1)));
+            MeanGray = (byte)(S / ((long)(Adapter.MaxX + 1) * (Adapter.MaxY + 1)));
             return Histogram;
         }
 

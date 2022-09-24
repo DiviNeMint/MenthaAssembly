@@ -38,21 +38,21 @@ namespace MenthaAssembly
         {
             Points = new Point<T>[0];
             this.IsInfinity = IsInfinity;
-            this.Count = IsInfinity ? int.MaxValue : 0;
+            Count = IsInfinity ? int.MaxValue : 0;
         }
         internal CrossPoints(params Point<T>[] Points)
         {
             this.Points = Points;
-            this.Count = Points.Length;
+            Count = Points.Length;
         }
         internal CrossPoints(IEnumerable<Point<T>> Points)
         {
             this.Points = Points;
-            this.Count = Points.Count();
+            Count = Points.Count();
         }
 
         public override string ToString()
-            => this.IsInfinity ? "Infinity" : string.Join(", ", Points.Select(i => $"{{{i}}}"));
+            => IsInfinity ? "Infinity" : string.Join(", ", Points.Select(i => $"{{{i}}}"));
 
         public IEnumerator<Point<T>> GetEnumerator()
             => Points.GetEnumerator();

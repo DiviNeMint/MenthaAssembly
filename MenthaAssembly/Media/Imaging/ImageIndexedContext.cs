@@ -115,6 +115,7 @@ namespace MenthaAssembly.Media.Imaging
             this.Palette = Palette ?? ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
 
+
         #region Graphic Processing
 
         #region Line Rendering
@@ -2831,6 +2832,99 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        #region Binarize
+        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            PixelAdapter<T> Sorc = Threshold.CreateAdapter(GetAdapter<T>(0, 0)),
+                            Dest = Image.GetAdapter<T>(0, 0);
+
+            T Color0 = default;
+            Image.Palette.Datas.Add(Color0);
+
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
+                        Dest.Override(Sorc);
+
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
+            }
+
+            return Image;
+        }
+        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            PixelAdapter<T> Sorc0 = Threshold.CreateAdapter(GetAdapter<T>(0, 0));
+
+            T Color0 = default;
+            Image.Palette.Datas.Add(Color0);
+
+            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            {
+                PixelAdapter<T> Sorc = Sorc0.Clone(),
+                                Dest = Image.GetAdapter<T>(0, j);
+
+                Sorc.Move(0, j);
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
+                        Dest.Override(Sorc);
+
+            });
+
+            return Image;
+        }
+
+        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
+                            Dest = Image.GetAdapter<T>(0, 0);
+
+            T Max = PixelHelper.ToPixel<T>(255, 255, 255, 255);
+            Image.Palette.Datas.Add(default);
+
+            int MaxX = Sorc.MaxX;
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i <= MaxX; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Predicate(i, j, Sorc))
+                        Dest.Override(Max);
+
+                Sorc.InternalMoveX(-MaxX);
+                Dest.InternalMoveX(-MaxX);
+            }
+
+            return Image;
+        }
+        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+
+            T Max = PixelHelper.ToPixel<T>(255, 255, 255, 255);
+            Image.Palette.Datas.Add(default);
+
+            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            {
+                PixelAdapter<T> Sorc = GetAdapter<T>(0, j),
+                                Dest = Image.GetAdapter<T>(0, j);
+
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Predicate(i, j, Sorc))
+                        Dest.Override(Max);
+            });
+
+            return Image;
+        }
+
+        #endregion
+
         #region Cast
         public ImageContext<T> Cast<T>()
             where T : unmanaged, IPixel
@@ -3289,6 +3383,7 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #endregion
+
 
         public PixelAdapter<T> GetAdapter<T>(int X, int Y)
             where T : unmanaged, IPixel

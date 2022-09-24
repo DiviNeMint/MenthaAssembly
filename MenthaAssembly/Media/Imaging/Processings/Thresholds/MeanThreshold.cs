@@ -2,15 +2,15 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public sealed class MeanThreshold : ImageThreshold
+    internal sealed class MeanThreshold : ImageThreshold
     {
         public override PixelAdapter<T> CreateAdapter<T>(PixelAdapter<T> Source)
         {
-            byte Threshold = GetAverageGray(Source);
+            byte Threshold = GetMeanGray(Source);
             return new RangesThresholdingPixelAdapter<T>(Source, Threshold, byte.MaxValue);
         }
 
-        private byte GetAverageGray<T>(PixelAdapter<T> Adapter)
+        private byte GetMeanGray<T>(PixelAdapter<T> Adapter)
             where T : unmanaged, IPixel
         {
             long S = 0;
