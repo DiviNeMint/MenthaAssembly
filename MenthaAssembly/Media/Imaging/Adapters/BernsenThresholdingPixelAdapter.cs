@@ -3,14 +3,14 @@ using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public sealed unsafe class MedianNeighborThresholdingPixelAdapter<T> : PixelAdapter<T>
+    public sealed unsafe class BernsenThresholdingPixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
         private static readonly Type GrayType = typeof(Gray8);
 
         private readonly ImagePatch Source;
 
-        private readonly int MedianIndex;
+        private readonly int MaxIndex;
         public int Level { get; }
 
         public override int MaxX { get; }
@@ -56,7 +56,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int BitsPerPixel { get; }
 
-        public MedianNeighborThresholdingPixelAdapter(MedianNeighborThresholdingPixelAdapter<T> Adapter)
+        public BernsenThresholdingPixelAdapter(BernsenThresholdingPixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
             {
@@ -67,11 +67,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (Adapter.IsCacheValid)
             {
                 IsCacheValid = true;
-                Cache = new List<byte>(Adapter.Cache);
+                Cache = new List<int>(Adapter.Cache);
             }
             else
             {
-                Cache = new List<byte>();
+                Cache = new List<int>();
             }
 
             X = Adapter.X;
@@ -80,39 +80,39 @@ namespace MenthaAssembly.Media.Imaging.Utils
             MaxY = Adapter.MaxY;
             Level = Adapter.Level;
             Source = Adapter.Source.Clone();
-            MedianIndex = Adapter.MedianIndex;
+            MaxIndex = Adapter.MaxIndex;
             BitsPerPixel = Adapter.BitsPerPixel;
             GetGray = Adapter.GetGray;
         }
-        public MedianNeighborThresholdingPixelAdapter(IReadOnlyImageContext Context, int Level)
+        public BernsenThresholdingPixelAdapter(IReadOnlyImageContext Context, int Level)
         {
             X = 0;
             Y = 0;
             MaxX = Context.Width - 1;
             MaxY = Context.Height - 1;
-            Cache = new List<byte>();
+            Cache = new List<int>();
             this.Level = Level;
 
             int Size = (Level << 1) + 1;
             Source = new ImagePatch(Context, Size, Size);
-            MedianIndex = (Size * Size) >> 1;
+            MaxIndex = Size * Size - 1;
             BitsPerPixel = Context.BitsPerPixel;
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
         }
-        public MedianNeighborThresholdingPixelAdapter(PixelAdapter<T> Adapter, int Level)
+        public BernsenThresholdingPixelAdapter(PixelAdapter<T> Adapter, int Level)
         {
             Adapter.InternalMove(0, 0);
             X = 0;
             Y = 0;
             MaxX = Adapter.MaxX;
             MaxY = Adapter.MaxY;
-            Cache = new List<byte>();
+            Cache = new List<int>();
             this.Level = Level;
 
             int Size = (Level << 1) + 1;
             Source = new ImagePatch(Adapter, Size, Size);
-            MedianIndex = (Size * Size) >> 1;
+            MaxIndex = Size * Size - 1;
             BitsPerPixel = Adapter.BitsPerPixel;
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
@@ -181,16 +181,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         private bool IsPixelValid = false,
                      IsCacheValid = false;
-        private readonly Func<IReadOnlyPixel, byte> GetGray;
-        private readonly List<byte> Cache = new List<byte>();
+        private readonly Func<IReadOnlyPixel, int> GetGray;
+        private readonly List<int> Cache = new List<int>();
         private void EnsurePixel()
         {
             if (IsPixelValid)
                 return;
 
-            List<byte> Left = new List<byte>();
-            int Rx = Source.Width - 1;
-            byte Gray = GetGray(Source[Level, Level]);
+            List<int> Left = new List<int>();
+            int Rx = Source.Width - 1,
+                Gray = GetGray(Source[Level, Level]);
 
             for (int j = 0; j < Source.Height; j++)
                 AddOrder(Left, GetGray(Source[0, j]));
@@ -208,9 +208,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
             for (int j = 0; j < Source.Height; j++)
                 AddOrder(Cache, GetGray(Source[Rx, j]));
 
-            byte Median = Cache[MedianIndex];
+            int Threshold = (Cache[0] + Cache[MaxIndex]) >> 1;
 
-            _Value = Gray < Median ? byte.MinValue : byte.MaxValue;
+            _Value = Gray < Threshold ? byte.MinValue : byte.MaxValue;
 
             foreach (byte Lv in Left)
                 Cache.Remove(Lv);
@@ -219,7 +219,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IsCacheValid = true;
         }
 
-        private void AddOrder(List<byte> Collection, byte Value)
+        private void AddOrder(List<int> Collection, int Value)
         {
             int i = 0;
             for (; i < Collection.Count; i++)
@@ -274,7 +274,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
 
         public override PixelAdapter<T> Clone()
-            => new MedianNeighborThresholdingPixelAdapter<T>(this);
+            => new BernsenThresholdingPixelAdapter<T>(this);
 
     }
 }

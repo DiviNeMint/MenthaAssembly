@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -35,10 +36,10 @@ namespace MenthaAssembly.Media.Imaging
                 TokenR = TokenR,
                 TokenG = TokenG,
                 TokenB = TokenB,
-                ByteListA = new List<byte>(ByteListA),
-                ByteListR = new List<byte>(ByteListR),
-                ByteListG = new List<byte>(ByteListG),
-                ByteListB = new List<byte>(ByteListB),
+                ByteListA = ByteListA?.ToList(),
+                ByteListR = ByteListR?.ToList(),
+                ByteListG = ByteListG?.ToList(),
+                ByteListB = ByteListB?.ToList(),
             };
         object ICloneable.Clone()
             => Clone();

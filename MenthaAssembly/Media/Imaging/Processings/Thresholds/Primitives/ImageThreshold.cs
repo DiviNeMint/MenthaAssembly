@@ -60,14 +60,19 @@ namespace MenthaAssembly.Media.Imaging
         public static ImageThreshold PTile75 { get; } = new PTileThreshold(0.75d);
 
         /// <summary>
-        /// Represents a threshold decided by averaging the neighbor grays(3 * 3).
+        /// Represents a threshold decided by averaging the grays in a 3 * 3 neighbourhood.
         /// </summary>
         public static ImageThreshold MeanNeighbor { get; } = new MeanNeighborThreshold(1);
 
         /// <summary>
-        /// Represents a threshold decided by the median of the neighbor grays (3 * 3).
+        /// Represents a threshold decided by the median of the grays in a 3 * 3 neighbourhood.
         /// </summary>
         public static ImageThreshold MedianNeighbor { get; } = new MedianNeighborThreshold(1);
+
+        /// <summary>
+        /// Represents a threshold decided by averaging the maximum gray and the minimum gray in a 3 * 3 neighbourhood.
+        /// </summary>
+        public static ImageThreshold Bernsen { get; } = new BernsenThreshold(1);
 
         public static implicit operator ImageThreshold(int Threshold)
             => new ConstThreshold((byte)Threshold.Clamp(byte.MinValue, byte.MaxValue));

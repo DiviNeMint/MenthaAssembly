@@ -182,7 +182,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (IsPixelValid)
                 return;
 
-            int Tg = GetGray(Source[Level, Level]) * Denominator,
+            int Gray = GetGray(Source[Level, Level]),
                 Rx = Source.Width - 1,
                 Left = 0;
 
@@ -191,7 +191,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             if (!IsCacheValid)
             {
-                Cache = Left - Denominator + 1;
+                Cache = Left;
                 for (int i = 1; i < Rx; i++)
                     for (int j = 0; j < Source.Height; j++)
                         Cache += GetGray(Source[i, j]);
@@ -200,7 +200,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             for (int j = 0; j < Source.Height; j++)
                 Cache += GetGray(Source[Rx, j]);
 
-            _Value = Tg < Cache ? byte.MinValue : byte.MaxValue;
+            int Tg = Cache / Denominator;
+            _Value = Gray < Tg ? byte.MinValue : byte.MaxValue;
 
             Cache -= Left;
 

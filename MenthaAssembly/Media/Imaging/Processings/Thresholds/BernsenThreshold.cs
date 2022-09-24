@@ -3,9 +3,9 @@
 namespace MenthaAssembly.Media.Imaging
 {
     /// <summary>
-    /// Represents a threshold decided by the median gray in a n * n neighbourhood.
+    /// Represents a threshold decided by averaging the maximum gray and the minimum gray in a n * n neighbourhood.
     /// </summary>
-    public sealed class MedianNeighborThreshold : ImageThreshold
+    public sealed class BernsenThreshold : ImageThreshold
     {
         /// <summary>
         /// The specified value to decide the size of neighbourhood (n * n). <para/>n = (2 * Level) + 1.
@@ -16,13 +16,13 @@ namespace MenthaAssembly.Media.Imaging
         /// Initializes a new instance.
         /// </summary>
         /// <param name="Level">The specified value to decide the size of neighbourhood (n * n). <para/>n = (2 * Level) + 1.</param>
-        public MedianNeighborThreshold(int Level)
+        public BernsenThreshold(int Level)
         {
             this.Level = Level;
         }
 
         public override PixelAdapter<T> CreateAdapter<T>(PixelAdapter<T> Source)
-            => new MedianNeighborThresholdingPixelAdapter<T>(Source, Level);
+            => new BernsenThresholdingPixelAdapter<T>(Source, Level);
 
     }
 }
