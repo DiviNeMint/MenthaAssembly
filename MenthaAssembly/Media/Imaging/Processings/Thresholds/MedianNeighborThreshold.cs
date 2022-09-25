@@ -3,7 +3,7 @@
 namespace MenthaAssembly.Media.Imaging
 {
     /// <summary>
-    /// Represents a threshold decided by the median gray in a n * n neighbourhood.
+    /// Represents a threshold by the median gray in a n * n neighbourhood.
     /// </summary>
     public sealed class MedianNeighborThreshold : ImageThreshold
     {

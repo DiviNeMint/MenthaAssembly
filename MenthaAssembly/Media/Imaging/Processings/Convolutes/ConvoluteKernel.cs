@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents a convolution kernel.
+    /// </summary>
     public class ConvoluteKernel : ImageFilter
     {
         #region Edge Detection
@@ -65,7 +69,7 @@ namespace MenthaAssembly.Media.Imaging
         /// {2, 4, 2}<para/>
         /// {1, 2, 1}
         /// </summary>
-        public static GaussianBlurKernel Blur_Gaussian { get; } = new GaussianBlurKernel(1);
+        public static GaussianBlurKernel Blur_Gaussian { get; } = new GaussianBlurKernel(1, 0.8d);
 
         #endregion
 
@@ -130,10 +134,19 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        /// <summary>
+        /// The matrix of kernel.
+        /// </summary>
         public virtual float[,] Matrix { get; }
 
+        /// <summary>
+        /// The width of kernel.
+        /// </summary>
         public int Width => PatchWidth;
 
+        /// <summary>
+        /// The height of kernel.
+        /// </summary>
         public int Height => PatchHeight;
 
         protected float KernelSum;
@@ -151,10 +164,14 @@ namespace MenthaAssembly.Media.Imaging
             PatchWidth = Width;
             PatchHeight = Height;
         }
-        public ConvoluteKernel(float[,] Datas)
+        /// <summary>
+        /// Initializes a new instance.
+        /// </summary>
+        /// <param name="Matrix">The specified matrix of kernel.</param>
+        public ConvoluteKernel(float[,] Matrix)
         {
-            int W = Datas.GetUpperBound(1) + 1,
-                H = Datas.GetUpperBound(0) + 1;
+            int W = Matrix.GetUpperBound(1) + 1,
+                H = Matrix.GetUpperBound(0) + 1;
 
             if ((W & 1) == 0)
                 throw new InvalidOperationException("Kernel width must be odd!");
@@ -165,9 +182,9 @@ namespace MenthaAssembly.Media.Imaging
             float Sum = 0;
             for (int j = 0; j < Height; j++)
                 for (int i = 0; i < Width; i++)
-                    Sum += Datas[j, i];
+                    Sum += Matrix[j, i];
 
-            Matrix = Datas;
+            this.Matrix = Matrix;
             PatchWidth = W;
             PatchHeight = H;
             KernelSum = Sum == 0f ? 1f : Sum;
@@ -207,6 +224,28 @@ namespace MenthaAssembly.Media.Imaging
             => (byte)MathHelper.Clamp(FactorG / KernelSum, 0f, 255f);
         protected virtual byte CalculateB(float FactorB)
             => (byte)MathHelper.Clamp(FactorB / KernelSum, 0f, 255f);
+
+        public override string ToString()
+        {
+            StringBuilder Builder = new StringBuilder();
+            try
+            {
+                for (int j = 0; j < Height; j++)
+                {
+                    Builder.Append($"{Matrix[j, 0]:0.0000}");
+                    for (int i = 1; i < Width; i++)
+                        Builder.Append($" {Matrix[j, i]:0.0000}");
+
+                    Builder.AppendLine();
+                }
+
+                return Builder.ToString();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
 
     }
 }

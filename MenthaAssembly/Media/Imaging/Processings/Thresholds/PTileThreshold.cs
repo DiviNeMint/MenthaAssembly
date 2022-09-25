@@ -4,7 +4,7 @@ using System;
 namespace MenthaAssembly.Media.Imaging
 {
     /// <summary>
-    /// Represents a threshold decided by the percentage of background area in image.
+    /// Represents a threshold by the percentage of background area in image.
     /// </summary>
     public sealed class PTileThreshold : ImageThreshold
     {

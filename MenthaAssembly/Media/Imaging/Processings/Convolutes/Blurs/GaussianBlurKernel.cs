@@ -1,53 +1,63 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents a convolution kernel calculating by the 2-D gaussian function G(x,y) = (1 / 2πσ ^ 2 ) * e ^ -[(x ^ 2 + y ^ 2) / 2 * σ ^ 2].
+    /// </summary>
     public class GaussianBlurKernel : ConvoluteKernel
     {
         public override float[,] Matrix { get; }
 
         /// <summary>
-        /// Initializes a kernel of size (n * n) where n = 2 * <paramref name="Level"/> + 1.
+        /// Initializes a new instance.
         /// </summary>
-        public GaussianBlurKernel(int Level)
+        /// <param name="Level">The specified value to decide the size of kernel (n * n). <para/>n = (2 * Level) + 1.</param>
+        /// <param name="Sigma">The specified parameter in gaussian function.</param>
+        public GaussianBlurKernel(int Level, double Sigma)
         {
             if (Level < 1)
                 throw new ArgumentException(@$"Argument ""level"" can't less than 1.");
 
-            int Row = Level << 1,
-                L = Row + 1,
-                RowSum = 1 << Row;
+            int L = (Level << 1) + 1,
+                C = L >> 1;
 
-            // Init
-            float[] Data = new float[Level + 1];
-            Data[0] = 1f;
-            for (int i = 1; i <= Level; i++)
-                Data[i] = MathHelper.Combination(Row, i);
-
-            int Tx, Ty;
-            float Vx;
+            double k = 0.5d / (Sigma * Sigma),
+                   C0 = k;
+            float Sum = (float)C0;
             float[,] Kernel = new float[L, L];
-            for (int i = 0; i < Level; i++)
+            Kernel[C, C] = Sum;
+
+            for (int j = 0; j <= Level; j++)
             {
-                Vx = Data[i];
-                for (int j = 0; j <= Level; j++)
+                double j2 = j * j;
+                for (int i = 1; i <= Level; i++)
                 {
-                    float v = Vx * Data[j];
-                    Tx = Row - i;
-                    Ty = Row - j;
-                    Kernel[j, i] = v;
-                    Kernel[i, Ty] = v;
-                    Kernel[Tx, j] = v;
-                    Kernel[Ty, Tx] = v;
+                    float v = (float)(C0 * Math.Exp(-(j2 + i * i) * k));
+                    Sum += v * 4f;
+                    Kernel[C + j, C + i] = v;
                 }
             }
-            Vx = Data[Level];
-            Kernel[Level, Level] = Vx * Vx;
+
+            // Normalized
+            Kernel[C, C] /= Sum;
+            for (int j = 0; j <= Level; j++)
+            {
+                for (int i = 1; i <= Level; i++)
+                {
+                    float v = Kernel[C + j, C + i] / Sum;
+                    Kernel[C + j, C + i] = v;
+                    Kernel[C - j, C - i] = v;
+                    Kernel[C + i, C - j] = v;
+                    Kernel[C - i, C + j] = v;
+                }
+            }
 
             Matrix = Kernel;
             PatchWidth = L;
             PatchHeight = L;
-            KernelSum = RowSum * RowSum;
+            KernelSum = 1f;
             HalfWidth = Level;
             HalfHeight = Level;
         }

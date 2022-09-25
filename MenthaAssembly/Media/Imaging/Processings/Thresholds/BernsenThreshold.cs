@@ -3,7 +3,7 @@
 namespace MenthaAssembly.Media.Imaging
 {
     /// <summary>
-    /// Represents a threshold decided by averaging the maximum gray and the minimum gray in a n * n neighbourhood.
+    /// Represents a threshold by averaging the maximum gray and the minimum gray in a n * n neighbourhood.
     /// </summary>
     public sealed class BernsenThreshold : ImageThreshold
     {
