@@ -26,7 +26,7 @@ namespace MenthaAssembly
         /// <summary>
         /// Gets the crests.
         /// </summary>
-        public IEnumerable<HistogramCrest<T>> Crests
+        public IEnumerable<HistogramCrest> Crests
             => EnumCrest();
 
         /// <summary>
@@ -64,19 +64,18 @@ namespace MenthaAssembly
             Datas[Length] = SmoothFunc(Prev, Current, Current);
         }
 
-        private IEnumerable<HistogramCrest<T>> EnumCrest()
+        private IEnumerable<HistogramCrest> EnumCrest()
         {
             int Length = Datas.Length;
             if (Length < 3)
                 yield break;
 
             int Start = 0,
-                End,
-                Ti;
+                Peak = 0,
+                End;
 
             T Current = Datas[0],
-              Next,
-              Peak = Current;
+              Next;
 
             int i = 1,
                 Compare;
@@ -85,17 +84,34 @@ namespace MenthaAssembly
                 // Peak
                 for (; i < Length;)
                 {
-                    Peak = Current;
                     Next = Datas[i++];
                     Compare = Next.CompareTo(Current);
                     Current = Next;
 
                     if (Compare < 0)
+                    {
+                        Peak = (Peak + i - 1) >> 1;
                         break;
+                    }
+                    else if (Compare > 0)
+                    {
+                        Peak = i - 2;
+                    }
                 }
 
-                Ti = i - 2;
-                End = Ti;
+                if (i == Length)
+                {
+                    End = Length - 1;
+                    yield return new HistogramCrest
+                    {
+                        Start = Start,
+                        End = End,
+                        Peak = End,
+                    };
+                    yield break;
+                }
+
+                End = i - 2;
 
                 // End
                 for (; i < Length;)
@@ -106,25 +122,36 @@ namespace MenthaAssembly
 
                     if (Compare < 0)
                     {
-                        End = (Ti + i - 1) >> 1;
+                        End = (End + i - 1) >> 1;
                         break;
                     }
                     else if (Compare > 0)
                     {
-                        Ti = i - 2;
+                        End = i - 2;
                     }
                 }
 
-                if (Start != End)
+                if (i == Length)
                 {
-                    yield return new HistogramCrest<T>
+                    yield return new HistogramCrest
                     {
-                        StartIndex = Start,
-                        EndIndex = End,
-                        Peak = Peak
+                        Start = Start,
+                        End = Length - 1,
+                        Peak = Peak,
+                    };
+                    yield break;
+                }
+                else if (Start != End)
+                {
+                    yield return new HistogramCrest
+                    {
+                        Start = Start,
+                        End = End,
+                        Peak = Peak,
                     };
 
                     Start = End;
+                    Peak = Start;
                 }
             }
         }
