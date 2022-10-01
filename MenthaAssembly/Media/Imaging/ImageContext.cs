@@ -2743,16 +2743,57 @@ namespace MenthaAssembly.Media.Imaging
 
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
                             Dest = Result.GetAdapter<T>(0, 0);
-            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc, Type, Count,
-                                                                  out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
-                                                                  out Func<QuantizationBox, T> GetColor).ToArray();
-            T[] Colors = Boxes.Select(b => GetColor(b)).ToArray();
+
+            T[] Colors;
+            Func<PixelAdapter<T>, int> GetColorIndex;
+            switch (Type)
+            {
+                case QuantizationTypes.KMeans:
+                    {
+                        QuantizationCluster[] Clusters = ImageContextHelper.ClusterQuantize(Sorc, Count,
+                                                                                            out Func<QuantizationCluster, IReadOnlyPixel, int> GetDistanceConst,
+                                                                                            out Func<QuantizationCluster, T> GetColor)
+                                                                           .ToArray();
+
+                        Colors = Clusters.Select(c => GetColor(c)).ToArray();
+                        GetColorIndex = Adapter =>
+                        {
+                            // Finds Minimum Distance
+                            int Index = -1,
+                                MinDistance = int.MaxValue,
+                                Distance;
+                            for (int k = 0; k < Clusters.Length; k++)
+                            {
+                                Distance = GetDistanceConst(Clusters[k], Adapter);
+                                if (Distance < MinDistance)
+                                {
+                                    MinDistance = Distance;
+                                    Index = k;
+                                }
+                            }
+
+                            return Index;
+                        };
+                    }
+                    break;
+                case QuantizationTypes.Mean:
+                case QuantizationTypes.Median:
+                default:
+                    {
+                        QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc, Type, Count,
+                                                                                 out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
+                                                                                 out Func<QuantizationBox, T> GetColor).ToArray();
+                        Colors = Boxes.Select(b => GetColor(b)).ToArray();
+                        GetColorIndex = Adapter => Boxes.IndexOf(b => Contain(b, Adapter));
+                    }
+                    break;
+            }
 
             Sorc.InternalMove(0, 0);
             for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
             {
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    Dest.Override(Colors[Boxes.IndexOf(b => Contain(b, Sorc))]);
+                    Dest.Override(Colors[GetColorIndex(Sorc)]);
 
                 Sorc.InternalMoveX(-Width);
                 Dest.InternalMoveX(-Width);

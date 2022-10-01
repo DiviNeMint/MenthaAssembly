@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Reflection;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace MenthaAssembly
 {
@@ -17,7 +17,7 @@ namespace MenthaAssembly
             => Value.GetHashCode();
 
         public bool Equals(Operatorable<T> obj)
-            => Equal(this.Value, obj.Value);
+            => Equal(Value, obj.Value);
         public override bool Equals(object obj)
         {
             if (obj is Operatorable<T> Target)
@@ -31,10 +31,10 @@ namespace MenthaAssembly
 
         public override string ToString() => $"{Value}";
 
-        private readonly static Func<T, T> Neg;
-        private readonly static Func<T, T, T> Add, Sub, Mul, Div;
-        private readonly static Func<T, T, bool> Equal, GreaterThan, LessThan, GreaterThanOrEqual, LessThanOrEqual;
-        private readonly static Func<int, T> Cast;
+        private static readonly Func<T, T> Neg;
+        private static readonly Func<T, T, T> Add, Sub, Mul, Div;
+        private static readonly Func<T, T, bool> Equal, GreaterThan, LessThan, GreaterThanOrEqual, LessThanOrEqual;
+        internal static readonly Func<int, T> Cast;
         static Operatorable()
         {
             Neg = ExpressionHelper<T>.CreateNeg();
@@ -105,6 +105,15 @@ namespace MenthaAssembly
             => new Operatorable<T>(Mul(This.Value, Target.Value));
         public static Operatorable<T> operator /(Operatorable<T> This, Operatorable<T> Target)
             => new Operatorable<T>(Div(This.Value, Target.Value));
+
+        public static Operatorable<T> operator +(Operatorable<T> This, int Target)
+            => new Operatorable<T>(Add(This.Value, Cast(Target)));
+        public static Operatorable<T> operator -(Operatorable<T> This, int Target)
+            => new Operatorable<T>(Sub(This.Value, Cast(Target)));
+        public static Operatorable<T> operator *(Operatorable<T> This, int Target)
+            => new Operatorable<T>(Mul(This.Value, Cast(Target)));
+        public static Operatorable<T> operator /(Operatorable<T> This, int Target)
+            => new Operatorable<T>(Div(This.Value, Cast(Target)));
 
         public static Operatorable<T> operator ++(Operatorable<T> This)
         {

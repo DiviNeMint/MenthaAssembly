@@ -7,8 +7,10 @@ namespace MenthaAssembly
     public sealed class QuantizationBox
     {
         public int Dimension { get; }
+
+        public int TotalDatas { private set; get; } = 0;
+
         private readonly Dictionary<int, int>[] Histos;
-        internal int TotalDatas = 0;
         private readonly int[] MinValues, MaxValues,
                                MinBounds, MaxBounds;
 
@@ -57,7 +59,7 @@ namespace MenthaAssembly
         }
 
         public bool TryAddDatas(params int[] Datas)
-            => Datas.Length == Dimension && InternalTryAddDatas(Datas);
+            => Datas.Length >= Dimension && InternalTryAddDatas(Datas);
         internal bool InternalTryAddDatas(params int[] Datas)
         {
             // Check Bounds
@@ -249,9 +251,9 @@ namespace MenthaAssembly
         {
             for (int i = 0; i < Dimension; i++)
             {
-                if (MaxValues[i] == byte.MinValue)
+                if (MaxValues[i] == MinBounds[i])
                     MaxValues[i] = MinValues[i];
-                else if (MinValues[i] == byte.MaxValue)
+                else if (MinValues[i] == MaxBounds[i])
                     MinValues[i] = MaxValues[i];
             }
         }
@@ -319,4 +321,313 @@ namespace MenthaAssembly
         }
 
     }
+
+    public sealed class QuantizationBox<T>
+    {
+        public int Dimension { get; }
+
+        public int TotalDatas { private set; get; } = 0;
+
+        private readonly Dictionary<T, int>[] Histos;
+        private readonly Operatorable<T>[] MinValues, MaxValues,
+                                           MinBounds, MaxBounds;
+
+        public QuantizationBox(int Dimension, T MinValue, T MaxValue, IEnumerable<T> Keys)
+        {
+            this.Dimension = Dimension;
+            Histos = new Dictionary<T, int>[Dimension];
+            MinValues = new Operatorable<T>[Dimension];
+            MaxValues = new Operatorable<T>[Dimension];
+            MinBounds = new Operatorable<T>[Dimension];
+            MaxBounds = new Operatorable<T>[Dimension];
+
+            for (int i = 0; i < Dimension; i++)
+            {
+                Histos[i] = Keys.ToDictionary(i => i, i => 0);
+                MinValues[i] = MaxValue;
+                MaxValues[i] = MinValue;
+                MinBounds[i] = MinValue;
+                MaxBounds[i] = MaxValue;
+            }
+        }
+        private QuantizationBox(Operatorable<T>[] MinBounds, Operatorable<T>[] MaxBounds, IEnumerable<T> Keys)
+        {
+            Dimension = MinBounds.Length;
+            Histos = new Dictionary<T, int>[Dimension];
+            this.MinBounds = MinBounds;
+            this.MaxBounds = MaxBounds;
+            MinValues = new Operatorable<T>[Dimension];
+            MaxValues = new Operatorable<T>[Dimension];
+
+            for (int i = 0; i < Dimension; i++)
+            {
+                Histos[i] = Keys.ToDictionary(i => i, i => 0);
+                MinValues[i] = MaxBounds[i];
+                MaxValues[i] = MinBounds[i];
+            }
+        }
+
+        public bool TryAddDatas(params T[] Datas)
+            => Datas.Length >= Dimension && InternalTryAddDatas(Datas);
+        internal bool InternalTryAddDatas(params T[] Datas)
+        {
+            // Check Bounds
+            if (!Contain(Datas))
+                return false;
+
+            T Data;
+            for (int i = 0; i < Dimension; i++)
+            {
+                Data = Datas[i];
+
+                // Compare with Min & Max
+                if (Data < MinValues[i])
+                    MinValues[i] = Data;
+
+                if (MaxValues[i] < Data)
+                    MaxValues[i] = Data;
+
+                // Add Datas
+                Dictionary<T, int> Histo = Histos[i];
+                if (Histo.ContainsKey(Data))
+                    Histo[Data]++;
+                else
+                    Histo[Data] = 1;
+            }
+
+            TotalDatas++;
+            Center = null;
+            return true;
+        }
+
+        private T[] Center = null;
+        public T[] GetCenter()
+        {
+            if (this.Center != null)
+                return this.Center;
+
+            T[] Center = new T[Dimension];
+            Operatorable<T> Sum,
+                            Frax = Operatorable<T>.Cast(TotalDatas >> 1);
+            for (int i = 0; i < Dimension; i++)
+            {
+                Sum = Frax;
+                foreach (KeyValuePair<T, int> HistoData in Histos[i])
+                    Sum += new Operatorable<T>(HistoData.Key) * HistoData.Value;
+
+                Center[i] = Sum / TotalDatas;
+            }
+
+            this.Center = Center;
+            return Center;
+        }
+
+        public IEnumerable<QuantizationBox<T>> Split(int Count)
+        {
+            if (Count <= 1)
+            {
+                yield return this;
+                yield break;
+            }
+
+            // Check Min & Max
+            EnsureMaxAndMin();
+
+            // Calculate the maximum delta of dimension.
+            int Index = GetMaxDeltaDimension();
+            if (Index < 0)
+            {
+                yield return this;
+                yield break;
+            }
+
+            // Split
+            Operatorable<T>[] MinBound = MinValues.ToArray(),
+                              MaxBound = MaxValues.ToArray();
+
+            Dictionary<T, int> Histo = Histos[Index];
+            int ColorCount = 0,
+                TCount;
+            Operatorable<T> TMax = MaxValues[Index],
+                            j = MinValues[Index];
+            for (int i = 1; i < Count; i++)
+            {
+                TCount = TotalDatas * i / Count;
+                for (; j <= TMax; j++)
+                {
+                    if (!Histo.ContainsKey(j))
+                        continue;
+
+                    ColorCount += Histo[j];
+                    if (TCount < ColorCount)
+                    {
+                        MaxBound[Index] = j;
+
+                        yield return new QuantizationBox<T>(MinBound, MaxBound, Histo.Keys);
+
+                        MinBound = MinValues.ToArray();
+                        MaxBound = MaxValues.ToArray();
+                        MinBound[Index] = j + 1;
+                        break;
+                    }
+                }
+            }
+
+            yield return new QuantizationBox<T>(MinBound, MaxBound, Histo.Keys);
+        }
+
+        public IEnumerable<QuantizationBox<T>> MeanSplit()
+        {
+            // Check Min & Max
+            EnsureMaxAndMin();
+
+            // Calculate the maximum delta of dimension.
+            int Index = GetMaxDeltaDimension();
+            if (Index < 0)
+            {
+                yield return this;
+                yield break;
+            }
+
+            // Split
+            Operatorable<T>[] MinBound = MinValues.ToArray(),
+                              MaxBound = MaxValues.ToArray();
+            Operatorable<T> Mean = (MinValues[Index] + MaxValues[Index]) / 2;
+            if (MinValues[Index] == Mean)
+            {
+                yield return this;
+                yield break;
+            }
+
+            MaxBound[Index] = Mean;
+            yield return new QuantizationBox<T>(MinBound, MaxBound, Histos[0].Keys);
+
+            MinBound = MinValues.ToArray();
+            MaxBound = MaxValues.ToArray();
+            MinBound[Index] = Mean++;
+
+            yield return new QuantizationBox<T>(MinBound, MaxBound, Histos[0].Keys);
+        }
+
+        public IEnumerable<QuantizationBox<T>> MedianSplit()
+        {
+            // Check Min & Max
+            EnsureMaxAndMin();
+
+            // Calculate the maximum delta of dimension.
+            int Index = GetMaxDeltaDimension();
+            if (Index < 0)
+            {
+                yield return this;
+                yield break;
+            }
+
+            // Split
+            Operatorable<T>[] MinBound = MinValues.ToArray(),
+                  MaxBound = MaxValues.ToArray();
+
+            Dictionary<T, int> Histo = Histos[Index];
+            int DatasCount = 0,
+                TCount = TotalDatas >> 1;
+            Operatorable<T> TMax = MaxValues[Index],
+                            j = MinValues[Index];
+
+            for (; j <= TMax; j++)
+            {
+                if (!Histo.ContainsKey(j))
+                    continue;
+
+                DatasCount += Histo[j];
+                if (TCount < DatasCount)
+                {
+                    Operatorable<T> NMax = j == TMax ? j - 1 : j;
+                    MaxBound[Index] = NMax;
+
+                    yield return new QuantizationBox<T>(MinBound, MaxBound, Histos[0].Keys);
+
+                    MinBound = MinValues.ToArray();
+                    MaxBound = MaxValues.ToArray();
+                    MinBound[Index] = NMax + 1;
+                    break;
+                }
+            }
+
+            yield return new QuantizationBox<T>(MinBound, MaxBound, Histos[0].Keys);
+        }
+
+        private void EnsureMaxAndMin()
+        {
+            for (int i = 0; i < Dimension; i++)
+            {
+                if (MaxValues[i] == MinBounds[i])
+                    MaxValues[i] = MinValues[i];
+                else if (MinValues[i] == MaxBounds[i])
+                    MinValues[i] = MaxValues[i];
+            }
+        }
+        private int GetMaxDeltaDimension()
+        {
+            // Calculate the maximum delta of dimension.
+            int DimensionlIndex = 0;
+            Operatorable<T> D = MaxValues[0] - MinValues[0],
+                            Dt;
+            for (int i = 1; i < Dimension; i++)
+            {
+                Dt = MaxValues[i] - MinValues[i];
+                if (D < Dt)
+                {
+                    DimensionlIndex = i;
+                    D = Dt;
+                }
+            }
+
+            return D == default ? -1 : DimensionlIndex;
+        }
+
+        public T GetValueSize()
+        {
+            EnsureMaxAndMin();
+
+            T Size = MaxValues[0] - MinValues[0];
+            for (int i = 1; i < Dimension; i++)
+                Size *= MaxValues[i] - MinValues[i];
+
+            return Size;
+        }
+
+        public bool Contain(params T[] Datas)
+        {
+            for (int i = 0; i < Dimension; i++)
+            {
+                T Data = Datas[i];
+                if (Data < MinBounds[i] || MaxBounds[i] < Data)
+                    return false;
+            }
+
+            return true;
+        }
+
+        public override string ToString()
+        {
+            if (Dimension < 1)
+                return string.Empty;
+
+            StringBuilder Builder = new StringBuilder();
+            try
+            {
+                Builder.Append($"{MinBounds[0]} <= Data[{0}] <= {MaxBounds[0]}");
+                for (int i = 1; i < Dimension; i++)
+                    Builder.Append($", {MinBounds[i]} <= Data[{i}] <= {MaxBounds[i]}");
+
+                return Builder.ToString();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+
+        }
+
+    }
+
 }
