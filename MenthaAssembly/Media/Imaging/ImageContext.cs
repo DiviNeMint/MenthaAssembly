@@ -2736,7 +2736,7 @@ namespace MenthaAssembly.Media.Imaging
             return Result;
         }
 
-        public ImageContext<T> Quantizate<T>(QuantizationType Type, int Count)
+        public ImageContext<T> Quantizate<T>(QuantizationTypes Type, int Count)
             where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
@@ -2760,7 +2760,7 @@ namespace MenthaAssembly.Media.Imaging
 
             return Result;
         }
-        public ImageContext<T> Quantizate<T>(QuantizationType Type, int Count, ParallelOptions Options)
+        public ImageContext<T> Quantizate<T>(QuantizationTypes Type, int Count, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
@@ -2916,7 +2916,7 @@ namespace MenthaAssembly.Media.Imaging
 
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0);
             PixelIndexedAdapter<T> Dest = Result.GetAdapter<T>(0, 0);
-            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc, QuantizationType.Median, Palette.Capacity,
+            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc, QuantizationTypes.Median, Palette.Capacity,
                                                                   out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
                                                                   out Func<QuantizationBox, T> GetColor).ToArray();
             Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));
@@ -2940,7 +2940,7 @@ namespace MenthaAssembly.Media.Imaging
             ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
             ImagePalette<T> Palette = Result.Palette;
             PixelAdapter<T> Sorc0 = GetAdapter<T>(0, 0);
-            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc0, QuantizationType.Median, Palette.Capacity, Options ?? DefaultParallelOptions,
+            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc0, QuantizationTypes.Median, Palette.Capacity, Options ?? DefaultParallelOptions,
                                                                   out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
                                                                   out Func<QuantizationBox, T> GetColor).ToArray();
             Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));

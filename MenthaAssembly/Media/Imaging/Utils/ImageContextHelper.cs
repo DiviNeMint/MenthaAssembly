@@ -167,7 +167,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             return Contour;
         }
 
-        public static IEnumerable<QuantizationBox> BoxQuantize<T>(PixelAdapter<T> Adapter, QuantizationType Type, int Count, out Func<QuantizationBox, IReadOnlyPixel, bool> Contain, out Func<QuantizationBox, T> GetColor)
+        public static IEnumerable<QuantizationBox> BoxQuantize<T>(PixelAdapter<T> Adapter, QuantizationTypes Type, int Count, out Func<QuantizationBox, IReadOnlyPixel, bool> Contain, out Func<QuantizationBox, T> GetColor)
             where T : unmanaged, IPixel
         {
             int Dimension = (Adapter.BitsPerPixel + 7) >> 3;
@@ -175,7 +175,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             try
             {
                 Action FillDatas;
-                Func<QuantizationBox, IEnumerable<QuantizationBox>> Split = Type == QuantizationType.Mean ? Box => Box.MeanSplit() :
+                Func<QuantizationBox, IEnumerable<QuantizationBox>> Split = Type == QuantizationTypes.Mean ? Box => Box.MeanSplit() :
                                                                                                             Box => Box.MedianSplit();
                 switch (Dimension)
                 {
@@ -282,13 +282,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 ArrayPool<int>.Shared.Return(Datas);
             }
         }
-        public static IEnumerable<QuantizationBox> BoxQuantize<T>(PixelAdapter<T> Adapter, QuantizationType Type, int Count, ParallelOptions Options, out Func<QuantizationBox, IReadOnlyPixel, bool> Contain, out Func<QuantizationBox, T> GetColor)
+        public static IEnumerable<QuantizationBox> BoxQuantize<T>(PixelAdapter<T> Adapter, QuantizationTypes Type, int Count, ParallelOptions Options, out Func<QuantizationBox, IReadOnlyPixel, bool> Contain, out Func<QuantizationBox, T> GetColor)
             where T : unmanaged, IPixel
         {
             int Dimension = (Adapter.BitsPerPixel + 7) >> 3;
 
             Action<PixelAdapter<T>, int[]> FillDatas;
-            Func<QuantizationBox, IEnumerable<QuantizationBox>> Split = Type == QuantizationType.Mean ? Box => Box.MeanSplit() :
+            Func<QuantizationBox, IEnumerable<QuantizationBox>> Split = Type == QuantizationTypes.Mean ? Box => Box.MeanSplit() :
                                                                                                         Box => Box.MedianSplit();
             switch (Dimension)
             {

@@ -933,7 +933,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <typeparam name="T"></typeparam>
         /// <param name="Type">The type of quantization.</param>
         /// <param name="Count">The count of color.</param>
-        public ImageContext<T> Quantizate<T>(QuantizationType Type, int Count) where T : unmanaged, IPixel;
+        public ImageContext<T> Quantizate<T>(QuantizationTypes Type, int Count) where T : unmanaged, IPixel;
         /// <summary>
         /// Creates a new quantized <see cref="ImageContext{T}"/>.
         /// </summary>
@@ -942,7 +942,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Count">The count of color.</param>
         /// <param name="Options">An object that configures the behavior of this operation.<para/>
         /// If it is null, the function will run with default options. </param>
-        public ImageContext<T> Quantizate<T>(QuantizationType Type, int Count, ParallelOptions Options) where T : unmanaged, IPixel;
+        public ImageContext<T> Quantizate<T>(QuantizationTypes Type, int Count, ParallelOptions Options) where T : unmanaged, IPixel;
 
         /// <summary>
         /// Creates a new binarized image by the specified threshold.
