@@ -77,7 +77,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     }
             }
         }
-        public FlipPixelAdapter(FlipPixelAdapter<T> Adapter)
+        private FlipPixelAdapter(FlipPixelAdapter<T> Adapter)
         {
             Source = Adapter.Source.Clone();
             X = Adapter.X;

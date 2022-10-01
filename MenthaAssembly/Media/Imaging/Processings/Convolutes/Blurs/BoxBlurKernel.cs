@@ -2,13 +2,17 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents a convolution kernel with all elements be 1.
+    /// </summary>
     public class BoxBlurKernel : ConvoluteKernel
     {
         public override float[,] Matrix { get; }
 
         /// <summary>
-        /// Initializes a kernel of size (n * n) where n = 2 * <paramref name="Level"/> + 1.
+        /// Initializes a new instance.
         /// </summary>
+        /// <param name="Level">The specified value to decide the size of kernel (n * n). <para/>n = (2 * Level) + 1.</param>
         public BoxBlurKernel(int Level)
         {
             if (Level < 1)

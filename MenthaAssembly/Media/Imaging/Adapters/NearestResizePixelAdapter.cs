@@ -28,7 +28,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override int BitsPerPixel
             => Source.BitsPerPixel;
 
-        public NearestResizePixelAdapter(NearestResizePixelAdapter<T> Adapter)
+        private NearestResizePixelAdapter(NearestResizePixelAdapter<T> Adapter)
         {
             Source = Adapter.Source.Clone();
             StepX = Adapter.StepX;

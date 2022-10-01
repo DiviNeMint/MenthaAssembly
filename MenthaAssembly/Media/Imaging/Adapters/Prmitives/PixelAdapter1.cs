@@ -20,7 +20,7 @@
         private readonly long Stride;
         private readonly byte* pScan0;
         protected T* pScan;
-        public PixelAdapter1(PixelAdapter1<T> Adapter)
+        private PixelAdapter1(PixelAdapter1<T> Adapter)
         {
             X = Adapter.X;
             Y = Adapter.Y;
@@ -110,7 +110,7 @@
         private readonly long Stride;
         private readonly byte* pScan0;
         protected T* pScan;
-        public PixelAdapter1(PixelAdapter1<T, U> Adapter)
+        private PixelAdapter1(PixelAdapter1<T, U> Adapter)
         {
             X = Adapter.X;
             Y = Adapter.Y;
@@ -256,7 +256,7 @@
         private readonly long Stride;
         private readonly byte* pScan0;
         protected T* pScan;
-        public CalculatedPixelAdapter1(CalculatedPixelAdapter1<T, U> Adapter)
+        private CalculatedPixelAdapter1(CalculatedPixelAdapter1<T, U> Adapter)
         {
             X = Adapter.X;
             Y = Adapter.Y;

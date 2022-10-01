@@ -54,7 +54,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int BitsPerPixel { get; }
 
-        public FilterPixelAdapter(FilterPixelAdapter<T> Adapter)
+        private FilterPixelAdapter(FilterPixelAdapter<T> Adapter)
         {
             if (IsPixelValid)
             {

@@ -34,35 +34,65 @@ namespace MenthaAssembly.Media.Imaging
             Datas = new List<Pixel>(Palette);
         }
 
-        public bool TryGetOrAdd(Pixel Color, out int Index)
+        public Pixel GetOrAdd(Pixel Color, out int Index)
         {
-            bool Token = false;
-            try
+            if (Count < Capacity)
             {
-                Monitor.Enter(LockObject, ref Token);
-
-                Index = Datas.IndexOf(Color);
-                if (Index != -1)
-                    return true;
-
-                if (Count < Capacity)
+                bool Token = false;
+                try
                 {
+                    Monitor.Enter(LockObject, ref Token);
+
+                    Index = Datas.IndexOf(Color);
+                    if (Index != -1)
+                        return Color;
+
                     Datas.Add(Color);
                     Index = Count - 1;
-                    return true;
+                    return Color;
+                }
+                finally
+                {
+                    if (Token)
+                        Monitor.Exit(LockObject);
+                }
+            }
+            else
+            {
+                Index = Datas.IndexOf(Color);
+                if (Index != -1)
+                    return Color;
+
+                // Finds the color that minimum distance.
+                Index = 0;
+                Pixel Data = Datas[0];
+                int Da = Data.A - Color.A,
+                    Dr = Data.R - Color.R,
+                    Dg = Data.G - Color.G,
+                    Db = Data.B - Color.B,
+                    D = Da * Da + Dr * Dr + Dg * Dg + Db * Db,
+                    TD;
+
+                for (int i = 1; i < Capacity; i++)
+                {
+                    Data = Datas[i];
+                    Da = Data.A - Color.A;
+                    Dr = Data.R - Color.R;
+                    Dg = Data.G - Color.G;
+                    Db = Data.B - Color.B;
+                    TD = Da * Da + Dr * Dr + Dg * Dg + Db * Db;
+                    if (TD < D)
+                    {
+                        Index = i;
+                        D = TD;
+                    }
                 }
 
-                Index = -1;
-                return false;
-            }
-            finally
-            {
-                if (Token)
-                    Monitor.Exit(LockObject);
+                return Datas[Index];
             }
         }
-        bool IImagePalette.TryGetOrAdd(IReadOnlyPixel Color, out int Index)
-            => TryGetOrAdd(Color.ToPixel<Pixel>(), out Index);
+        IReadOnlyPixel IImagePalette.GetOrAdd(IReadOnlyPixel Color, out int Index)
+            => GetOrAdd(Color.ToPixel<Pixel>(), out Index);
 
         public static ImagePalette<Pixel> GetSystemPalette<Struct>()
             where Struct : unmanaged, IPixelIndexed

@@ -115,7 +115,6 @@ namespace MenthaAssembly.Media.Imaging
             this.Palette = Palette ?? ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
 
-
         #region Graphic Processing
 
         #region Line Rendering
@@ -2287,8 +2286,6 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region Transform Processing
-
-        #region Rotate
         public ImageContext<T> Rotate<T>(double Angle, InterpolationTypes Interpolation) where T : unmanaged, IPixel
         {
             if (Angle % 360d == 0)
@@ -2344,9 +2341,6 @@ namespace MenthaAssembly.Media.Imaging
             return Result;
         }
 
-        #endregion
-
-        #region Resize
         public ImageContext<T> Resize<T>(int Width, int Height, InterpolationTypes Interpolation)
             where T : unmanaged, IPixel
         {
@@ -2428,9 +2422,6 @@ namespace MenthaAssembly.Media.Imaging
             return Result;
         }
 
-        #endregion
-
-        #region Flip
         public ImageContext<T> Flip<T>(FlipMode Mode)
             where T : unmanaged, IPixel
         {
@@ -2547,127 +2538,6 @@ namespace MenthaAssembly.Media.Imaging
             return Cast<T>(Options);
         }
 
-        public ImageContext<T, U> Flip<T, U>(FlipMode Mode)
-            where T : unmanaged, IPixel
-            where U : unmanaged, IPixelIndexed
-        {
-            switch (Mode)
-            {
-                case FlipMode.Vertical:
-                    {
-                        ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-
-                        PixelAdapter<T> Sorc = GetAdapter<T>(0, Height - 1),
-                                         Dest = Result.GetAdapter<T>(0, 0);
-                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousLine(), Dest.InternalMoveNextLine())
-                        {
-                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                                Dest.Override(Sorc);
-
-                            Sorc.InternalMoveX(-Width);
-                            Dest.InternalMoveX(-Width);
-                        }
-
-                        return Result;
-                    }
-                case FlipMode.Horizontal:
-                    {
-                        ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-
-                        PixelAdapter<T> Sorc = GetAdapter<T>(Width - 1, 0),
-                                         Dest = Result.GetAdapter<T>(0, 0);
-                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
-                        {
-                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
-                                Dest.Override(Sorc);
-
-                            Sorc.InternalMoveX(Width);
-                            Dest.InternalMoveX(-Width);
-                        }
-
-                        return Result;
-                    }
-                case FlipMode.Vertical | FlipMode.Horizontal:
-                    {
-                        ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-
-                        PixelAdapter<T> Sorc = GetAdapter<T>(Width - 1, Height - 1),
-                                         Dest = Result.GetAdapter<T>(0, 0);
-                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousLine(), Dest.InternalMoveNextLine())
-                        {
-                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
-                                Dest.Override(Sorc);
-
-                            Sorc.InternalMoveX(Width);
-                            Dest.InternalMoveX(-Width);
-                        }
-
-                        return Result;
-                    }
-            }
-
-            return Cast<T, U>();
-        }
-        public ImageContext<T, U> Flip<T, U>(FlipMode Mode, ParallelOptions Options)
-            where T : unmanaged, IPixel
-            where U : unmanaged, IPixelIndexed
-        {
-            switch (Mode)
-            {
-                case FlipMode.Vertical:
-                    {
-                        ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-
-                        int MaxY = Height - 1;
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
-                        {
-                            PixelAdapter<T> Sorc = GetAdapter<T>(0, MaxY - y),
-                                             Dest = Result.GetAdapter<T>(0, y);
-                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                                Dest.Override(Sorc);
-                        });
-
-                        return Result;
-                    }
-                case FlipMode.Horizontal:
-                    {
-                        ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-
-                        int MaxX = Width - 1;
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
-                        {
-                            PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, y),
-                                             Dest = Result.GetAdapter<T>(0, y);
-                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
-                                Dest.Override(Sorc);
-                        });
-
-                        return Result;
-                    }
-                case FlipMode.Vertical | FlipMode.Horizontal:
-                    {
-                        ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-
-                        int MaxX = Width - 1,
-                            MaxY = Height - 1;
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
-                        {
-                            PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, MaxY - y),
-                                             Dest = Result.GetAdapter<T>(0, y);
-                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
-                                Dest.Override(Sorc);
-                        });
-
-                        return Result;
-                    }
-            }
-
-            return Cast<T, U>(Options);
-        }
-
-        #endregion
-
-        #region Crop
         public ImageContext<T> Crop<T>(int X, int Y, int Width, int Height)
             where T : unmanaged, IPixel
         {
@@ -2724,78 +2594,11 @@ namespace MenthaAssembly.Media.Imaging
             return Result;
         }
 
-        public ImageContext<T, U> Crop<T, U>(int X, int Y, int Width, int Height)
-            where T : unmanaged, IPixel
-            where U : unmanaged, IPixelIndexed
-        {
-            // If the rectangle is completely out of the bitmap
-            if (X > this.Width || Y > this.Height)
-                return new ImageContext<T, U>(0, 0);
-
-            // Clamp to boundaries
-            X = Math.Max(X, 0);
-            Y = Math.Max(Y, 0);
-            Width = Math.Max(Math.Min(Width, this.Width - X), 0);
-            Height = Math.Max(Math.Min(Height, this.Height - Y), 0);
-
-            // Create Result
-            ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-
-            PixelAdapter<T> Sorc = GetAdapter<T>(X, Y),
-                             Dest = Result.GetAdapter<T>(0, 0);
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
-            {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    Dest.Override(Sorc);
-
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
-            }
-
-            return Result;
-        }
-        public ImageContext<T, U> Crop<T, U>(int X, int Y, int Width, int Height, ParallelOptions Options)
-            where T : unmanaged, IPixel
-            where U : unmanaged, IPixelIndexed
-        {
-            // If the rectangle is completely out of the bitmap
-            if (X > this.Width || Y > this.Height)
-                return new ImageContext<T, U>(0, 0);
-
-            // Clamp to boundaries
-            X = Math.Max(X, 0);
-            Y = Math.Max(Y, 0);
-            Width = Math.Max(Math.Min(Width, this.Width - X), 0);
-            Height = Math.Max(Math.Min(Height, this.Height - Y), 0);
-
-            // Create Result
-            ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
-
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
-            {
-                PixelAdapter<T> Sorc = GetAdapter<T>(X, Y + j),
-                                 Dest = Result.GetAdapter<T>(0, j);
-
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    Dest.Override(Sorc);
-            });
-
-            return Result;
-        }
-
-        #endregion
-
-        #region Convolute
-        public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel)
-            where T : unmanaged, IPixel
+        public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel) where T : unmanaged, IPixel
             => Filter<T>(Kernel);
-        public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel, ParallelOptions Options)
-            where T : unmanaged, IPixel
+        public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel, ParallelOptions Options) where T : unmanaged, IPixel
             => Filter<T>(Kernel, Options);
 
-        #endregion
-
-        #region Filter
         public ImageContext<T> Filter<T>(ImageFilter Filter)
             where T : unmanaged, IPixel
         {
@@ -2830,9 +2633,54 @@ namespace MenthaAssembly.Media.Imaging
             return Result;
         }
 
-        #endregion
+        public ImageContext<T> Quantizate<T>(QuantizationType Type, int Count)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-        #region Binarize
+            PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
+                            Dest = Result.GetAdapter<T>(0, 0);
+            QuantizationBox[] Boxes = ImageOperatorEx.BoxQuantize(Sorc, Type, Count,
+                                                                  out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
+                                                                  out Func<QuantizationBox, T> GetColor).ToArray();
+            T[] Colors = Boxes.Select(b => GetColor(b)).ToArray();
+
+            Sorc.InternalMove(0, 0);
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Colors[Boxes.IndexOf(b => Contain(b, Sorc))]);
+
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
+            }
+
+            return Result;
+        }
+        public ImageContext<T> Quantizate<T>(QuantizationType Type, int Count, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new ImageContext<T>(Width, Height);
+
+            PixelAdapter<T> Sorc0 = GetAdapter<T>(0, 0);
+            QuantizationBox[] Boxes = ImageOperatorEx.BoxQuantize(Sorc0, Type, Count, Options ?? DefaultParallelOptions,
+                                                                  out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
+                                                                  out Func<QuantizationBox, T> GetColor).ToArray();
+            T[] Colors = Boxes.Select(b => GetColor(b)).ToArray();
+
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            {
+                PixelAdapter<T> Sorc = Sorc0.Clone(),
+                                Dest = Result.GetAdapter<T>(0, j);
+
+                Sorc.InternalMove(0, j);
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    Dest.Override(Colors[Boxes.IndexOf(b => Contain(b, Sorc))]);
+            });
+
+            return Result;
+        }
+
         public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold)
             where T : unmanaged, IPixel
         {
@@ -2878,7 +2726,6 @@ namespace MenthaAssembly.Media.Imaging
 
             return Image;
         }
-
         public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate)
             where T : unmanaged, IPixel
         {
@@ -2923,9 +2770,6 @@ namespace MenthaAssembly.Media.Imaging
             return Image;
         }
 
-        #endregion
-
-        #region Cast
         public ImageContext<T> Cast<T>()
             where T : unmanaged, IPixel
         {
@@ -2952,7 +2796,7 @@ namespace MenthaAssembly.Media.Imaging
             Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = GetAdapter<T>(0, j),
-                                 Dest = Result.GetAdapter<T>(0, j);
+                                Dest = Result.GetAdapter<T>(0, j);
 
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                     Dest.Override(Sorc);
@@ -2960,19 +2804,25 @@ namespace MenthaAssembly.Media.Imaging
 
             return Result;
         }
-
         public ImageContext<T, U> Cast<T, U>()
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
         {
             ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
+            ImagePalette<T> Palette = Result.Palette;
 
-            PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
-                             Dest = Result.GetAdapter<T>(0, 0);
+            PixelAdapter<T> Sorc = GetAdapter<T>(0, 0);
+            PixelIndexedAdapter<T> Dest = Result.GetAdapter<T>(0, 0);
+            QuantizationBox[] Boxes = ImageOperatorEx.BoxQuantize(Sorc, QuantizationType.Median, Palette.Capacity,
+                                                                  out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
+                                                                  out Func<QuantizationBox, T> GetColor).ToArray();
+            Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));
+
+            Sorc.InternalMove(0, 0);
             for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
             {
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    Dest.Override(Sorc);
+                    Dest.OverrideIndex(Boxes.IndexOf(b => Contain(b, Sorc)));
 
                 Sorc.InternalMoveX(-Width);
                 Dest.InternalMoveX(-Width);
@@ -2985,22 +2835,26 @@ namespace MenthaAssembly.Media.Imaging
             where U : unmanaged, IPixelIndexed
         {
             ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
+            ImagePalette<T> Palette = Result.Palette;
+            PixelAdapter<T> Sorc0 = GetAdapter<T>(0, 0);
+            QuantizationBox[] Boxes = ImageOperatorEx.BoxQuantize(Sorc0, QuantizationType.Median, Palette.Capacity, Options ?? DefaultParallelOptions,
+                                                                  out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
+                                                                  out Func<QuantizationBox, T> GetColor).ToArray();
+            Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));
 
             Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
-                PixelAdapter<T> Sorc = GetAdapter<T>(0, j),
-                                 Dest = Result.GetAdapter<T>(0, j);
+                PixelAdapter<T> Sorc = Sorc0.Clone();
+                PixelIndexedAdapter<T> Dest = Result.GetAdapter<T>(0, j);
 
+                Sorc.InternalMove(0, j);
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    Dest.Override(Sorc);
+                    Dest.OverrideIndex(Boxes.IndexOf(b => Contain(b, Sorc)));
             });
 
             return Result;
         }
 
-        #endregion
-
-        #region Clear
         public void Clear<T>(T Color)
             where T : unmanaged, IPixel
         {
@@ -3013,16 +2867,13 @@ namespace MenthaAssembly.Media.Imaging
                 Adapter.InternalMoveX(-Width);
             }
         }
-        public void Clear<T>(T Color, ParallelOptions Options)
-            where T : unmanaged, IPixel
+        public void Clear<T>(T Color, ParallelOptions Options) where T : unmanaged, IPixel
             => Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Adapter = GetAdapter<T>(0, j);
                 for (int i = 0; i < Width; i++, Adapter.InternalMoveNext())
                     Adapter.Override(Color);
             });
-
-        #endregion
 
         #endregion
 
@@ -3065,14 +2916,14 @@ namespace MenthaAssembly.Media.Imaging
             fixed (T* pDest = &Dest0[DestOffset])
                 BlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride, Options);
         }
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, ParallelOptions Options)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T), Options);
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, long DestStride)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride);
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, long DestStride, ParallelOptions Options)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride, Options);
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, ParallelOptions Options) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T), Options);
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, long DestStride) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride);
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0, long DestStride, ParallelOptions Options) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride, Options);
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0)
             where T : unmanaged, IPixel
         {
@@ -3109,18 +2960,18 @@ namespace MenthaAssembly.Media.Imaging
             fixed (byte* pDest = &Dest0[DestOffset])
                 BlockCopy<T>(X, Y, Width, Height, pDest, DestStride, Options);
         }
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, ParallelOptions Options)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T), Options);
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride);
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride, ParallelOptions Options)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride, Options);
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, Dest0, Width * sizeof(Pixel));
-        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, ParallelOptions Options)
-            where T : unmanaged, IPixel => BlockCopy<T>(X, Y, Width, Height, Dest0, Width * sizeof(Pixel), Options);
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, ParallelOptions Options) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T), Options);
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride);
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0, long DestStride, ParallelOptions Options) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, DestStride, Options);
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, Dest0, Width * sizeof(Pixel));
+        public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, ParallelOptions Options) where T : unmanaged, IPixel
+            => BlockCopy<T>(X, Y, Width, Height, Dest0, Width * sizeof(Pixel), Options);
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride)
             where T : unmanaged, IPixel
         {
@@ -3305,8 +3156,8 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region ScanLineCopy
-        public void ScanLineCopy<T>(int OffsetX, int Y, int Length, T* Dest0)
-            where T : unmanaged, IPixel => ScanLineCopy<T>(OffsetX, Y, Length, (byte*)Dest0);
+        public void ScanLineCopy<T>(int OffsetX, int Y, int Length, T* Dest0) where T : unmanaged, IPixel
+            => ScanLineCopy<T>(OffsetX, Y, Length, (byte*)Dest0);
         public void ScanLineCopy<T>(int OffsetX, int Y, int Length, T[] Dest0)
             where T : unmanaged, IPixel
         {
@@ -3331,8 +3182,8 @@ namespace MenthaAssembly.Media.Imaging
             fixed (byte* pDest = &Dest0[DestOffset])
                 ScanLineCopy<T>(OffsetX, Y, Length, pDest);
         }
-        public void ScanLineCopy<T>(int OffsetX, int Y, int Length, IntPtr Dest0)
-            where T : unmanaged, IPixel => ScanLineCopy<T>(OffsetX, Y, Length, (byte*)Dest0);
+        public void ScanLineCopy<T>(int OffsetX, int Y, int Length, IntPtr Dest0) where T : unmanaged, IPixel
+            => ScanLineCopy<T>(OffsetX, Y, Length, (byte*)Dest0);
         public void ScanLineCopy<T>(int OffsetX, int Y, int Length, byte* Dest0)
             where T : unmanaged, IPixel
         {
@@ -3384,11 +3235,11 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
-
-        public PixelAdapter<T> GetAdapter<T>(int X, int Y)
-            where T : unmanaged, IPixel
+        public PixelIndexedAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel
             => PixelType == typeof(T) ? new PixelIndexedAdapter<T, Struct>(this, X, Y) :
                                         new PixelIndexedAdapter<Pixel, T, Struct>(this, X, Y);
+        PixelAdapter<T> IImageContext.GetAdapter<T>(int X, int Y)
+            => GetAdapter<T>(X, Y);
         IReadOnlyPixelAdapter IReadOnlyImageContext.GetAdapter(int X, int Y)
             => GetAdapter<Pixel>(X, Y);
 

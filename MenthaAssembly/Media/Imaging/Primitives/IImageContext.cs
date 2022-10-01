@@ -825,7 +825,6 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Transform Processing
 
-        #region Rotate
         /// <summary>
         /// Creates a new rotated <see cref="ImageContext{T}"/>.
         /// </summary>
@@ -843,9 +842,6 @@ namespace MenthaAssembly.Media.Imaging
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T> Rotate<T>(double Angle, InterpolationTypes Interpolation, ParallelOptions Options) where T : unmanaged, IPixel;
 
-        #endregion
-
-        #region Resize
         /// <summary>
         /// Creates a new resized <see cref="ImageContext{T}"/>.
         /// </summary>
@@ -865,9 +861,6 @@ namespace MenthaAssembly.Media.Imaging
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T> Resize<T>(int Width, int Height, InterpolationTypes Interpolation, ParallelOptions Options) where T : unmanaged, IPixel;
 
-        #endregion
-
-        #region Flip
         /// <summary>
         /// Creates a new flipped <see cref="ImageContext{T}"/>.
         /// </summary>
@@ -883,26 +876,6 @@ namespace MenthaAssembly.Media.Imaging
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T> Flip<T>(FlipMode Mode, ParallelOptions Options) where T : unmanaged, IPixel;
 
-        /// <summary>
-        /// Creates a new flipped Indexed <see cref="ImageContext{T,U}"/>.
-        /// </summary>
-        /// <param name="Mode">The flip mode.</param>
-        /// <typeparam name="T"></typeparam>
-        /// <typeparam name="U"></typeparam>
-        public ImageContext<T, U> Flip<T, U>(FlipMode Mode) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
-        /// <summary>
-        /// Creates a new flipped Indexed <see cref="ImageContext{T,U}"/>.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <typeparam name="U"></typeparam>
-        /// <param name="Mode">The flip mode.</param>
-        /// <param name="Options">An object that configures the behavior of this operation.<para/>
-        /// If it is null, the function will run with default options. </param>
-        public ImageContext<T, U> Flip<T, U>(FlipMode Mode, ParallelOptions Options) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
-
-        #endregion
-
-        #region Crop
         /// <summary>
         /// Creates a new cropped <see cref="ImageContext{T}"/>.
         /// </summary>
@@ -925,32 +898,6 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Crop<T>(int X, int Y, int Width, int Height, ParallelOptions Options) where T : unmanaged, IPixel;
 
         /// <summary>
-        /// Creates a new cropped Indexed <see cref="ImageContext{T,U}"/>.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <typeparam name="U"></typeparam>
-        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
-        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
-        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
-        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
-        public ImageContext<T, U> Crop<T, U>(int X, int Y, int Width, int Height) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
-        /// <summary>
-        /// Creates a new cropped Indexed <see cref="ImageContext{T,U}"/>.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <typeparam name="U"></typeparam>
-        /// <param name="X">The x coordinate of the rectangle that defines the crop region.</param>
-        /// <param name="Y">The y coordinate of the rectangle that defines the crop region.</param>
-        /// <param name="Width">The width of the rectangle that defines the crop region.</param>
-        /// <param name="Height">The height of the rectangle that defines the crop region.</param>
-        /// <param name="Options">An object that configures the behavior of this operation.<para/>
-        /// If it is null, the function will run with default options. </param>
-        public ImageContext<T, U> Crop<T, U>(int X, int Y, int Width, int Height, ParallelOptions Options) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
-
-        #endregion
-
-        #region Convolute
-        /// <summary>
         /// Creates a new convoluted <see cref="ImageContext{T}"/>.
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -965,9 +912,6 @@ namespace MenthaAssembly.Media.Imaging
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T> Convolute<T>(ConvoluteKernel Kernel, ParallelOptions Options) where T : unmanaged, IPixel;
 
-        #endregion
-
-        #region Filter
         /// <summary>
         /// Creates a new filtered <see cref="ImageContext{T}"/>.
         /// </summary>
@@ -983,9 +927,23 @@ namespace MenthaAssembly.Media.Imaging
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T> Filter<T>(ImageFilter Filter, ParallelOptions Options) where T : unmanaged, IPixel;
 
-        #endregion
+        /// <summary>
+        /// Creates a new quantized <see cref="ImageContext{T}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Type">The type of quantization.</param>
+        /// <param name="Count">The count of color.</param>
+        public ImageContext<T> Quantizate<T>(QuantizationType Type, int Count) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Creates a new quantized <see cref="ImageContext{T}"/>.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Type">The type of quantization.</param>
+        /// <param name="Count">The count of color.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T> Quantizate<T>(QuantizationType Type, int Count, ParallelOptions Options) where T : unmanaged, IPixel;
 
-        #region Binarize
         /// <summary>
         /// Creates a new binarized image by the specified threshold.
         /// </summary>
@@ -1000,7 +958,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Options">An object that configures the behavior of this operation.<para/>
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold, ParallelOptions Options) where T : unmanaged, IPixel;
-
         /// <summary>
         /// Creates a new binarized image by the custom predicate.
         /// </summary>
@@ -1016,9 +973,6 @@ namespace MenthaAssembly.Media.Imaging
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate, ParallelOptions Options) where T : unmanaged, IPixel;
 
-        #endregion
-
-        #region Cast
         /// <summary>
         /// Creates a new casted <see cref="ImageContext{T}"/>.
         /// </summary>
@@ -1031,7 +985,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Options">An object that configures the behavior of this operation.<para/>
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T> Cast<T>(ParallelOptions Options) where T : unmanaged, IPixel;
-
         /// <summary>
         /// Creates a new casted Indexed <see cref="ImageContext{T,U}"/>.
         /// </summary>
@@ -1047,13 +1000,8 @@ namespace MenthaAssembly.Media.Imaging
         /// If it is null, the function will run with default options. </param>
         public ImageContext<T, U> Cast<T, U>(ParallelOptions Options) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
 
-        #endregion
-
-        #region Clear
         public void Clear<T>(T Color) where T : unmanaged, IPixel;
         public void Clear<T>(T Color, ParallelOptions Options) where T : unmanaged, IPixel;
-
-        #endregion
 
         #endregion
 

@@ -6,7 +6,7 @@
 
         IReadOnlyPixel this[int Index] { get; }
 
-        bool TryGetOrAdd(IReadOnlyPixel Color, out int Index);
+        IReadOnlyPixel GetOrAdd(IReadOnlyPixel Color, out int Index);
 
         int Count { get; }
 

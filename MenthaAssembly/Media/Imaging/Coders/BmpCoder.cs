@@ -85,7 +85,7 @@ namespace MenthaAssembly.Media.Imaging
                     if (Color == BlackColor && Datas[3] == 0)
                         continue;
 
-                    Palette.TryGetOrAdd(Color, out _);
+                    Palette.Datas.Add(Color);
                 }
             }
 

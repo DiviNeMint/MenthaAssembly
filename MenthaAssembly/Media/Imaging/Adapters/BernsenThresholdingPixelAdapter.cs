@@ -56,7 +56,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int BitsPerPixel { get; }
 
-        public BernsenThresholdingPixelAdapter(BernsenThresholdingPixelAdapter<T> Adapter)
+        private BernsenThresholdingPixelAdapter(BernsenThresholdingPixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
             {

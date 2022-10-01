@@ -55,7 +55,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             => Source.BitsPerPixel;
 
         private readonly bool CalculateAlpth;
-        public NearestRotatePixelAdapter(NearestRotatePixelAdapter<T> Adapter)
+        private NearestRotatePixelAdapter(NearestRotatePixelAdapter<T> Adapter)
         {
             Sin = Adapter.Sin;
             Cos = Adapter.Cos;

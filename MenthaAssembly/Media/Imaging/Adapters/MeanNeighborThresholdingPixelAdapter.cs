@@ -56,7 +56,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int BitsPerPixel { get; }
 
-        public MeanNeighborThresholdingPixelAdapter(MeanNeighborThresholdingPixelAdapter<T> Adapter)
+        private MeanNeighborThresholdingPixelAdapter(MeanNeighborThresholdingPixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
             {

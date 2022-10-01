@@ -19,7 +19,7 @@
 
         private readonly long Stride;
         private byte* pScanA, pScanR, pScanG, pScanB;
-        public PixelAdapter4(PixelAdapter4<T> Adapter)
+        private PixelAdapter4(PixelAdapter4<T> Adapter)
         {
             X = Adapter.X;
             Y = Adapter.Y;
@@ -185,7 +185,7 @@
 
         private readonly long Stride;
         private byte* pScanA, pScanR, pScanG, pScanB;
-        public CalculatedPixelAdapter4(CalculatedPixelAdapter4<T> Adapter)
+        private CalculatedPixelAdapter4(CalculatedPixelAdapter4<T> Adapter)
         {
             X = Adapter.X;
             Y = Adapter.Y;

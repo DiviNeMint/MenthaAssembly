@@ -59,7 +59,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             => Source.BitsPerPixel;
 
         private readonly bool CalculateAlpth;
-        public BilinearRotatePixelAdapter(BilinearRotatePixelAdapter<T> Adapter)
+        private BilinearRotatePixelAdapter(BilinearRotatePixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
             {

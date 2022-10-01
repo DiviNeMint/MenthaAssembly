@@ -27,7 +27,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             => Source.BitsPerPixel;
 
         private readonly int Sx, Sy;
-        public CropPixelAdapter(CropPixelAdapter<T> Adapter)
+        private CropPixelAdapter(CropPixelAdapter<T> Adapter)
         {
             Source = Adapter.Source.Clone();
             Sx = Adapter.Sx;

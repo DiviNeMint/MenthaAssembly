@@ -1,9 +1,13 @@
-﻿using System;
-using System.Runtime.InteropServices;
-
-namespace MenthaAssembly.Media.Imaging.Utils
+﻿namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal unsafe class PixelIndexedAdapter<T, Struct> : PixelAdapter<T>
+    public abstract class PixelIndexedAdapter<T> : PixelAdapter<T>
+        where T : unmanaged, IPixel
+    {
+        public abstract void OverrideIndex(int Index);
+
+    }
+
+    internal unsafe class PixelIndexedAdapter<T, Struct> : PixelIndexedAdapter<T>
         where T : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
@@ -59,7 +63,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private readonly Struct* pScan0;
         private readonly long Stride;
         private Struct* pScan;
-        public PixelIndexedAdapter(PixelIndexedAdapter<T, Struct> Adapter)
+        private PixelIndexedAdapter(PixelIndexedAdapter<T, Struct> Adapter)
         {
             X = Adapter.X;
             XBit = Adapter.XBit;
@@ -85,12 +89,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Move(X, Y);
         }
 
+        public override void OverrideIndex(int Index)
+            => (*pScan)[XBit] = Index;
+
         public override void Override(T Pixel)
         {
-            if (!Palette.TryGetOrAdd(Pixel, out Index))
-                throw new IndexOutOfRangeException("Palette is full.");
-
-            this.Pixel = Pixel;
+            this.Pixel = Palette.GetOrAdd(Pixel, out Index);
             (*pScan)[XBit] = Index;
             IsPixelValid = true;
         }
@@ -103,9 +107,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void Override(byte A, byte R, byte G, byte B)
         {
             Pixel.Override(A, R, G, B);
-            if (!Palette.TryGetOrAdd(Pixel, out Index))
-                throw new IndexOutOfRangeException("Palette is full.");
-
+            Pixel = Palette.GetOrAdd(Pixel, out Index);
             (*pScan)[XBit] = Index;
             IsPixelValid = true;
         }
@@ -138,11 +140,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             EnsurePixel();
             Pixel.Overlay(A, R, G, B);
-
-            if (!Palette.TryGetOrAdd(Pixel, out Index))
-                throw new IndexOutOfRangeException("Palette is full.");
-
+            Pixel = Palette.GetOrAdd(Pixel, out Index);
             (*pScan)[XBit] = Index;
+            IsPixelValid = true;
         }
         public override void OverlayTo(T* pData)
         {
@@ -271,10 +271,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override PixelAdapter<T> Clone()
             => new PixelIndexedAdapter<T, Struct>(this);
-
     }
 
-    internal unsafe class PixelIndexedAdapter<T, U, Struct> : PixelAdapter<U>
+    internal unsafe class PixelIndexedAdapter<T, U, Struct> : PixelIndexedAdapter<U>
         where T : unmanaged, IPixel
         where U : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
@@ -331,7 +330,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private readonly Struct* pScan0;
         private readonly long Stride;
         protected Struct* pScan;
-        public PixelIndexedAdapter(PixelIndexedAdapter<T, U, Struct> Adapter)
+        private PixelIndexedAdapter(PixelIndexedAdapter<T, U, Struct> Adapter)
         {
             X = Adapter.X;
             XBit = Adapter.XBit;
@@ -358,6 +357,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Move(X, Y);
         }
 
+        public override void OverrideIndex(int Index)
+            => (*pScan)[XBit] = Index;
+
         public override void Override(U Pixel)
             => Override(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         public override void Override(PixelAdapter<U> Adapter)
@@ -365,8 +367,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void Override(byte A, byte R, byte G, byte B)
         {
             Pixel.Override(A, R, G, B);
-            if (!Palette.TryGetOrAdd(Pixel, out Index))
-                throw new IndexOutOfRangeException("Palette is full.");
+            Pixel = Palette.GetOrAdd(Pixel, out Index);
 
             (*pScan)[XBit] = Index;
             IsPixelValid = true;
@@ -400,9 +401,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             EnsurePixel();
             Pixel.Overlay(A, R, G, B);
-
-            if (!Palette.TryGetOrAdd(Pixel, out Index))
-                throw new IndexOutOfRangeException("Palette is full.");
+            Pixel = Palette.GetOrAdd(Pixel, out Index);
 
             (*pScan)[XBit] = Index;
             IsPixelValid = true;
@@ -538,4 +537,5 @@ namespace MenthaAssembly.Media.Imaging.Utils
             => new PixelIndexedAdapter<T, U, Struct>(this);
 
     }
+
 }

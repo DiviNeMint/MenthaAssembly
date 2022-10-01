@@ -54,7 +54,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             => Source.BitsPerPixel;
 
         private readonly byte[] Ranges;
-        public RangesThresholdingPixelAdapter(RangesThresholdingPixelAdapter<T> Adapter)
+        private RangesThresholdingPixelAdapter(RangesThresholdingPixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
             {
