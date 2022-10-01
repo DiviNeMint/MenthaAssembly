@@ -17,21 +17,29 @@ namespace MenthaAssembly
 
         public T Bottom { set; get; }
 
-        public T Width => Sub(Right, Left);
+        public T Width
+            => Sub(Right, Left);
 
-        public T Height => Sub(Bottom, Top);
+        public T Height
+            => Sub(Bottom, Top);
 
-        public Point<T> Center => new(ValueHalf(Add(Left, Right)), ValueHalf(Add(Top, Bottom)));
+        public Point<T> Center
+            => new(ValueHalf(Add(Left, Right)), ValueHalf(Add(Top, Bottom)));
 
-        public Point<T> LeftTop => new(Left, Top);
+        public Point<T> LeftTop
+            => new(Left, Top);
 
-        public Point<T> LeftBottom => new(Left, Bottom);
+        public Point<T> LeftBottom
+            => new(Left, Bottom);
 
-        public Point<T> RightTop => new(Right, Top);
+        public Point<T> RightTop
+            => new(Right, Top);
 
-        public Point<T> RightBottom => new(Right, Bottom);
+        public Point<T> RightBottom
+            => new(Right, Bottom);
 
-        public bool IsEmpty => IsDefault(Width) && IsDefault(Height);
+        public bool IsEmpty
+            => IsDefault(Width) && IsDefault(Height);
 
         public Bound(T Left, T Top, T Right, T Bottom)
         {

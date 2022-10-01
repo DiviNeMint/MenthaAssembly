@@ -346,7 +346,7 @@ namespace MenthaAssembly
             => IsEmpty ? Polygon<U>.Empty : new Polygon<U> { Points = Points.Select(i => i.Cast<U>()).ToArray() };
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
-        IMathObject<U> IMathObject<T>.Cast<U>()
+        ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
             => Cast<U>();
 
         /// <summary>
@@ -356,7 +356,7 @@ namespace MenthaAssembly
             => IsEmpty ? Empty : new Polygon<T> { Points = new[] { Points[0], Points[1], Points[2], Points[3] } };
         IShape<T> IShape<T>.Clone()
             => Clone();
-        IMathObject<T> IMathObject<T>.Clone()
+        ICoordinateObject<T> ICoordinateObject<T>.Clone()
             => Clone();
         object ICloneable.Clone()
             => Clone();
@@ -429,7 +429,7 @@ namespace MenthaAssembly
         }
         bool IShape<T>.Equals(IShape<T> obj)
             => obj is Polygon<T> Poly && Equals(Poly);
-        bool IMathObject<T>.Equals(IMathObject<T> obj)
+        bool ICoordinateObject<T>.Equals(ICoordinateObject<T> obj)
             => obj is Polygon<T> Poly && Equals(Poly);
         public override bool Equals(object obj)
             => obj is Polygon<T> Poly && Equals(Poly);

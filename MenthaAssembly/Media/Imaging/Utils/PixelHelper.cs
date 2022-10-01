@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Media.Imaging
 {
-    public unsafe static class PixelHelper
+    public static unsafe class PixelHelper
     {
         public static T ToPixel<T>(this IReadOnlyPixel Color)
             where T : unmanaged, IPixel

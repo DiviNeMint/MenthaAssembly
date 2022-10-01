@@ -205,7 +205,7 @@ namespace MenthaAssembly
             => IsEmpty ? Line<U>.Empty : new Line<U>(Points[0].Cast<U>(), Points[1].Cast<U>());
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
-        IMathObject<U> IMathObject<T>.Cast<U>()
+        ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
             => Cast<U>();
 
         /// <summary>
@@ -215,7 +215,7 @@ namespace MenthaAssembly
             => IsEmpty ? Empty : new Line<T>(Points[0], Points[1]);
         IShape<T> IShape<T>.Clone()
             => Clone();
-        IMathObject<T> IMathObject<T>.Clone()
+        ICoordinateObject<T> ICoordinateObject<T>.Clone()
             => Clone();
         object ICloneable.Clone()
             => Clone();
@@ -232,7 +232,7 @@ namespace MenthaAssembly
                               !obj.IsEmpty && IsCollinear(Points[0], Points[1], obj.Points[0], obj.Points[1]);
         bool IShape<T>.Equals(IShape<T> obj)
             => obj is Line<T> Target && Equals(Target);
-        bool IMathObject<T>.Equals(IMathObject<T> obj)
+        bool ICoordinateObject<T>.Equals(ICoordinateObject<T> obj)
             => obj is Line<T> Target && Equals(Target);
         public override bool Equals(object obj)
             => obj is Line<T> Target && Equals(Target);

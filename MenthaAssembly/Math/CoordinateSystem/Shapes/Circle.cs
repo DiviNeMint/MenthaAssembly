@@ -22,7 +22,8 @@ namespace MenthaAssembly
 
         public double Radius { set; get; }
 
-        public double Area => Radius * Radius * Math.PI;
+        public double Area
+            => Radius * Radius * Math.PI;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Circle{T}"/> structure.
@@ -175,7 +176,7 @@ namespace MenthaAssembly
             => IsEmpty ? Circle<U>.Empty : new Circle<U>(Center.Cast<U>(), Radius);
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
-        IMathObject<U> IMathObject<T>.Cast<U>()
+        ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
             => Cast<U>();
 
         /// <summary>
@@ -185,7 +186,7 @@ namespace MenthaAssembly
             => IsEmpty ? Empty : new Circle<T>(Center, Radius);
         IShape<T> IShape<T>.Clone()
             => Clone();
-        IMathObject<T> IMathObject<T>.Clone()
+        ICoordinateObject<T> ICoordinateObject<T>.Clone()
             => Clone();
         object ICloneable.Clone()
             => Clone();
@@ -209,7 +210,7 @@ namespace MenthaAssembly
         }
         bool IShape<T>.Equals(IShape<T> obj)
             => obj is Circle<T> Tri && Equals(Tri);
-        bool IMathObject<T>.Equals(IMathObject<T> obj)
+        bool ICoordinateObject<T>.Equals(ICoordinateObject<T> obj)
             => obj is Circle<T> Tri && Equals(Tri);
         public override bool Equals(object obj)
             => obj is Circle<T> Tri && Equals(Tri);

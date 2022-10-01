@@ -13,7 +13,8 @@ namespace MenthaAssembly
 
         public T Height { set; get; }
 
-        public bool IsEmpty => IsDefault(Width) && IsDefault(Height);
+        public bool IsEmpty
+            => IsDefault(Width) && IsDefault(Height);
 
         public Size(T Width, T Height)
         {
@@ -25,19 +26,19 @@ namespace MenthaAssembly
             where U : unmanaged
         {
             Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
-            return new Size<U>(CastHandler(this.Width), CastHandler(this.Height));
+            return new Size<U>(CastHandler(Width), CastHandler(Height));
         }
 
         public Size<T> Clone()
             => new Size<T>(Width, Height);
         object ICloneable.Clone()
-            => this.Clone();
+            => Clone();
 
         public override int GetHashCode()
             => base.GetHashCode();
 
         public bool Equals(Size<T> Target)
-            => Equal(this.Width, Target.Width) && Equal(this.Height, Target.Height);
+            => Equal(Width, Target.Width) && Equal(Height, Target.Height);
         public override bool Equals(object obj)
         {
             if (obj is Size<T> Target)
@@ -47,7 +48,7 @@ namespace MenthaAssembly
         }
 
         public override string ToString()
-            => $"Width : {this.Width}, Height : {this.Height}";
+            => $"Width : {Width}, Height : {Height}";
 
         internal static readonly Func<T, T, T> Mul, Div;
         internal static readonly Predicate<T> IsDefault;

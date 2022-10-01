@@ -8,9 +8,8 @@ using System.Threading.Tasks;
 namespace MenthaAssembly.Media.Imaging.Utils
 {
     public delegate bool ImagePredicate(int X, int Y, IReadOnlyPixel Pixel);
-    internal delegate void RefAction<T>(ref T Parameter);
 
-    internal static unsafe class ImageOperatorEx
+    internal static unsafe class ImageContextHelper
     {
         public static void ScanLine<T>(this IImageContext Context, int X, int Y, int Length, Action<PixelAdapter<T>> Handler)
             where T : unmanaged, IPixel

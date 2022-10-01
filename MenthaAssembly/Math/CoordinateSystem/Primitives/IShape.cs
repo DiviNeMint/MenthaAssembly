@@ -3,7 +3,7 @@
     /// <summary>
     /// Represents a shape in 2-D space.
     /// </summary>
-    public interface IShape<T> : IMathObject<T>
+    public interface IShape<T> : ICoordinateObject<T>
         where T : unmanaged
     {
         /// <summary>

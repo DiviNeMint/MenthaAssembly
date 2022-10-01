@@ -7,7 +7,7 @@ namespace MenthaAssembly
     /// Represents a displacement in 2-D space.
     /// </summary>
     [Serializable]
-    public unsafe struct Vector<T> : IMathObject<T>
+    public unsafe struct Vector<T> : ICoordinateObject<T>
         where T : unmanaged
     {
         /// <summary>
@@ -28,17 +28,20 @@ namespace MenthaAssembly
         /// <summary>
         /// The squared length of this Vector.
         /// </summary>
-        public T LengthSquare => _Add(Mul(this.X, this.X), Mul(this.Y, this.Y));
+        public T LengthSquare
+            => _Add(Mul(X, X), Mul(Y, Y));
 
         /// <summary>
         /// The length of this Vector.
         /// </summary>
-        public double Length => Math.Sqrt(ToDouble(this.LengthSquare));
+        public double Length
+            => Math.Sqrt(ToDouble(LengthSquare));
 
         /// <summary>
         ///  Gets a value indicating whether the <see cref="Vector{T}"/> is zero vector.
         /// </summary>
-        public bool IsZero => IsDefault(this.X) && IsDefault(this.Y);
+        public bool IsZero
+            => IsDefault(X) && IsDefault(Y);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -47,8 +50,8 @@ namespace MenthaAssembly
         /// <param name="Dy">The delta on y-coordinate.</param>
         public Vector(T Dx, T Dy)
         {
-            this.X = Dx;
-            this.Y = Dy;
+            X = Dx;
+            Y = Dy;
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -58,8 +61,8 @@ namespace MenthaAssembly
         /// <param name="End">The end point.</param>
         public Vector(T Sx, T Sy, Point<T> End)
         {
-            this.X = Sub(End.X, Sx);
-            this.Y = Sub(End.Y, Sy);
+            X = Sub(End.X, Sx);
+            Y = Sub(End.Y, Sy);
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -69,8 +72,8 @@ namespace MenthaAssembly
         /// <param name="Ey">The y-coordinate of the end point.</param>
         public Vector(Point<T> Start, T Ex, T Ey)
         {
-            this.X = Sub(Ex, Start.X);
-            this.Y = Sub(Ey, Start.Y);
+            X = Sub(Ex, Start.X);
+            Y = Sub(Ey, Start.Y);
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -79,8 +82,8 @@ namespace MenthaAssembly
         /// <param name="End">The end point.</param>
         public Vector(Point<T> Start, Point<T> End)
         {
-            this.X = Sub(End.X, Start.X);
-            this.Y = Sub(End.Y, Start.Y);
+            X = Sub(End.X, Start.X);
+            Y = Sub(End.Y, Start.Y);
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -91,20 +94,20 @@ namespace MenthaAssembly
         /// <param name="Ey">The y-coordinate of the end point.</param>
         public Vector(T Sx, T Sy, T Ex, T Ey)
         {
-            this.X = Sub(Ex, Sx);
-            this.Y = Sub(Ey, Sy);
+            X = Sub(Ex, Sx);
+            Y = Sub(Ey, Sy);
         }
 
-        void IMathObject<T>.Offset(Vector<T> Vector) => throw new NotSupportedException();
-        void IMathObject<T>.Offset(T Dx, T Dy) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Offset(Vector<T> Vector) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Offset(T Dx, T Dy) => throw new NotSupportedException();
 
-        void IMathObject<T>.Rotate(double Theta) => throw new NotSupportedException();
-        void IMathObject<T>.Rotate(Point<T> Center, double Theta) => throw new NotSupportedException();
-        void IMathObject<T>.Rotate(T Cx, T Cy, double Theta) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Rotate(double Theta) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Rotate(Point<T> Center, double Theta) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Rotate(T Cx, T Cy, double Theta) => throw new NotSupportedException();
 
-        void IMathObject<T>.Reflect(Line<T> Line) => throw new NotSupportedException();
-        void IMathObject<T>.Reflect(Point<T> LinePoint1, Point<T> LinePoint2) => throw new NotSupportedException();
-        void IMathObject<T>.Reflect(T Lx1, T Ly1, T Lx2, T Ly2) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Reflect(Line<T> Line) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Reflect(Point<T> LinePoint1, Point<T> LinePoint2) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Reflect(T Lx1, T Ly1, T Lx2, T Ly2) => throw new NotSupportedException();
 
         /// <summary>
         /// Creates a new casted <see cref="Vector{T}"/>.
@@ -114,37 +117,37 @@ namespace MenthaAssembly
             where U : unmanaged
         {
             Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
-            return new Vector<U>(CastHandler(this.X), CastHandler(this.Y));
+            return new Vector<U>(CastHandler(X), CastHandler(Y));
         }
-        IMathObject<U> IMathObject<T>.Cast<U>()
-            => this.Cast<U>();
+        ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
+            => Cast<U>();
 
         /// <summary>
         /// Creates a new <see cref="Vector{T}"/> that is a copy of the current instance.
         /// </summary>
         public Vector<T> Clone()
-            => new(this.X, this.Y);
-        IMathObject<T> IMathObject<T>.Clone()
-            => this.Clone();
+            => new(X, Y);
+        ICoordinateObject<T> ICoordinateObject<T>.Clone()
+            => Clone();
         object ICloneable.Clone()
-            => this.Clone();
+            => Clone();
 
         public override int GetHashCode()
-            => this.X.GetHashCode() ^ this.Y.GetHashCode();
+            => X.GetHashCode() ^ Y.GetHashCode();
 
         /// <summary>
         /// Returns a value indicating whether this instance is equal to a specified <see cref="Vector{T}"/>
         /// </summary>
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Vector<T> obj)
-            => Equal(this.X, obj.X) && Equal(this.Y, obj.Y);
-        bool IMathObject<T>.Equals(IMathObject<T> obj)
-            => obj is Vector<T> Target && this.Equals(Target);
+            => Equal(X, obj.X) && Equal(Y, obj.Y);
+        bool ICoordinateObject<T>.Equals(ICoordinateObject<T> obj)
+            => obj is Vector<T> Target && Equals(Target);
         public override bool Equals(object obj)
-            => obj is Vector<T> Target && this.Equals(Target);
+            => obj is Vector<T> Target && Equals(Target);
 
         public override string ToString()
-            => $"X : {this.X}, Y : {this.Y}";
+            => $"X : {X}, Y : {Y}";
 
         private static readonly Func<T, T> Neg;
         private static readonly Func<T, T, T> _Add, Sub, Mul, Div;

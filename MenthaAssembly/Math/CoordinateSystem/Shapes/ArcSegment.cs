@@ -220,7 +220,7 @@ namespace MenthaAssembly
             => IsEmpty ? ArcSegment<U>.Empty : new ArcSegment<U>(Points[0].Cast<U>(), Points[1].Cast<U>(), Points[2].Cast<U>());
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
-        IMathObject<U> IMathObject<T>.Cast<U>()
+        ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
             => Cast<U>();
 
         /// <summary>
@@ -230,7 +230,7 @@ namespace MenthaAssembly
             => IsEmpty ? Empty : new ArcSegment<T>(Points[0], Points[1], Points[2]);
         IShape<T> IShape<T>.Clone()
             => Clone();
-        IMathObject<T> IMathObject<T>.Clone()
+        ICoordinateObject<T> ICoordinateObject<T>.Clone()
             => Clone();
         object ICloneable.Clone()
             => Clone();
@@ -264,7 +264,7 @@ namespace MenthaAssembly
         }
         bool IShape<T>.Equals(IShape<T> obj)
             => obj is ArcSegment<T> Target && Equals(Target);
-        bool IMathObject<T>.Equals(IMathObject<T> obj)
+        bool ICoordinateObject<T>.Equals(ICoordinateObject<T> obj)
             => obj is ArcSegment<T> Target && Equals(Target);
         public override bool Equals(object obj)
             => obj is ArcSegment<T> Target && Equals(Target);

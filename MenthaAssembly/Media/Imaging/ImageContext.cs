@@ -2743,7 +2743,7 @@ namespace MenthaAssembly.Media.Imaging
 
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
                             Dest = Result.GetAdapter<T>(0, 0);
-            QuantizationBox[] Boxes = ImageOperatorEx.BoxQuantize(Sorc, Type, Count,
+            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc, Type, Count,
                                                                   out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
                                                                   out Func<QuantizationBox, T> GetColor).ToArray();
             T[] Colors = Boxes.Select(b => GetColor(b)).ToArray();
@@ -2766,7 +2766,7 @@ namespace MenthaAssembly.Media.Imaging
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
             PixelAdapter<T> Sorc0 = GetAdapter<T>(0, 0);
-            QuantizationBox[] Boxes = ImageOperatorEx.BoxQuantize(Sorc0, Type, Count, Options ?? DefaultParallelOptions,
+            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc0, Type, Count, Options ?? DefaultParallelOptions,
                                                                   out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
                                                                   out Func<QuantizationBox, T> GetColor).ToArray();
             T[] Colors = Boxes.Select(b => GetColor(b)).ToArray();
@@ -2916,7 +2916,7 @@ namespace MenthaAssembly.Media.Imaging
 
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0);
             PixelIndexedAdapter<T> Dest = Result.GetAdapter<T>(0, 0);
-            QuantizationBox[] Boxes = ImageOperatorEx.BoxQuantize(Sorc, QuantizationType.Median, Palette.Capacity,
+            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc, QuantizationType.Median, Palette.Capacity,
                                                                   out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
                                                                   out Func<QuantizationBox, T> GetColor).ToArray();
             Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));
@@ -2940,7 +2940,7 @@ namespace MenthaAssembly.Media.Imaging
             ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
             ImagePalette<T> Palette = Result.Palette;
             PixelAdapter<T> Sorc0 = GetAdapter<T>(0, 0);
-            QuantizationBox[] Boxes = ImageOperatorEx.BoxQuantize(Sorc0, QuantizationType.Median, Palette.Capacity, Options ?? DefaultParallelOptions,
+            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc0, QuantizationType.Median, Palette.Capacity, Options ?? DefaultParallelOptions,
                                                                   out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
                                                                   out Func<QuantizationBox, T> GetColor).ToArray();
             Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));

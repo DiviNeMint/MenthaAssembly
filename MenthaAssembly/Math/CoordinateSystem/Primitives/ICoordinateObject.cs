@@ -5,7 +5,7 @@ namespace MenthaAssembly
     /// <summary>
     /// Represents a object in 2-D space.
     /// </summary>
-    public interface IMathObject<T> : ICloneable
+    public interface ICoordinateObject<T> : ICloneable
         where T : unmanaged
     {
         /// <summary>
@@ -60,20 +60,20 @@ namespace MenthaAssembly
         public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2);
 
         /// <summary>
-        /// Returns a value indicating whether this instance is equal to a specified <see cref="IMathObject{T}"/>
+        /// Returns a value indicating whether this instance is equal to a specified <see cref="ICoordinateObject{T}"/>
         /// </summary>
         /// <param name="obj">The obj to compare to the current instance.</param>
-        public bool Equals(IMathObject<T> obj);
+        public bool Equals(ICoordinateObject<T> obj);
 
         /// <summary>
-        /// Creates a new casted <see cref="IMathObject{T}"/>.
+        /// Creates a new casted <see cref="ICoordinateObject{T}"/>.
         /// </summary>
-        public IMathObject<U> Cast<U>() where U : unmanaged;
+        public ICoordinateObject<U> Cast<U>() where U : unmanaged;
 
         /// <summary>
-        /// Creates a new <see cref="IMathObject{T}"/> that is a copy of the current instance.
+        /// Creates a new <see cref="ICoordinateObject{T}"/> that is a copy of the current instance.
         /// </summary>
-        public new IMathObject<T> Clone();
+        public new ICoordinateObject<T> Clone();
 
     }
 }
