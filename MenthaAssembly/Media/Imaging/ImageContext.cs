@@ -2431,7 +2431,7 @@ namespace MenthaAssembly.Media.Imaging
             ImageContext<T> Result = new ImageContext<T>(RotateAdapter.MaxX + 1, RotateAdapter.MaxY + 1);
 
             int Width = Result.Width;
-            Parallel.For(0, Result.Height, Options ?? DefaultParallelOptions, j =>
+            _ = Parallel.For(0, Result.Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = RotateAdapter.Clone(),
                                 Dest = Result.GetAdapter<T>(0, j);
@@ -2495,7 +2495,7 @@ namespace MenthaAssembly.Media.Imaging
                     {
                         float StepX = (float)this.Width / Width,
                               StepY = (float)this.Height / Height;
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+                        _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
                         {
                             PixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, 0, j, StepX, StepY),
                                             Dest = Result.GetAdapter<T>(0, j);
@@ -2510,7 +2510,7 @@ namespace MenthaAssembly.Media.Imaging
                         float StepX = (float)this.Width / Width,
                               StepY = (float)this.Height / Height;
 
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+                        _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
                         {
                             PixelAdapter<T> Sorc = new BilinearResizePixelAdapter<T>(this, 0, j, StepX, StepY),
                                             Dest = Result.GetAdapter<T>(0, j);
@@ -2595,7 +2595,7 @@ namespace MenthaAssembly.Media.Imaging
                         ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
                         int MaxY = Height - 1;
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
+                        _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
                             PixelAdapter<T> Sorc = GetAdapter<T>(0, MaxY - y),
                                              Dest = Result.GetAdapter<T>(0, y);
@@ -2610,7 +2610,7 @@ namespace MenthaAssembly.Media.Imaging
                         ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
                         int MaxX = Width - 1;
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
+                        _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
                             PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, y),
                                              Dest = Result.GetAdapter<T>(0, y);
@@ -2626,7 +2626,7 @@ namespace MenthaAssembly.Media.Imaging
 
                         int MaxX = Width - 1,
                             MaxY = Height - 1;
-                        Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
+                        _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
                             PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, MaxY - y),
                                              Dest = Result.GetAdapter<T>(0, y);
@@ -2685,7 +2685,7 @@ namespace MenthaAssembly.Media.Imaging
             // Create Result
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = GetAdapter<T>(X, Y + j),
                                  Dest = Result.GetAdapter<T>(0, j);
@@ -2724,7 +2724,7 @@ namespace MenthaAssembly.Media.Imaging
         {
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
             {
                 PixelAdapter<T> Sorc = new FilterPixelAdapter<T>(this, 0, y, Filter),
                                 Dest = Result.GetAdapter<T>(0, y);
@@ -2739,6 +2739,9 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Quantizate<T>(QuantizationTypes Type, int Count)
             where T : unmanaged, IPixel
         {
+            if (Count < 2)
+                throw new ArgumentOutOfRangeException($"Parameter {nameof(Count)} must greater than 1.");
+
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
@@ -2751,7 +2754,7 @@ namespace MenthaAssembly.Media.Imaging
                 case QuantizationTypes.KMeans:
                     {
                         QuantizationCluster[] Clusters = ImageContextHelper.ClusterQuantize(Sorc, Count,
-                                                                                            out Func<QuantizationCluster, IReadOnlyPixel, int> GetDistanceConst,
+                                                                                            out Func<QuantizationCluster, PixelAdapter<T>, int> GetDistanceConst,
                                                                                             out Func<QuantizationCluster, T> GetColor)
                                                                            .ToArray();
 
@@ -2781,7 +2784,7 @@ namespace MenthaAssembly.Media.Imaging
                 default:
                     {
                         QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc, Type, Count,
-                                                                                 out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
+                                                                                 out Func<QuantizationBox, PixelAdapter<T>, bool> Contain,
                                                                                  out Func<QuantizationBox, T> GetColor).ToArray();
                         Colors = Boxes.Select(b => GetColor(b)).ToArray();
                         GetColorIndex = Adapter => Boxes.IndexOf(b => Contain(b, Adapter));
@@ -2804,13 +2807,57 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Quantizate<T>(QuantizationTypes Type, int Count, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
+            if (Count < 2)
+                throw new ArgumentOutOfRangeException($"Parameter {nameof(Count)} must greater than 1.");
+
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
             PixelAdapter<T> Sorc0 = GetAdapter<T>(0, 0);
-            QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc0, Type, Count, Options ?? DefaultParallelOptions,
-                                                                  out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
-                                                                  out Func<QuantizationBox, T> GetColor).ToArray();
-            T[] Colors = Boxes.Select(b => GetColor(b)).ToArray();
+
+            T[] Colors;
+            Func<PixelAdapter<T>, int> GetColorIndex;
+            switch (Type)
+            {
+                case QuantizationTypes.KMeans:
+                    {
+                        QuantizationCluster[] Clusters = ImageContextHelper.ClusterQuantize(Sorc0, Count, Options ?? DefaultParallelOptions,
+                                                                                            out Func<QuantizationCluster, PixelAdapter<T>, int> GetDistanceConst,
+                                                                                            out Func<QuantizationCluster, T> GetColor)
+                                                                           .ToArray();
+
+                        Colors = Clusters.Select(c => GetColor(c)).ToArray();
+                        GetColorIndex = Adapter =>
+                        {
+                            // Finds Minimum Distance
+                            int Index = -1,
+                                MinDistance = int.MaxValue,
+                                Distance;
+                            for (int k = 0; k < Clusters.Length; k++)
+                            {
+                                Distance = GetDistanceConst(Clusters[k], Adapter);
+                                if (Distance < MinDistance)
+                                {
+                                    MinDistance = Distance;
+                                    Index = k;
+                                }
+                            }
+
+                            return Index;
+                        };
+                    }
+                    break;
+                case QuantizationTypes.Mean:
+                case QuantizationTypes.Median:
+                default:
+                    {
+                        QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc0, Type, Count, Options ?? DefaultParallelOptions,
+                                                                                 out Func<QuantizationBox, PixelAdapter<T>, bool> Contain,
+                                                                                 out Func<QuantizationBox, T> GetColor).ToArray();
+                        Colors = Boxes.Select(b => GetColor(b)).ToArray();
+                        GetColorIndex = Adapter => Boxes.IndexOf(b => Contain(b, Adapter));
+                    }
+                    break;
+            }
 
             _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
@@ -2819,22 +2866,20 @@ namespace MenthaAssembly.Media.Imaging
 
                 Sorc.InternalMove(0, j);
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
-                    Dest.Override(Colors[Boxes.IndexOf(b => Contain(b, Sorc))]);
+                    Dest.Override(Colors[GetColorIndex(Sorc)]);
             });
 
             return Result;
         }
 
-        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold)
+        public ImageContext<T> Binarize<T>(ImageThreshold Threshold)
             where T : unmanaged, IPixel
         {
-            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            ImageContext<T> Image = new ImageContext<T>(Width, Height);
             PixelAdapter<T> Sorc = Threshold.CreateAdapter(GetAdapter<T>(0, 0)),
                             Dest = Image.GetAdapter<T>(0, 0);
 
             T Color0 = default;
-            Image.Palette.Datas.Add(Color0);
-
             for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
             {
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
@@ -2847,16 +2892,14 @@ namespace MenthaAssembly.Media.Imaging
 
             return Image;
         }
-        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold, ParallelOptions Options)
+        public ImageContext<T> Binarize<T>(ImageThreshold Threshold, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
-            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            ImageContext<T> Image = new ImageContext<T>(Width, Height);
             PixelAdapter<T> Sorc0 = Threshold.CreateAdapter(GetAdapter<T>(0, 0));
 
             T Color0 = default;
-            Image.Palette.Datas.Add(Color0);
-
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = Sorc0.Clone(),
                                 Dest = Image.GetAdapter<T>(0, j);
@@ -2870,16 +2913,14 @@ namespace MenthaAssembly.Media.Imaging
 
             return Image;
         }
-        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate)
+        public ImageContext<T> Binarize<T>(ImagePredicate Predicate)
             where T : unmanaged, IPixel
         {
-            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            ImageContext<T> Image = new ImageContext<T>(Width, Height);
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
                             Dest = Image.GetAdapter<T>(0, 0);
 
             T Max = PixelHelper.ToPixel<T>(255, 255, 255, 255);
-            Image.Palette.Datas.Add(default);
-
             int MaxX = Sorc.MaxX;
             for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
             {
@@ -2893,15 +2934,13 @@ namespace MenthaAssembly.Media.Imaging
 
             return Image;
         }
-        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate, ParallelOptions Options)
+        public ImageContext<T> Binarize<T>(ImagePredicate Predicate, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
-            ImageContext<T, Indexed1> Image = new ImageContext<T, Indexed1>(Width, Height);
+            ImageContext<T> Image = new ImageContext<T>(Width, Height);
 
             T Max = PixelHelper.ToPixel<T>(255, 255, 255, 255);
-            Image.Palette.Datas.Add(default);
-
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = GetAdapter<T>(0, j),
                                 Dest = Image.GetAdapter<T>(0, j);
@@ -2909,6 +2948,99 @@ namespace MenthaAssembly.Media.Imaging
                 for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
                     if (Predicate(i, j, Sorc))
                         Dest.Override(Max);
+            });
+
+            return Image;
+        }
+        public ImageContext<T, U> Binarize<T, U>(ImageThreshold Threshold)
+            where T : unmanaged, IPixel
+            where U : unmanaged, IPixelIndexed
+        {
+            ImageContext<T, U> Image = new ImageContext<T, U>(Width, Height);
+            PixelAdapter<T> Sorc = Threshold.CreateAdapter(GetAdapter<T>(0, 0));
+            PixelIndexedAdapter<T> Dest = Image.GetAdapter<T>(0, 0);
+
+            T Color0 = default;
+            Image.Palette.Datas.Add(Color0);
+            Image.Palette.Datas.Add(PixelHelper.ToPixel<T>(255, 255, 255, 255));
+
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
+                        Dest.OverrideIndex(1);
+
+                Sorc.InternalMoveX(-Width);
+                Dest.InternalMoveX(-Width);
+            }
+
+            return Image;
+        }
+        public ImageContext<T, U> Binarize<T, U>(ImageThreshold Threshold, ParallelOptions Options)
+            where T : unmanaged, IPixel
+            where U : unmanaged, IPixelIndexed
+        {
+            ImageContext<T, U> Image = new ImageContext<T, U>(Width, Height);
+            PixelAdapter<T> Sorc0 = Threshold.CreateAdapter(GetAdapter<T>(0, 0));
+
+            T Color0 = default;
+            Image.Palette.Datas.Add(Color0);
+            Image.Palette.Datas.Add(PixelHelper.ToPixel<T>(255, 255, 255, 255));
+
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            {
+                PixelAdapter<T> Sorc = Sorc0.Clone();
+                PixelIndexedAdapter<T> Dest = Image.GetAdapter<T>(0, j);
+
+                Sorc.Move(0, j);
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
+                        Dest.OverrideIndex(1);
+
+            });
+
+            return Image;
+        }
+        public ImageContext<T, U> Binarize<T, U>(ImagePredicate Predicate)
+            where T : unmanaged, IPixel
+            where U : unmanaged, IPixelIndexed
+        {
+            ImageContext<T, U> Image = new ImageContext<T, U>(Width, Height);
+            PixelAdapter<T> Sorc = GetAdapter<T>(0, 0);
+            PixelIndexedAdapter<T> Dest = Image.GetAdapter<T>(0, 0);
+
+            Image.Palette.Datas.Add(default);
+            Image.Palette.Datas.Add(PixelHelper.ToPixel<T>(255, 255, 255, 255));
+
+            int MaxX = Sorc.MaxX;
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            {
+                for (int i = 0; i <= MaxX; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Predicate(i, j, Sorc))
+                        Dest.OverrideIndex(1);
+
+                Sorc.InternalMoveX(-MaxX);
+                Dest.InternalMoveX(-MaxX);
+            }
+
+            return Image;
+        }
+        public ImageContext<T, U> Binarize<T, U>(ImagePredicate Predicate, ParallelOptions Options)
+            where T : unmanaged, IPixel
+            where U : unmanaged, IPixelIndexed
+        {
+            ImageContext<T, U> Image = new ImageContext<T, U>(Width, Height);
+
+            Image.Palette.Datas.Add(default);
+            Image.Palette.Datas.Add(PixelHelper.ToPixel<T>(255, 255, 255, 255));
+
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            {
+                PixelAdapter<T> Sorc = GetAdapter<T>(0, j);
+                PixelIndexedAdapter<T> Dest = Image.GetAdapter<T>(0, j);
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                    if (Predicate(i, j, Sorc))
+                        Dest.OverrideIndex(1);
             });
 
             return Image;
@@ -2937,7 +3069,7 @@ namespace MenthaAssembly.Media.Imaging
         {
             ImageContext<T> Result = new ImageContext<T>(Width, Height);
 
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = GetAdapter<T>(0, j),
                                 Dest = Result.GetAdapter<T>(0, j);
@@ -2958,7 +3090,7 @@ namespace MenthaAssembly.Media.Imaging
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0);
             PixelIndexedAdapter<T> Dest = Result.GetAdapter<T>(0, 0);
             QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc, QuantizationTypes.Median, Palette.Capacity,
-                                                                  out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
+                                                                  out Func<QuantizationBox, PixelAdapter<T>, bool> Contain,
                                                                   out Func<QuantizationBox, T> GetColor).ToArray();
             Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));
 
@@ -2982,11 +3114,11 @@ namespace MenthaAssembly.Media.Imaging
             ImagePalette<T> Palette = Result.Palette;
             PixelAdapter<T> Sorc0 = GetAdapter<T>(0, 0);
             QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc0, QuantizationTypes.Median, Palette.Capacity, Options ?? DefaultParallelOptions,
-                                                                  out Func<QuantizationBox, IReadOnlyPixel, bool> Contain,
+                                                                  out Func<QuantizationBox, PixelAdapter<T>, bool> Contain,
                                                                   out Func<QuantizationBox, T> GetColor).ToArray();
             Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));
 
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = Sorc0.Clone();
                 PixelIndexedAdapter<T> Dest = Result.GetAdapter<T>(0, j);
@@ -3128,7 +3260,7 @@ namespace MenthaAssembly.Media.Imaging
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, (j) =>
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, (j) =>
             {
                 T* pDest = (T*)(Dest0 + DestStride * j);
                 this.ScanLine<T>(X, Y + j, Width, a => a.OverrideTo(pDest++));
@@ -3426,7 +3558,7 @@ namespace MenthaAssembly.Media.Imaging
                 MaxY = Math.Min(Height, Image.Height);
 
             Pixel Empty = default;
-            Parallel.For(0, MaxY, Options ?? DefaultParallelOptions, y =>
+            _ = Parallel.For(0, MaxY, Options ?? DefaultParallelOptions, y =>
             {
                 PixelAdapter<Pixel> Adapter1 = GetAdapter<Pixel>(0, y),
                                     Adapter2 = Image.GetAdapter<Pixel>(0, y);
@@ -3476,7 +3608,7 @@ namespace MenthaAssembly.Media.Imaging
             int MaxX = Math.Min(Width, Image.Width),
                 MaxY = Math.Min(Height, Image.Height);
 
-            Parallel.For(0, MaxY, Options ?? DefaultParallelOptions, y =>
+            _ = Parallel.For(0, MaxY, Options ?? DefaultParallelOptions, y =>
             {
                 PixelAdapter<Pixel> Adapter1 = GetAdapter<Pixel>(0, y),
                                      Adapter2 = Image.GetAdapter<Pixel>(0, y);
@@ -3529,7 +3661,7 @@ namespace MenthaAssembly.Media.Imaging
                 MaxY = Math.Min(Height, Image.Height);
 
             Pixel Empty = default;
-            Parallel.For(0, MaxY, Options ?? DefaultParallelOptions, y =>
+            _ = Parallel.For(0, MaxY, Options ?? DefaultParallelOptions, y =>
             {
                 PixelAdapter<Pixel> Adapter1 = GetAdapter<Pixel>(0, y),
                                      Adapter2 = Image.GetAdapter<Pixel>(0, y);
@@ -3576,7 +3708,7 @@ namespace MenthaAssembly.Media.Imaging
         public void NOT(ImagePredicate ThresholdSelector, ParallelOptions Options)
         {
             Pixel Empty = default;
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
             {
                 PixelAdapter<Pixel> Adapter = GetAdapter<Pixel>(0, y);
                 for (int x = 0; x < Width; x++)

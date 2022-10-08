@@ -949,7 +949,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="Threshold">The specified threshold.</param>
-        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold) where T : unmanaged, IPixel;
+        public ImageContext<T> Binarize<T>(ImageThreshold Threshold) where T : unmanaged, IPixel;
         /// <summary>
         /// Creates a new binarized image by the specified threshold.
         /// </summary>
@@ -957,13 +957,13 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Threshold">The specified threshold.</param>
         /// <param name="Options">An object that configures the behavior of this operation.<para/>
         /// If it is null, the function will run with default options. </param>
-        public ImageContext<T, Indexed1> Binarize<T>(ImageThreshold Threshold, ParallelOptions Options) where T : unmanaged, IPixel;
+        public ImageContext<T> Binarize<T>(ImageThreshold Threshold, ParallelOptions Options) where T : unmanaged, IPixel;
         /// <summary>
         /// Creates a new binarized image by the custom predicate.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="Predicate">The specified custom predicate to threshold.</param>
-        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate) where T : unmanaged, IPixel;
+        public ImageContext<T> Binarize<T>(ImagePredicate Predicate) where T : unmanaged, IPixel;
         /// <summary>
         /// Creates a new binarized image by the custom predicate.
         /// </summary>
@@ -971,7 +971,35 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Predicate">The specified custom predicate to threshold.</param>
         /// <param name="Options">An object that configures the behavior of this operation.<para/>
         /// If it is null, the function will run with default options. </param>
-        public ImageContext<T, Indexed1> Binarize<T>(ImagePredicate Predicate, ParallelOptions Options) where T : unmanaged, IPixel;
+        public ImageContext<T> Binarize<T>(ImagePredicate Predicate, ParallelOptions Options) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Creates a new binarized image by the specified threshold.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Threshold">The specified threshold.</param>
+        public ImageContext<T, U> Binarize<T, U>(ImageThreshold Threshold) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
+        /// <summary>
+        /// Creates a new binarized image by the specified threshold.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Threshold">The specified threshold.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T, U> Binarize<T, U>(ImageThreshold Threshold, ParallelOptions Options) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
+        /// <summary>
+        /// Creates a new binarized image by the custom predicate.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Predicate">The specified custom predicate to threshold.</param>
+        public ImageContext<T, U> Binarize<T, U>(ImagePredicate Predicate) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
+        /// <summary>
+        /// Creates a new binarized image by the custom predicate.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Predicate">The specified custom predicate to threshold.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T, U> Binarize<T, U>(ImagePredicate Predicate, ParallelOptions Options) where T : unmanaged, IPixel where U : unmanaged, IPixelIndexed;
 
         /// <summary>
         /// Creates a new casted <see cref="ImageContext{T}"/>.

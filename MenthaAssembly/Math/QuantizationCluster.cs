@@ -1,10 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace MenthaAssembly
 {
     public sealed class QuantizationCluster
     {
+        private readonly object LockObject = new object();
         private readonly int Dimension;
         private int[] _Center;
         public int[] Center
@@ -27,42 +30,47 @@ namespace MenthaAssembly
 
         private readonly Dictionary<int, int>[] Histos;
 
-        public QuantizationCluster(int[] Center, int MinValue, int MaxValue)
+        public QuantizationCluster(int[] Center)
         {
             _Center = Center;
             Dimension = Center.Length;
             Histos = new Dictionary<int, int>[Dimension];
-
             for (int i = 0; i < Dimension; i++)
-            {
-                Dictionary<int, int> Histo = new Dictionary<int, int>();
-                for (int j = MinValue; j < MaxValue; j++)
-                    Histo[j] = 0;
-
-                Histos[i] = Histo;
-            }
+                Histos[i] = new Dictionary<int, int>();
         }
 
-        public bool TryAddDatas(params int[] Datas)
-            => Datas.Length >= Dimension && InternalTryAddDatas(Datas);
-        internal bool InternalTryAddDatas(params int[] Datas)
+        public void AddDatas(int[] Datas)
         {
-            int Data;
-            for (int i = 0; i < Dimension; i++)
-            {
-                Dictionary<int, int> Histo = Histos[i];
-                Data = Datas[i];
+            if (Datas.Length < Dimension)
+                throw new ArgumentException($"The Length of Datas have to be greater than {Dimension}.");
 
-                if (Histo.ContainsKey(Data))
-                    Histo[Data]++;
-                else
-                    Histo[Data] = 1;
-            }
-
-            NextCenter = null;
-            TotalDatas++;
-            return true;
+            InternalAddDatas(Datas, 1);
         }
+        public void AddDatas(int[] Datas, int DataCount)
+        {
+            if (Datas.Length < Dimension)
+                throw new ArgumentException($"The Length of Datas have to be greater than {Dimension}.");
+
+            InternalAddDatas(Datas, DataCount);
+        }
+        internal void InternalAddDatas(int[] Datas, int DataCount)
+            => LockAction(() =>
+            {
+                int Data;
+                for (int i = 0; i < Dimension; i++)
+                {
+                    Dictionary<int, int> Histo = Histos[i];
+                    Data = Datas[i];
+
+                    if (Histo.ContainsKey(Data))
+                        Histo[Data] += DataCount;
+                    else
+                        Histo[Data] = DataCount;
+                }
+
+                NextCenter = null;
+                TotalDatas += DataCount;
+            });
 
         private int[] NextCenter;
         public int[] GetNextCenter()
@@ -84,6 +92,19 @@ namespace MenthaAssembly
 
             NextCenter = Center;
             return Center;
+        }
+
+        private void LockAction(Action Action)
+        {
+            Monitor.Enter(LockObject);
+            try
+            {
+                Action();
+            }
+            finally
+            {
+                Monitor.Exit(LockObject);
+            }
         }
 
         public override string ToString()

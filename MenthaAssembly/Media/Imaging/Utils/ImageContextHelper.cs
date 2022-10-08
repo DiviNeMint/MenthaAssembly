@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -167,41 +168,56 @@ namespace MenthaAssembly.Media.Imaging.Utils
             return Contour;
         }
 
-        public static IEnumerable<QuantizationBox> BoxQuantize<T>(PixelAdapter<T> Adapter, QuantizationTypes Type, int Count, out Func<QuantizationBox, IReadOnlyPixel, bool> Contain, out Func<QuantizationBox, T> GetColor)
+        public static IEnumerable<QuantizationBox> BoxQuantize<T>(PixelAdapter<T> Adapter, QuantizationTypes Type, int Count, out Func<QuantizationBox, PixelAdapter<T>, bool> Contain, out Func<QuantizationBox, T> GetColor)
             where T : unmanaged, IPixel
         {
+            // Initialize Palette
+            Dictionary<int, int> Palette = new Dictionary<int, int>();
+            for (int j = 0; j <= Adapter.MaxY; j++)
+            {
+                Adapter.InternalMove(0, j);
+                for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
+                {
+                    int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
+                    if (Palette.ContainsKey(Key))
+                        Palette[Key]++;
+                    else
+                        Palette[Key] = 1;
+                }
+            }
+
             int Dimension = (Adapter.BitsPerPixel + 7) >> 3;
             int[] Datas = ArrayPool<int>.Shared.Rent(Dimension);
             try
             {
-                Action FillDatas;
+                Action<int> FillDatas;
                 Func<QuantizationBox, IEnumerable<QuantizationBox>> Split = Type == QuantizationTypes.Mean ? Box => Box.MeanSplit() :
                                                                                                              Box => Box.MedianSplit();
                 switch (Dimension)
                 {
                     case 1:
                         {
-                            FillDatas = () => Datas[0] = Adapter.R;
+                            FillDatas = Key => Datas[0] = (Key >> 16) & 0xFF;
                             Contain = (Box, Pixel) => Box.Contain(Pixel.R);
                             GetColor = Box =>
                             {
-                                byte Gray = (byte)Box.GetCenter()[0];
+                                byte Gray = (byte)Box.GetValueCenter()[0];
                                 return PixelHelper.ToPixel<T>(byte.MaxValue, Gray, Gray, Gray);
                             };
                             break;
                         }
                     case 3:
                         {
-                            FillDatas = () =>
+                            FillDatas = Key =>
                             {
-                                Datas[0] = Adapter.R;
-                                Datas[1] = Adapter.G;
-                                Datas[2] = Adapter.B;
+                                Datas[0] = (Key >> 16) & 0xFF;
+                                Datas[1] = (Key >> 8) & 0xFF;
+                                Datas[2] = Key & 0xFF;
                             };
                             Contain = (Box, Pixel) => Box.Contain(Pixel.R, Pixel.G, Pixel.B);
                             GetColor = Box =>
                             {
-                                int[] Center = Box.GetCenter();
+                                int[] Center = Box.GetValueCenter();
                                 return PixelHelper.ToPixel<T>(byte.MaxValue, (byte)Center[0], (byte)Center[1], (byte)Center[2]);
                             };
                             break;
@@ -209,17 +225,17 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     case 4:
                     default:
                         {
-                            FillDatas = () =>
+                            FillDatas = Key =>
                             {
-                                Datas[0] = Adapter.A;
-                                Datas[1] = Adapter.R;
-                                Datas[2] = Adapter.G;
-                                Datas[3] = Adapter.B;
+                                Datas[0] = (Key >> 24) & 0xFF;
+                                Datas[1] = (Key >> 16) & 0xFF;
+                                Datas[2] = (Key >> 8) & 0xFF;
+                                Datas[3] = Key & 0xFF;
                             };
                             Contain = (Box, Pixel) => Box.Contain(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
                             GetColor = Box =>
                             {
-                                int[] Center = Box.GetCenter();
+                                int[] Center = Box.GetValueCenter();
                                 return PixelHelper.ToPixel<T>((byte)Center[0], (byte)Center[1], (byte)Center[2], (byte)Center[3]);
                             };
                             break;
@@ -230,16 +246,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                       UnableSplitBoxes = new List<QuantizationBox>();
                 do
                 {
-                    for (int j = 0; j <= Adapter.MaxY; j++)
+                    foreach (int Key in Palette.Keys)
                     {
-                        Adapter.InternalMove(0, j);
-                        for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
-                        {
-                            FillDatas();
-                            foreach (QuantizationBox Box in Boxes)
-                                if (Box.InternalTryAddDatas(Datas))
-                                    break;
-                        }
+                        FillDatas(Key);
+                        int DataCount = Palette[Key];
+
+                        foreach (QuantizationBox Box in Boxes)
+                            if (Box.InternalTryAddDatas(Datas, DataCount))
+                                break;
                     }
 
                     int ColorCount = Boxes.Count;
@@ -267,10 +281,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
                     for (int i = 0; Index < ColorCount; Index++, i++)
                     {
-                        QuantizationBox Box = Boxes[0];
-                        Count--;
+                        UnableSplitBoxes.Add(Boxes[0]);
                         Boxes.RemoveAt(0);
-                        UnableSplitBoxes.Add(Box);
+                        Count--;
                     }
 
                 } while (Boxes.Count > 0);
@@ -280,41 +293,56 @@ namespace MenthaAssembly.Media.Imaging.Utils
             finally
             {
                 ArrayPool<int>.Shared.Return(Datas);
+                Palette.Clear();
             }
         }
-        public static IEnumerable<QuantizationBox> BoxQuantize<T>(PixelAdapter<T> Adapter, QuantizationTypes Type, int Count, ParallelOptions Options, out Func<QuantizationBox, IReadOnlyPixel, bool> Contain, out Func<QuantizationBox, T> GetColor)
+        public static IEnumerable<QuantizationBox> BoxQuantize<T>(PixelAdapter<T> Adapter, QuantizationTypes Type, int Count, ParallelOptions Options, out Func<QuantizationBox, PixelAdapter<T>, bool> Contain, out Func<QuantizationBox, T> GetColor)
             where T : unmanaged, IPixel
         {
-            int Dimension = (Adapter.BitsPerPixel + 7) >> 3;
+            // Initialize Palette
+            Dictionary<int, int> Palette = new Dictionary<int, int>();
+            for (int j = 0; j <= Adapter.MaxY; j++)
+            {
+                Adapter.InternalMove(0, j);
+                for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
+                {
+                    int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
+                    if (Palette.ContainsKey(Key))
+                        Palette[Key]++;
+                    else
+                        Palette[Key] = 1;
+                }
+            }
 
-            Action<PixelAdapter<T>, int[]> FillDatas;
+            int Dimension = (Adapter.BitsPerPixel + 7) >> 3;
+            Action<int[], int> FillDatas;
             Func<QuantizationBox, IEnumerable<QuantizationBox>> Split = Type == QuantizationTypes.Mean ? Box => Box.MeanSplit() :
                                                                                                          Box => Box.MedianSplit();
             switch (Dimension)
             {
                 case 1:
                     {
-                        FillDatas = (Adapter, Datas) => Datas[0] = Adapter.R;
+                        FillDatas = (Datas, Key) => Datas[0] = (Key >> 16) & 0xFF;
                         Contain = (Box, Pixel) => Box.Contain(Pixel.R);
                         GetColor = Box =>
                         {
-                            byte Gray = (byte)Box.GetCenter()[0];
+                            byte Gray = (byte)Box.GetValueCenter()[0];
                             return PixelHelper.ToPixel<T>(byte.MaxValue, Gray, Gray, Gray);
                         };
                         break;
                     }
                 case 3:
                     {
-                        FillDatas = (Adapter, Datas) =>
+                        FillDatas = (Datas, Key) =>
                         {
-                            Datas[0] = Adapter.R;
-                            Datas[1] = Adapter.G;
-                            Datas[2] = Adapter.B;
+                            Datas[0] = (Key >> 16) & 0xFF;
+                            Datas[1] = (Key >> 8) & 0xFF;
+                            Datas[2] = Key & 0xFF;
                         };
                         Contain = (Box, Pixel) => Box.Contain(Pixel.R, Pixel.G, Pixel.B);
                         GetColor = Box =>
                         {
-                            int[] Center = Box.GetCenter();
+                            int[] Center = Box.GetValueCenter();
                             return PixelHelper.ToPixel<T>(byte.MaxValue, (byte)Center[0], (byte)Center[1], (byte)Center[2]);
                         };
                         break;
@@ -322,17 +350,17 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 case 4:
                 default:
                     {
-                        FillDatas = (Adapter, Datas) =>
+                        FillDatas = (Datas, Key) =>
                         {
-                            Datas[0] = Adapter.A;
-                            Datas[1] = Adapter.R;
-                            Datas[2] = Adapter.G;
-                            Datas[3] = Adapter.B;
+                            Datas[0] = (Key >> 24) & 0xFF;
+                            Datas[1] = (Key >> 16) & 0xFF;
+                            Datas[2] = (Key >> 8) & 0xFF;
+                            Datas[3] = Key & 0xFF;
                         };
                         Contain = (Box, Pixel) => Box.Contain(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
                         GetColor = Box =>
                         {
-                            int[] Center = Box.GetCenter();
+                            int[] Center = Box.GetValueCenter();
                             return PixelHelper.ToPixel<T>((byte)Center[0], (byte)Center[1], (byte)Center[2], (byte)Center[3]);
                         };
                         break;
@@ -343,20 +371,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                   UnableSplitBoxes = new List<QuantizationBox>();
             do
             {
-                _ = Parallel.For(0, Adapter.MaxY + 1, Options, j =>
+                _ = Parallel.ForEach(Palette, Options, Content =>
                 {
-                    PixelAdapter<T> Adapter2 = Adapter.Clone();
-                    Adapter2.InternalMove(0, j);
                     int[] Datas = ArrayPool<int>.Shared.Rent(Dimension);
                     try
                     {
-                        for (int i = 0; i <= Adapter.MaxX; i++, Adapter2.InternalMoveNext())
-                        {
-                            FillDatas(Adapter2, Datas);
-                            foreach (QuantizationBox Box in Boxes)
-                                if (Box.InternalTryAddDatas(Datas))
-                                    break;
-                        }
+                        FillDatas(Datas, Content.Key);
+                        foreach (QuantizationBox Box in Boxes)
+                            if (Box.InternalTryAddDatas(Datas, Content.Value))
+                                break;
                     }
                     finally
                     {
@@ -389,30 +412,28 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
                 for (int i = 0; Index < ColorCount; Index++, i++)
                 {
-                    QuantizationBox Box = Boxes[0];
-                    Count--;
+                    UnableSplitBoxes.Add(Boxes[0]);
                     Boxes.RemoveAt(0);
-                    UnableSplitBoxes.Add(Box);
+                    Count--;
                 }
 
             } while (Boxes.Count > 0);
 
             return Boxes.Concat(UnableSplitBoxes);
-
         }
 
-        public static IEnumerable<QuantizationCluster> ClusterQuantize<T>(PixelAdapter<T> Adapter, int Count, out Func<QuantizationCluster, IReadOnlyPixel, int> GetDistanceConst, out Func<QuantizationCluster, T> GetColor)
+        public static IEnumerable<QuantizationCluster> ClusterQuantize<T>(PixelAdapter<T> Adapter, int Count, out Func<QuantizationCluster, PixelAdapter<T>, int> GetDistanceConst, out Func<QuantizationCluster, T> GetColor)
             where T : unmanaged, IPixel
         {
             List<QuantizationCluster> Clusters = new List<QuantizationCluster>(Count);
             int Dimension = (Adapter.BitsPerPixel + 7) >> 3;
 
-            Action<int[]> FillDatas;
+            Action<int[], int> FillDatas;
             switch (Dimension)
             {
                 case 1:
                     {
-                        FillDatas = Datas => Datas[0] = Adapter.R;
+                        FillDatas = (Datas, Key) => Datas[0] = (Key >> 16) & 0xFF;
                         GetDistanceConst = (Cluster, Pixel) => Cluster.Center[0] - Pixel.R;
                         GetColor = Cluster =>
                         {
@@ -423,11 +444,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     }
                 case 3:
                     {
-                        FillDatas = Datas =>
+                        FillDatas = (Datas, Key) =>
                         {
-                            Datas[0] = Adapter.R;
-                            Datas[1] = Adapter.G;
-                            Datas[2] = Adapter.B;
+                            Datas[0] = (Key >> 16) & 0xFF;
+                            Datas[1] = (Key >> 8) & 0xFF;
+                            Datas[2] = Key & 0xFF;
                         };
                         GetDistanceConst = (Cluster, Pixel) =>
                         {
@@ -453,12 +474,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 case 4:
                 default:
                     {
-                        FillDatas = Datas =>
+                        FillDatas = (Datas, Key) =>
                         {
-                            Datas[0] = Adapter.A;
-                            Datas[1] = Adapter.R;
-                            Datas[2] = Adapter.G;
-                            Datas[3] = Adapter.B;
+                            Datas[0] = (Key >> 24) & 0xFF;
+                            Datas[1] = (Key >> 16) & 0xFF;
+                            Datas[2] = (Key >> 8) & 0xFF;
+                            Datas[3] = Key & 0xFF;
                         };
                         GetDistanceConst = (Cluster, Pixel) =>
                         {
@@ -486,111 +507,156 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     }
             }
 
-            // Gets Colors (Maximum retries 10 times)
-            int Tx, Ty;
-            int[] Datas = new int[Dimension];
-            Random Random = new Random();
-            for (int i = 0; Clusters.Count < Count && i < 10;)
+            int GetDatasDistanceConst(int[] Center1, int[] Center2)
             {
-                Tx = Random.Next(0, Adapter.MaxX);
-                Ty = Random.Next(0, Adapter.MaxY);
-                Adapter.InternalMove(Tx, Ty);
-
-                FillDatas(Datas);
-                if (Clusters.Any(c => c.Center.SequenceEqual(Datas)))
+                int Sum = 0;
+                for (int i = 0; i < Dimension; i++)
                 {
-                    i++;
-                    continue;
+                    int Delta = Center2[i] - Center1[i];
+                    Sum += Delta * Delta;
                 }
+                return Sum;
+            }
 
-                Clusters.Add(new QuantizationCluster(Datas, 0, 255));
+            // Initializes Clusters
+            Dictionary<int, int> Palette = new Dictionary<int, int>();
+            int[] Datas = new int[Dimension],
+                  Empty = new int[Dimension],
+                  MinCenter = null,
+                  MaxCenter = null;
+            int MinD = int.MaxValue,
+                MaxD = int.MinValue,
+                D;
+            for (int j = 0; j <= Adapter.MaxY; j++)
+            {
+                Adapter.InternalMove(0, j);
+                for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
+                {
+                    int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
+                    if (Palette.ContainsKey(Key))
+                    {
+                        Palette[Key]++;
+                        continue;
+                    }
+
+                    FillDatas(Datas, Key);
+
+                    D = GetDatasDistanceConst(Empty, Datas);
+                    if (D < MinD)
+                    {
+                        MinD = D;
+                        MinCenter = Datas;
+                        Datas = new int[Dimension];
+                    }
+                    else if (MaxD < D)
+                    {
+                        MaxD = D;
+                        MaxCenter = Datas;
+                        Datas = new int[Dimension];
+                    }
+
+                    Palette[Key] = 1;
+                }
+            }
+
+            Clusters.Add(new QuantizationCluster(MinCenter));
+            if (MaxCenter != null)
+            {
+                Clusters.Add(new QuantizationCluster(MaxCenter));
+
+                const float DenominatorF = 65025f;
+                float MaxF, F;
                 Datas = new int[Dimension];
-                i = 0;
+                for (int k = Clusters.Count; k < Count; k++)
+                {
+                    MaxF = 0f;
+                    MaxCenter = null;
+                    foreach (int Key in Palette.Keys)
+                    {
+                        FillDatas(Datas, Key);
+
+                        D = GetDatasDistanceConst(MinCenter, Datas);
+                        if (D == 0)
+                            continue;
+
+                        F = D / DenominatorF;
+                        for (int w = 1; w < Clusters.Count; w++)
+                        {
+                            D = GetDatasDistanceConst(Clusters[w].Center, Datas);
+                            if (D == 0)
+                            {
+                                F = 0f;
+                                break;
+                            }
+
+                            F *= D / DenominatorF;
+                        }
+
+                        if (MaxF < F)
+                        {
+                            MaxF = F;
+                            MaxCenter = Datas;
+                            Datas = new int[Dimension];
+                        }
+                    }
+
+                    if (MaxCenter is null)
+                        break;
+
+                    Clusters.Add(new QuantizationCluster(MaxCenter));
+                }
             }
 
             // Initializes Distances
             Count = Clusters.Count;
-            int Length = Count - 1,
-                Index = 0;
-            int[] Distances = new int[(Length * Count) >> 1];
-            for (int i = 0; i < Length; i++)
-            {
-                int[] Cluster1 = Clusters[i].Center;
-                for (int j = i + 1; j < Count; j++)
-                {
-                    Tx = 0;
-                    int[] Cluster2 = Clusters[j].Center;
-                    for (int k = 0; k < Dimension; k++)
-                    {
-                        Ty = Cluster2[k] - Cluster1[k];
-                        Tx += Ty * Ty;
-                    }
-                    Distances[Index++] = Tx;
-                }
-            }
+            Datas = Clusters[0].Center;
+            int[] Distances = new int[Count - 1];
+            for (int i = 0; i < Distances.Length; i++)
+                Distances[i] = GetDatasDistanceConst(Datas, Clusters[i + 1].Center);
 
-            bool IsEnd;
-            Datas = ArrayPool<int>.Shared.Rent(Dimension);
+            // Finds Clusters
             try
             {
+                Datas = ArrayPool<int>.Shared.Rent(Dimension);
+                bool IsEnd;
                 do
                 {
                     // Adds Datas
-                    for (int j = 0; j <= Adapter.MaxY; j++)
+                    int Index;
+                    foreach (int Key in Palette.Keys)
                     {
-                        Adapter.InternalMove(0, j);
-                        for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
+                        FillDatas(Datas, Key);
+
+                        // Finds Minimum Distance
+                        Index = -1;
+                        MinD = int.MaxValue;
+                        for (int k = 0; k < Clusters.Count; k++)
                         {
-                            FillDatas(Datas);
-
-                            // Finds Minimum Distance
-                            Index = -1;
-                            int MinSum = int.MaxValue;
-                            int[] Cluster;
-                            for (int k = 0; k < Clusters.Count; k++)
+                            D = GetDatasDistanceConst(Datas, Clusters[k].Center);
+                            if (D < MinD)
                             {
-                                Tx = 0;
-                                Cluster = Clusters[k].Center;
-                                for (int w = 0; w < Dimension; w++)
-                                {
-                                    Ty = Cluster[w] - Datas[w];
-                                    Tx += Ty * Ty;
-                                }
-
-                                if (Tx < MinSum)
-                                {
-                                    MinSum = Tx;
-                                    Index = k;
-                                }
+                                MinD = D;
+                                Index = k;
                             }
-
-                            Clusters[Index].InternalTryAddDatas(Datas);
                         }
+
+                        Clusters[Index].InternalAddDatas(Datas, Palette[Key]);
                     }
 
                     // Checks the distance of clusters.
                     IsEnd = true;
-                    Index = 0;
-                    for (int i = 0; i < Length; i++)
+
+                    int[] Cluster1 = Clusters[0].GetNextCenter();
+                    Clusters[0].Center = Cluster1;
+                    for (int i = 0; i < Distances.Length; i++)
                     {
-                        int[] Cluster1 = Clusters[i].GetNextCenter();
-                        for (int j = i + 1; j < Count; j++)
-                        {
-                            Tx = 0;
-                            int[] Cluster2 = Clusters[j].GetNextCenter();
-                            for (int k = 0; k < Dimension; k++)
-                            {
-                                Ty = Cluster2[k] - Cluster1[k];
-                                Tx += Ty * Ty;
-                            }
+                        Empty = Clusters[i + 1].GetNextCenter();
+                        D = GetDatasDistanceConst(Cluster1, Empty);
+                        if (IsEnd && Distances[i] != D)
+                            IsEnd = false;
 
-                            if (IsEnd && Distances[Index] != Tx)
-                                IsEnd = false;
-
-                            Distances[Index++] = Tx;
-                        }
-
-                        Clusters[i].Center = Cluster1;
+                        Distances[i] = D;
+                        Clusters[i + 1].Center = Empty;
                     }
 
                 } while (!IsEnd);
@@ -602,6 +668,254 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 ArrayPool<int>.Shared.Return(Datas);
             }
         }
+        public static IEnumerable<QuantizationCluster> ClusterQuantize<T>(PixelAdapter<T> Adapter, int Count, ParallelOptions Options, out Func<QuantizationCluster, PixelAdapter<T>, int> GetDistanceConst, out Func<QuantizationCluster, T> GetColor)
+            where T : unmanaged, IPixel
+        {
+            List<QuantizationCluster> Clusters = new List<QuantizationCluster>(Count);
+            int Dimension = (Adapter.BitsPerPixel + 7) >> 3;
+
+            Action<int[], int> FillDatas;
+            Func<int[], int> DataToKey;
+            switch (Dimension)
+            {
+                case 1:
+                    {
+                        FillDatas = (Datas, Key) => Datas[0] = (Key >> 16) & 0xFF;
+                        DataToKey = Datas => 255 << 24 | Datas[0] << 16 | Datas[0] << 8 | Datas[0];
+                        GetDistanceConst = (Cluster, Pixel) => Cluster.Center[0] - Pixel.R;
+                        GetColor = Cluster =>
+                        {
+                            byte Gray = (byte)Cluster.Center[0];
+                            return PixelHelper.ToPixel<T>(byte.MaxValue, Gray, Gray, Gray);
+                        };
+                        break;
+                    }
+                case 3:
+                    {
+                        FillDatas = (Datas, Key) =>
+                        {
+                            Datas[0] = (Key >> 16) & 0xFF;
+                            Datas[1] = (Key >> 8) & 0xFF;
+                            Datas[2] = Key & 0xFF;
+                        };
+                        DataToKey = Datas => 255 << 24 | Datas[0] << 16 | Datas[1] << 8 | Datas[2];
+                        GetDistanceConst = (Cluster, Pixel) =>
+                        {
+                            int[] Center = Cluster.Center;
+                            int Delta = Center[0] - Pixel.R,
+                                Sum = Delta * Delta;
+
+                            Delta = Center[1] - Pixel.G;
+                            Sum += Delta * Delta;
+
+                            Delta = Center[2] - Pixel.B;
+                            Sum += Delta * Delta;
+
+                            return Sum;
+                        };
+                        GetColor = Cluster =>
+                        {
+                            int[] Center = Cluster.Center;
+                            return PixelHelper.ToPixel<T>(byte.MaxValue, (byte)Center[0], (byte)Center[1], (byte)Center[2]);
+                        };
+                        break;
+                    }
+                case 4:
+                default:
+                    {
+                        FillDatas = (Datas, Key) =>
+                        {
+                            Datas[0] = (Key >> 24) & 0xFF;
+                            Datas[1] = (Key >> 16) & 0xFF;
+                            Datas[2] = (Key >> 8) & 0xFF;
+                            Datas[3] = Key & 0xFF;
+                        };
+                        DataToKey = Datas => Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
+                        GetDistanceConst = (Cluster, Pixel) =>
+                        {
+                            int[] Center = Cluster.Center;
+                            int Delta = Center[0] - Pixel.A,
+                                Sum = Delta * Delta;
+
+                            Delta = Center[1] - Pixel.R;
+                            Sum += Delta * Delta;
+
+                            Delta = Center[2] - Pixel.G;
+                            Sum += Delta * Delta;
+
+                            Delta = Center[3] - Pixel.B;
+                            Sum += Delta * Delta;
+
+                            return Sum;
+                        };
+                        GetColor = Cluster =>
+                        {
+                            int[] Center = Cluster.Center;
+                            return PixelHelper.ToPixel<T>((byte)Center[0], (byte)Center[1], (byte)Center[2], (byte)Center[3]);
+                        };
+                        break;
+                    }
+            }
+
+            int GetDatasDistanceConst(int[] Center1, int[] Center2)
+            {
+                int Sum = 0;
+                for (int i = 0; i < Dimension; i++)
+                {
+                    int Delta = Center2[i] - Center1[i];
+                    Sum += Delta * Delta;
+                }
+                return Sum;
+            }
+
+            // Initializes Clusters
+            Dictionary<int, int> Palette = new Dictionary<int, int>();
+            int[] MinCenter = null,
+                  MaxCenter = null;
+            {
+                int[] Datas = new int[Dimension],
+                      Empty = new int[Dimension];
+                int MinD = int.MaxValue,
+                    MaxD = int.MinValue,
+                    D;
+                for (int j = 0; j <= Adapter.MaxY; j++)
+                {
+                    Adapter.InternalMove(0, j);
+                    for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
+                    {
+                        int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
+                        if (Palette.ContainsKey(Key))
+                        {
+                            Palette[Key]++;
+                            continue;
+                        }
+
+                        FillDatas(Datas, Key);
+
+                        D = GetDatasDistanceConst(Empty, Datas);
+                        if (D < MinD)
+                        {
+                            MinD = D;
+                            MinCenter = Datas;
+                            Datas = new int[Dimension];
+                        }
+                        else if (MaxD < D)
+                        {
+                            MaxD = D;
+                            MaxCenter = Datas;
+                            Datas = new int[Dimension];
+                        }
+
+                        Palette[Key] = 1;
+                    }
+                }
+            }
+
+            Clusters.Add(new QuantizationCluster(MinCenter));
+            if (MaxCenter != null)
+            {
+                Clusters.Add(new QuantizationCluster(MaxCenter));
+
+                const float DenominatorF = 65025f;
+                float MaxF;
+                for (int k = Clusters.Count; k < Count; k++)
+                {
+                    MaxF = 0f;
+                    MaxCenter = null;
+                    _ = Parallel.ForEach(Palette.Keys, Options, Key =>
+                    {
+                        int[] Buffer = new int[Dimension];
+                        FillDatas(Buffer, Key);
+
+                        int D;
+                        float F = 1f;
+                        for (int w = 0; w < Clusters.Count; w++)
+                        {
+                            D = GetDatasDistanceConst(Clusters[w].Center, Buffer);
+                            if (D == 0)
+                                return;
+
+                            F *= D / DenominatorF;
+                        }
+
+                        if (MaxF < F)
+                        {
+                            MaxF = F;
+                            MaxCenter = Buffer;
+                        }
+                    });
+
+                    if (MaxCenter is null)
+                        break;
+
+                    Clusters.Add(new QuantizationCluster(MaxCenter));
+                }
+            }
+
+            // Initializes Distances
+            Count = Clusters.Count;
+            int[] Distances = new int[Count - 1];
+            {
+                int[] Datas = Clusters[0].Center;
+                _ = Parallel.For(0, Distances.Length, Options,
+                    i => Distances[i] = GetDatasDistanceConst(Datas, Clusters[i + 1].Center));
+            }
+
+            // Finds Clusters
+            bool IsEnd;
+            do
+            {
+                // Adds Datas
+                _ = Parallel.ForEach(Palette.Keys, Options, Key =>
+                {
+                    int[] Buffer = ArrayPool<int>.Shared.Rent(Dimension);
+                    try
+                    {
+                        FillDatas(Buffer, Key);
+
+                        // Finds Minimum Distance
+                        int Index = -1,
+                            MinD = int.MaxValue,
+                            D;
+                        for (int k = 0; k < Clusters.Count; k++)
+                        {
+                            D = GetDatasDistanceConst(Buffer, Clusters[k].Center);
+                            if (D < MinD)
+                            {
+                                MinD = D;
+                                Index = k;
+                            }
+                        }
+
+                        Clusters[Index].InternalAddDatas(Buffer, Palette[Key]);
+                    }
+                    finally
+                    {
+                        ArrayPool<int>.Shared.Return(Buffer);
+                    }
+                });
+
+                IsEnd = true;
+
+                // Checks the distance of clusters.
+                int[] Cluster1 = Clusters[0].GetNextCenter();
+                Clusters[0].Center = Cluster1;
+                _ = Parallel.For(0, Distances.Length, Options, i =>
+                {
+                    int[] Cluster2 = Clusters[i + 1].GetNextCenter();
+                    int D = GetDatasDistanceConst(Cluster1, Cluster2);
+                    if (IsEnd && Distances[i] != D)
+                        IsEnd = false;
+
+                    Distances[i] = D;
+                    Clusters[i + 1].Center = Cluster2;
+                });
+
+            } while (!IsEnd);
+
+            return Clusters;
+        }
+
 
     }
 }

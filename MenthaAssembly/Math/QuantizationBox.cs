@@ -10,9 +10,12 @@ namespace MenthaAssembly
 
         public int TotalDatas { private set; get; } = 0;
 
+        public int[] MinBounds { get; }
+
+        public int[] MaxBounds { get; }
+
         private readonly Dictionary<int, int>[] Histos;
-        private readonly int[] MinValues, MaxValues,
-                               MinBounds, MaxBounds;
+        private readonly int[] MinValues, MaxValues;
 
         public QuantizationBox(int Dimension, int MinValue, int MaxValue)
         {
@@ -57,10 +60,31 @@ namespace MenthaAssembly
                 MaxValues[i] = MinBounds[i];
             }
         }
+        private QuantizationBox(QuantizationBox Box, int[] MinBounds, int[] MaxBounds)
+        {
+            Dimension = Box.Dimension;
+            Histos = new Dictionary<int, int>[Dimension];
+            this.MinBounds = MinBounds;
+            this.MaxBounds = MaxBounds;
+            MinValues = MinBounds;
+            MaxValues = MaxBounds;
 
-        public bool TryAddDatas(params int[] Datas)
-            => Datas.Length >= Dimension && InternalTryAddDatas(Datas);
-        internal bool InternalTryAddDatas(params int[] Datas)
+            for (int i = 0; i < Dimension; i++)
+            {
+                Dictionary<int, int> Histo = new Dictionary<int, int>();
+                for (int j = MinBounds[i]; j < MaxBounds[i]; j++)
+                    Histo[j] = Box.Histos[i][j];
+
+                Histos[i] = Histo;
+            }
+            TotalDatas = Histos[0].Sum(i => i.Value);
+        }
+
+        public bool TryAddDatas(int[] Datas)
+            => Datas.Length >= Dimension && InternalTryAddDatas(Datas, 1);
+        public bool TryAddDatas(int[] Datas, int DataCount)
+            => Datas.Length >= Dimension && InternalTryAddDatas(Datas, DataCount);
+        internal bool InternalTryAddDatas(int[] Datas, int DataCount)
         {
             // Check Bounds
             if (!Contain(Datas))
@@ -81,21 +105,21 @@ namespace MenthaAssembly
                 // Add Datas
                 Dictionary<int, int> Histo = Histos[i];
                 if (Histo.ContainsKey(Data))
-                    Histo[Data]++;
+                    Histo[Data] += DataCount;
                 else
-                    Histo[Data] = 1;
+                    Histo[Data] = DataCount;
             }
 
-            TotalDatas++;
-            Center = null;
+            TotalDatas += DataCount;
+            ValueCenter = null;
             return true;
         }
 
-        private int[] Center = null;
-        public int[] GetCenter()
+        private int[] ValueCenter = null;
+        public int[] GetValueCenter()
         {
-            if (this.Center != null)
-                return this.Center;
+            if (ValueCenter != null)
+                return ValueCenter;
 
             int[] Center = new int[Dimension];
             int Sum,
@@ -109,7 +133,16 @@ namespace MenthaAssembly
                 Center[i] = Sum / TotalDatas;
             }
 
-            this.Center = Center;
+            ValueCenter = Center;
+            return Center;
+        }
+
+        public int[] GetBoxCenter()
+        {
+            int[] Center = new int[Dimension];
+            for (int i = 0; i < Dimension; i++)
+                Center[i] = (MinBounds[i] + MaxBounds[i]) >> 1;
+
             return Center;
         }
 
@@ -247,6 +280,52 @@ namespace MenthaAssembly
             yield return new QuantizationBox(MinBound, MaxBound);
         }
 
+        public IEnumerable<QuantizationBox> MedianSplitContent()
+        {
+            // Check Min & Max
+            EnsureMaxAndMin();
+
+            // Calculate the maximum delta of dimension.
+            int Index = GetMaxDeltaDimension();
+            if (Index < 0)
+            {
+                yield return this;
+                yield break;
+            }
+
+            // Split
+            int[] MinBound = MinValues.ToArray(),
+                  MaxBound = MaxValues.ToArray();
+
+            Dictionary<int, int> Histo = Histos[Index];
+            int DatasCount = 0,
+                TMax = MaxValues[Index],
+                j = MinValues[Index],
+                TCount = TotalDatas >> 1;
+
+            for (; j <= TMax; j++)
+            {
+                if (!Histo.ContainsKey(j))
+                    continue;
+
+                DatasCount += Histo[j];
+                if (TCount < DatasCount)
+                {
+                    int NMax = j == TMax ? j - 1 : j;
+                    MaxBound[Index] = NMax;
+
+                    yield return new QuantizationBox(this, MinBound, MaxBound);
+
+                    MinBound = MinValues.ToArray();
+                    MaxBound = MaxValues.ToArray();
+                    MinBound[Index] = NMax + 1;
+                    break;
+                }
+            }
+
+            yield return new QuantizationBox(this, MinBound, MaxBound);
+        }
+
         private void EnsureMaxAndMin()
         {
             for (int i = 0; i < Dimension; i++)
@@ -367,9 +446,9 @@ namespace MenthaAssembly
             }
         }
 
-        public bool TryAddDatas(params T[] Datas)
+        public bool TryAddDatas(T[] Datas)
             => Datas.Length >= Dimension && InternalTryAddDatas(Datas);
-        internal bool InternalTryAddDatas(params T[] Datas)
+        internal bool InternalTryAddDatas(T[] Datas)
         {
             // Check Bounds
             if (!Contain(Datas))
