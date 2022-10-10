@@ -10,7 +10,7 @@ namespace MenthaAssembly
 
         public object this[string Attribute] { get; }
 
-        public IEnumerable<IHtmlNode> Children { get; }
+        public IReadOnlyList<IHtmlNode> Children { get; }
 
     }
 }

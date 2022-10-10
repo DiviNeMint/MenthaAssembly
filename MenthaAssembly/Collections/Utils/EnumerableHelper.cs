@@ -48,7 +48,7 @@ namespace System.Linq
         /// </summary>
         /// <param name="Source">A sequence in which to locate a value.</param>
         /// <param name="Item">The item to locate in the sequence.</param>
-        public static bool Contain(this IEnumerable Source, object Item)
+        public static bool Contains(this IEnumerable Source, object Item)
         {
             foreach (object i in Source)
                 if (Item.Equals(i))
@@ -62,7 +62,7 @@ namespace System.Linq
         /// <typeparam name="T">The type of the elements of source.</typeparam>
         /// <param name="Source">A sequence in which to locate a value.</param>
         /// <param name="Item">The item to locate in the sequence.</param>
-        public static bool Contain<T>(this IEnumerable Source, T Item)
+        public static bool Contains<T>(this IEnumerable Source, T Item)
         {
             foreach (T i in Source.OfType<T>())
                 if (Item.Equals(i))

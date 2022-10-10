@@ -21,7 +21,7 @@ namespace MenthaAssembly
         public IReadOnlyDictionary<string, object> Attributes
             => Html.Attributes;
 
-        public IEnumerable<IHtmlNode> Children
+        public IReadOnlyList<IHtmlNode> Children
             => Html.Children;
 
         public object this[string Attribute]
@@ -30,8 +30,14 @@ namespace MenthaAssembly
         public HtmlDocument(IHtmlNode Html)
         {
             this.Html = Html;
-            Head = Html.FirstOrDefault(i => i.Name == "head");
-            Body = Html.FirstOrDefault(i => i.Name == "body");
+
+            int HeadIndex = Html.Children.IndexOf(c => c.Name == "head");
+            if (HeadIndex != -1)
+                Head = Html.Children[HeadIndex];
+
+            int BodyIndex = Html.Children.IndexOf(c => c.Name == "body");
+            Body = BodyIndex != -1 ? Html.Children[BodyIndex] :
+                                     new HtmlNode("body", new Dictionary<string, object>(0), Html.Children.Skip(HeadIndex + 1).ToList());
         }
 
         public IEnumerator<IHtmlNode> GetEnumerator()
@@ -52,7 +58,7 @@ namespace MenthaAssembly
             {
                 StringBuilder Builder = new StringBuilder();
                 if (Reader.MoveTo(ref Buffer, ref i, BufferSize, true, '<') &&
-                    Reader.ReadTo(ref Buffer, ref i, BufferSize, ref Builder, true, '>').ToLower() == "!doctype html>")
+                    Reader.ReadTo(ref Buffer, ref i, BufferSize, ref Builder, true, '>').ToLower().StartsWith("!doctype html"))
                 {
                     while (HtmlNode.TryParse(Reader, ref Buffer, ref i, BufferSize, ref Builder, out HtmlNode Html))
                     {

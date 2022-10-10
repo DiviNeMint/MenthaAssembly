@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace System
 {
@@ -29,9 +30,19 @@ namespace System
             return null;
         }
 
-        public static IEnumerable<string> Split(this string This, params string[] Separator)
+        /// <summary>
+        /// Splits a string into substrings based on the strings in an array. 
+        /// </summary>
+        /// <param name="This">The string to be splitted.</param>
+        /// <param name="Separator">A string array that delimits the substrings in this string, an empty array that contains no delimiters, or null.</param>
+        public static string[] Split(this string This, params string[] Separator)
             => This.Split(Separator, StringSplitOptions.RemoveEmptyEntries);
 
+        /// <summary>
+        /// Splits a string into characters and substrings that are based on the characters in an array.
+        /// </summary>
+        /// <param name="This">The string to be splitted.</param>
+        /// <param name="Separator">A character array that delimits the substrings in this string, an empty array that contains no delimiters, or null.</param>
         public static IEnumerable<string> SplitAndKeep(this string This, params char[] Separator)
         {
             if (Separator.Length > 0)
@@ -41,6 +52,7 @@ namespace System
                 {
                     if (index - start > 0)
                         yield return This.Substring(start, index - start);
+
                     yield return This.Substring(index, 1);
                     start = index + 1;
                 }
@@ -54,6 +66,10 @@ namespace System
             }
         }
 
+        /// <summary>
+        /// Splits a string into substrings based on the symbols of line.
+        /// </summary>
+        /// <param name="Content">The string to be splitted.</param>
         public static IEnumerable<string> SplitToLines(this string Content)
         {
             if (string.IsNullOrEmpty(Content))
@@ -63,9 +79,36 @@ namespace System
             string line;
             while ((line = reader.ReadLine()) != null)
                 yield return line;
-
         }
 
+        /// <summary>
+        /// Returns a new string in which all the characters in the current instance, beginning at a specified position and continuing through the last position, have been deleted.
+        /// </summary>
+        /// <param name="This">The string to remove characters.</param>
+        /// <param name="Chars">A character array to be removed.</param>
+        public static string Remove(this string This, params char[] Chars)
+        {
+            StringBuilder Builder = new StringBuilder();
+            try
+            {
+                foreach (char Element in This)
+                    if (!Chars.Contains(Element))
+                        Builder.Append(Element);
+
+                return Builder.ToString();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Returns an object of the specified type and whose value is equivalent to the specified object.
+        /// if it can't convert to the specified type, return the default value of the specified type.
+        /// </summary>
+        /// <param name="This">The string to be converted.</param>
+        /// <param name="ValueType">The specified type to convert.</param>
         public static object ToValueType(this string This, Type ValueType)
         {
             try

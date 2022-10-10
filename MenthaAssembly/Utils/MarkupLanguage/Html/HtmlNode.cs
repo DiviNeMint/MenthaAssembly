@@ -1,4 +1,5 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,7 +18,7 @@ namespace MenthaAssembly
         public object this[string Attribute]
             => Attributes.TryGetValue(Attribute, out object value) ? value : null;
 
-        public IEnumerable<IHtmlNode> Children { get; }
+        public IReadOnlyList<IHtmlNode> Children { get; }
 
         public HtmlNode(string Name)
         {
@@ -44,7 +45,13 @@ namespace MenthaAssembly
         {
             this.Name = Name;
             this.Attributes = Attributes;
-            this.Children = Children;
+            this.Children = Children is List<HtmlNode> List ? List : Children.ToList();
+        }
+        public HtmlNode(string Name, Dictionary<string, object> Attributes, IEnumerable<IHtmlNode> Children)
+        {
+            this.Name = Name;
+            this.Attributes = Attributes;
+            this.Children = Children is List<IHtmlNode> List ? List : Children.ToList();
         }
 
         public IEnumerator<IHtmlNode> GetEnumerator() => Children.GetEnumerator();
@@ -64,8 +71,7 @@ namespace MenthaAssembly
                 if (Attributes.Count > 0)
                     Builder.Append($" {string.Join(" ", Attributes.Where(i => i.Key != "Content").Select(i => $"{i.Key}=\"{i.Value}\""))}");
 
-                IEnumerator<IHtmlNode> Enumerator = Children.GetEnumerator();
-                if (!Enumerator.MoveNext())
+                if (Children.Count == 0)
                 {
                     Builder.Append("/>");
                     return Builder.ToString();
@@ -73,26 +79,29 @@ namespace MenthaAssembly
 
                 Builder.Append(">");
 
-                IHtmlNode Current = Enumerator.Current;
-                bool NewLine = Current.Name != "Text";
-
-                do
+                if (Children.Any(i => i.Name != "Text"))
                 {
-                    Current = Enumerator.Current;
+                    foreach (IHtmlNode Child in Children)
+                    {
+                        string HtmlCode = Child.ToString();
+                        if (!string.IsNullOrEmpty(HtmlCode))
+                        {
+                            Builder.AppendLine();
+                            Builder.Append(HtmlCode);
+                        }
+                    }
 
-                    if (NewLine)
-                        Builder.AppendLine();
-
-                    NewLine = Current.Name != "Text";
-
-                    string HtmlCode = Current.ToString();
-                    if (!string.IsNullOrEmpty(HtmlCode))
-                        Builder.Append(HtmlCode);
-
-                } while (Enumerator.MoveNext());
-
-                if (NewLine)
                     Builder.AppendLine();
+                }
+                else
+                {
+                    foreach (IHtmlNode Child in Children)
+                    {
+                        string HtmlCode = Child.ToString();
+                        if (!string.IsNullOrEmpty(HtmlCode))
+                            Builder.Append(HtmlCode);
+                    }
+                }
 
                 Builder.Append($"</{Name}>");
                 return Builder.ToString();
@@ -128,17 +137,13 @@ namespace MenthaAssembly
                 if (string.IsNullOrEmpty(NodeName) && Buffer[Index] == '/')
                     continue;
 
-                if (Parse(NodeName.ToLower(), Reader, ref Buffer, ref Index, BufferSize, ref Builder) is not HtmlNode Html)
-                    break;
-
-                Node = Html;
-                return true;
+                return Parse(NodeName.ToLower(), Reader, ref Buffer, ref Index, BufferSize, ChildName => false, ref Builder, out Node, out _, out _);
             }
 
             Node = null;
             return false;
         }
-        internal static HtmlNode Parse(string NodeName, TextReader Reader, ref char[] Buffer, ref int Index, int BufferSize, ref StringBuilder Builder)
+        internal static bool Parse(string NodeName, TextReader Reader, ref char[] Buffer, ref int Index, int BufferSize, Predicate<string> ContainsNodeName, ref StringBuilder Builder, out HtmlNode Node, out string EndNodeName, out string UnknownContent)
         {
             // Attribute
             Dictionary<string, object> Attributes = new Dictionary<string, object>();
@@ -159,25 +164,25 @@ namespace MenthaAssembly
                     continue;
                 }
 
-                Reader.MoveTo(ref Buffer, ref Index, BufferSize, true, '"');
+                // Skip '='
+                Index++;
 
-                string Value = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '"');
-                if (Buffer[Index] != '"')
+                string StartChar = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, true, 1, '"'),
+                       Value;
+                if (StartChar == "\"")
                 {
-                    StringBuilder ValueBuilder = new StringBuilder();
-                    if (!string.IsNullOrWhiteSpace(Value))
-                        ValueBuilder.Append(Value);
-
-                    do
+                    Value = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '"');
+                    while (Buffer[Index] != '"')
                     {
+                        Builder.Append(Value);
                         Reader.MoveTo(ref Buffer, ref Index, BufferSize, false, c => !char.IsWhiteSpace(c));
                         Value = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '"');
-                        ValueBuilder.Append(Value);
-
-                    } while (Buffer[Index] != '"');
-
-                    Value = ValueBuilder.ToString();
-                    ValueBuilder.Clear();
+                    }
+                }
+                else
+                {
+                    Builder.Append(StartChar);
+                    Value = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', ' ', '/', '>');
                 }
 
                 Attributes.Add(Name, Value);
@@ -189,7 +194,12 @@ namespace MenthaAssembly
             Reader.MoveTo(ref Buffer, ref Index, BufferSize, true, '>');
 
             if (c == '/')
-                return new HtmlNode(NodeName, Attributes);
+            {
+                Node = new HtmlNode(NodeName, Attributes);
+                EndNodeName = NodeName;
+                UnknownContent = null;
+                return true;
+            }
 
             switch (NodeName)
             {
@@ -207,26 +217,117 @@ namespace MenthaAssembly
                 case "source":
                 case "track":
                 case "wbr":
-                    return new HtmlNode(NodeName, Attributes);
-                default:
+                    {
+                        Node = new HtmlNode(NodeName, Attributes);
+                        EndNodeName = NodeName;
+                        UnknownContent = null;
+                        return true;
+                    }
+                case "script":
+                    {
+                        // Children
+                        List<HtmlNode> Children = new List<HtmlNode>();
+
+                        bool LoopValue = true;
+                        string Content = null;
+                        do
+                        {
+                            Reader.MoveTo(ref Buffer, ref Index, BufferSize, false, c => !char.IsWhiteSpace(c));
+
+                            Builder.Append(Content);
+                            Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '<');
+                            while (Buffer[Index] == '<')
+                            {
+                                // Skip '<';
+                                Index++;
+
+                                // Check Buffer
+                                if (BufferSize == Index)
+                                {
+                                    if (Reader.Read(Buffer, 0, BufferSize) == 0)
+                                        break;
+
+                                    Index -= BufferSize;
+                                }
+
+                                if (Buffer[Index] != '/')
+                                {
+                                    Builder.Append(Content);
+                                    Builder.Append('<');
+                                    Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '<');
+                                    continue;
+                                }
+
+                                // Skip '/';
+                                Index++;
+
+                                EndNodeName = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '>');
+                                if (NodeName != StringHelper.Remove(EndNodeName, '\r', '\n', ' '))
+                                {
+                                    Builder.Append(Content);
+                                    Builder.Append("</");
+                                    Builder.Append(EndNodeName);
+                                    Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '<');
+                                    continue;
+                                }
+
+                                LoopValue = false;
+                            }
+
+                        } while (LoopValue);
+
+                        if (!string.IsNullOrWhiteSpace(Content))
+                            Children.Add(new HtmlNode("Text", Content));
+
+                        // Skip '>'
+                        Index++;
+
+                        Node = new HtmlNode(NodeName, Attributes, Children);
+                        EndNodeName = NodeName;
+                        UnknownContent = null;
+                        return true;
+                    }
+                case "head":
                     {
                         // Children
                         List<HtmlNode> Children = new List<HtmlNode>();
 
                         do
                         {
+                            bool LoopValue = true;
                             do
                             {
                                 Reader.MoveTo(ref Buffer, ref Index, BufferSize, false, c => !char.IsWhiteSpace(c));
 
                                 string Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '<');
+                                while (Buffer[Index] == '<')
+                                {
+                                    Index++;
+
+                                    // Check Buffer
+                                    if (BufferSize == Index)
+                                    {
+                                        if (Reader.Read(Buffer, 0, BufferSize) == 0)
+                                            break;
+
+                                        Index -= BufferSize;
+                                    }
+
+                                    if (Buffer[Index] == ' ')
+                                    {
+                                        Builder.Append(Content);
+                                        Builder.Append('<');
+                                        Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '<');
+                                        continue;
+                                    }
+
+                                    LoopValue = false;
+                                }
+
                                 if (!string.IsNullOrWhiteSpace(Content))
                                     Children.Add(new HtmlNode("Text", Content));
 
-                            } while (Buffer[Index] != '<');
-
-                            // Skip '<'
-                            Index++;
+                            } while (LoopValue);
 
                             string ChildNodeName = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '!', ' ', '/', '>');
                             if (string.IsNullOrEmpty(ChildNodeName))
@@ -238,42 +339,19 @@ namespace MenthaAssembly
                                 if (c == '!')
                                 {
                                     string Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '>');
-
-                                    // Simple Comments
-                                    if (Content[Content.Length - 1] == '-')
+                                    while (Content[Content.Length - 1] != '-')
                                     {
-                                        // Skip '>'
+                                        // Skip '>';
                                         Index++;
-                                        Children.Add(new HtmlNode("Comment", Content));
-                                        continue;
+
+                                        Builder.Append(Content);
+                                        Builder.Append('>');
+                                        Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '>');
                                     }
-
-                                    // Conditional Comments
-                                    StringBuilder CommentBuilder = new StringBuilder();
-
-                                    // Content
-                                    do
-                                    {
-                                        CommentBuilder.Append(Content);
-
-                                        Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, true, '<');
-                                        if (string.IsNullOrEmpty(Content))
-                                            break;
-
-                                        CommentBuilder.Append(Content);
-
-                                        Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, 1, '!');
-
-                                    } while (!string.IsNullOrEmpty(Content));
-
-                                    // End Comments Node
-                                    Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '>');
-                                    CommentBuilder.Append(Content);
-                                    Content = CommentBuilder.ToString();
-                                    CommentBuilder.Clear();
 
                                     // Skip '>'
                                     Index++;
+
                                     Children.Add(new HtmlNode("Comment", Content));
                                     continue;
                                 }
@@ -283,17 +361,298 @@ namespace MenthaAssembly
                                 {
                                     // Skip '>'
                                     Index++;
-                                    return new HtmlNode(NodeName, Attributes, Children);
+
+                                    Node = new HtmlNode(NodeName, Attributes, Children);
+                                    EndNodeName = NodeName;
+                                    UnknownContent = null;
+                                    return true;
                                 }
 
-                                Debug.WriteLine($"Unknown HtmlNode at {NodeName}.");
-                                return null;
+                                continue;
                             }
 
-                            if (Parse(ChildNodeName.ToLower(), Reader, ref Buffer, ref Index, BufferSize, ref Builder) is not HtmlNode Node)
-                                return null;
+                            ChildNodeName = StringHelper.Remove(ChildNodeName, '\r', '\n', ' ');
+                            switch (ChildNodeName)
+                            {
+                                case "title":
+                                case "meta":
+                                case "style":
+                                case "link":
+                                case "script":
+                                case "noscript":
+                                case "base":
+                                    {
+                                        Predicate<string> ParentContainsNodeName = ContainsNodeName != null ? ChildName => ChildName == ChildNodeName || ContainsNodeName(ChildName) :
+                                                                                                              ChildName => ChildName == ChildNodeName;
 
-                            Children.Add(Node);
+                                        if (!Parse(ChildNodeName.ToLower(), Reader, ref Buffer, ref Index, BufferSize, ParentContainsNodeName, ref Builder, out HtmlNode ChildNode, out EndNodeName, out UnknownContent))
+                                        {
+                                            if (EndNodeName == NodeName)
+                                            {
+                                                Children.Add(new HtmlNode("Text", UnknownContent));
+                                                Node = new HtmlNode(NodeName, Attributes, Children);
+                                                EndNodeName = NodeName;
+                                                UnknownContent = null;
+                                                return true;
+                                            }
+
+                                            // Unknown Content
+                                            try
+                                            {
+                                                // NodeName
+                                                Builder.Append($"<head");
+
+                                                // Attributes
+                                                if (Attributes.Count > 0)
+                                                    Builder.Append($" {string.Join(" ", Attributes.Where(i => i.Key != "Content").Select(i => $"{i.Key}=\"{i.Value}\""))}");
+
+                                                Builder.Append(">");
+
+                                                // Children
+                                                foreach (HtmlNode Child in Children)
+                                                    Builder.AppendLine(Child.ToString());
+
+                                                Builder.AppendLine(UnknownContent);
+
+                                                Node = null;
+                                                return false;
+                                            }
+                                            finally
+                                            {
+                                                Builder.Clear();
+                                            }
+                                        }
+
+                                        Children.Add(ChildNode);
+                                        break;
+                                    }
+                                default:
+                                    {
+                                        Node = new HtmlNode("head", Attributes, Children);
+                                        EndNodeName = ChildNodeName;
+                                        UnknownContent = null;
+                                        return true;
+                                    }
+                            }
+
+                        } while (true);
+                    }
+                default:
+                    {
+                        // Children
+                        List<HtmlNode> Children = new List<HtmlNode>();
+
+                        do
+                        {
+                            bool LoopValue = true;
+                            do
+                            {
+                                Reader.MoveTo(ref Buffer, ref Index, BufferSize, false, c => !char.IsWhiteSpace(c));
+
+                                string Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '<');
+                                while (Buffer[Index] == '<')
+                                {
+                                    Index++;
+
+                                    // Check Buffer
+                                    if (BufferSize == Index)
+                                    {
+                                        if (Reader.Read(Buffer, 0, BufferSize) == 0)
+                                            break;
+
+                                        Index -= BufferSize;
+                                    }
+
+                                    if (Buffer[Index] == ' ')
+                                    {
+                                        Builder.Append(Content);
+                                        Builder.Append('<');
+                                        Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '\r', '\n', '<');
+                                        continue;
+                                    }
+
+                                    LoopValue = false;
+                                }
+
+                                if (!string.IsNullOrWhiteSpace(Content))
+                                    Children.Add(new HtmlNode("Text", Content));
+
+                            } while (LoopValue);
+
+                            string ChildNodeName = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '!', ' ', '/', '>');
+                            if (string.IsNullOrEmpty(ChildNodeName))
+                            {
+                                // Skip '!', ' ', '/', '>'
+                                c = Buffer[Index++];
+
+                                // Comments Node
+                                if (c == '!')
+                                {
+                                    string Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '>');
+                                    while (Content[Content.Length - 1] != '-')
+                                    {
+                                        // Skip '>';
+                                        Index++;
+
+                                        Builder.Append(Content);
+                                        Builder.Append('>');
+                                        Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '>');
+                                    }
+
+                                    // Skip '>'
+                                    Index++;
+
+                                    #region Complex
+                                    //string Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '>');
+
+                                    //// Simple Comments
+                                    //if (Content[Content.Length - 1] == '-')
+                                    //{
+                                    //    // Skip '>'
+                                    //    Index++;
+                                    //    Children.Add(new HtmlNode("Comment", Content));
+                                    //    continue;
+                                    //}
+
+                                    //// Conditional Comments
+                                    //StringBuilder CommentBuilder = new StringBuilder();
+
+                                    //// Content
+                                    //do
+                                    //{
+                                    //    CommentBuilder.Append(Content);
+
+                                    //    Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, true, '<');
+                                    //    if (string.IsNullOrEmpty(Content))
+                                    //        break;
+
+                                    //    CommentBuilder.Append(Content);
+
+                                    //    Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, 1, '!');
+
+                                    //} while (!string.IsNullOrEmpty(Content));
+
+                                    //// End Comments Node
+                                    //Content = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '>');
+                                    //CommentBuilder.Append(Content);
+                                    //Content = CommentBuilder.ToString();
+                                    //CommentBuilder.Clear();
+
+                                    //// Skip '>'
+                                    //Index++;
+                                    #endregion
+
+                                    Children.Add(new HtmlNode("Comment", Content));
+                                    continue;
+                                }
+
+                                // End Node
+                                EndNodeName = string.Empty;
+                                if (c == '/')
+                                {
+                                    EndNodeName = Reader.ReadTo(ref Buffer, ref Index, BufferSize, ref Builder, false, '>').ToLower();
+                                    EndNodeName = StringHelper.Remove(EndNodeName, '\r', '\n', ' ');
+                                    if (EndNodeName == NodeName)
+                                    {
+                                        // Skip '>'
+                                        Index++;
+
+                                        Node = new HtmlNode(NodeName, Attributes, Children);
+                                        UnknownContent = null;
+                                        return true;
+                                    }
+
+                                    if (!ContainsNodeName(EndNodeName))
+                                    {
+                                        // Skip '>'
+                                        Index++;
+
+                                        Debug.WriteLine($"Invalid EndHtmlNode {EndNodeName}.");
+                                        continue;
+                                    }
+                                }
+
+                                Debug.WriteLine($"Unknown HtmlNode Start : {NodeName} and End : {EndNodeName}.");
+
+                                // Unknown Content
+                                try
+                                {
+                                    // NodeName
+                                    Builder.Append('<');
+                                    Builder.Append(NodeName);
+
+                                    // Attributes
+                                    if (Attributes.Count > 0)
+                                        Builder.Append($" {string.Join(" ", Attributes.Where(i => i.Key != "Content").Select(i => $"{i.Key}=\"{i.Value}\""))}");
+
+                                    Builder.Append(">");
+
+                                    // Children
+                                    foreach (HtmlNode Child in Children)
+                                        Builder.AppendLine(Child.ToString());
+
+                                    Node = null;
+                                    UnknownContent = Builder.ToString();
+                                    return false;
+                                }
+                                finally
+                                {
+                                    Builder.Clear();
+                                }
+                            }
+
+                            ChildNodeName = StringHelper.Remove(ChildNodeName, '\r', '\n', ' ').ToLower();
+
+                            Predicate<string> ParentContainsNodeName = ContainsNodeName != null ? ChildName => ChildName == ChildNodeName || ContainsNodeName(ChildName) :
+                                                                                                  ChildName => ChildName == ChildNodeName;
+
+                            bool Success = Parse(ChildNodeName, Reader, ref Buffer, ref Index, BufferSize, ParentContainsNodeName, ref Builder, out HtmlNode ChildNode, out EndNodeName, out UnknownContent);
+                            while (Success && ChildNodeName != EndNodeName)
+                            {
+                                Children.Add(ChildNode);
+                                ChildNodeName = EndNodeName;
+                                Success = Parse(ChildNodeName, Reader, ref Buffer, ref Index, BufferSize, ParentContainsNodeName, ref Builder, out ChildNode, out EndNodeName, out UnknownContent);
+                            }
+
+                            if (!Success)
+                            {
+                                if (EndNodeName == NodeName)
+                                {
+                                    Children.Add(new HtmlNode("Text", UnknownContent));
+                                    Node = new HtmlNode(NodeName, Attributes, Children);
+                                    UnknownContent = null;
+                                    return true;
+                                }
+
+                                // Unknown Content
+                                try
+                                {
+                                    // NodeName
+                                    Builder.Append($"<{NodeName}");
+
+                                    // Attributes
+                                    if (Attributes.Count > 0)
+                                        Builder.Append($" {string.Join(" ", Attributes.Where(i => i.Key != "Content").Select(i => $"{i.Key}=\"{i.Value}\""))}");
+
+                                    Builder.Append(">");
+
+                                    // Children
+                                    foreach (HtmlNode Child in Children)
+                                        Builder.AppendLine(Child.ToString());
+
+                                    Builder.AppendLine(UnknownContent);
+
+                                    Node = null;
+                                    UnknownContent = Builder.ToString();
+                                    return false;
+                                }
+                                finally
+                                {
+                                    Builder.Clear();
+                                }
+                            }
+
+                            Children.Add(ChildNode);
 
                         } while (true);
                     }
