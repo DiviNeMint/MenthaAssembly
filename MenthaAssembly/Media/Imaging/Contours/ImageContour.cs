@@ -72,10 +72,17 @@ namespace MenthaAssembly.Media.Imaging
             private set => Contents[Y] = value;
         }
 
+        /// <summary>
+        /// Initializes a new instance.
+        /// </summary>
         public ImageContour()
         {
             Contents = new Dictionary<int, ImageContourScanLine>();
         }
+        /// <summary>
+        /// Initializes a new instance.
+        /// </summary>
+        /// <param name="Contour">The initial contour.</param>
         public ImageContour(IImageContour Contour)
         {
             Contour.EnsureContents();
@@ -302,6 +309,9 @@ namespace MenthaAssembly.Media.Imaging
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
 
+        /// <summary>
+        /// Creates a new contour that is a copy of the current instance.
+        /// </summary>
         public ImageContour Clone()
             => new ImageContour(this);
         IImageContour IImageContour.Clone()

@@ -137,6 +137,13 @@ namespace System.Linq
                     yield return Item;
         }
 
+        /// <summary>
+        /// Checks the sequence has contents.
+        /// </summary>
+        /// <param name="Source">The sequence to be checked.</param>
+        public static bool IsEmpty(this IEnumerable Source)
+            => !Source.GetEnumerator().MoveNext();
+
         public static IEnumerable<TResult> Select<TResult>(this IEnumerable Source, Func<object, TResult> Selector)
         {
             foreach (object Item in Source)
@@ -196,10 +203,111 @@ namespace System.Linq
             }
         }
 
-        public static TResult MaxBy<TResult>(this IEnumerable<TResult> Source, Func<TResult, IComparable> Selector)
-            => Source.Aggregate((i1, i2) => Selector(i1).CompareTo(Selector(i2)) > 0 ? i1 : i2);
-        public static TResult MinBy<TResult>(this IEnumerable<TResult> Source, Func<TResult, IComparable> Selector)
-            => Source.Aggregate((i1, i2) => Selector(i1).CompareTo(Selector(i2)) < 0 ? i1 : i2);
+        /// <summary>
+        /// Invokes a transform function on each element of a generic sequence and returns the maximum resulting element.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the elements of source.</typeparam>
+        /// <typeparam name="TSource">The type of the value returned by selector.</typeparam>
+        /// <param name="Source">A sequence of values to determine the maximum value of.</param>
+        /// <param name="Selector">A transform function to apply to each element.</param>
+        public static TResult MaxBy<TResult, TSource>(this IEnumerable<TResult> Source, Func<TResult, TSource> Selector)
+        {
+            if (Source is null)
+                throw new ArgumentNullException($"Source");
+
+            Comparer<TSource> comparer = Comparer<TSource>.Default;
+            TResult Result = default;
+            TSource Max = default,
+                    x;
+            if (Max is null)
+            {
+                foreach (TResult Item in Source)
+                {
+                    x = Selector(Item);
+                    if (x != null && (Max == null || comparer.Compare(x, Max) > 0))
+                    {
+                        Result = Item;
+                        Max = x;
+                    }
+                }
+
+                return Result;
+            }
+            else
+            {
+                bool HasValue = false;
+                foreach (TResult Item in Source)
+                {
+                    x = Selector(Item);
+                    if (HasValue)
+                    {
+                        if (comparer.Compare(x, Max) > 0)
+                            Max = x;
+                    }
+                    else
+                    {
+                        Max = x;
+                        HasValue = true;
+                    }
+                }
+
+                return HasValue ? Result : throw new InvalidOperationException("Sequence contains no elements");
+            }
+
+        }
+
+        /// <summary>
+        /// Invokes a transform function on each element of a generic sequence and returns the minimum resulting element.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the elements of source.</typeparam>
+        /// <typeparam name="TSource">The type of the value returned by selector.</typeparam>
+        /// <param name="Source">A sequence of values to determine the minimum value of.</param>
+        /// <param name="Selector">A transform function to apply to each element.</param>
+        public static TResult MinBy<TResult, TSource>(this IEnumerable<TResult> Source, Func<TResult, TSource> Selector)
+        {
+            if (Source is null)
+                throw new ArgumentNullException($"Source");
+
+            Comparer<TSource> comparer = Comparer<TSource>.Default;
+            TResult Result = default;
+            TSource Min = default,
+                    x;
+            if (Min is null)
+            {
+                foreach (TResult Item in Source)
+                {
+                    x = Selector(Item);
+                    if (x != null && (Min == null || comparer.Compare(x, Min) < 0))
+                    {
+                        Result = Item;
+                        Min = x;
+                    }
+                }
+
+                return Result;
+            }
+            else
+            {
+                bool HasValue = false;
+                foreach (TResult Item in Source)
+                {
+                    x = Selector(Item);
+                    if (HasValue)
+                    {
+                        if (comparer.Compare(x, Min) < 0)
+                            Min = x;
+                    }
+                    else
+                    {
+                        Min = x;
+                        HasValue = true;
+                    }
+                }
+
+                return HasValue ? Result : throw new InvalidOperationException("Sequence contains no elements");
+            }
+
+        }
 
     }
 }
