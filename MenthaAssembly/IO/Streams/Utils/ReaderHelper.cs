@@ -6,6 +6,36 @@ namespace System.IO
 {
     public static class ReaderHelper
     {
+        public static bool MoveTo(string Content, ref int Index, int Length, bool SkipEndChar, params char[] EndChars)
+        {
+            for (; Index < Length; Index++)
+            {
+                if (EndChars.Contains(Content[Index]))
+                {
+                    if (SkipEndChar)
+                        Index++;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        public static bool MoveTo(string Content, ref int Index, int Length, bool SkipEndChar, Predicate<char> Predicate)
+        {
+            for (; Index < Length; Index++)
+            {
+                if (Predicate(Content[Index]))
+                {
+                    if (SkipEndChar)
+                        Index++;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
         public static bool MoveTo(this TextReader This, ref char[] Buffer, ref int Index, int BufferSize, bool SkipEndChar, params char[] EndChars)
         {
             do
@@ -64,6 +94,53 @@ namespace System.IO
             }
 
             return Buffer[Index];
+        }
+
+        public static string ReadTo(string Content, ref int Index, int Length, bool ContainEndChar, out bool IsEnd, params char[] EndChars)
+        {
+            int Start = Index,
+                SubLength = 0;
+
+            for (; Index < Length; Index++, SubLength++)
+            {
+                if (EndChars.Contains(Content[Index]))
+                {
+                    if (ContainEndChar)
+                    {
+                        SubLength++;
+                        Index++;
+                    }
+
+                    IsEnd = false;
+                    return Content.Substring(Start, SubLength);
+                }
+            }
+
+            IsEnd = true;
+            return Content.Substring(Start, SubLength);
+        }
+        public static string ReadTo(string Content, ref int Index, int Length, bool ContainEndChar, out bool IsEnd, Predicate<char> Predicate)
+        {
+            int Start = Index,
+                SubLength = 0;
+
+            for (; Index < Length; Index++, SubLength++)
+            {
+                if (Predicate(Content[Index]))
+                {
+                    if (ContainEndChar)
+                    {
+                        SubLength++;
+                        Index++;
+                    }
+
+                    IsEnd = false;
+                    return Content.Substring(Start, SubLength);
+                }
+            }
+
+            IsEnd = true;
+            return Content.Substring(Start, SubLength);
         }
         public static string ReadTo(this TextReader This, ref char[] Buffer, ref int Index, int BufferSize, ref StringBuilder Builder, bool ContainEndChar, params char[] EndChars)
         {
@@ -171,6 +248,19 @@ namespace System.IO
             {
                 Builder.Clear();
             }
+        }
+
+        public static bool CanRead(this TextReader This, ref char[] Buffer, ref int Index, int BufferSize)
+        {
+            while (BufferSize < Index)
+            {
+                if (This.Read(Buffer, 0, BufferSize) == 0)
+                    return false;
+
+                Index -= BufferSize;
+            }
+
+            return true;
         }
 
     }
