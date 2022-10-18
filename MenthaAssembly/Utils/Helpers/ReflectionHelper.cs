@@ -360,20 +360,38 @@ namespace System.Reflection
             return true;
         }
 
+        private static readonly Dictionary<Type, byte> NumberTypes = new Dictionary<Type, byte>
+        {
+            { typeof(byte), 0 },
+            { typeof(ushort), 1 },
+            { typeof(uint), 2 },
+            { typeof(ulong), 3 },
+
+            { typeof(sbyte), 4 },
+            { typeof(short), 5 },
+            { typeof(int), 6 },
+            { typeof(long), 7 },
+
+            { typeof(float), 8 },
+            { typeof(double), 9 },
+            { typeof(decimal), 10 }
+        };
+
+        public static bool IsNumberType(this Type This)
+            => NumberTypes.ContainsKey(This);
         public static bool IsDecimalType(this Type This)
-            => This.Name.Equals(nameof(Double)) ||
-               This.Name.Equals(nameof(Single)) ||
-               This.Name.Equals(nameof(Decimal));
+            => NumberTypes.TryGetValue(This, out byte Value) && 7 < Value;
         public static bool IsIntegerType(this Type This)
-            => This.Name.Equals(nameof(SByte)) ||
-               This.Name.Equals(nameof(Int16)) ||
-               This.Name.Equals(nameof(Int32)) ||
-               This.Name.Equals(nameof(Int64));
+            => NumberTypes.TryGetValue(This, out byte Value) && Value < 8;
+        public static bool IsNegativeIntegerType(this Type This)
+            => NumberTypes.TryGetValue(This, out byte Value) && 3 < Value && Value < 8;
         public static bool IsPositiveIntegerType(this Type This)
-            => This.Name.Equals(nameof(Byte)) ||
-               This.Name.Equals(nameof(UInt16)) ||
-               This.Name.Equals(nameof(UInt32)) ||
-               This.Name.Equals(nameof(UInt64));
+            => NumberTypes.TryGetValue(This, out byte Value) && Value < 4;
+
+        public static Type MaxNumberType(Type NumberType1, Type NumberType2)
+            => NumberTypes.TryGetValue(NumberType1, out byte v1) ?
+               NumberTypes.TryGetValue(NumberType2, out byte v2) ? v1 > v2 ? NumberType1 : NumberType2 : NumberType1 :
+               NumberTypes.ContainsKey(NumberType2) ? NumberType2 : null;
 
     }
 }
