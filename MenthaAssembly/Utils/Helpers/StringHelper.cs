@@ -136,6 +136,22 @@ namespace System
             return DefaultName;
         }
 
+        /// <summary>
+        /// Indicates whether the specified character is categorized as a [0 - 9].
+        /// </summary>
+        /// <param name="This">The character to evaluate.</param>
+        public static bool IsArabicNumerals(this char This)
+            => '0' <= This && This <= '9';
+
+        /// <summary>
+        /// Indicates whether the specified character is categorized as a [0 - 9] or [A - Z] or [a - z].
+        /// </summary>
+        /// <param name="This">The character to evaluate.</param>
+        public static bool IsHexNumerals(this char This)
+            => This.IsArabicNumerals() ||
+               'A' <= This && This <= 'F' ||
+               'a' <= This && This <= 'f';
+
         public static bool IsInteger(this string This)
         {
             foreach (char c in This)

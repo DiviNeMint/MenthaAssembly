@@ -1,15 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 
 namespace MenthaAssembly.Expressions
 {
     public sealed class ExpressionIdentifier : IExpressionObject
     {
-        private readonly ExpressionObjectType BaseType;
-        ExpressionObjectType IExpressionObject.Type
-            => BaseType;
+        public ExpressionObjectType Type { get; }
 
-        public ExpressionType Type { get; }
+        public ExpressionType ExpressionType { get; }
 
         public ExpressionIdentifier(ExpressionType IdentifierType)
         {
@@ -20,6 +19,8 @@ namespace MenthaAssembly.Expressions
                 case ExpressionType.AddAssign:
                 case ExpressionType.AddChecked:
                 case ExpressionType.AddAssignChecked:
+                case ExpressionType.Negate:
+                case ExpressionType.NegateChecked:
                 case ExpressionType.Subtract:
                 case ExpressionType.SubtractAssign:
                 case ExpressionType.SubtractChecked:
@@ -34,36 +35,83 @@ namespace MenthaAssembly.Expressions
                 case ExpressionType.ModuloAssign:
                 case ExpressionType.Power:
                     {
-                        Type = IdentifierType;
-                        BaseType = ExpressionObjectType.MathIdentifier;
+                        Type = ExpressionObjectType.MathIdentifier;
+                        ExpressionType = IdentifierType;
                         break;
                     }
                 #endregion
+                #region LogicIdentifier
+                case ExpressionType.Or:
+                case ExpressionType.And:
+                case ExpressionType.ExclusiveOr:
+                case ExpressionType.Not:
+                case ExpressionType.OnesComplement:
+                case ExpressionType.LeftShift:
+                case ExpressionType.RightShift:
+                    {
+                        Type = ExpressionObjectType.LogicIdentifier;
+                        ExpressionType = IdentifierType;
+                        break;
+                    }
+
+                #endregion
                 default:
-                    throw new NotSupportedException($"{IdentifierType} is not identifier.");
+                    throw new NotSupportedException($"[Expression]{IdentifierType} is not identifier.");
             }
         }
+        public ExpressionIdentifier(ExpressionObjectType Type, ExpressionType IdentifierType)
+        {
+            if ((Type & ExpressionObjectType.Identifier) == 0)
+                throw new ArgumentException($"{Type} is not identifier.");
+
+            this.Type = Type;
+            ExpressionType = IdentifierType;
+        }
+
+        Expression IExpressionObject.Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+            => throw new NotSupportedException();
 
         public override string ToString()
-            => Type switch
+            => ExpressionType switch
             {
+                #region MathIdentifier
                 ExpressionType.Add or
                 ExpressionType.AddAssign or
                 ExpressionType.AddChecked or
-                ExpressionType.AddAssignChecked => "+",
+                ExpressionType.AddAssignChecked or
+                ExpressionType.UnaryPlus => "+",
+
+                ExpressionType.Negate or
+                ExpressionType.NegateChecked or
                 ExpressionType.Subtract or
                 ExpressionType.SubtractAssign or
                 ExpressionType.SubtractChecked or
                 ExpressionType.SubtractAssignChecked => "-",
+
                 ExpressionType.Multiply or
                 ExpressionType.MultiplyAssign or
                 ExpressionType.MultiplyChecked or
                 ExpressionType.MultiplyAssignChecked => "*",
+
                 ExpressionType.Divide or
                 ExpressionType.DivideAssign => "/",
+
                 ExpressionType.Modulo or
                 ExpressionType.ModuloAssign => "%",
+
                 ExpressionType.Power => "^",
+                #endregion
+                #region LogicIdentifier
+                ExpressionType.Or => "|",
+                ExpressionType.And => "&",
+                ExpressionType.ExclusiveOr => "^",
+                ExpressionType.Not => "!",
+                ExpressionType.OnesComplement => "~",
+
+                ExpressionType.LeftShift => "<<",
+                ExpressionType.RightShift => ">>",
+
+                #endregion
                 _ => string.Empty,
             };
 
