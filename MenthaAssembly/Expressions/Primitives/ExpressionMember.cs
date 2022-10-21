@@ -42,6 +42,13 @@ namespace MenthaAssembly.Expressions
                 if (Base is null)
                     throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown member : {Name}.");
 
+                // this (base)
+                if (Name == "this")
+                {
+                    Member = Base;
+                    return Base;
+                }
+
                 Type BaseType = Base.Type;
                 if (BaseType.GetProperty(Name) is PropertyInfo Property)
                 {

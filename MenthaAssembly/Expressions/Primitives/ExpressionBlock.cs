@@ -153,8 +153,7 @@ namespace MenthaAssembly.Expressions
                                                                          throw new InvalidCastException($"{Left.Type.Name} % {Right.Type.Name}."),
 
                         // ^
-                        ExpressionType.Power => MaxType != null ? Expression.Power(Left.CastExpression(MaxType), Right.CastExpression(MaxType)) :
-                                                                  throw new InvalidCastException($"{Left.Type.Name} ^ {Right.Type.Name}."),
+                        ExpressionType.Power => Expression.Power(Left.CastExpression(typeof(double)), Right.CastExpression(typeof(double))),
 
                         _ => throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}."),
                     };

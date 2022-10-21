@@ -498,7 +498,6 @@ namespace MenthaAssembly.Expressions
         }
 
         public static implicit operator Expression(MathExpression This) => This.Context;
-        //public static explicit operator Expression(MathExpression This) => This.Context;
 
     }
 }

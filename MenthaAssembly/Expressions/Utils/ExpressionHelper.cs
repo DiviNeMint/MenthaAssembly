@@ -761,7 +761,9 @@ namespace System.Linq.Expressions
         public static bool IsIdentifierChars(this char This)
             => This == '+' || This == '-' || This == '*' || This == '/' || This == '%' || This == '^' ||
                This == '|' || This == '&' || This == '~' || This == '!' || This == '<' || This == '=' || This == '>' ||
-               This == '(' || This == ')' || This == ',';
+               This == '(' || This == ')' || This == ',' ||
+               This == '?' || This == ':' ||
+               This == ';';
 
     }
 
