@@ -284,6 +284,18 @@ namespace System.Reflection
             return true;
         }
 
+        public static IEnumerable<MethodInfo> GetImplicits(this Type This)
+        {
+            Type BaseType = This;
+            while (BaseType != null)
+            {
+                foreach (MethodInfo Implicit in BaseType.GetMethods(StaticFlags).Where(i => i.Name == "op_Implicit"))
+                    yield return Implicit;
+
+                BaseType = BaseType.BaseType;
+            }
+        }
+
         public static bool TryInvokeMethod(this object This, string MethodName, params object[] Args)
             => TryInvokeMethod(This, PublicFlags, MethodName, Args);
         public static bool TryInvokeMethod<T>(this object This, string MethodName, out T Result, params object[] Args)
@@ -360,7 +372,23 @@ namespace System.Reflection
             return true;
         }
 
-        private static readonly Dictionary<Type, byte> NumberTypes = new Dictionary<Type, byte>
+        /// <summary>
+        /// Determines whether an instance of the current type is convertible to an instance of a specified type.
+        /// </summary>
+        /// <param name="Type">The type to compare with the current type.</param>
+        public static bool IsConvertibleTo(this Type This, Type Type)
+        {
+            if (Type.IsAssignableFrom(This))
+                return true;
+
+            foreach (MethodInfo Implicit in This.GetImplicits())
+                if (Implicit.ReturnType == Type)
+                    return true;
+
+            return false;
+        }
+
+        internal static readonly Dictionary<Type, byte> NumberTypes = new Dictionary<Type, byte>
         {
             { typeof(byte), 0 },
             { typeof(ushort), 1 },
@@ -377,15 +405,37 @@ namespace System.Reflection
             { typeof(decimal), 10 }
         };
 
+        /// <summary>
+        /// Determines whether the current type is
+        /// <see cref="byte"/>、<see cref="ushort"/>、<see cref="uint"/>、<see cref="ulong"/>、
+        /// <see cref="sbyte"/>、<see cref="short"/>、<see cref="int"/>、<see cref="long"/>、
+        /// <see cref="float"/>、<see cref="double"/>、<see cref="decimal"/>.
+        /// </summary>
         public static bool IsNumberType(this Type This)
             => NumberTypes.ContainsKey(This);
+        /// <summary>
+        /// Determines whether the current type is <see cref="float"/>、<see cref="double"/>、<see cref="decimal"/>.
+        /// </summary>
         public static bool IsDecimalType(this Type This)
             => NumberTypes.TryGetValue(This, out byte Value) && 7 < Value;
+        /// <summary>
+        /// Determines whether the current type is
+        /// <see cref="byte"/>、<see cref="ushort"/>、<see cref="uint"/>、<see cref="ulong"/>、
+        /// <see cref="sbyte"/>、<see cref="short"/>、<see cref="int"/>、<see cref="long"/>、
+        /// </summary>
         public static bool IsIntegerType(this Type This)
             => NumberTypes.TryGetValue(This, out byte Value) && Value < 8;
-        public static bool IsNegativeIntegerType(this Type This)
+        /// <summary>
+        /// Determines whether the current type is
+        /// <see cref="sbyte"/>、<see cref="short"/>、<see cref="int"/>、<see cref="long"/>.
+        /// </summary>
+        public static bool IsSignedIntegerType(this Type This)
             => NumberTypes.TryGetValue(This, out byte Value) && 3 < Value && Value < 8;
-        public static bool IsPositiveIntegerType(this Type This)
+        /// <summary>
+        /// Determines whether the current type is
+        /// <see cref="byte"/>、<see cref="ushort"/>、<see cref="uint"/>、<see cref="ulong"/>.
+        /// </summary>
+        public static bool IsUnsignedIntegerType(this Type This)
             => NumberTypes.TryGetValue(This, out byte Value) && Value < 4;
 
         public static Type MaxNumberType(Type NumberType1, Type NumberType2)

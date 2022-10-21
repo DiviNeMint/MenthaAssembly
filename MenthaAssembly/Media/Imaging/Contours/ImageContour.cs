@@ -86,7 +86,7 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContour(IImageContour Contour)
         {
             Contour.EnsureContents();
-            Contents = new Dictionary<int, ImageContourScanLine>(Contour.Contents.ToDictionary(i => i.Key, i => i.Value.Clone()));
+            Contents = Contour.Contents.ToDictionary(i => i.Key, i => i.Value.Clone()); // new Dictionary<int, ImageContourScanLine>();
             OffsetX = Contour.OffsetX;
             OffsetY = Contour.OffsetY;
         }

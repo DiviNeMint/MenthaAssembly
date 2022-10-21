@@ -38,8 +38,4 @@
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Media\Imaging\Contours\Shapes\" />
-  </ItemGroup>
-
 </Project>
