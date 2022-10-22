@@ -113,8 +113,8 @@ namespace MenthaAssembly.Expressions
                     }
 
                     // Check Type
-                    Type MaxType = ReflectionHelper.MaxNumberType(Left.Type, Right.Type);
-                    
+                    Type MaxType = MaxNumberType(Left.Type, Right.Type);
+
                     // Body
                     Left = Curt.ExpressionType switch
                     {
@@ -276,12 +276,12 @@ namespace MenthaAssembly.Expressions
                         for (int j = StartIndex + 1; j < i; j++)
                             Group.Contexts.Add(Contexts[j]);
 
-                        ExpressionElement Element = new ExpressionElement();
-                        Element.Contexts.Add(new ExpressionMember("Math"));
-                        Element.Contexts.Add(new ExpressionMethod("Abs", new IExpressionObject[] { Group }));
+                        ExpressionRoute Route = new ExpressionRoute();
+                        Route.Contexts.Add(new ExpressionMember("Math"));
+                        Route.Contexts.Add(new ExpressionMethod("Abs", new IExpressionObject[] { Group }));
 
                         Contexts.RemoveRange(StartIndex, Length);
-                        Contexts.Insert(StartIndex, Element);
+                        Contexts.Insert(StartIndex, Route);
 
                         i = StartIndex;
                         Curt = Group;
@@ -294,6 +294,11 @@ namespace MenthaAssembly.Expressions
                 Last = Curt;
             }
         }
+
+        private static Type MaxNumberType(Type NumberType1, Type NumberType2)
+            => ReflectionHelper.NumberTypes.TryGetValue(NumberType1, out byte v1) ?
+               ReflectionHelper.NumberTypes.TryGetValue(NumberType2, out byte v2) ? v1 > v2 ? NumberType1 : NumberType2 : NumberType1 :
+               ReflectionHelper.NumberTypes.ContainsKey(NumberType2) ? NumberType2 : null;
 
         public override string ToString()
             => string.Join(" ", Contexts.Select(i => i.Type == ExpressionObjectType.Block ? $"( {i} )" : i.ToString()));

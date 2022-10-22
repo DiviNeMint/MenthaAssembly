@@ -294,14 +294,14 @@ namespace System.Linq.Expressions
             }
         }
 
-        public static bool TryParseExpression(string Formula, out ExpressionBlock Block)
+        public static bool TryParse(string Code, out ExpressionBlock Block)
         {
             StringBuilder Builder = new StringBuilder();
             int Index = 0,
-                Length = Formula.Length;
+                Length = Code.Length;
 
             Block = new ExpressionBlock();
-            while (TryParseExpressionElement(Formula, ref Index, Length, ref Builder, out IExpressionObject Element))
+            while (TryParseElement(Code, ref Index, Length, ref Builder, out IExpressionObject Element))
                 Block.Contexts.Add(Element);
 
             if (Block.Contexts.Count == 0 || Index < Length)
@@ -312,15 +312,15 @@ namespace System.Linq.Expressions
 
             return true;
         }
-        private static bool TryParseExpressionElement(string Formula, ref int Index, int Length, ref StringBuilder Builder, out IExpressionObject Element)
+        private static bool TryParseElement(string Code, ref int Index, int Length, ref StringBuilder Builder, out IExpressionObject Element)
         {
-            if (!ReaderHelper.MoveTo(Formula, ref Index, Length, false, c => !char.IsWhiteSpace(c)))
+            if (!ReaderHelper.MoveTo(Code, ref Index, Length, false, c => !char.IsWhiteSpace(c)))
             {
                 Element = null;
                 return false;
             }
 
-            char c = Formula[Index];
+            char c = Code[Index];
             switch (c)
             {
                 #region Block
@@ -329,12 +329,12 @@ namespace System.Linq.Expressions
                         Index++;
 
                         ExpressionBlock Block = new ExpressionBlock();
-                        while (TryParseExpressionElement(Formula, ref Index, Length, ref Builder, out IExpressionObject Child))
+                        while (TryParseElement(Code, ref Index, Length, ref Builder, out IExpressionObject Child))
                             Block.Contexts.Add(Child);
 
                         if (Index < Length)
                         {
-                            c = Formula[Index];
+                            c = Code[Index];
                             if (c == ')')
                             {
                                 Index++;
@@ -348,6 +348,8 @@ namespace System.Linq.Expressions
                         return false;
                     }
                 case ')':
+                case ']':
+                case '}':
                 case ',':
                     {
                         Element = null;
@@ -392,363 +394,507 @@ namespace System.Linq.Expressions
                         return true;
                     }
                 #endregion
-                #region Number Constant
+                #region Constant
+                // Decimal
                 case '.':
                     {
+                        // Append decimal point '.'.
                         Index++;
+                        Builder.Append(c);
 
-                        try
-                        {
-                            Builder.Append(c);
-                            Builder.Append(ReaderHelper.ReadTo(Formula, ref Index, Length, false, out bool IsEnd, c => !c.IsArabicNumerals()));
-
-                            if (IsEnd)
-                            {
-                                double DoubleConst = Builder.ToString().ToDoubleFast();
-                                Element = new ExpressionConst(DoubleConst);
-                                return true;
-                            }
-
-                            c = Formula[Index];
-                            if (char.IsWhiteSpace(c) || c.IsIdentifierChars())
-                            {
-                                double DoubleConst = Builder.ToString().ToDoubleFast();
-                                Element = new ExpressionConst(DoubleConst);
-                                return true;
-                            }
-
-                            Index++;
-
-                            string Remained = ReaderHelper.ReadTo(Formula, ref Index, Length, false, out _, c => !c.IsVariableChars());
-                            if (Remained.Length > 0)
-                            {
-                                Builder.Append(c);
-                                Builder.Append(Remained);
-                                Element = new ExpressionObject(Builder.ToString());
-                                return true;
-                            }
-
-                            // Sepeified Types
-                            switch (c)
-                            {
-                                case 'f':
-                                case 'F':
-                                    {
-                                        float FloatConst = Builder.ToString().ToFloatFast();
-                                        Element = new ExpressionConst(FloatConst);
-                                        return true;
-                                    }
-                                case 'd':
-                                case 'D':
-                                    {
-                                        double DoubleConst = Builder.ToString().ToDoubleFast();
-                                        Element = new ExpressionConst(DoubleConst);
-                                        return true;
-                                    }
-                                case 'm':
-                                case 'M':
-                                    {
-                                        decimal DecimalConst = decimal.Parse(Builder.ToString());
-                                        Element = new ExpressionConst(DecimalConst);
-                                        return true;
-                                    }
-                            }
-
-                            // Unknown
-                            Builder.Append(c);
-                            Builder.Append(Remained);
-                            Element = new ExpressionObject(Builder.ToString());
-                            return true;
-                        }
-                        finally
-                        {
-                            Builder.Clear();
-                        }
+                        Element = ParseDecimalNumber(Code, ref Index, Length, ref Builder);
+                        return true;
                     }
+                // Number
                 case char n when n.IsArabicNumerals():
                     {
+                        // Append the first number.
                         Index++;
+                        Builder.Append(c);
 
-                        try
-                        {
-                            Builder.Append(c);
-                            Builder.Append(ReaderHelper.ReadTo(Formula, ref Index, Length, false, out bool IsEnd, c => !c.IsArabicNumerals()));
-
-                            // Integer
-                            if (IsEnd)
-                            {
-                                int IntConst = Builder.ToString().ToInt32Fast();
-                                Element = new ExpressionConst(IntConst);
-                                return true;
-                            }
-
-                            c = Formula[Index];
-                            if (char.IsWhiteSpace(c) || c.IsIdentifierChars())
-                            {
-                                int IntConst = Builder.ToString().ToInt32Fast();
-                                Element = new ExpressionConst(IntConst);
-                                return true;
-                            }
-
-                            Index++;
-
-                            // Decimal
-                            bool IsIntegerOrAllowSpecifiedType = true;
-                            if (c == '.')
-                            {
-                                Builder.Append(c);
-                                Builder.Append(ReaderHelper.ReadTo(Formula, ref Index, Length, false, out IsEnd, c => !c.IsArabicNumerals()));
-
-                                if (IsEnd)
-                                {
-                                    double DoubleConst = Builder.ToString().ToDoubleFast();
-                                    Element = new ExpressionConst(DoubleConst);
-                                    return true;
-                                }
-
-                                c = Formula[Index];
-                                if (char.IsWhiteSpace(c) || c.IsIdentifierChars())
-                                {
-                                    double DoubleConst = Builder.ToString().ToDoubleFast();
-                                    Element = new ExpressionConst(DoubleConst);
-                                    return true;
-                                }
-
-                                Index++;
-                                IsIntegerOrAllowSpecifiedType = false;
-                            }
-
-                            // Specified Integer
-                            else if (Builder.ToString() == "0")
-                            {
-                                Builder.Append(c);
-
-                                // Hex
-                                if (c == 'x' || c == 'X')
-                                {
-                                    // Format
-                                    string Format = ReaderHelper.ReadTo(Formula, ref Index, Length, false, out IsEnd, c => !c.IsHexNumerals());
-                                    if (Format.Length == 0)
-                                    {
-                                        Builder.Append(ReaderHelper.ReadTo(Formula, ref Index, Length, false, out IsEnd, c => !c.IsVariableChars()));
-                                        Element = new ExpressionObject(Builder.ToString());
-                                        return true;
-                                    }
-
-                                    if (IsEnd)
-                                    {
-                                        int IntConst = int.Parse(Format, NumberStyles.HexNumber);
-                                        Element = new ExpressionConst(IntConst);
-                                        return true;
-                                    }
-
-                                    c = Formula[Index];
-                                    if (char.IsWhiteSpace(c) || c.IsIdentifierChars())
-                                    {
-                                        int IntConst = int.Parse(Format, NumberStyles.HexNumber);
-                                        Element = new ExpressionConst(IntConst);
-                                        return true;
-                                    }
-
-                                    Index++;
-                                    Builder.Append(Format);
-                                    IsIntegerOrAllowSpecifiedType = false;
-                                }
-
-                                // Binary
-                                else if (c == 'b' || c == 'B')
-                                {
-                                    // Format
-                                    string Format = ReaderHelper.ReadTo(Formula, ref Index, Length, false, out IsEnd, c => !c.IsArabicNumerals());
-                                    if (Format.Length == 0)
-                                    {
-                                        Builder.Append(ReaderHelper.ReadTo(Formula, ref Index, Length, false, out IsEnd, c => !c.IsVariableChars()));
-                                        Element = new ExpressionObject(Builder.ToString());
-                                        return true;
-                                    }
-
-                                    if (IsEnd)
-                                    {
-                                        int IntConst = Convert.ToInt32(Format, 2);
-                                        Element = new ExpressionConst(IntConst);
-                                        return true;
-                                    }
-
-                                    c = Formula[Index];
-                                    if (char.IsWhiteSpace(c) || c.IsIdentifierChars())
-                                    {
-                                        int IntConst = Convert.ToInt32(Format, 2);
-                                        Element = new ExpressionConst(IntConst);
-                                        return true;
-                                    }
-
-                                    Index++;
-                                    Builder.Append(Format);
-                                    IsIntegerOrAllowSpecifiedType = false;
-                                }
-                            }
-
-                            string Remained = ReaderHelper.ReadTo(Formula, ref Index, Length, false, out _, c => !c.IsVariableChars());
-                            if (Remained.Length > 0)
-                            {
-                                Builder.Append(c);
-                                Builder.Append(Remained);
-                                Element = new ExpressionObject(Builder.ToString());
-                                return true;
-                            }
-
-                            // Sepeified Types
-                            switch (c)
-                            {
-                                case 'f':
-                                case 'F':
-                                    {
-                                        float FloatConst = Builder.ToString().ToFloatFast();
-                                        Element = new ExpressionConst(FloatConst);
-                                        return true;
-                                    }
-                                case 'd':
-                                case 'D':
-                                    {
-                                        double DoubleConst = Builder.ToString().ToDoubleFast();
-                                        Element = new ExpressionConst(DoubleConst);
-                                        return true;
-                                    }
-                                case 'm':
-                                case 'M':
-                                    {
-                                        decimal DecimalConst = decimal.Parse(Builder.ToString());
-                                        Element = new ExpressionConst(DecimalConst);
-                                        return true;
-                                    }
-                                case 'l' when IsIntegerOrAllowSpecifiedType:
-                                case 'L' when IsIntegerOrAllowSpecifiedType:
-                                    {
-                                        long Int64Const = long.Parse(Builder.ToString());
-                                        Element = new ExpressionConst(Int64Const);
-                                        return true;
-                                    }
-                                case 'u' when IsIntegerOrAllowSpecifiedType:
-                                case 'U' when IsIntegerOrAllowSpecifiedType:
-                                    {
-                                        uint UIntConst = Builder.ToString().ToUInt32Fast();
-                                        Element = new ExpressionConst(UIntConst);
-                                        return true;
-                                    }
-                            }
-
-                            // Unknown
-                            Builder.Append(c);
-                            Builder.Append(Remained);
-                            Element = new ExpressionObject(Builder.ToString());
-                            return true;
-                        }
-                        finally
-                        {
-                            Builder.Clear();
-                        }
+                        Element = ParseNumber(Code, ref Index, Length, ref Builder);
+                        return true;
                     }
                 #endregion
                 default:
                     {
-                        try
+                        Element = ParseRoute(Code, ref Index, Length, ref Builder);
+                        return true;
+                    }
+            }
+        }
+
+        /// <summary>
+        /// Parses numbers.
+        /// </summary>
+        public static IExpressionObject ParseNumber(string Code, ref int Index, int Length, ref StringBuilder Builder)
+        {
+            try
+            {
+                ReaderHelper.ReadTo(Code, ref Index, Length, false, out bool IsEnd, ref Builder, c => !c.IsArabicNumerals());
+
+                // Integer
+                if (IsEnd)
+                    return new ExpressionConst(Builder.ToString().ToInt32Fast());
+
+                char c = Code[Index];
+                if (char.IsWhiteSpace(c) || c.IsIdentifierChars())
+                    return new ExpressionConst(Builder.ToString().ToInt32Fast());
+
+                Index++;
+
+                // Decimal
+                if (c == '.')
+                {
+                    // Append decimal point '.'.
+                    Builder.Append(c);
+                    return ParseDecimalNumber(Code, ref Index, Length, ref Builder);
+                }
+
+                // Specified Integer
+                bool AllowSpecifiedType = true;
+                if (Builder.ToString() == "0")
+                {
+                    Builder.Append(c);
+
+                    // Hex
+                    if (c is 'x' or 'X')
+                    {
+                        // Format
+                        string Format = ReaderHelper.ReadTo(Code, ref Index, Length, false, out IsEnd, c => !c.IsHexNumerals());
+                        if (Format.Length == 0)
                         {
-                            Builder.Append(c);
-                            ExpressionElement Paths = new ExpressionElement();
+                            Builder.Append(ReaderHelper.ReadTo(Code, ref Index, Length, false, out IsEnd, c => !c.IsVariableChars()));
+                            return new ExpressionObject(Builder.ToString());
+                        }
 
-                            do
+                        if (IsEnd)
+                            return new ExpressionConst(int.Parse(Format, NumberStyles.HexNumber));
+
+                        c = Code[Index];
+                        if (char.IsWhiteSpace(c) || c.IsIdentifierChars())
+                            return new ExpressionConst(int.Parse(Format, NumberStyles.HexNumber));
+
+                        Index++;
+                        Builder.Append(Format);
+                        AllowSpecifiedType = false;
+                    }
+
+                    // Binary
+                    else if (c is 'b' or 'B')
+                    {
+                        // Format
+                        string Format = ReaderHelper.ReadTo(Code, ref Index, Length, false, out IsEnd, c => !c.IsArabicNumerals());
+                        if (Format.Length == 0)
+                        {
+                            Builder.Append(ReaderHelper.ReadTo(Code, ref Index, Length, false, out IsEnd, c => !c.IsVariableChars()));
+                            return new ExpressionObject(Builder.ToString());
+                        }
+
+                        if (IsEnd)
+                            return new ExpressionConst(Convert.ToInt32(Format, 2));
+
+                        c = Code[Index];
+                        if (char.IsWhiteSpace(c) || c.IsIdentifierChars())
+                            return new ExpressionConst(Convert.ToInt32(Format, 2));
+
+                        Index++;
+                        Builder.Append(Format);
+                        AllowSpecifiedType = false;
+                    }
+                }
+
+                string Remained = ReaderHelper.ReadTo(Code, ref Index, Length, false, out _, c => !c.IsVariableChars());
+                if (!string.IsNullOrEmpty(Remained))
+                {
+                    Builder.Append(c);
+                    Builder.Append(Remained);
+                    return new ExpressionObject(Builder.ToString());
+                }
+
+                // Sepeified Types
+                if (AllowSpecifiedType)
+                {
+                    switch (c)
+                    {
+                        case 'l':
+                        case 'L':
+                            return new ExpressionConst(long.Parse(Builder.ToString()));
+                        case 'u':
+                        case 'U':
+                            return new ExpressionConst(Builder.ToString().ToUInt32Fast());
+                    }
+                }
+
+                // Unknown
+                Builder.Append(c);
+                return new ExpressionObject(Builder.ToString());
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
+        /// <summary>
+        /// Parses decimals. (Start at the right of the decimal point)
+        /// </summary>
+        public static IExpressionObject ParseDecimalNumber(string Code, ref int Index, int Length, ref StringBuilder Builder)
+        {
+            try
+            {
+                ReaderHelper.ReadTo(Code, ref Index, Length, false, out bool IsEnd, ref Builder, c => !c.IsArabicNumerals());
+
+                if (IsEnd)
+                    return new ExpressionConst(Builder.ToString().ToDoubleFast());
+
+                char c = Code[Index];
+                if (char.IsWhiteSpace(c) || c.IsIdentifierChars())
+                    return new ExpressionConst(Builder.ToString().ToDoubleFast());
+
+                Index++;
+
+                string Remained = ReaderHelper.ReadTo(Code, ref Index, Length, false, out _, c => !c.IsVariableChars());
+                if (!string.IsNullOrEmpty(Remained))
+                {
+                    Builder.Append(c);
+                    Builder.Append(Remained);
+                    return new ExpressionObject(Builder.ToString());
+                }
+
+                // Sepeified Types
+                switch (c)
+                {
+                    case 'f':
+                    case 'F':
+                        return new ExpressionConst(Builder.ToString().ToFloatFast());
+                    case 'd':
+                    case 'D':
+                        return new ExpressionConst(Builder.ToString().ToDoubleFast());
+                    case 'm':
+                    case 'M':
+                        return new ExpressionConst(decimal.Parse(Builder.ToString()));
+                }
+
+                // Unknown
+                Builder.Append(c);
+                return new ExpressionObject(Builder.ToString());
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Parses route. (Variable or Method or Member)
+        /// </summary>
+        public static IExpressionObject ParseRoute(string Code, ref int Index, int Length, ref StringBuilder Builder)
+        {
+            ExpressionRoute Route = new ExpressionRoute();
+            List<ExpressionTypeInfo> GenericTypes = null;
+            char c;
+            while (TryParseName(Code, ref Index, Length, ref Builder, out bool IsEnd, out string Name))
+            {
+                if (IsEnd ||
+                    !ReaderHelper.MoveTo(Code, ref Index, Length, false, c => !char.IsWhiteSpace(c)))   // Skips all trailing spaces.
+                {
+                    Route.Contexts.Add(new ExpressionMember(Name));
+                    return Route;
+                }
+
+                c = Code[Index];
+
+                // Generic
+                if (c == '<')
+                {
+                    if (!TryParseGenericTypes(Code, ref Index, Length, ref Builder, out GenericTypes))
+                        break;
+
+                    // Skips all trailing spaces.
+                    if (!ReaderHelper.MoveTo(Code, ref Index, Length, false, c => !char.IsWhiteSpace(c)))
+                    {
+                        Route.Contexts.Add(new ExpressionMember(Name, GenericTypes));
+                        return Route;
+                    }
+
+                    c = Code[Index];
+                }
+
+                // Method
+                if (c == '(')
+                {
+                    if (!TryParseCollectionContents(Code, ref Index, Length, ref Builder, out List<IExpressionObject> Parameters))
+                        break;
+
+                    ExpressionMethod Method = new ExpressionMethod(Name);
+                    if (GenericTypes != null)
+                    {
+                        Method.GenericTypes.AddRange(GenericTypes);
+                        GenericTypes = null;
+                    }
+
+                    Method.Parameters.AddRange(Parameters);
+                    Route.Contexts.Add(Method);
+
+                    // Skips all trailing spaces.
+                    if (!ReaderHelper.MoveTo(Code, ref Index, Length, false, c => !char.IsWhiteSpace(c)) ||
+                        Code[Index] != '.')
+                        return Route;
+
+                    // Skip '.'
+                    Index++;
+                    continue;
+                }
+
+                // Member
+                ExpressionMember Member = new ExpressionMember(Name);
+                if (GenericTypes != null)
+                {
+                    Member.GenericTypes.AddRange(GenericTypes);
+                    GenericTypes = null;
+                }
+
+                Route.Contexts.Add(Member);
+
+                if (c != '.')
+                    break;
+
+                // Skip '.'
+                Index++;
+            }
+
+            if (Route.Contexts.Count > 0)
+                return Route;
+
+            if (Index >= Length)
+                throw new IndexOutOfRangeException();
+
+            try
+            {
+                c = Code[Index];
+                Builder.Append(c);
+                ReaderHelper.ReadTo(Code, ref Index, Length, false, out _, ref Builder, c => !c.IsVariableChars());
+                return new ExpressionObject(Builder.ToString());
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Parses the contents of collection.<para/>
+        /// A return value indicates whether the parsing succeeded.
+        /// </summary>
+        public static bool TryParseCollectionContents(string Code, ref int Index, int Length, ref StringBuilder Builder, out List<IExpressionObject> Contents)
+        {
+            int i = Index;
+            char[] EndChar;
+
+            // Checks EncChar and Skips StartChar.
+            switch (Code[i])
+            {
+                case '(':
+                    {
+                        i++;
+                        EndChar = new[] { ')' };
+                        break;
+                    }
+                case '[':
+                    {
+                        i++;
+                        EndChar = new[] { ']' };
+                        break;
+                    }
+                case '{':
+                    {
+                        i++;
+                        EndChar = new[] { '}' };
+                        break;
+                    }
+                default:
+                    EndChar = new[] { ')', ']', '}' };
+                    break;
+            }
+
+            Contents = new List<IExpressionObject>();
+            List<IExpressionObject> Contexts = new List<IExpressionObject>();
+
+            char c;
+            do
+            {
+                while (TryParseElement(Code, ref i, Length, ref Builder, out IExpressionObject Context))
+                    Contexts.Add(Context);
+
+                if (i >= Length)
+                {
+                    Contents = null;
+                    return false;
+                }
+
+                c = Code[i++];
+                switch (Contexts.Count)
+                {
+                    case 0:
+                        {
+                            if (EndChar.Contains(c))
                             {
-                                // Skip '.' or First appended char.
-                                Index++;
+                                Index = i;
+                                return true;
+                            }
 
-                                string Variable = ReaderHelper.ReadTo(Formula, ref Index, Length, false, out bool IsEnd, c => !c.IsVariableChars());
-                                if (IsEnd)
-                                {
-                                    Builder.Append(Variable);
-                                    Paths.Contexts.Add(new ExpressionMember(Builder.ToString()));
-                                    break;
-                                }
+                            Contents = null;
+                            return false;
+                        }
+                    case 1:
+                        {
+                            Contents.Add(Contexts[0]);
+                            break;
+                        }
+                    default:
+                        {
+                            ExpressionBlock Block = new ExpressionBlock();
+                            Block.Contexts.AddRange(Contexts);
+                            Contents.Add(Block);
+                            Contexts.Clear();
+                            break;
+                        }
+                }
 
-                                c = Formula[Index];
+                if (c == ',')
+                    continue;
 
-                                // Check Space
-                                if (char.IsWhiteSpace(c))
-                                {
-                                    if (!ReaderHelper.MoveTo(Formula, ref Index, Length, false, c => !char.IsWhiteSpace(c)))
-                                        break;
+                else if (EndChar.Contains(c))
+                {
+                    Index = i;
+                    return true;
+                }
 
-                                    // Tail Space
-                                    if (string.IsNullOrEmpty(Variable))
+                Contents = null;
+                return false;
+
+            } while (true);
+        }
+
+        /// <summary>
+        /// Parses generic type names.<para/>
+        /// A return value indicates whether the parsing succeeded.
+        /// </summary>
+        public static bool TryParseGenericTypes(string Code, ref int Index, int Length, ref StringBuilder Builder, out List<ExpressionTypeInfo> Types)
+        {
+            int i = Index;
+
+            // Skip '<'
+            if (Code[i] == '<')
+                i++;
+
+            string Namespace = null;
+            Types = new List<ExpressionTypeInfo>();
+            while (TryParseName(Code, ref i, Length, ref Builder, out bool IsEnd, out string Name))
+            {
+                if (IsEnd ||
+                    !ReaderHelper.MoveTo(Code, ref i, Length, false, c => !char.IsWhiteSpace(c)))   // Skips all trailing spaces.
+                {
+                    Types = null;
+                    return false;
+                }
+
+                switch (Code[i++])
+                {
+                    case '.':
+                        {
+                            Namespace = string.IsNullOrEmpty(Namespace) ? Name : $"{Namespace}.{Name}";
+                            continue;
+                        }
+                    case '<':
+                        {
+                            ExpressionTypeInfo Type = new ExpressionTypeInfo(Name, Namespace);
+                            Namespace = null;
+
+                            if (!TryParseGenericTypes(Code, ref i, Length, ref Builder, out List<ExpressionTypeInfo> SubTypes))
+                            {
+                                Types = null;
+                                return false;
+                            }
+
+                            Type.GenericTypes.AddRange(SubTypes);
+                            Types.Add(Type);
+
+                            // Skips all trailing spaces.
+                            if (!ReaderHelper.MoveTo(Code, ref i, Length, false, c => !char.IsWhiteSpace(c)))
+                                return false;
+
+                            switch (Code[i++])
+                            {
+                                case '>':
                                     {
-                                        Variable = ReaderHelper.ReadTo(Formula, ref Index, Length, false, out IsEnd, c => !c.IsVariableChars());
-                                        ReaderHelper.MoveTo(Formula, ref Index, Length, false, c => !char.IsWhiteSpace(c));
+                                        Index = i;
+                                        return true;
                                     }
+                                case ',':
+                                    continue;
+                                default:
+                                    return false;
+                            }
+                        }
+                    case ',':
+                        {
+                            Types.Add(new ExpressionTypeInfo(Name, Namespace));
+                            Namespace = null;
+                            continue;
+                        }
+                    case '>':
+                        {
+                            Types.Add(new ExpressionTypeInfo(Name, Namespace));
 
-                                    c = Formula[Index];
-                                }
-
-                                Builder.Append(Variable);
-
-                                // Method
-                                if (c == '(')
-                                {
-                                    ExpressionMethod Method = new ExpressionMethod(Builder.ToString());
-                                    if (string.IsNullOrEmpty(Method.Name))
-                                        break;
-
-                                    List<IExpressionObject> ArgContext = new List<IExpressionObject>();
-
-                                    Builder.Clear();
-                                    do
-                                    {
-                                        Index++;    // Skip ',' 、 '('
-
-                                        while (TryParseExpressionElement(Formula, ref Index, Length, ref Builder, out IExpressionObject Arg))
-                                            ArgContext.Add(Arg);
-
-                                        if (ArgContext.Count == 0)
-                                            break;
-
-                                        Method.Parameters.Add(ArgContext.Count == 1 ? ArgContext[0] : new ExpressionBlock(ArgContext));
-                                        if (Index >= Length)
-                                        {
-                                            Paths.Contexts.Add(Method);
-                                            Element = Paths;
-                                            return true;
-                                        }
-
-                                        c = Formula[Index];
-                                        ArgContext.Clear();
-
-                                    } while (c != ')');
-
-                                    Index++;    // Skip ')'
-
-                                    Paths.Contexts.Add(Method);
-                                    c = Formula[Index];
-                                }
-
-                                // Member
-                                else
-                                {
-                                    ExpressionMember Member = new ExpressionMember(Builder.ToString());
-                                    if (string.IsNullOrEmpty(Member.Name))
-                                        break;
-
-                                    Paths.Contexts.Add(Member);
-                                    Builder.Clear();
-                                }
-
-                            } while (c == '.');
-
-                            Element = Paths;
+                            Index = i;
                             return true;
                         }
-                        finally
-                        {
-                            Builder.Clear();
-                        }
-                    }
+                    default:
+                        return false;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Parses name.<para/>
+        /// A return value indicates whether the parsing succeeded.
+        /// </summary>
+        public static bool TryParseName(string Code, ref int Index, int Length, ref StringBuilder Builder, out bool IsEnd, out string Name)
+        {
+            int i = Index;
+
+            // Skips all leading spaces.
+            if (!ReaderHelper.MoveTo(Code, ref i, Length, false, c => !char.IsWhiteSpace(c)))
+            {
+                Name = null;
+                IsEnd = true;
+                return false;
+            }
+
+            // Checks number and symbol.
+            char c = Code[i++];
+            if (!c.IsVariableChars() || c.IsArabicNumerals())
+            {
+                Name = null;
+                IsEnd = false;
+                return false;
+            }
+
+            try
+            {
+                Builder.Append(c);
+                ReaderHelper.ReadTo(Code, ref i, Length, false, out IsEnd, ref Builder, c => !c.IsVariableChars());
+
+                Index = i;
+                Name = Builder.ToString();
+                return true;
+            }
+            finally
+            {
+                Builder.Clear();
             }
         }
 
@@ -756,12 +902,12 @@ namespace System.Linq.Expressions
             => This.Type == Type ? This : Expression.Convert(This, Type);
 
         public static bool IsVariableChars(this char This)
-            => char.IsLetterOrDigit(This) || This == '_' || This == '@' || This == '#' || This == '$';
+            => char.IsLetterOrDigit(This) || This == '_' || This == '@';
 
         public static bool IsIdentifierChars(this char This)
             => This == '+' || This == '-' || This == '*' || This == '/' || This == '%' || This == '^' ||
                This == '|' || This == '&' || This == '~' || This == '!' || This == '<' || This == '=' || This == '>' ||
-               This == '(' || This == ')' || This == ',' ||
+               This == '(' || This == ')' || This == '[' || This == ']' || This == '{' || This == '}' || This == ',' ||
                This == '?' || This == ':' ||
                This == ';';
 
@@ -1467,4 +1613,5 @@ namespace System.Linq.Expressions
         }
 
     }
+
 }

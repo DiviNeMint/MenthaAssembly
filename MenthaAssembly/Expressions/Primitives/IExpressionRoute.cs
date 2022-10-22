@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace MenthaAssembly.Expressions
 {
-    public interface IExpressionElement : IExpressionObject
+    public interface IExpressionRoute : IExpressionObject
     {
         public Expression Implement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters);
 

@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 
 namespace MenthaAssembly.Expressions
 {
-    public sealed class ExpressionMethod : IExpressionElement
+    public sealed class ExpressionMethod : IExpressionRoute
     {
         ExpressionObjectType IExpressionObject.Type
             => ExpressionObjectType.Method;
@@ -16,16 +17,26 @@ namespace MenthaAssembly.Expressions
 
         public string Name { get; }
 
+        public List<ExpressionTypeInfo> GenericTypes { get; }
+
         public List<IExpressionObject> Parameters { get; }
 
         public ExpressionMethod(string Name)
         {
             this.Name = Name;
-            Parameters = new List<IExpressionObject>();
+            GenericTypes = new List<ExpressionTypeInfo>(0);
+            Parameters = new List<IExpressionObject>(0);
         }
         public ExpressionMethod(string Name, IEnumerable<IExpressionObject> Parameters)
         {
             this.Name = Name;
+            GenericTypes = new List<ExpressionTypeInfo>(0);
+            this.Parameters = new List<IExpressionObject>(Parameters);
+        }
+        public ExpressionMethod(string Name, IEnumerable<ExpressionTypeInfo> GenericTypes, IEnumerable<IExpressionObject> Parameters)
+        {
+            this.Name = Name;
+            this.GenericTypes = new List<ExpressionTypeInfo>(GenericTypes);
             this.Parameters = new List<IExpressionObject>(Parameters);
         }
 
@@ -162,7 +173,21 @@ namespace MenthaAssembly.Expressions
         }
 
         public override string ToString()
-            => $"{Name}({string.Join(", ", Parameters.Select(i => i.Type == ExpressionObjectType.Block ? $"( {i} )" : i.ToString()))})";
+        {
+            StringBuilder Builder = new StringBuilder(Name);
+            try
+            {
+                if (GenericTypes.Count > 0)
+                    Builder.Append($"<{string.Join(", ", GenericTypes)}>");
+
+                Builder.Append($"({string.Join(", ", Parameters.Select(i => i.Type == ExpressionObjectType.Block ? $"({i})" : i.ToString()))})");
+                return Builder.ToString();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
 
     }
 }

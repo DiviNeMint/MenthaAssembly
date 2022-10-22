@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 
 namespace MenthaAssembly.Expressions
 {
-    public sealed class ExpressionElement : IExpressionElement
+    public sealed class ExpressionRoute : IExpressionRoute
     {
         ExpressionObjectType IExpressionObject.Type
             => ExpressionObjectType.Element;
@@ -14,15 +14,15 @@ namespace MenthaAssembly.Expressions
         ExpressionType IExpressionObject.ExpressionType
             => ExpressionType.Block;
 
-        public List<IExpressionElement> Contexts { get; }
+        public List<IExpressionRoute> Contexts { get; }
 
-        public ExpressionElement()
+        public ExpressionRoute()
         {
-            Contexts = new List<IExpressionElement>();
+            Contexts = new List<IExpressionRoute>();
         }
-        public ExpressionElement(IEnumerable<IExpressionElement> Contexts)
+        public ExpressionRoute(IEnumerable<IExpressionRoute> Contexts)
         {
-            this.Contexts = new List<IExpressionElement>(Contexts);
+            this.Contexts = new List<IExpressionRoute>(Contexts);
         }
 
         private Expression Element;
@@ -38,7 +38,7 @@ namespace MenthaAssembly.Expressions
 
             Debug.Assert(Parent == null);
 
-            IExpressionElement Context = Contexts[0];
+            IExpressionRoute Context = Contexts[0];
             if (Contexts.Count == 1)
             {
                 Element = Context.Implement(Parent, Base, Parameters);

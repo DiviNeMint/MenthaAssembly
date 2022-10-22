@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace MenthaAssembly.Expressions
 {
-    public sealed class ExpressionMember : IExpressionElement
+    public sealed class ExpressionMember : IExpressionRoute
     {
         ExpressionObjectType IExpressionObject.Type
             => ExpressionObjectType.Member;
@@ -16,9 +16,17 @@ namespace MenthaAssembly.Expressions
 
         public string Name { get; }
 
+        public List<ExpressionTypeInfo> GenericTypes { get; }
+
         public ExpressionMember(string Name)
         {
             this.Name = Name;
+            GenericTypes = new List<ExpressionTypeInfo>(0);
+        }
+        public ExpressionMember(string Name, IEnumerable<ExpressionTypeInfo> GenericTypes)
+        {
+            this.Name = Name;
+            this.GenericTypes = new List<ExpressionTypeInfo>(GenericTypes);
         }
 
         private Expression Member;
@@ -172,6 +180,7 @@ namespace MenthaAssembly.Expressions
         }
 
         public override string ToString()
-            => Name;
+            => GenericTypes.Count == 0 ? Name : $"{Name}<{string.Join(", ", GenericTypes)}>";
+
     }
 }
