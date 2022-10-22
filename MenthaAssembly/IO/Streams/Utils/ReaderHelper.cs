@@ -142,6 +142,56 @@ namespace System.IO
             IsEnd = true;
             return Content.Substring(Start, SubLength);
         }
+        public static void ReadTo(string Content, ref int Index, int Length, bool ContainEndChar, out bool IsEnd, ref StringBuilder Builder, Predicate<char> IsBreak)
+        {
+            char c;
+            for (; Index < Length; Index++)
+            {
+                c = Content[Index];
+                if (IsBreak(c))
+                {
+                    if (ContainEndChar)
+                    {
+                        Builder.Append(c);
+                        Index++;
+                    }
+
+                    IsEnd = false;
+                    return;
+                }
+
+                Builder.Append(c);
+            }
+
+            IsEnd = true;
+        }
+        public static void ReadTo(string Content, ref int Index, int Length, bool ContainEndChar, out bool IsEnd, ref StringBuilder Builder, Predicate<char> IsIgnored, Predicate<char> IsBreak)
+        {
+            char c;
+            for (; Index < Length; Index++)
+            {
+                c = Content[Index];
+                if (IsIgnored(c))
+                    continue;
+
+                if (IsBreak(c))
+                {
+                    if (ContainEndChar)
+                    {
+                        Builder.Append(c);
+                        Index++;
+                    }
+
+                    IsEnd = false;
+                    return;
+                }
+
+                Builder.Append(c);
+            }
+
+            IsEnd = true;
+        }
+
         public static string ReadTo(this TextReader This, ref char[] Buffer, ref int Index, int BufferSize, ref StringBuilder Builder, bool ContainEndChar, params char[] EndChars)
         {
             try
