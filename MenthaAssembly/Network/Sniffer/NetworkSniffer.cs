@@ -113,19 +113,12 @@ namespace MenthaAssembly.Network
                 for (int i = 0; i < 5; i++)
                     *pIPHeader++ = *pPacket++;
 
-                int IPOptions4Bits = IPHeader.Length4Bits - 5;
-                if (IPOptions4Bits > 0)
+                int OptionsLength = IPHeader.OptionsLength;
+                if (OptionsLength > 0)
                 {
-                    byte[] IPOptions = new byte[IPOptions4Bits << 2];
-
-                    int* pDest;
-                    fixed (byte* pOptions = &IPOptions[0])
-                        pDest = (int*)pOptions;
-
-                    for (int i = 0; i < IPOptions4Bits; i++)
+                    int* pDest = IPHeader.Options;
+                    for (int i = 0; i < OptionsLength; i++)
                         *pDest++ = *pPacket++;
-
-                    IPHeader._Options = IPOptions;
                 }
 
                 IProtocolHeader ProtocolHeader = null;
@@ -153,19 +146,12 @@ namespace MenthaAssembly.Network
                             for (int i = 0; i < 5; i++)
                                 *pHeader++ = *pPacket++;
 
-                            int Options4Bits = Header.Length4Bits - 5;
-                            if (Options4Bits > 0)
+                            OptionsLength = Header.OptionsLength;
+                            if (OptionsLength > 0)
                             {
-                                byte[] Options = new byte[Options4Bits << 2];
-
-                                int* pDest;
-                                fixed (byte* pOptions = &Options[0])
-                                    pDest = (int*)pOptions;
-
-                                for (int i = 0; i < Options4Bits; i++)
+                                int* pDest = Header.Options;
+                                for (int i = 0; i < OptionsLength; i++)
                                     *pDest++ = *pPacket++;
-
-                                Header._Options = Options;
                             }
 
                             ProtocolHeader = Header;
@@ -180,7 +166,7 @@ namespace MenthaAssembly.Network
                         }
                 }
 
-                Length -= IPHeader.HeaderLength;
+                Length -= IPHeader.Length;
                 if (ProtocolHeader != null)
                     Length -= ProtocolHeader.Length;
 

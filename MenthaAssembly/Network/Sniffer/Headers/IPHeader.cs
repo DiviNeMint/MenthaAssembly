@@ -5,48 +5,54 @@ using System.Runtime.InteropServices;
 namespace MenthaAssembly.Network.Primitives
 {
     [StructLayout(LayoutKind.Explicit)]
-    public struct IPHeader
+    public unsafe struct IPHeader
     {
         [FieldOffset(0)]
-        internal unsafe fixed int Context[5];
+        internal fixed int Context[5];
 
         [FieldOffset(0)]
         private readonly byte _IPInfoDatas;
 
-        public int Version => _IPInfoDatas >> 4;
+        public int Version
+            => _IPInfoDatas >> 4;
 
-        internal int Length4Bits => _IPInfoDatas & 0x0F;
-
-        public int HeaderLength => Length4Bits << 2;
+        public int Length
+            => (_IPInfoDatas & 0x0F) << 2;
 
         [FieldOffset(1)]
         private readonly byte _TOS;
-        public byte TOS => _TOS;        // Type of service 
+        public byte TOS
+            => _TOS;        // Type of service 
 
         [FieldOffset(2)]
         private readonly byte PacketLength1;
         [FieldOffset(3)]
         private readonly byte PacketLength2;
-        public int PacketLength => (PacketLength1 << 8) | PacketLength2;
+        public int PacketLength
+            => (PacketLength1 << 8) | PacketLength2;
 
         [FieldOffset(4)]
         private readonly ushort _ID;
-        public ushort ID => _ID;        // unique identifier 
+        public ushort ID
+            => _ID;        // unique identifier 
 
         [FieldOffset(6)]
         public readonly ushort FlagDatas; // flags and offset 
 
         [FieldOffset(8)]
         private readonly byte _TTL;
-        public byte TTL => _TTL;        // Time To Live 
+        public byte TTL
+            => _TTL;        // Time To Live 
 
         [FieldOffset(9)]
         private readonly byte _Protocol;
-        public ProtocolType Protocol => (ProtocolType)_Protocol;
+        public ProtocolType Protocol
+            => (ProtocolType)_Protocol;
 
         [FieldOffset(10)]
         private readonly ushort _Checksum;
-        public ushort Checksum => _Checksum; //IP Header checksum
+        public ushort Checksum
+            => _Checksum; //IP Header checksum
 
         [FieldOffset(12)]
         private readonly byte SrcAddr1;
@@ -56,7 +62,8 @@ namespace MenthaAssembly.Network.Primitives
         private readonly byte SrcAddr3;
         [FieldOffset(15)]
         private readonly byte SrcAddr4;
-        public IPAddress SrcAddr => new IPAddress(new byte[] { SrcAddr1, SrcAddr2, SrcAddr3, SrcAddr4 });
+        public IPAddress SrcAddr
+            => new IPAddress(new byte[] { SrcAddr1, SrcAddr2, SrcAddr3, SrcAddr4 });
 
         [FieldOffset(16)]
         private readonly byte DestAddr1;
@@ -66,11 +73,14 @@ namespace MenthaAssembly.Network.Primitives
         private readonly byte DestAddr3;
         [FieldOffset(19)]
         private readonly byte DestAddr4;
-        public IPAddress DestAddr => new IPAddress(new byte[] { DestAddr1, DestAddr2, DestAddr3, DestAddr4 });
+        public IPAddress DestAddr
+            => new IPAddress(new byte[] { DestAddr1, DestAddr2, DestAddr3, DestAddr4 });
 
         [FieldOffset(20)]
-        internal byte[] _Options;
-        public byte[] Options => _Options;
+        public fixed int Options[10];
+
+        public int OptionsLength
+            => (Length - 20) >> 2;
 
     }
 
