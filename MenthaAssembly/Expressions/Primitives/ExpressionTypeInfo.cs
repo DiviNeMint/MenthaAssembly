@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 
 namespace MenthaAssembly.Expressions
 {
@@ -21,6 +24,16 @@ namespace MenthaAssembly.Expressions
             this.Name = Name;
             this.Namespace = Namespace;
             this.GenericTypes = new List<ExpressionTypeInfo>(GenericTypes);
+        }
+
+        public Type Implement()
+        {
+            Type[] GenericTypes = this.GenericTypes.Select(i => i.Implement())
+                                                   .ToArray();
+            if (!ReflectionHelper.TryGetType(Name, Namespace, GenericTypes, out Type t))
+                throw new TypeLoadException($"Not found type : {this}");
+
+            return t;
         }
 
         public override string ToString()

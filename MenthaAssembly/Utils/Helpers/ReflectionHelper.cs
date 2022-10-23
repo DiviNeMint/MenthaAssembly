@@ -310,24 +310,47 @@ namespace System.Reflection
                 foreach (MethodInfo Method in This.GetMethods(Flags).Where(i => i.Name == Name))
                 {
                     ParameterInfo[] Parameter = Method.GetParameters();
-                    if (Parameter.Length == ParameterLength &&
-                        Parameter.Select(i => i.ParameterType).SequenceEqual(ParameterTypes))
+                    if (Parameter.Length == ParameterLength)
                     {
                         if (IsGeneric)
                         {
                             if (!Method.IsGenericMethodDefinition)
                                 continue;
 
-                            Type[] Generic = Method.GetGenericArguments();
-                            if (Generic.Length != GenericLength)
+                            Type[] DefinedGenericTypes = Method.GetGenericArguments();
+                            if (DefinedGenericTypes.Length != GenericLength)
                                 continue;
 
-                            Info = Method.MakeGenericMethod(GenericTypes);
+                            Type[] DefinedParameterTypes = Parameter.Select(i => i.ParameterType).ToArray();
+                            Type ParameterType;
+
+                            for (int i = 0; i < ParameterLength; i++)
+                            {
+                                ParameterType = DefinedParameterTypes[i];
+                                if (ParameterType.IsGenericParameter)
+                                {
+                                    for (int j = 0; j < GenericLength; j++)
+                                    {
+                                        if (ParameterType == DefinedGenericTypes[j])
+                                        {
+                                            DefinedParameterTypes[i] = GenericTypes[j];
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (DefinedParameterTypes.SequenceEqual(ParameterTypes))
+                            {
+                                Info = Method.MakeGenericMethod(GenericTypes);
+                                return true;
+                            }
+                        }
+                        else if (Parameter.Select(i => i.ParameterType).SequenceEqual(ParameterTypes))
+                        {
+                            Info = Method;
                             return true;
                         }
-
-                        Info = Method;
-                        return true;
                     }
                 }
 
@@ -464,16 +487,18 @@ namespace System.Reflection
             if (Type.IsAssignableFrom(This))
                 return true;
 
-            Type BaseType = This;
+            if (NumberTypes.ContainsKey(This) && NumberTypes.ContainsKey(Type))
+                return true;
+
             do
             {
-                if (BaseType.GetMethods(StaticFlags)
-                            .Where(i => i.Name == "op_Implicit" || i.Name == "op_Explicit")
-                            .Any(t => t.ReturnType == Type))
+                if (This.GetMethods(StaticFlags)
+                        .Where(i => i.Name == "op_Implicit" || i.Name == "op_Explicit")
+                        .Any(t => t.ReturnType == Type))
                     return true;
 
-                BaseType = BaseType.BaseType;
-            } while (BaseType != null);
+                This = This.BaseType;
+            } while (This != null);
 
             return false;
         }
