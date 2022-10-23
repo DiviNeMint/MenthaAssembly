@@ -898,7 +898,7 @@ namespace System.Linq.Expressions
             }
         }
 
-        public static Expression CastExpression(this Expression This, Type Type)
+        public static Expression Cast(this Expression This, Type Type)
             => This.Type == Type ? This : Expression.Convert(This, Type);
 
         public static bool IsVariableChars(this char This)

@@ -123,7 +123,7 @@ namespace MenthaAssembly.Expressions
                         ExpressionType.AddAssign or
                         ExpressionType.AddChecked or
                         ExpressionType.AddAssignChecked or
-                        ExpressionType.UnaryPlus => MaxType != null ? Expression.Add(Left.CastExpression(MaxType), Right.CastExpression(MaxType)) :
+                        ExpressionType.UnaryPlus => MaxType != null ? Expression.Add(Left.Cast(MaxType), Right.Cast(MaxType)) :
                                                                       throw new InvalidCastException($"{Left.Type.Name} + {Right.Type.Name}."),
 
                         // -
@@ -132,28 +132,28 @@ namespace MenthaAssembly.Expressions
                         ExpressionType.Subtract or
                         ExpressionType.SubtractAssign or
                         ExpressionType.SubtractChecked or
-                        ExpressionType.SubtractAssignChecked => MaxType != null ? Expression.Subtract(Left.CastExpression(MaxType), Right.CastExpression(MaxType)) :
+                        ExpressionType.SubtractAssignChecked => MaxType != null ? Expression.Subtract(Left.Cast(MaxType), Right.Cast(MaxType)) :
                                                                                   throw new InvalidCastException($"{Left.Type.Name} - {Right.Type.Name}."),
 
                         // *
                         ExpressionType.Multiply or
                         ExpressionType.MultiplyAssign or
                         ExpressionType.MultiplyChecked or
-                        ExpressionType.MultiplyAssignChecked => MaxType != null ? Expression.Multiply(Left.CastExpression(MaxType), Right.CastExpression(MaxType)) :
+                        ExpressionType.MultiplyAssignChecked => MaxType != null ? Expression.Multiply(Left.Cast(MaxType), Right.Cast(MaxType)) :
                                                                                   throw new InvalidCastException($"{Left.Type.Name} * {Right.Type.Name}."),
 
                         // /
                         ExpressionType.Divide or
-                        ExpressionType.DivideAssign => MaxType != null ? Expression.Divide(Left.CastExpression(MaxType), Right.CastExpression(MaxType)) :
+                        ExpressionType.DivideAssign => MaxType != null ? Expression.Divide(Left.Cast(MaxType), Right.Cast(MaxType)) :
                                                                          throw new InvalidCastException($"{Left.Type.Name} / {Right.Type.Name}."),
 
                         // %
                         ExpressionType.Modulo or
-                        ExpressionType.ModuloAssign => MaxType != null ? Expression.Modulo(Left.CastExpression(MaxType), Right.CastExpression(MaxType)) :
+                        ExpressionType.ModuloAssign => MaxType != null ? Expression.Modulo(Left.Cast(MaxType), Right.Cast(MaxType)) :
                                                                          throw new InvalidCastException($"{Left.Type.Name} % {Right.Type.Name}."),
 
                         // ^
-                        ExpressionType.Power => Expression.Power(Left.CastExpression(typeof(double)), Right.CastExpression(typeof(double))),
+                        ExpressionType.Power => Expression.Power(Left.Cast(typeof(double)), Right.Cast(typeof(double))),
 
                         _ => throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}."),
                     };

@@ -305,6 +305,7 @@ namespace System.Reflection
                 ParameterLength = ParameterTypes.Length;
             bool IsGeneric = GenericLength > 0;
 
+            List<Tuple<MethodInfo, Type[]>> MinorMethods = new List<Tuple<MethodInfo, Type[]>>();
             while (This != null)
             {
                 foreach (MethodInfo Method in This.GetMethods(Flags).Where(i => i.Name == Name))
@@ -322,16 +323,17 @@ namespace System.Reflection
                                 continue;
 
                             Type[] DefinedParameterTypes = Parameter.Select(i => i.ParameterType).ToArray();
-                            Type ParameterType;
 
+                            // Implement Generic Parameter Types.
+                            Type DefinedType;
                             for (int i = 0; i < ParameterLength; i++)
                             {
-                                ParameterType = DefinedParameterTypes[i];
-                                if (ParameterType.IsGenericParameter)
+                                DefinedType = DefinedParameterTypes[i];
+                                if (DefinedType.IsGenericParameter)
                                 {
                                     for (int j = 0; j < GenericLength; j++)
                                     {
-                                        if (ParameterType == DefinedGenericTypes[j])
+                                        if (DefinedType == DefinedGenericTypes[j])
                                         {
                                             DefinedParameterTypes[i] = GenericTypes[j];
                                             break;
@@ -340,13 +342,13 @@ namespace System.Reflection
                                 }
                             }
 
-                            if (DefinedParameterTypes.SequenceEqual(ParameterTypes))
+                            if (ParameterTypes.SequenceEqual(DefinedParameterTypes))
                             {
                                 Info = Method.MakeGenericMethod(GenericTypes);
                                 return true;
                             }
                         }
-                        else if (Parameter.Select(i => i.ParameterType).SequenceEqual(ParameterTypes))
+                        else if (ParameterTypes.SequenceEqual(Parameter.Select(i => i.ParameterType)))
                         {
                             Info = Method;
                             return true;
@@ -359,6 +361,140 @@ namespace System.Reflection
 
             Info = null;
             return false;
+        }
+
+        public static bool TryGetMethodWithImplicitParameter(Type Base, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethodWithImplicitParameter(Base, Name, GenericTypes, ParameterTypes, out Info, out _);
+        internal static bool TryGetMethodWithImplicitParameter(Type Base, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes)
+        {
+            int GenericLength = GenericTypes.Length,
+                ParameterLength = ParameterTypes.Length;
+            bool IsGeneric = GenericLength > 0;
+
+            MethodInfo MinorMethod = null;
+            Type[] MinorParameterTypes = null;
+            int MinorScore = int.MaxValue;
+            while (Base != null)
+            {
+                foreach (MethodInfo Method in Base.GetMethods().Where(i => i.Name == Name))
+                {
+                    ParameterInfo[] Parameter = Method.GetParameters();
+                    if (Parameter.Length == ParameterLength)
+                    {
+                        if (IsGeneric)
+                        {
+                            if (!Method.IsGenericMethodDefinition)
+                                continue;
+
+                            Type[] DefinedGenericTypes = Method.GetGenericArguments();
+                            if (DefinedGenericTypes.Length != GenericLength)
+                                continue;
+
+                            Type[] TempDefinedParameterTypes = Parameter.Select(i => i.ParameterType).ToArray();
+
+                            // Implement Generic Parameter Types.
+                            Type DefinedType;
+                            for (int i = 0; i < ParameterLength; i++)
+                            {
+                                DefinedType = TempDefinedParameterTypes[i];
+                                if (DefinedType.IsGenericParameter)
+                                {
+                                    for (int j = 0; j < GenericLength; j++)
+                                    {
+                                        if (DefinedType == DefinedGenericTypes[j])
+                                        {
+                                            TempDefinedParameterTypes[i] = GenericTypes[j];
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            int Score = MatchParameters(ParameterTypes, TempDefinedParameterTypes);
+                            if (Score == 0)
+                            {
+                                Info = Method.MakeGenericMethod(GenericTypes);
+                                DefinedParameterTypes = ParameterTypes;
+                                return true;
+                            }
+                            else if (Score > 0)
+                            {
+                                if (Score < MinorScore)
+                                {
+                                    MinorScore = Score;
+                                    MinorMethod = Method;
+                                    MinorParameterTypes = TempDefinedParameterTypes;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Type[] TempDefinedParameterTypes = Parameter.Select(i => i.ParameterType).ToArray();
+                            int Score = MatchParameters(ParameterTypes, TempDefinedParameterTypes);
+                            if (Score == 0)
+                            {
+                                Info = Method;
+                                DefinedParameterTypes = ParameterTypes;
+                                return true;
+                            }
+                            else if (Score > 0)
+                            {
+                                if (Score < MinorScore)
+                                {
+                                    MinorScore = Score;
+                                    MinorMethod = Method;
+                                    MinorParameterTypes = TempDefinedParameterTypes;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Base = Base.BaseType;
+            }
+
+            if (MinorMethod is null)
+            {
+                Info = null;
+                DefinedParameterTypes = null;
+                return false;
+            }
+
+            Info = IsGeneric ? MinorMethod.MakeGenericMethod(GenericTypes) : MinorMethod;
+            DefinedParameterTypes = MinorParameterTypes;
+            return true;
+        }
+
+        /// <summary>
+        /// Scores the matching of the types.
+        /// </summary>
+        /// <returns>The score of matching.<para/>
+        /// If <paramref name="Types"/> are equal to <paramref name="DefinedTypes"/>, return 0.<para/>
+        /// If <paramref name="Types"/> and <paramref name="DefinedTypes"/> are completely different, return <see cref="int.MinValue"/>.</returns>
+        private static int MatchParameters(Type[] Types, Type[] DefinedTypes)
+        {
+            Type Type, DefinedType;
+            int Score = 0;
+            for (int i = 0; i < Types.Length; i++)
+            {
+                DefinedType = DefinedTypes[i];
+                Type = Types[i];
+                if (Type != DefinedType)
+                {
+                    Score++;
+                    if (!Type.IsConvertibleTo(DefinedType))
+                        return int.MinValue;
+
+                    if (NumberTypeScores.TryGetValue(Type, out sbyte Score1) &&
+                        NumberTypeScores.TryGetValue(DefinedType, out sbyte Score2))
+                    {
+                        int Delta = Score2 - Score1;
+                        Score += Delta < 0 ? 11 - Score1 : Delta;
+                    }
+                }
+            }
+
+            return Score;
         }
 
         public static IEnumerable<MethodInfo> GetImplicits(this Type This)
@@ -521,6 +657,24 @@ namespace System.Reflection
             { typeof(float), 8 },
             { typeof(double), 9 },
             { typeof(decimal), 10 }
+        };
+        private static readonly Dictionary<Type, sbyte> NumberTypeScores = new Dictionary<Type, sbyte>
+        {
+            { typeof(sbyte), 0 },
+            { typeof(byte), 1 },
+
+            { typeof(short), 2 },
+            { typeof(ushort), 3 },
+
+            { typeof(int), 4 },
+            { typeof(uint), 5 },
+
+            { typeof(long), 6 },
+            { typeof(ulong), 7 },
+
+            { typeof(float), 8 },
+            { typeof(double), 9 },
+            { typeof(decimal), 10 },
         };
 
         /// <summary>
