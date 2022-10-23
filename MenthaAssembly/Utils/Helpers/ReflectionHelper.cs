@@ -211,42 +211,60 @@ namespace System.Reflection
             => TryGetMethod(typeof(T), PublicFlags, Name, out Info);
         public static bool TryGetMethod<T>(string Name, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethod(typeof(T), PublicFlags, Name, ParameterTypes, out Info);
+        public static bool TryGetMethod<T>(string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(typeof(T), PublicFlags, Name, GenericTypes, ParameterTypes, out Info);
         public static bool TryGetMethod(this Type This, string Name, out MethodInfo Info)
             => TryGetMethod(This, PublicFlags, Name, out Info);
         public static bool TryGetMethod(this Type This, string Name, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethod(This, PublicFlags, Name, ParameterTypes, out Info);
+        public static bool TryGetMethod(this Type This, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(This, PublicFlags, Name, GenericTypes, ParameterTypes, out Info);
 
         public static bool TryGetStaticMethod<T>(string Name, out MethodInfo Info)
             => TryGetMethod(typeof(T), StaticFlags, Name, out Info);
         public static bool TryGetStaticMethod<T>(string Name, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethod(typeof(T), StaticFlags, Name, ParameterTypes, out Info);
+        public static bool TryGetStaticMethod<T>(string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(typeof(T), StaticFlags, Name, GenericTypes, ParameterTypes, out Info);
         public static bool TryGetStaticMethod(this Type This, string Name, out MethodInfo Info)
             => TryGetMethod(This, StaticFlags, Name, out Info);
         public static bool TryGetStaticMethod(this Type This, string Name, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethod(This, StaticFlags, Name, ParameterTypes, out Info);
+        public static bool TryGetStaticMethod(this Type This, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(This, StaticFlags, Name, GenericTypes, ParameterTypes, out Info);
 
         public static bool TryGetInternalMethod<T>(string Name, out MethodInfo Info)
             => TryGetMethod(typeof(T), InternalFlags, Name, out Info);
         public static bool TryGetInternalMethod<T>(string Name, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethod(typeof(T), InternalFlags, Name, ParameterTypes, out Info);
+        public static bool TryGetInternalMethod<T>(string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(typeof(T), InternalFlags, Name, GenericTypes, ParameterTypes, out Info);
         public static bool TryGetInternalMethod(this Type This, string Name, out MethodInfo Info)
             => TryGetMethod(This, InternalFlags, Name, out Info);
         public static bool TryGetInternalMethod(this Type This, string Name, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethod(This, InternalFlags, Name, ParameterTypes, out Info);
+        public static bool TryGetInternalMethod(this Type This, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(This, InternalFlags, Name, GenericTypes, ParameterTypes, out Info);
 
         public static bool TryGetStaticInternalMethod<T>(string Name, out MethodInfo Info)
             => TryGetMethod(typeof(T), StaticInternalFlags, Name, out Info);
         public static bool TryGetStaticInternalMethod<T>(string Name, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethod(typeof(T), StaticInternalFlags, Name, ParameterTypes, out Info);
+        public static bool TryGetStaticInternalMethod<T>(string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(typeof(T), StaticInternalFlags, Name, GenericTypes, ParameterTypes, out Info);
         public static bool TryGetStaticInternalMethod(this Type This, string Name, out MethodInfo Info)
             => TryGetMethod(This, StaticInternalFlags, Name, out Info);
         public static bool TryGetStaticInternalMethod(this Type This, string Name, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethod(This, StaticInternalFlags, Name, ParameterTypes, out Info);
+        public static bool TryGetStaticInternalMethod(this Type This, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(This, StaticInternalFlags, Name, GenericTypes, ParameterTypes, out Info);
 
         public static bool TryGetMethod<T>(BindingFlags Flags, string Name, out MethodInfo Info)
             => TryGetMethod(typeof(T), Flags, Name, out Info);
         public static bool TryGetMethod<T>(BindingFlags Flags, string Name, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethod(typeof(T), Flags, Name, ParameterTypes, out Info);
+        public static bool TryGetMethod<T>(BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(typeof(T), Flags, Name, GenericTypes, ParameterTypes, out Info);
         public static bool TryGetMethod(this Type This, BindingFlags Flags, string Name, out MethodInfo Info)
         {
             Type BaseType = This;
@@ -267,21 +285,57 @@ namespace System.Reflection
         }
         public static bool TryGetMethod(this Type This, BindingFlags Flags, string Name, Type[] ParameterTypes, out MethodInfo Info)
         {
-            Type BaseType = This;
-            MethodInfo Result = BaseType?.GetMethod(Name, Flags, null, ParameterTypes, null);
-            while (Result is null)
+            while (This != null)
             {
-                BaseType = BaseType?.BaseType;
-                if (BaseType is null)
+                if (This.GetMethod(Name, Flags, null, ParameterTypes, null) is MethodInfo Method)
                 {
-                    Info = null;
-                    return false;
+                    Info = Method;
+                    return true;
                 }
 
-                Result = BaseType.GetMethod(Name, Flags, null, ParameterTypes, null);
+                This = This.BaseType;
             }
-            Info = Result;
-            return true;
+
+            Info = null;
+            return false;
+        }
+        public static bool TryGetMethod(this Type This, BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+        {
+            int GenericLength = GenericTypes.Length,
+                ParameterLength = ParameterTypes.Length;
+            bool IsGeneric = GenericLength > 0;
+
+            while (This != null)
+            {
+                foreach (MethodInfo Method in This.GetMethods(Flags).Where(i => i.Name == Name))
+                {
+                    ParameterInfo[] Parameter = Method.GetParameters();
+                    if (Parameter.Length == ParameterLength &&
+                        Parameter.Select(i => i.ParameterType).SequenceEqual(ParameterTypes))
+                    {
+                        if (IsGeneric)
+                        {
+                            if (!Method.IsGenericMethodDefinition)
+                                continue;
+
+                            Type[] Generic = Method.GetGenericArguments();
+                            if (Generic.Length != GenericLength)
+                                continue;
+
+                            Info = Method.MakeGenericMethod(GenericTypes);
+                            return true;
+                        }
+
+                        Info = Method;
+                        return true;
+                    }
+                }
+
+                This = This.BaseType;
+            }
+
+            Info = null;
+            return false;
         }
 
         public static IEnumerable<MethodInfo> GetImplicits(this Type This)
@@ -311,11 +365,15 @@ namespace System.Reflection
             => TryInvokeMethod(This, PublicFlags, Name, Args);
         public static bool TryInvokeMethod<T>(this object This, string Name, out T Result, params object[] Args)
             => TryInvokeMethod(This, PublicFlags, Name, out Result, Args);
+        public static bool TryInvokeMethod<T>(this object This, string Name, Type[] GenericTypes, out T Result, params object[] Args)
+            => TryInvokeMethod(This, PublicFlags, Name, GenericTypes, out Result, Args);
 
         public static bool TryInvokeInternalMethod(this object This, string Name, params object[] Args)
             => TryInvokeMethod(This, InternalFlags, Name, Args);
         public static bool TryInvokeInternalMethod<T>(this object This, string Name, out T Result, params object[] Args)
             => TryInvokeMethod(This, InternalFlags, Name, out Result, Args);
+        public static bool TryInvokeInternalMethod<T>(this object This, string Name, Type[] GenericTypes, out T Result, params object[] Args)
+            => TryInvokeMethod(This, InternalFlags, Name, GenericTypes, out Result, Args);
 
         public static bool TryInvokeMethod(this object This, BindingFlags Flags, string Name, params object[] Args)
         {
@@ -330,6 +388,18 @@ namespace System.Reflection
         public static bool TryInvokeMethod<T>(this object This, BindingFlags Flags, string Name, out T Result, params object[] Args)
         {
             if (TryGetMethod(This?.GetType(), Flags, Name, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
+                Method.ReturnType.IsBaseOn<T>())
+            {
+                Result = (T)Method.Invoke(This, Args);
+                return true;
+            }
+
+            Result = default;
+            return false;
+        }
+        public static bool TryInvokeMethod<T>(this object This, BindingFlags Flags, string Name, Type[] GenericTypes, out T Result, params object[] Args)
+        {
+            if (TryGetMethod(This?.GetType(), Flags, Name, GenericTypes, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
                 Method.ReturnType.IsBaseOn<T>())
             {
                 Result = (T)Method.Invoke(This, Args);
@@ -462,6 +532,113 @@ namespace System.Reflection
             => NumberTypes.TryGetValue(This, out byte Value) && Value < 4;
 
         #endregion
+
+        internal static readonly Dictionary<string, Type> TypeAlias = new Dictionary<string, Type>
+        {
+            { "bool", typeof(bool) },
+            { "byte", typeof(byte) },
+            { "char", typeof(char) },
+            { "decimal", typeof(decimal) },
+            { "double", typeof(double) },
+            { "float", typeof(float) },
+            { "int", typeof(int) },
+            { "long", typeof(long) },
+            { "object", typeof(object) },
+            { "sbyte", typeof(sbyte) },
+            { "short", typeof(short) },
+            { "string", typeof(string) },
+            { "uint", typeof(uint) },
+            { "ulong", typeof(ulong) },
+            { "void", typeof(void) }
+        };
+        public static bool TryGetType(string Route, out Type Type)
+            => TryGetType(Route, new Type[0], out Type);
+        public static bool TryGetType(string Route, Type[] GenericTypes, out Type Type)
+        {
+            int Length = GenericTypes.Length;
+            if (Length > 0)
+                Route = $"{Route}`{GenericTypes.Length}";
+
+            if (Route.Contains('.'))
+            {
+                if (AppDomain.CurrentDomain.GetAssemblies()
+                                           .Select(i => i.GetType(Route, false))
+                                           .FirstOrDefault(i => i != null) is Type Result)
+                {
+                    Type = Length > 0 ? Result.MakeGenericType(GenericTypes) : Result;
+                    return true;
+                }
+
+                Type = null;
+                return false;
+            }
+
+            if (TypeAlias.TryGetValue(Route, out Type))
+                return true;
+
+            Type[] Types = AppDomain.CurrentDomain.GetAssemblies()
+                                                  .TrySelectMany(i => i.GetTypes())
+                                                  .Where(i => i.Name == Route)
+                                                  .ToArray();
+            switch (Types.Length)
+            {
+                case 1:
+                    {
+                        Type = Length > 0 ? Types[0].MakeGenericType(GenericTypes) : Types[0];
+                        return true;
+                    }
+                case 0:
+                default:
+                    {
+                        Type = null;
+                        return false;
+                    }
+            }
+        }
+        public static bool TryGetType(string Name, string Namespace, out Type Type)
+            => TryGetType(Name, Namespace, new Type[0], out Type);
+        public static bool TryGetType(string Name, string Namespace, Type[] GenericTypes, out Type Type)
+        {
+            int Length = GenericTypes.Length;
+            if (Length > 0)
+                Name = $"{Name}`{GenericTypes.Length}";
+
+            if (string.IsNullOrEmpty(Namespace))
+            {
+                if (TypeAlias.TryGetValue(Name, out Type))
+                    return true;
+
+                Type[] Types = AppDomain.CurrentDomain.GetAssemblies()
+                                                      .TrySelectMany(i => i.GetTypes())
+                                                      .Where(i => i.Name == Name)
+                                                      .ToArray();
+                switch (Types.Length)
+                {
+                    case 1:
+                        {
+                            Type = Length > 0 ? Types[0].MakeGenericType(GenericTypes) : Types[0];
+                            return true;
+                        }
+                    case 0:
+                    default:
+                        {
+                            Type = null;
+                            return false;
+                        }
+                }
+            }
+
+            else if (AppDomain.CurrentDomain.GetAssemblies()
+                                            .Select(i => i.GetType($"{Namespace}.{Name}", false))
+                                            .FirstOrDefault(i => i != null) is Type Result)
+            {
+                Type = Length > 0 ? Result.MakeGenericType(GenericTypes) : Result;
+                return true;
+            }
+
+            Type = null;
+            return false;
+        }
 
     }
 }
