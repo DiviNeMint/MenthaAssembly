@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
+using System.Text;
 
 namespace MenthaAssembly.Expressions
 {
@@ -13,6 +15,12 @@ namespace MenthaAssembly.Expressions
 
         ExpressionType IExpressionObject.ExpressionType
             => ExpressionType.Block;
+
+        public string Name
+            => ToString();
+
+        public List<ExpressionTypeInfo> GenericTypes
+            => Contexts.LastOrDefault()?.GenericTypes;
 
         public List<IExpressionRoute> Contexts { get; }
 
@@ -46,22 +54,50 @@ namespace MenthaAssembly.Expressions
             }
 
             Expression Current = null;
-            int Index = 0;
+            int Index = 0,
+                Count = Contexts.Count;
             if (Context is ExpressionMember Member)
             {
                 Index++;
                 if (!Member.TryImplement(Parent, Base, Parameters, out Current))
                 {
-                    if (AppDomain.CurrentDomain.GetAssemblies()
-                                               .TrySelectMany(i => i.GetTypes())
-                                               .FirstOrDefault(i => i.Name == Member.Name) is not Type StaticType)
-                        throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown member : {Member.Name}.");
+                    Type[] GenericTypes = Member.GenericTypes.Select(i => i.Implement()).ToArray();
+                    if (!ReflectionHelper.TryGetType(Member.Name, GenericTypes, out Type StaticType))
+                    {
+                        StringBuilder Builder = new StringBuilder();
+
+                        try
+                        {
+                            do
+                            {
+                                if (Index >= Count ||
+                                    GenericTypes.Length > 0)
+                                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown route : {this}.");
+
+                                // Namespace
+                                Builder.Append(Context.Name);
+
+                                // Next Member
+                                Context = Contexts[Index++];
+                                if (Context.Type != ExpressionObjectType.Member)
+                                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown route : {this}.");
+
+                                // GenericTypes
+                                GenericTypes = Member.GenericTypes.Select(i => i.Implement()).ToArray();
+
+                            } while (!ReflectionHelper.TryGetType(Context.Name, Builder.ToString(), out StaticType));
+                        }
+                        finally
+                        {
+                            Builder.Clear();
+                        }
+                    }
 
                     Current = Contexts[Index++].Implement(StaticType, Base, Parameters);
                 }
             }
 
-            for (; Index < Contexts.Count; Index++)
+            for (; Index < Count; Index++)
                 Current = Contexts[Index].Implement(Current, Base, Parameters);
 
             if (Current is null)

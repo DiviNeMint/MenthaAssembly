@@ -364,8 +364,12 @@ namespace System.Reflection
         }
 
         public static bool TryGetMethodWithImplicitParameter(Type Base, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethodWithImplicitParameter(Base, Name, GenericTypes, ParameterTypes, out Info, out _);
+            => TryGetMethodWithImplicitParameter(Base, PublicFlags, Name, GenericTypes, ParameterTypes, out Info, out _);
+        public static bool TryGetMethodWithImplicitParameter(Type Base, BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethodWithImplicitParameter(Base, Flags, Name, GenericTypes, ParameterTypes, out Info, out _);
         internal static bool TryGetMethodWithImplicitParameter(Type Base, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes)
+            => TryGetMethodWithImplicitParameter(Base, PublicFlags, Name, GenericTypes, ParameterTypes, out Info, out DefinedParameterTypes);
+        internal static bool TryGetMethodWithImplicitParameter(Type Base, BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes)
         {
             int GenericLength = GenericTypes.Length,
                 ParameterLength = ParameterTypes.Length;
@@ -376,7 +380,7 @@ namespace System.Reflection
             int MinorScore = int.MaxValue;
             while (Base != null)
             {
-                foreach (MethodInfo Method in Base.GetMethods().Where(i => i.Name == Name))
+                foreach (MethodInfo Method in Base.GetMethods(Flags).Where(i => i.Name == Name))
                 {
                     ParameterInfo[] Parameter = Method.GetParameters();
                     if (Parameter.Length == ParameterLength)
@@ -536,7 +540,7 @@ namespace System.Reflection
 
         public static bool TryInvokeMethod(this object This, BindingFlags Flags, string Name, params object[] Args)
         {
-            if (TryGetMethod(This?.GetType(), Flags, Name, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method))
+            if (TryGetMethodWithImplicitParameter(This?.GetType(), Flags, Name, new Type[0], Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method))
             {
                 Method.Invoke(This, Args);
                 return true;
@@ -546,8 +550,8 @@ namespace System.Reflection
         }
         public static bool TryInvokeMethod<T>(this object This, BindingFlags Flags, string Name, out T Result, params object[] Args)
         {
-            if (TryGetMethod(This?.GetType(), Flags, Name, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
-                Method.ReturnType.IsBaseOn<T>())
+            if (TryGetMethodWithImplicitParameter(This?.GetType(), Flags, Name, new Type[0], Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
+                Method.ReturnType.IsConvertibleTo<T>())
             {
                 Result = (T)Method.Invoke(This, Args);
                 return true;
@@ -558,8 +562,8 @@ namespace System.Reflection
         }
         public static bool TryInvokeMethod<T>(this object This, BindingFlags Flags, string Name, Type[] GenericTypes, out T Result, params object[] Args)
         {
-            if (TryGetMethod(This?.GetType(), Flags, Name, GenericTypes, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
-                Method.ReturnType.IsBaseOn<T>())
+            if (TryGetMethodWithImplicitParameter(This?.GetType(), Flags, Name, GenericTypes, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
+                Method.ReturnType.IsConvertibleTo<T>())
             {
                 Result = (T)Method.Invoke(This, Args);
                 return true;
