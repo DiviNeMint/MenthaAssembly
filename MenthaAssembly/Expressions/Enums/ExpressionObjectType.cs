@@ -11,13 +11,15 @@ namespace MenthaAssembly.Expressions
 
         Block = 2,
 
-        Element = 4,
+        Const = 4,
 
-        Const = 8,
+        Convert = 5,
 
-        Member = 16,
+        Route = 6,
 
-        Method = 32,
+        Member = 262,
+
+        Method = 518,
 
         MathIdentifier = 257,
 

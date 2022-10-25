@@ -364,11 +364,11 @@ namespace System.Reflection
         }
 
         public static bool TryGetMethodWithImplicitParameter(Type Base, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethodWithImplicitParameter(Base, PublicFlags, Name, GenericTypes, ParameterTypes, out Info, out _);
+            => TryGetMethodWithImplicitParameter(Base, PublicFlags | BindingFlags.Static, Name, GenericTypes, ParameterTypes, out Info, out _);
         public static bool TryGetMethodWithImplicitParameter(Type Base, BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
             => TryGetMethodWithImplicitParameter(Base, Flags, Name, GenericTypes, ParameterTypes, out Info, out _);
         internal static bool TryGetMethodWithImplicitParameter(Type Base, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes)
-            => TryGetMethodWithImplicitParameter(Base, PublicFlags, Name, GenericTypes, ParameterTypes, out Info, out DefinedParameterTypes);
+            => TryGetMethodWithImplicitParameter(Base, PublicFlags | BindingFlags.Static, Name, GenericTypes, ParameterTypes, out Info, out DefinedParameterTypes);
         internal static bool TryGetMethodWithImplicitParameter(Type Base, BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes)
         {
             int GenericLength = GenericTypes.Length,
@@ -811,8 +811,9 @@ namespace System.Reflection
                 }
             }
 
-            else if (AppDomain.CurrentDomain.GetAssemblies()
-                                            .Select(i => i.GetType($"{Namespace}.{Name}", false))
+            string Route = $"{Namespace}.{Name}";
+            if (AppDomain.CurrentDomain.GetAssemblies()
+                                            .Select(i => i.GetType(Route, false))
                                             .FirstOrDefault(i => i != null) is Type Result)
             {
                 Type = Length > 0 ? Result.MakeGenericType(GenericTypes) : Result;

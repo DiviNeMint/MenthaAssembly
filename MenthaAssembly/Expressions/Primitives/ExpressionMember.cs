@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -31,11 +32,15 @@ namespace MenthaAssembly.Expressions
 
         private Expression Member;
         public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
-            => Implement(null, Base, Parameters);
-        public Expression Implement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+            => TryImplement(null, Base, Parameters, out Member) ? Member :
+               throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found member : {this}.");
+        public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
         {
             if (Member != null)
-                return Member;
+            {
+                Expression = Member;
+                return true;
+            }
 
             // Base Member
             if (Parent is null)
@@ -44,105 +49,41 @@ namespace MenthaAssembly.Expressions
                 if (Parameters.FirstOrDefault(i => i.Name == Name) is ParameterExpression Parameter)
                 {
                     Member = Parameter;
-                    return Member;
-                }
-
-                if (Base is null)
-                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown member : {Name}.");
-
-                // this (base)
-                if (Name == "this")
-                {
-                    Member = Base;
-                    return Base;
-                }
-
-                Type BaseType = Base.Type;
-                if (BaseType.GetProperty(Name) is PropertyInfo Property)
-                {
-                    Member = Expression.Property(null, Property);
-                    return Member;
-                }
-
-                else if (BaseType.GetField(Name) is FieldInfo Field)
-                {
-                    Member = Expression.Field(null, Field);
-                    return Member;
-                }
-
-                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found member : {Name}. in {BaseType.Name}");
-            }
-
-            // Static Member
-            else if (Parent is Type StaticType)
-            {
-                if (StaticType.GetProperty(Name) is PropertyInfo Property)
-                {
-                    Member = Expression.Property(null, Property);
-                    return Member;
-                }
-
-                else if (StaticType.GetField(Name) is FieldInfo Field)
-                {
-                    Member = Expression.Field(null, Field);
-                    return Member;
-                }
-
-                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found property or field : {Name}. in {StaticType.Name}");
-            }
-
-            // Parent Method
-            else if (Parent is Expression Expression)
-            {
-                Member = Expression.PropertyOrField(Expression, Name);
-                return Member;
-            }
-
-            // Unknown
-            throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown parent type : {Parent.GetType().Name}.");
-        }
-        public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Member)
-        {
-            if (this.Member != null)
-            {
-                Member = this.Member;
-                return true;
-            }
-
-            // Base Member
-            if (Parent is null)
-            {
-                // Parameters
-                if (Parameters.FirstOrDefault(i => i.Name == Name) is ParameterExpression Parameter)
-                {
-                    this.Member = Parameter;
-                    Member = this.Member;
+                    Expression = Member;
                     return true;
                 }
 
                 if (Base is null)
                 {
-                    Member = null;
+                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Unknown member : {Name}.");
+                    Expression = null;
                     return false;
                 }
 
+                // this (base)
+                else if (Name == "this")
+                {
+                    Member = Base;
+                    Expression = Member;
+                    return true;
+                }
+
                 Type BaseType = Base.Type;
                 if (BaseType.GetProperty(Name) is PropertyInfo Property)
                 {
-                    this.Member = Expression.Property(null, Property);
-                    Member = this.Member;
+                    Member = Expression.Property(Base, Property);
+                    Expression = Member;
                     return true;
                 }
 
                 else if (BaseType.GetField(Name) is FieldInfo Field)
                 {
-                    this.Member = Expression.Field(null, Field);
-                    Member = this.Member;
+                    Member = Expression.Field(Base, Field);
+                    Expression = Member;
                     return true;
                 }
 
-                Member = null;
-                return false;
+                Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found member : {Name} in {BaseType.Name}.");
             }
 
             // Static Member
@@ -150,32 +91,49 @@ namespace MenthaAssembly.Expressions
             {
                 if (StaticType.GetProperty(Name) is PropertyInfo Property)
                 {
-                    this.Member = Expression.Property(null, Property);
-                    Member = this.Member;
+                    Member = Expression.Property(null, Property);
+                    Expression = Member;
                     return true;
                 }
 
                 else if (StaticType.GetField(Name) is FieldInfo Field)
                 {
-                    this.Member = Expression.Field(null, Field);
-                    Member = this.Member;
+                    Member = Expression.Field(null, Field);
+                    Expression = Member;
                     return true;
                 }
 
-                Member = null;
-                return false;
+                Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found property or field : {Name} in {StaticType.Name}.");
             }
 
             // Parent Method
-            else if (Parent is Expression Expression)
+            else if (Parent is Expression ParentExpression)
             {
-                this.Member = System.Linq.Expressions.Expression.PropertyOrField(Expression, Name);
-                Member = this.Member;
-                return true;
+                Type ParentType = ParentExpression.Type;
+                if (ParentType.GetProperty(Name) is PropertyInfo Property)
+                {
+                    Member = Expression.Property(null, Property);
+                    Expression = Member;
+                    return true;
+                }
+
+                else if (ParentType.GetField(Name) is FieldInfo Field)
+                {
+                    Member = Expression.Field(null, Field);
+                    Expression = Member;
+                    return true;
+                }
+
+                Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found property or field : {Name} in {ParentType.Name}.");
             }
 
             // Unknown
-            Member = null;
+            else
+            {
+                Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Unknown parent type : {Parent.GetType().Name}.");
+            }
+
+            Expression = null;
             return false;
         }
 

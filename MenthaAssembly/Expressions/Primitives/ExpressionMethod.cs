@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -40,13 +41,17 @@ namespace MenthaAssembly.Expressions
             this.Parameters = new List<IExpressionObject>(Parameters);
         }
 
-        private MethodCallExpression Method;
+        private Expression Method;
         public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
-            => Implement(null, Base, Parameters);
-        public Expression Implement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+            => TryImplement(null, Base, Parameters, out Method) ? Method :
+               throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found method : {this}.");
+        public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
         {
             if (Method != null)
-                return Method;
+            {
+                Expression = Method;
+                return true;
+            }
 
             Expression[] MethodParameters = this.Parameters.Select(i => i.Implement(Base, Parameters)).ToArray();
             Type[] ParameterTypes = MethodParameters.Select(i => i.Type).ToArray(),
@@ -56,54 +61,77 @@ namespace MenthaAssembly.Expressions
             if (Parent is null)
             {
                 if (Base is null)
-                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid route.");
+                {
+                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Invalid route.");
+                    Expression = null;
+                    return false;
+                }
 
                 if (!ReflectionHelper.TryGetMethodWithImplicitParameter(Base.Type, Name, GenericTypes, ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes))
-                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found method : {Name}" +
-                                                      $"{(GenericTypes.Length > 0 ? $"<{string.Join(", ", GenericTypes.Select(i => i.Name))}>" : string.Empty)}, " +
-                                                      $"with parameters : {{{string.Join(", ", ParameterTypes.Select(i => i.Name))}}} in {Base.Type.Name}.");
+                {
+                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found method : {Name}" +
+                                    $"{(GenericTypes.Length > 0 ? $"<{string.Join(", ", GenericTypes.Select(i => i.Name))}>" : string.Empty)}, " +
+                                    $"with parameters : {{{string.Join(", ", ParameterTypes.Select(i => i.Name))}}} in {Base.Type.Name}.");
+                    Expression = null;
+                    return false;
+                }
 
                 for (int i = 0; i < ParameterTypes.Length; i++)
                     MethodParameters[i] = MethodParameters[i].Cast(DefinedParameterTypes[i]);
 
                 Method = Expression.Call(Base, Info, MethodParameters);
+                Expression = Method;
+                return true;
             }
 
             // Static Method
             else if (Parent is Type StaticType)
             {
                 if (!ReflectionHelper.TryGetMethodWithImplicitParameter(StaticType, Name, GenericTypes, ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes))
-                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found method : {Name}" +
-                                                      $"{(GenericTypes.Length > 0 ? $"<{string.Join(", ", GenericTypes.Select(i => i.Name))}>" : string.Empty)}, " +
-                                                      $"with parameters : {{{string.Join(", ", ParameterTypes.Select(i => i.Name))}}} in {StaticType.Name}.");
+                {
+                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found method : {Name}" +
+                                    $"{(GenericTypes.Length > 0 ? $"<{string.Join(", ", GenericTypes.Select(i => i.Name))}>" : string.Empty)}, " +
+                                    $"with parameters : {{{string.Join(", ", ParameterTypes.Select(i => i.Name))}}} in {StaticType.Name}.");
+                    Expression = null;
+                    return false;
+                }
 
                 for (int i = 0; i < ParameterTypes.Length; i++)
                     MethodParameters[i] = MethodParameters[i].Cast(DefinedParameterTypes[i]);
 
                 Method = Expression.Call(Info, MethodParameters);
+                Expression = Method;
+                return true;
             }
 
             // Parent Method
-            else if (Parent is Expression Expression)
+            else if (Parent is Expression ParentExpression)
             {
-                if (!ReflectionHelper.TryGetMethodWithImplicitParameter(Expression.Type, Name, GenericTypes, ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes))
-                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found method : {Name}" +
-                                                      $"{(GenericTypes.Length > 0 ? $"<{string.Join(", ", GenericTypes.Select(i => i.Name))}>" : string.Empty)}, " +
-                                                      $"with parameters : {{{string.Join(", ", ParameterTypes.Select(i => i.Name))}}} in {Expression.Type.Name}.");
+                if (!ReflectionHelper.TryGetMethodWithImplicitParameter(ParentExpression.Type, Name, GenericTypes, ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes))
+                {
+                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found method : {Name}" +
+                                    $"{(GenericTypes.Length > 0 ? $"<{string.Join(", ", GenericTypes.Select(i => i.Name))}>" : string.Empty)}, " +
+                                    $"with parameters : {{{string.Join(", ", ParameterTypes.Select(i => i.Name))}}} in {ParentExpression.Type.Name}.");
+                    Expression = null;
+                    return false;
+                }
 
                 for (int i = 0; i < ParameterTypes.Length; i++)
                     MethodParameters[i] = MethodParameters[i].Cast(DefinedParameterTypes[i]);
 
-                Method = Expression.Call(Expression, Info, MethodParameters);
+                Method = Expression.Call(ParentExpression, Info, MethodParameters);
+                Expression = Method;
+                return true;
             }
 
             // Unknown
             else
             {
-                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown parent : {Parent.GetType().Name}.");
+                Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Unknown parent : {Parent.GetType().Name}.");
             }
 
-            return Method;
+            Expression = null;
+            return false;
         }
 
         public override string ToString()

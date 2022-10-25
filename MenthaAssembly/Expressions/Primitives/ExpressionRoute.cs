@@ -11,7 +11,7 @@ namespace MenthaAssembly.Expressions
     public sealed class ExpressionRoute : IExpressionRoute
     {
         ExpressionObjectType IExpressionObject.Type
-            => ExpressionObjectType.Element;
+            => ExpressionObjectType.Route;
 
         ExpressionType IExpressionObject.ExpressionType
             => ExpressionType.Block;
@@ -35,76 +35,136 @@ namespace MenthaAssembly.Expressions
 
         private Expression Element;
         public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
-            => Implement(null, Base, Parameters);
-        public Expression Implement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+            => TryImplement(null, Base, Parameters, out Element) ? Element :
+               throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown route : {this}.");
+        public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
         {
             if (Element != null)
-                return Element;
+            {
+                Expression = Element;
+                return true; ;
+            }
 
-            if (Contexts.Count < 1)
-                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]No Contexts.");
+            else if (Contexts.Count < 1)
+            {
+                Expression = null;
+                return false;
+            }
 
             Debug.Assert(Parent == null);
 
             IExpressionRoute Context = Contexts[0];
             if (Contexts.Count == 1)
-            {
-                Element = Context.Implement(Parent, Base, Parameters);
-                return Element;
-            }
+                return Context.TryImplement(Parent, Base, Parameters, out Expression);
 
-            Expression Current = null;
+            Expression = null;
             int Index = 0,
                 Count = Contexts.Count;
-            if (Context is ExpressionMember Member)
-            {
-                Index++;
-                if (!Member.TryImplement(Parent, Base, Parameters, out Current))
-                {
-                    Type[] GenericTypes = Member.GenericTypes.Select(i => i.Implement()).ToArray();
-                    if (!ReflectionHelper.TryGetType(Member.Name, GenericTypes, out Type StaticType))
-                    {
-                        StringBuilder Builder = new StringBuilder();
-
-                        try
-                        {
-                            do
-                            {
-                                if (Index >= Count ||
-                                    GenericTypes.Length > 0)
-                                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown route : {this}.");
-
-                                // Namespace
-                                Builder.Append(Context.Name);
-
-                                // Next Member
-                                Context = Contexts[Index++];
-                                if (Context.Type != ExpressionObjectType.Member)
-                                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown route : {this}.");
-
-                                // GenericTypes
-                                GenericTypes = Member.GenericTypes.Select(i => i.Implement()).ToArray();
-
-                            } while (!ReflectionHelper.TryGetType(Context.Name, Builder.ToString(), out StaticType));
-                        }
-                        finally
-                        {
-                            Builder.Clear();
-                        }
-                    }
-
-                    Current = Contexts[Index++].Implement(StaticType, Base, Parameters);
-                }
-            }
+            if (Context.Type == ExpressionObjectType.Member &&
+                !Context.TryImplement(Parent, Base, Parameters, out Expression) &&
+                !TryImplementFirstRoute(Parent, Base, Parameters, out Expression, out Index))
+                return false;
 
             for (; Index < Count; Index++)
-                Current = Contexts[Index].Implement(Current, Base, Parameters);
+                if (!Contexts[Index].TryImplement(Expression, Base, Parameters, out Expression))
+                    return false;
 
-            if (Current is null)
-                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown element : {this}.");
+            if (Expression is null)
+                return false;
 
-            Element = Current;
-            return Current;
+            Element = Expression;
+            return true;
+        }
+        private bool TryImplementFirstRoute(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression, out int Index)
+        {
+            StringBuilder Builder = new StringBuilder();
+            try
+            {
+                Index = 0;
+                int Count = Contexts.Count;
+                IExpressionRoute Context = Contexts[Index++];
+
+                string MemberName = Context.Name;
+                Type[] GenericTypes = Context.GenericTypes.Select(i => i.Implement()).ToArray();
+
+                if (ReflectionHelper.TryGetType(MemberName, GenericTypes, out Type Type))
+                {
+                    if (Index >= Count)
+                    {
+                        Expression = null;
+                        return false;
+                    }
+
+                    if (Contexts[Index].TryImplement(Type, Base, Parameters, out Expression))
+                        return true;
+                }
+
+                Builder.Append(MemberName);
+                while (Index < Count)
+                {
+                    Context = Contexts[Index++];
+                    if (Context.Type != ExpressionObjectType.Member)
+                        break;
+
+                    MemberName = Context.Name;
+                    GenericTypes = Context.GenericTypes.Select(i => i.Implement()).ToArray();
+                    if (ReflectionHelper.TryGetType(MemberName, Builder.ToString(), GenericTypes, out Type))
+                    {
+                        if (Index >= Count)
+                        {
+                            Expression = null;
+                            return false;
+                        }
+
+                        if (Contexts[Index].TryImplement(Type, Base, Parameters, out Expression))
+                            return true;
+                    }
+
+                    if (GenericTypes.Length > 0)
+                        break;
+
+                    Builder.Append('.');
+                    Builder.Append(MemberName);
+                }
+
+                Expression = null;
+                return false;
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
+
+        public bool TryParseType(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Type Type)
+        {
+            StringBuilder Builder = new StringBuilder();
+            IExpressionRoute Context;
+
+            int LastIndex = Contexts.Count - 1;
+            for (int i = 0; i < LastIndex; i++)
+            {
+                Context = Contexts[i];
+                if (Context.Type != ExpressionObjectType.Member ||
+                    Context.GenericTypes.Count > 0)
+                {
+                    Type = null;
+                    return false;
+                }
+
+                Builder.Append(Context.Name);
+                Builder.Append('.');
+            }
+
+            Context = Contexts[LastIndex];
+            if (Context.Type != ExpressionObjectType.Member)
+            {
+                Type = null;
+                return false;
+            }
+
+            Type = null;
+            return false;
         }
 
         public override string ToString()
