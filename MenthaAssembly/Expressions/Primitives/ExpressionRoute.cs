@@ -138,33 +138,62 @@ namespace MenthaAssembly.Expressions
 
         public bool TryParseType(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Type Type)
         {
-            StringBuilder Builder = new StringBuilder();
-            IExpressionRoute Context;
+            IExpressionRoute Context = Contexts[0];
 
-            int LastIndex = Contexts.Count - 1;
-            for (int i = 0; i < LastIndex; i++)
-            {
-                Context = Contexts[i];
-                if (Context.Type != ExpressionObjectType.Member ||
-                    Context.GenericTypes.Count > 0)
-                {
-                    Type = null;
-                    return false;
-                }
-
-                Builder.Append(Context.Name);
-                Builder.Append('.');
-            }
-
-            Context = Contexts[LastIndex];
-            if (Context.Type != ExpressionObjectType.Member)
+            string Name = Context.Name;
+            if (Context.Type != ExpressionObjectType.Member ||
+                Context.GenericTypes.Count > 0)
             {
                 Type = null;
                 return false;
             }
 
-            Type = null;
-            return false;
+            int Count = Contexts.Count;
+            if (Count == 1)
+            {
+                if (Parameters.Any(i => i.Name == Name) ||
+                    Base.Type.GetProperty(Name) != null ||
+                    Base.Type.GetField(Name) != null)
+                {
+                    Type = null;
+                    return false;
+                }
+
+                return ReflectionHelper.TryGetType(Context.Name, string.Empty, out Type);
+            }
+
+            StringBuilder Builder = new StringBuilder();
+            try
+            {
+                Builder.Append(Name);
+                int LastIndex = Count - 1;
+                for (int i = 1; i < LastIndex; i++)
+                {
+                    Context = Contexts[i];
+                    if (Context.Type != ExpressionObjectType.Member ||
+                        Context.GenericTypes.Count > 0)
+                    {
+                        Type = null;
+                        return false;
+                    }
+
+                    Builder.Append('.');
+                    Builder.Append(Context.Name);
+                }
+
+                Context = Contexts[LastIndex];
+                if (Context.Type != ExpressionObjectType.Member)
+                {
+                    Type = null;
+                    return false;
+                }
+
+                return ReflectionHelper.TryGetType(Context.Name, Builder.ToString(), out Type);
+            }
+            finally
+            {
+                Builder.Clear();
+            }
         }
 
         public override string ToString()

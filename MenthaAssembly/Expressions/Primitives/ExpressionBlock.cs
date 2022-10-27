@@ -31,11 +31,11 @@ namespace MenthaAssembly.Expressions
             if (Block != null)
                 return Block;
 
-            Normalize();
+            Normalize(Base, Parameters);
 
             int Length = Contexts.Count;
             Expression Left = null;
-            IExpressionObject Curt, Next;
+            IExpressionObject Curt;
             for (int i = 0; i < Length;)
             {
                 Curt = Contexts[i++];
@@ -45,69 +45,28 @@ namespace MenthaAssembly.Expressions
                     if (Length <= i)
                         throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}.");
 
-                    Expression Right;
-
-                    Next = Contexts[i++];
-                    if ((Next.Type & ExpressionObjectType.Identifier) > 0)
-                    {
-                        // Check End and MathIdentifier
-                        if (Length <= i ||
-                            Next.Type != ExpressionObjectType.MathIdentifier)
-                            throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}.");
-
-                        Next = Contexts[i++];
-
-                        // Check Right Object
-                        if ((Next.Type & ExpressionObjectType.Identifier) > 0)
-                            throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}.");
-
-                        Right = Next.ExpressionType switch
-                        {
-                            // +
-                            ExpressionType.Add or
-                            ExpressionType.AddAssign or
-                            ExpressionType.AddChecked or
-                            ExpressionType.AddAssignChecked or
-                            ExpressionType.UnaryPlus => Next.Implement(Base, Parameters),
-
-                            // -
-                            ExpressionType.Negate or
-                            ExpressionType.NegateChecked or
-                            ExpressionType.Subtract or
-                            ExpressionType.SubtractAssign or
-                            ExpressionType.SubtractChecked or
-                            ExpressionType.SubtractAssignChecked => Expression.Negate(Next.Implement(Base, Parameters)),
-
-                            _ => throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}."),
-                        };
-                    }
-                    else
-                    {
-                        Right = Next.Implement(Base, Parameters);
-                    }
+                    Expression Right = GetNextExpression(ref i, Length, Base, Parameters);
 
                     // Check Start
                     if (Left is null)
                     {
-                        Left = Curt.ExpressionType switch
-                        {
-                            // +
-                            ExpressionType.Add or
-                            ExpressionType.AddAssign or
-                            ExpressionType.AddChecked or
-                            ExpressionType.AddAssignChecked or
-                            ExpressionType.UnaryPlus => Right,
+                        Left = Curt is ExpressionConvert Convert ?
+                               Right.Cast(Convert.Type) :
+                               Curt.ExpressionType switch
+                               {
+                                   // +
+                                   ExpressionType.Add or
+                                   ExpressionType.AddChecked or
+                                   ExpressionType.UnaryPlus => Right,
 
-                            // -
-                            ExpressionType.Negate or
-                            ExpressionType.NegateChecked or
-                            ExpressionType.Subtract or
-                            ExpressionType.SubtractAssign or
-                            ExpressionType.SubtractChecked or
-                            ExpressionType.SubtractAssignChecked => Expression.Negate(Right),
+                                   // -
+                                   ExpressionType.Negate or
+                                   ExpressionType.NegateChecked or
+                                   ExpressionType.Subtract or
+                                   ExpressionType.SubtractChecked => Expression.Negate(Right),
 
-                            _ => throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}."),
-                        };
+                                   _ => throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}."),
+                               };
 
                         continue;
                     }
@@ -120,9 +79,7 @@ namespace MenthaAssembly.Expressions
                     {
                         // +
                         ExpressionType.Add or
-                        ExpressionType.AddAssign or
                         ExpressionType.AddChecked or
-                        ExpressionType.AddAssignChecked or
                         ExpressionType.UnaryPlus => MaxType != null ? Expression.Add(Left.Cast(MaxType), Right.Cast(MaxType)) :
                                                                       throw new InvalidCastException($"{Left.Type.Name} + {Right.Type.Name}."),
 
@@ -130,27 +87,21 @@ namespace MenthaAssembly.Expressions
                         ExpressionType.Negate or
                         ExpressionType.NegateChecked or
                         ExpressionType.Subtract or
-                        ExpressionType.SubtractAssign or
-                        ExpressionType.SubtractChecked or
-                        ExpressionType.SubtractAssignChecked => MaxType != null ? Expression.Subtract(Left.Cast(MaxType), Right.Cast(MaxType)) :
-                                                                                  throw new InvalidCastException($"{Left.Type.Name} - {Right.Type.Name}."),
+                        ExpressionType.SubtractChecked => MaxType != null ? Expression.Subtract(Left.Cast(MaxType), Right.Cast(MaxType)) :
+                                                                            throw new InvalidCastException($"{Left.Type.Name} - {Right.Type.Name}."),
 
                         // *
                         ExpressionType.Multiply or
-                        ExpressionType.MultiplyAssign or
-                        ExpressionType.MultiplyChecked or
-                        ExpressionType.MultiplyAssignChecked => MaxType != null ? Expression.Multiply(Left.Cast(MaxType), Right.Cast(MaxType)) :
-                                                                                  throw new InvalidCastException($"{Left.Type.Name} * {Right.Type.Name}."),
+                        ExpressionType.MultiplyChecked => MaxType != null ? Expression.Multiply(Left.Cast(MaxType), Right.Cast(MaxType)) :
+                                                                            throw new InvalidCastException($"{Left.Type.Name} * {Right.Type.Name}."),
 
                         // /
-                        ExpressionType.Divide or
-                        ExpressionType.DivideAssign => MaxType != null ? Expression.Divide(Left.Cast(MaxType), Right.Cast(MaxType)) :
-                                                                         throw new InvalidCastException($"{Left.Type.Name} / {Right.Type.Name}."),
+                        ExpressionType.Divide => MaxType != null ? Expression.Divide(Left.Cast(MaxType), Right.Cast(MaxType)) :
+                                                                   throw new InvalidCastException($"{Left.Type.Name} / {Right.Type.Name}."),
 
                         // %
-                        ExpressionType.Modulo or
-                        ExpressionType.ModuloAssign => MaxType != null ? Expression.Modulo(Left.Cast(MaxType), Right.Cast(MaxType)) :
-                                                                         throw new InvalidCastException($"{Left.Type.Name} % {Right.Type.Name}."),
+                        ExpressionType.Modulo => MaxType != null ? Expression.Modulo(Left.Cast(MaxType), Right.Cast(MaxType)) :
+                                                                   throw new InvalidCastException($"{Left.Type.Name} % {Right.Type.Name}."),
 
                         // ^
                         ExpressionType.Power => Expression.Power(Left.Cast(typeof(double)), Right.Cast(typeof(double))),
@@ -171,14 +122,84 @@ namespace MenthaAssembly.Expressions
             Block = Left;
             return Block;
         }
+        private Expression GetNextExpression(ref int Index, int Count, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+        {
+            IExpressionObject Next = Contexts[Index++];
+            if ((Next.Type & ExpressionObjectType.Identifier) > 0)
+            {
+                // Check End.
+                if (Count <= Index)
+                    throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}.");
+
+                // Math
+                if (Next.Type == ExpressionObjectType.MathIdentifier)
+                {
+                    ExpressionType Operator = Next.ExpressionType;
+                    Next = Contexts[Index++];
+
+                    // Check Right Object
+                    if ((Next.Type & ExpressionObjectType.Identifier) > 0)
+                        throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}.");
+
+                    return Operator switch
+                    {
+                        // +
+                        ExpressionType.Add or
+                        ExpressionType.AddChecked or
+                        ExpressionType.UnaryPlus => Next.Implement(Base, Parameters),
+
+                        // -
+                        ExpressionType.Negate or
+                        ExpressionType.NegateChecked or
+                        ExpressionType.Subtract or
+                        ExpressionType.SubtractChecked => Expression.Negate(Next.Implement(Base, Parameters)),
+
+                        _ => throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}."),
+                    };
+                }
+
+                // Convert
+                else if (Next is ExpressionConvert Convert)
+                {
+                    Next = Contexts[Index++];
+
+                    // Check Right Object
+                    if ((Next.Type & ExpressionObjectType.Identifier) > 0)
+                        throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}.");
+
+                    return Next.Implement(Base, Parameters).Cast(Convert.Type);
+                }
+
+                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Invalid operator : {this}.");
+            }
+
+            return Next.Implement(Base, Parameters);
+        }
 
         private bool IsNormalized = false;
-        private void Normalize()
+        private void Normalize(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
         {
             if (IsNormalized)
                 return;
 
             IExpressionObject Last, Curt;
+
+            #region Convert
+            {
+                for (int i = 0; i < Contexts.Count; i++)
+                {
+                    Curt = Contexts[i];
+                    if (Curt is ExpressionBlock Block &&
+                        Block.Contexts.Count == 1 &&
+                        Block.Contexts[0] is ExpressionRoute Route &&
+                        Route.TryParseType(Base, Parameters, out Type Type))
+                    {
+                        Contexts.RemoveAt(i);
+                        Contexts.Insert(i, new ExpressionConvert(Type));
+                    }
+                }
+            }
+            #endregion
 
             #region Abs
             {
