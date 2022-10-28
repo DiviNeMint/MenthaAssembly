@@ -37,8 +37,8 @@ namespace MenthaAssembly
             }
         }
 
-        private static ILanguagePacket _Current;
-        public static ILanguagePacket Current
+        private static LanguagePacketBase _Current;
+        public static LanguagePacketBase Current
         {
             get => _Current;
             set
@@ -92,16 +92,16 @@ namespace MenthaAssembly
                                        .Where(i => i.IsClass &&
                                                    !i.IsAbstract &&
                                                    !i.Name.Equals(nameof(MultiLanguagePacket)) &&
-                                                   i.IsBaseOn<ILanguagePacket>()) is IEnumerable<Type> DataTypes)
+                                                   i.IsBaseOn<LanguagePacketBase>()) is IEnumerable<Type> DataTypes)
             {
-                Current = new MultiLanguagePacket(DataTypes.Select(t => Activator.CreateInstance(t) as ILanguagePacket)
+                Current = new MultiLanguagePacket(DataTypes.Select(t => Activator.CreateInstance(t) as LanguagePacketBase)
                                                            .Where(i => i != null));
                 AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
             }
 
             Current.Load(LanguageName);
         }
-        public static void Load(this ILanguagePacket Packet, string LanguageName)
+        public static void Load(this LanguagePacketBase Packet, string LanguageName)
         {
             string FilePath = Path.Combine(LanguagesFolder, $"{LanguageName}{ExtensionName}");
             if (File.Exists(FilePath))
@@ -117,9 +117,9 @@ namespace MenthaAssembly
                 throw new ArgumentNullException(LanguageName, $"Can't find Language Packet at {FilePath}");
             }
         }
-        public static void Save(this ILanguagePacket Packet, string DirectoryPath)
+        public static void Save(this LanguagePacketBase Packet, string DirectoryPath)
             => Save(Packet, Packet.LanguageName, DirectoryPath);
-        public static void Save(this ILanguagePacket Packet, string LanguageName, string DirectoryPath)
+        public static void Save(this LanguagePacketBase Packet, string LanguageName, string DirectoryPath)
         {
             if (!Directory.Exists(LanguagesFolder))
                 Directory.CreateDirectory(LanguagesFolder);
@@ -152,12 +152,12 @@ namespace MenthaAssembly
             {
                 if (_Current is MultiLanguagePacket Packet)
                 {
-                    ILanguagePacket[] Packets = e.LoadedAssembly.GetTypes()
+                    LanguagePacketBase[] Packets = e.LoadedAssembly.GetTypes()
                                                                 .Where(i => i.IsClass &&
                                                                             !i.IsAbstract &&
                                                                             !i.Name.Equals(nameof(MultiLanguagePacket)) &&
-                                                                            i.IsBaseOn<ILanguagePacket>())
-                                                                .Select(t => Activator.CreateInstance(t) as ILanguagePacket)
+                                                                            i.IsBaseOn<LanguagePacketBase>())
+                                                                .Select(t => Activator.CreateInstance(t) as LanguagePacketBase)
                                                                 .Where(i => i != null)
                                                                 .ToArray();
                     if (Packets.Length > 0)

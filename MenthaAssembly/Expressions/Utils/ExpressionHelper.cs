@@ -34,7 +34,6 @@ namespace System.Linq.Expressions
             {
                 int Length = Path.Length;
                 char c;
-                ConstantExpression NullArg = Expression.Constant(null);
                 ParameterExpression Arg = Expression.Parameter(t, "a");
                 Expression Body = Expression.Convert(Arg, ParentType);
                 for (int i = 0; i < Length; i++)
@@ -160,7 +159,6 @@ namespace System.Linq.Expressions
             {
                 int Length = Path.Length;
                 char c;
-                ConstantExpression NullArg = Expression.Constant(null);
                 ParameterExpression Arg = Expression.Parameter(t, "a");
                 Expression Body = Expression.Convert(Arg, ParentType);
                 for (int i = 0; i < Length; i++)
