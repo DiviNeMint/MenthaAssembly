@@ -44,7 +44,7 @@ namespace MenthaAssembly.Expressions
         private Expression Method;
         public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
             => TryImplement(null, Base, Parameters, out Method) ? Method :
-               throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found method : {this}.");
+               throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found valid method : {this}.");
         public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
         {
             if (Method != null)
@@ -69,7 +69,7 @@ namespace MenthaAssembly.Expressions
 
                 if (!ReflectionHelper.TryGetMethodWithImplicitParameter(Base.Type, Name, GenericTypes, ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes))
                 {
-                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found method : {Name}" +
+                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found valid method : {Name}" +
                                     $"{(GenericTypes.Length > 0 ? $"<{string.Join(", ", GenericTypes.Select(i => i.Name))}>" : string.Empty)}, " +
                                     $"with parameters : {{{string.Join(", ", ParameterTypes.Select(i => i.Name))}}} in {Base.Type.Name}.");
                     Expression = null;
@@ -89,7 +89,7 @@ namespace MenthaAssembly.Expressions
             {
                 if (!ReflectionHelper.TryGetMethodWithImplicitParameter(StaticType, Name, GenericTypes, ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes))
                 {
-                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found method : {Name}" +
+                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found valid method : {Name}" +
                                     $"{(GenericTypes.Length > 0 ? $"<{string.Join(", ", GenericTypes.Select(i => i.Name))}>" : string.Empty)}, " +
                                     $"with parameters : {{{string.Join(", ", ParameterTypes.Select(i => i.Name))}}} in {StaticType.Name}.");
                     Expression = null;
@@ -109,7 +109,7 @@ namespace MenthaAssembly.Expressions
             {
                 if (!ReflectionHelper.TryGetMethodWithImplicitParameter(ParentExpression.Type, Name, GenericTypes, ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes))
                 {
-                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found method : {Name}" +
+                    Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found valid method : {Name}" +
                                     $"{(GenericTypes.Length > 0 ? $"<{string.Join(", ", GenericTypes.Select(i => i.Name))}>" : string.Empty)}, " +
                                     $"with parameters : {{{string.Join(", ", ParameterTypes.Select(i => i.Name))}}} in {ParentExpression.Type.Name}.");
                     Expression = null;

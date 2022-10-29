@@ -635,8 +635,29 @@ namespace System.Linq.Expressions
                     Route.Contexts.Add(Method);
 
                     // Skips all trailing spaces.
-                    if (!ReaderHelper.MoveTo(Code, ref Index, Length, false, c => !char.IsWhiteSpace(c)) ||
-                        Code[Index] != '.')
+                    if (!ReaderHelper.MoveTo(Code, ref Index, Length, false, c => !char.IsWhiteSpace(c)))
+                        return Route;
+
+                    c = Code[Index];
+
+                    // Indexer
+                    if (c == '[')
+                    {
+                        if (!TryParseCollectionContents(Code, ref Index, Length, ref Builder, out Parameters) ||
+                            Parameters.Count == 0)
+                            return Route;
+
+                        ExpressionIndexer Indexer = new ExpressionIndexer(Parameters);
+                        Route.Contexts.Add(Indexer);
+
+                        // Skips all trailing spaces.
+                        if (!ReaderHelper.MoveTo(Code, ref Index, Length, false, c => !char.IsWhiteSpace(c)))
+                            return Route;
+
+                        c = Code[Index];
+                    }
+
+                    if (c != '.')
                         return Route;
 
                     // Skip '.'
@@ -653,6 +674,23 @@ namespace System.Linq.Expressions
                 }
 
                 Route.Contexts.Add(Member);
+
+                // Indexer
+                if (c == '[')
+                {
+                    if (!TryParseCollectionContents(Code, ref Index, Length, ref Builder, out List<IExpressionObject> Parameters) ||
+                        Parameters.Count == 0)
+                        return Route;
+
+                    ExpressionIndexer Indexer = new ExpressionIndexer(Parameters);
+                    Route.Contexts.Add(Indexer);
+
+                    // Skips all trailing spaces.
+                    if (!ReaderHelper.MoveTo(Code, ref Index, Length, false, c => !char.IsWhiteSpace(c)))
+                        return Route;
+
+                    c = Code[Index];
+                }
 
                 if (c != '.')
                     break;

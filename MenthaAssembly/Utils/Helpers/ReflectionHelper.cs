@@ -191,6 +191,96 @@ namespace System.Reflection
 
         #endregion
 
+        #region Indexer
+        public static bool TryGetIndexer<T>(Type[] ParameterTypes, out PropertyInfo Info)
+            => TryGetIndexer(typeof(T), PublicFlags, ParameterTypes, out Info);
+        public static bool TryGetIndexer<T>(BindingFlags Flags, Type[] ParameterTypes, out PropertyInfo Info)
+            => TryGetIndexer(typeof(T), Flags, ParameterTypes, out Info);
+        public static bool TryGetIndexer(this Type This, Type[] ParameterTypes, out PropertyInfo Info)
+            => TryGetIndexer(This, PublicFlags, ParameterTypes, out Info);
+        public static bool TryGetIndexer(this Type This, BindingFlags Flags, Type[] ParameterTypes, out PropertyInfo Info)
+        {
+            int ParameterCount = ParameterTypes.Length;
+            while (This != null)
+            {
+                foreach (PropertyInfo Property in This.GetProperties(Flags))
+                {
+                    ParameterInfo[] Params = Property.GetIndexParameters();
+                    if (Params.Length != ParameterCount)
+                        continue;
+
+                    if (ParameterTypes.SequenceEqual(Params.Select(i => i.ParameterType)))
+                    {
+                        Info = Property;
+                        return true;
+                    }
+                }
+
+                This = This.BaseType;
+            }
+
+            Info = null;
+            return false;
+        }
+
+        public static bool TryGetIndexerWithImplicitParameter<T>(Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
+            => TryGetIndexerWithImplicitParameter(typeof(T), PublicFlags, ParameterTypes, out Info, out DefinedParameterTypes);
+        public static bool TryGetIndexerWithImplicitParameter<T>(BindingFlags Flags, Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
+            => TryGetIndexerWithImplicitParameter(typeof(T), Flags, ParameterTypes, out Info, out DefinedParameterTypes);
+        public static bool TryGetIndexerWithImplicitParameter(this Type This, Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
+            => TryGetIndexerWithImplicitParameter(This, PublicFlags, ParameterTypes, out Info, out DefinedParameterTypes);
+        public static bool TryGetIndexerWithImplicitParameter(this Type This, BindingFlags Flags, Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
+        {
+            int ParameterCount = ParameterTypes.Length;
+
+            PropertyInfo MinorIndexer = null;
+            Type[] MinorParameterTypes = null;
+            int MinorScore = int.MaxValue;
+
+            while (This != null)
+            {
+                foreach (PropertyInfo Property in This.GetProperties(Flags))
+                {
+                    ParameterInfo[] Params = Property.GetIndexParameters();
+                    if (Params.Length != ParameterCount)
+                        continue;
+
+                    Type[] TempDefinedParameterTypes = Params.Select(i => i.ParameterType).ToArray();
+                    int Score = MatchParameters(ParameterTypes, TempDefinedParameterTypes);
+                    if (Score == 0)
+                    {
+                        Info = Property;
+                        DefinedParameterTypes = ParameterTypes;
+                        return true;
+                    }
+                    else if (Score > 0)
+                    {
+                        if (Score < MinorScore)
+                        {
+                            MinorScore = Score;
+                            MinorIndexer = Property;
+                            MinorParameterTypes = TempDefinedParameterTypes;
+                        }
+                    }
+                }
+
+                This = This.BaseType;
+            }
+
+            if (MinorIndexer is null)
+            {
+                Info = null;
+                DefinedParameterTypes = null;
+                return false;
+            }
+
+            Info = MinorIndexer;
+            DefinedParameterTypes = MinorParameterTypes;
+            return true;
+        }
+
+        #endregion
+
         #region Constant
         public static bool TryGetConstant<T>(this Type This, string Name, out T Value)
         {
@@ -469,38 +559,6 @@ namespace System.Reflection
             return true;
         }
 
-        /// <summary>
-        /// Scores the matching of the types.
-        /// </summary>
-        /// <returns>The score of matching.<para/>
-        /// If <paramref name="Types"/> are equal to <paramref name="DefinedTypes"/>, return 0.<para/>
-        /// If <paramref name="Types"/> and <paramref name="DefinedTypes"/> are completely different, return <see cref="int.MinValue"/>.</returns>
-        private static int MatchParameters(Type[] Types, Type[] DefinedTypes)
-        {
-            Type Type, DefinedType;
-            int Score = 0;
-            for (int i = 0; i < Types.Length; i++)
-            {
-                DefinedType = DefinedTypes[i];
-                Type = Types[i];
-                if (Type != DefinedType)
-                {
-                    Score++;
-                    if (!Type.IsConvertibleTo(DefinedType))
-                        return int.MinValue;
-
-                    if (NumberTypeScores.TryGetValue(Type, out sbyte Score1) &&
-                        NumberTypeScores.TryGetValue(DefinedType, out sbyte Score2))
-                    {
-                        int Delta = Score2 - Score1;
-                        Score += Delta < 0 ? 11 - Score1 : Delta;
-                    }
-                }
-            }
-
-            return Score;
-        }
-
         public static IEnumerable<MethodInfo> GetImplicits(this Type This)
         {
             Type BaseType = This;
@@ -574,6 +632,38 @@ namespace System.Reflection
         }
 
         #endregion
+
+        /// <summary>
+        /// Scores the matching of the types.
+        /// </summary>
+        /// <returns>The score of matching.<para/>
+        /// If <paramref name="Types"/> are equal to <paramref name="DefinedTypes"/>, return 0.<para/>
+        /// If <paramref name="Types"/> and <paramref name="DefinedTypes"/> are completely different, return <see cref="int.MinValue"/>.</returns>
+        private static int MatchParameters(Type[] Types, Type[] DefinedTypes)
+        {
+            Type Type, DefinedType;
+            int Score = 0;
+            for (int i = 0; i < Types.Length; i++)
+            {
+                DefinedType = DefinedTypes[i];
+                Type = Types[i];
+                if (Type != DefinedType)
+                {
+                    Score++;
+                    if (!Type.IsConvertibleTo(DefinedType))
+                        return int.MinValue;
+
+                    if (NumberTypeScores.TryGetValue(Type, out sbyte Score1) &&
+                        NumberTypeScores.TryGetValue(DefinedType, out sbyte Score2))
+                    {
+                        int Delta = Score2 - Score1;
+                        Score += Delta < 0 ? 11 - Score1 : Delta;
+                    }
+                }
+            }
+
+            return Score;
+        }
 
         #region Event
         public static bool TryGetEventField(this object This, string Name, out MulticastDelegate Delegates)

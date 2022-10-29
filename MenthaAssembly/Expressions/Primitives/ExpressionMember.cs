@@ -32,10 +32,17 @@ namespace MenthaAssembly.Expressions
 
         private Expression Member;
         public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
-            => TryImplement(null, Base, Parameters, out Member) ? Member :
-               throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found member : {this}.");
+            => GenericTypes.Count == 0 ? TryImplement(null, Base, Parameters, out Member) ? Member :
+               throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found member : {this}.") :
+               throw new InvalidProgramException($"[Expression]{this} is not object's member.");
         public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
         {
+            if (GenericTypes.Count > 0)
+            {
+                Expression = null;
+                return false;
+            }
+
             if (Member != null)
             {
                 Expression = Member;
@@ -106,7 +113,7 @@ namespace MenthaAssembly.Expressions
                 Debug.WriteLine($"[Expression][{nameof(TryImplement)}]Not found property or field : {Name} in {StaticType.Name}.");
             }
 
-            // Parent Method
+            // Parent Member
             else if (Parent is Expression ParentExpression)
             {
                 Type ParentType = ParentExpression.Type;
