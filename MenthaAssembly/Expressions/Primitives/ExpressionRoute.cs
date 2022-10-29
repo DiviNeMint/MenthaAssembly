@@ -197,7 +197,30 @@ namespace MenthaAssembly.Expressions
         }
 
         public override string ToString()
-            => string.Join(".", Contexts);
+        {
+            int Count = Contexts.Count;
+            if (Count == 0)
+                return string.Empty;
+
+            StringBuilder Builder = new StringBuilder(Contexts[0].ToString());
+            try
+            {
+                for (int i = 1; i < Count; i++)
+                {
+                    IExpressionRoute Child = Contexts[i];
+                    if (Child.Type != ExpressionObjectType.Indexer)
+                        Builder.Append(".");
+
+                    Builder.Append(Child.ToString());
+                }
+
+                return Builder.ToString();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
 
     }
 }

@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 
@@ -87,6 +85,8 @@ namespace MenthaAssembly.Expressions
                         return false;
                     }
                 case ')':
+                case ']':
+                case '}':
                 case ',':
                     {
                         Element = null;
@@ -138,6 +138,22 @@ namespace MenthaAssembly.Expressions
                     }
                 #endregion
                 #region Constant
+                // String
+                case '"':
+                    {
+                        Index++;    // Skip start char '"'
+                        string Content = ReaderHelper.ReadTo(Formula, ref Index, Length, false, out bool IsEnd, '"');
+                        if (IsEnd)
+                        {
+                            Element = new ExpressionObject(Content);
+                            return true;
+                        }
+
+                        Index++;    // Skip End char '"'
+                        Element = new ExpressionConst(Content);
+                        return true;
+                    }
+
                 // Decimal
                 case '.':
                     {
@@ -166,6 +182,9 @@ namespace MenthaAssembly.Expressions
                     }
             }
         }
+
+        public override string ToString()
+            => Context.ToString();
 
         public static implicit operator Expression(MathExpression This) => This.Context;
 

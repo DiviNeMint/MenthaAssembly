@@ -393,6 +393,22 @@ namespace System.Linq.Expressions
                     }
                 #endregion
                 #region Constant
+                // String
+                case '"':
+                    {
+                        Index++;    // Skip start char '"'
+                        string Content = ReaderHelper.ReadTo(Code, ref Index, Length, false, out bool IsEnd, '"');
+                        if (IsEnd)
+                        {
+                            Element = new ExpressionObject(Content);
+                            return true;
+                        }
+
+                        Index++;    // Skip End char '"'
+                        Element = new ExpressionConst(Content);
+                        return true;
+                    }
+
                 // Decimal
                 case '.':
                     {
@@ -945,7 +961,8 @@ namespace System.Linq.Expressions
                This == '|' || This == '&' || This == '~' || This == '!' || This == '<' || This == '=' || This == '>' ||
                This == '(' || This == ')' || This == '[' || This == ']' || This == '{' || This == '}' || This == ',' ||
                This == '?' || This == ':' ||
-               This == ';';
+               This == ';' ||
+               This == '"';
 
     }
 
