@@ -167,9 +167,6 @@ namespace System
         /// </summary>
         public static int ToInt32Fast(this string This)
         {
-            if (string.IsNullOrEmpty(This))
-                return default;
-
             char c = This[0];
             bool IsNegative = c.Equals('-');
             int r = IsNegative ? 0 : c - '0';
@@ -183,31 +180,52 @@ namespace System
         /// Convert string to Int32<para/>
         /// It don't check whether all chars is number (including char '-').
         /// </summary>
-        public static int ToPositiveInt32Fast(this string This)
+        public static int ToUnsignInt32Fast(this string This)
         {
-            int r = 0;
-
-            char c = This[0];
-            bool IsNegative = '-'.Equals(c);
-
-            if (!IsNegative)
-                r = c - '0';
-
+            int r = This[0] - '0';
             for (int i = 1; i < This.Length; i++)
                 r = r * 10 + (This[i] - '0');
 
-            return IsNegative ? -r : r;
+            return r;
         }
+
         /// <summary>
         /// Convert string to UInt32<para/>
         /// It don't check whether all chars is number.
         /// </summary>
         public static uint ToUInt32Fast(this string This)
         {
-            uint r = 0;
-
-            for (int i = 0; i < This.Length; i++)
+            uint r = (uint)(This[0] - '0');
+            for (int i = 1; i < This.Length; i++)
                 r = r * 10 + (uint)(This[i] - '0');
+
+            return r;
+        }
+
+        /// <summary>
+        /// Convert string to Int64<para/>
+        /// It don't check whether all chars is number.
+        /// </summary>
+        public static long ToInt64Fast(this string This)
+        {
+            char c = This[0];
+            bool IsNegative = c.Equals('-');
+
+            long r = IsNegative ? 0 : c - '0';
+            for (int i = 1; i < This.Length; i++)
+                r = r * 10 + (This[i] - '0');
+
+            return IsNegative ? -r : r;
+        }
+        /// <summary>
+        /// Convert string to Int64<para/>
+        /// It don't check whether all chars is number (including char '-').
+        /// </summary>
+        public static long ToUnsignInt64Fast(this string This)
+        {
+            long r = This[0] - '0';
+            for (int i = 1; i < This.Length; i++)
+                r = r * 10 + (This[i] - '0');
 
             return r;
         }
@@ -257,7 +275,7 @@ namespace System
         /// Convert string to Double<para/>
         /// It don't check whether all chars is number (including char '-').
         /// </summary>
-        public static double ToPositiveDoubleFast(this string This)
+        public static double ToUnsignDoubleFast(this string This)
         {
             double Integer = 0d;
 
@@ -325,7 +343,7 @@ namespace System
         /// Convert string to Float<para/>
         /// It don't check whether all chars is number (including char '-').
         /// </summary>
-        public static float ToPositiveFloatFast(this string This)
+        public static float ToUnsignFloatFast(this string This)
         {
             float Integer = 0f;
 
@@ -349,6 +367,74 @@ namespace System
                 Digital = Digital * 0.1f + (This[j] - '0');
 
             return Integer + Digital * 0.1f;
+        }
+
+        /// <summary>
+        /// Convert string to Decimal<para/>
+        /// It don't check whether all chars is number.
+        /// </summary>
+        public static decimal ToDecimalFast(this string This)
+        {
+            decimal Integer = 0m;
+
+            char c;
+            int i = 0,
+                Length = This.Length;
+
+            bool IsNegative = false;
+
+            // Integer
+            for (; i < Length; i++)
+            {
+                c = This[i];
+
+                if (c.Equals('-'))
+                {
+                    IsNegative = true;
+                    continue;
+                }
+
+                if (c.Equals('.'))
+                    break;
+
+                Integer = Integer * 10m + (c - '0');
+            }
+
+            // Digital
+            decimal Digital = 0m;
+            for (int j = Length - 1; j > i; j--)
+                Digital = Digital * 0.1m + (This[j] - '0');
+
+            return IsNegative ? -Integer - Digital * 0.1m : Integer + Digital * 0.1m;
+        }
+        /// <summary>
+        /// Convert string to Decimal<para/>
+        /// It don't check whether all chars is number (including char '-').
+        /// </summary>
+        public static decimal ToUnsignDecimalFast(this string This)
+        {
+            decimal Integer = 0m;
+
+            char c;
+            int i = 0,
+                Length = This.Length;
+
+            // Integer
+            for (; i < Length; i++)
+            {
+                c = This[i];
+                if (c == '.')
+                    break;
+
+                Integer = Integer * 10m + (c - '0');
+            }
+
+            // Digital
+            decimal Digital = 0m;
+            for (int j = Length - 1; j > i; j--)
+                Digital = Digital * 0.1m + (This[j] - '0');
+
+            return Integer + Digital * 0.1m;
         }
 
     }

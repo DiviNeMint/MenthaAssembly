@@ -152,8 +152,7 @@ namespace MenthaAssembly.Expressions
             if (Count == 1)
             {
                 if (Parameters.Any(i => i.Name == Name) ||
-                    Base.Type.GetProperty(Name) != null ||
-                    Base.Type.GetField(Name) != null)
+                    (Base != null && (Base.Type.GetProperty(Name) != null || Base.Type.GetField(Name) != null)))
                 {
                     Type = null;
                     return false;

@@ -195,7 +195,21 @@ namespace MenthaAssembly.Expressions
                         Route.TryParseType(Base, Parameters, out Type Type))
                     {
                         Contexts.RemoveAt(i);
-                        Contexts.Insert(i, new ExpressionConvert(Type));
+
+                        ExpressionBlock Group = new ExpressionBlock();
+                        Group.Contexts.Add(new ExpressionConvert(Type));
+
+                        for (; i < Contexts.Count;)
+                        {
+                            Curt = Contexts[i];
+                            Contexts.RemoveAt(i);
+                            Group.Contexts.Add(Curt);
+
+                            if ((Curt.Type & ExpressionObjectType.Identifier) == 0)
+                                break;
+                        }
+
+                        Contexts.Insert(i, Group);
                     }
                 }
             }
