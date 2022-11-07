@@ -234,12 +234,12 @@ namespace MenthaAssembly
         /// <param name="Min">The lower bound of the result.</param>
         /// <param name="Max">The upper bound of the result.</param>
         public static T Clamp<T>(this T This, T Min, T Max)
-            where T : IComparable
         {
-            if (This.CompareTo(Min) < 0)
+            Comparer<T> Comparer = Comparer<T>.Default;
+            if (Comparer.Compare(This, Min) < 0)
                 return Min;
 
-            if (This.CompareTo(Max) > 0)
+            if (Comparer.Compare(This, Max) > 0)
                 return Max;
 
             return This;
@@ -252,12 +252,12 @@ namespace MenthaAssembly
         /// <param name="Min">The lower bound of the result.</param>
         /// <param name="Max">The upper bound of the result.</param>
         public static bool IsClamped<T>(this T This, T Min, T Max)
-            where T : IComparable
         {
-            if (This.CompareTo(Min) < 0)
+            Comparer<T> Comparer = Comparer<T>.Default;
+            if (Comparer.Compare(This, Min) < 0)
                 return false;
 
-            if (This.CompareTo(Max) > 0)
+            if (Comparer.Compare(This, Max) > 0)
                 return false;
 
             return true;
@@ -269,7 +269,6 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Source">The specified numbers.</param>
         public static T Max<T>(params T[] Source)
-            where T : IComparable
             => Source.Max();
         /// <summary>
         /// Returns the lowest number of specified numbers.
@@ -277,7 +276,6 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Source">The specified numbers.</param>
         public static T Min<T>(params T[] Source)
-            where T : IComparable
             => Source.Min();
 
         /// <summary>
@@ -288,7 +286,6 @@ namespace MenthaAssembly
         /// <param name="Max">The largest number.</param>
         /// <param name="Source">The specified numbers.</param>
         public static void MinAndMax<T>(out T Min, out T Max, params T[] Source)
-            where T : IComparable
             => Source.MinAndMax(out Min, out Max);
         /// <summary>
         /// Returns the largest and the lowest number of specified numbers.
@@ -298,29 +295,28 @@ namespace MenthaAssembly
         /// <param name="Min">The lowest number.</param>
         /// <param name="Max">The largest number.</param>
         public static void MinAndMax<T>(this IEnumerable<T> Source, out T Min, out T Max)
-            where T : IComparable
         {
-            IEnumerator<T> Enumerator = Source.GetEnumerator();
-
-            if (!Enumerator.MoveNext())
+            bool HasItem = false;
+            Min = default;
+            Max = default;
+            
+            Comparer<T> Comparer = null;
+            foreach (T Item in Source)
             {
-                Min = default;
-                Max = default;
-                return;
-            }
-
-            Min = Enumerator.Current;
-            Max = Min;
-
-            T Temp;
-            while (Enumerator.MoveNext())
-            {
-                Temp = Enumerator.Current;
-
-                if (Temp.CompareTo(Min) < 0)
-                    Min = Temp;
-                else if (Temp.CompareTo(Max) > 0)
-                    Max = Temp;
+                if (HasItem)
+                {
+                    if (Comparer.Compare(Item, Min) < 0)
+                        Min = Item;
+                    else if (Comparer.Compare(Item, Max) > 0)
+                        Max = Item;
+                }
+                else
+                {
+                    HasItem = true;
+                    Comparer = Comparer<T>.Default;
+                    Min = Item;
+                    Max = Item;
+                }
             }
         }
 
