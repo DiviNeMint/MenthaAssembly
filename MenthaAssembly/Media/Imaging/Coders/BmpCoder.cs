@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using MenthaAssembly.Utils;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -205,7 +204,8 @@ namespace MenthaAssembly.Media.Imaging
 
             // Datas
             byte[] ImageDatas = new byte[Stride];
-            byte* pImageDatas = ImageDatas.ToPointer();
+            using PinnedIntPtr Pinned = new PinnedIntPtr(ImageDatas);
+            byte* pImageDatas = (byte*)Pinned.DangerousGetHandle();
 
             Action<int> DataCopyAction = Image.BitsPerPixel == 32 ? y => Image.ScanLineCopy<BGRA>(0, y, Image.Width, pImageDatas) :
                                          Image.BitsPerPixel == 8 ? y => Image.ScanLineCopy<Gray8>(0, y, Image.Width, pImageDatas) :

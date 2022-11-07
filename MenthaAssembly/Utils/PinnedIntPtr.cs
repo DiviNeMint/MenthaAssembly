@@ -6,7 +6,7 @@ namespace MenthaAssembly.Utils
     public class PinnedIntPtr : SafeHandle
     {
         public override bool IsInvalid
-            => Handle.IsAllocated;
+            => !Handle.IsAllocated;
 
         private readonly GCHandle Handle;
         public PinnedIntPtr(object Value) : base(IntPtr.Zero, true)
