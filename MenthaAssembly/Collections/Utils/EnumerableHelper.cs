@@ -6,6 +6,39 @@ namespace System.Linq
     public static class EnumerableHelper
     {
         /// <summary>
+        /// Returns a specified number of contiguous elements from the start of a sequence.
+        /// </summary>
+        /// <param name="Source">The sequence to return elements from.</param>
+        /// <param name="Count">The number of elements to return.</param>
+        public static IEnumerable<object> Take(this IEnumerable Source, int Count)
+        {
+            int i = 0;
+            foreach (object Item in Source)
+            {
+                if (i++ >= Count)
+                    yield break;
+
+                yield return Item;
+            }
+        }
+        /// <summary>
+        /// Bypasses a specified number of elements in a sequence and then returns the remaining
+        /// </summary>
+        /// <param name="Source">The sequence to return elements from.</param>
+        /// <param name="Count">The number of elements to skip before returning the remaining elements.</param>
+        public static IEnumerable<object> Skip(this IEnumerable Source, int Count)
+        {
+            int i = 0;
+            foreach (object Item in Source)
+            {
+                if (i++ < Count)
+                    continue;
+
+                yield return Item;
+            }
+        }
+
+        /// <summary>
         /// Returns the first element of a sequence, or a null value if the sequence contains no elements.
         /// </summary>
         /// <param name="Source">The sequence to return the first element of.</param>
@@ -144,36 +177,36 @@ namespace System.Linq
         public static bool IsEmpty(this IEnumerable Source)
             => !Source.GetEnumerator().MoveNext();
 
-//#if NETSTANDARD2_0
-//        /// <summary>
-//        /// Appends a value to the end of the sequence.
-//        /// </summary>
-//        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
-//        /// <param name="Source">A sequence of values.</param>
-//        /// <param name="Element">The value to append to source.</param>
-//        public static IEnumerable<TSource> Append<TSource>(this IEnumerable<TSource> Source, TSource Element)
-//        {
-//            foreach (TSource Item in Source)
-//                yield return Item;
+        //#if NETSTANDARD2_0
+        //        /// <summary>
+        //        /// Appends a value to the end of the sequence.
+        //        /// </summary>
+        //        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
+        //        /// <param name="Source">A sequence of values.</param>
+        //        /// <param name="Element">The value to append to source.</param>
+        //        public static IEnumerable<TSource> Append<TSource>(this IEnumerable<TSource> Source, TSource Element)
+        //        {
+        //            foreach (TSource Item in Source)
+        //                yield return Item;
 
-//            yield return Element;
-//        }
+        //            yield return Element;
+        //        }
 
-//        /// <summary>
-//        /// Adds a value to the beginning of the sequence.
-//        /// </summary>
-//        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
-//        /// <param name="Source">A sequence of values.</param>
-//        /// <param name="Element">The value to prepend to source.</param>
-//        public static IEnumerable<TSource> Prepend<TSource>(this IEnumerable<TSource> Source, TSource Element)
-//        {
-//            yield return Element;
+        //        /// <summary>
+        //        /// Adds a value to the beginning of the sequence.
+        //        /// </summary>
+        //        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
+        //        /// <param name="Source">A sequence of values.</param>
+        //        /// <param name="Element">The value to prepend to source.</param>
+        //        public static IEnumerable<TSource> Prepend<TSource>(this IEnumerable<TSource> Source, TSource Element)
+        //        {
+        //            yield return Element;
 
-//            foreach (TSource Item in Source)
-//                yield return Item;
-//        }
+        //            foreach (TSource Item in Source)
+        //                yield return Item;
+        //        }
 
-//#endif
+        //#endif
 
         public static IEnumerable<TResult> Select<TResult>(this IEnumerable Source, Func<object, TResult> Selector)
         {
