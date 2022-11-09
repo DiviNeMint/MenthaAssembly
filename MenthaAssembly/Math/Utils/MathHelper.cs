@@ -234,12 +234,12 @@ namespace MenthaAssembly
         /// <param name="Min">The lower bound of the result.</param>
         /// <param name="Max">The upper bound of the result.</param>
         public static T Clamp<T>(this T This, T Min, T Max)
+            where T : IComparable<T>
         {
-            Comparer<T> Comparer = Comparer<T>.Default;
-            if (Comparer.Compare(This, Min) < 0)
+            if (This.CompareTo(Min) < 0)
                 return Min;
 
-            if (Comparer.Compare(This, Max) > 0)
+            if (This.CompareTo(Max) > 0)
                 return Max;
 
             return This;
@@ -252,12 +252,12 @@ namespace MenthaAssembly
         /// <param name="Min">The lower bound of the result.</param>
         /// <param name="Max">The upper bound of the result.</param>
         public static bool IsClamped<T>(this T This, T Min, T Max)
+            where T :IComparable<T>
         {
-            Comparer<T> Comparer = Comparer<T>.Default;
-            if (Comparer.Compare(This, Min) < 0)
+            if (This.CompareTo(Min) < 0)
                 return false;
 
-            if (Comparer.Compare(This, Max) > 0)
+            if (This.CompareTo(Max) > 0)
                 return false;
 
             return true;
