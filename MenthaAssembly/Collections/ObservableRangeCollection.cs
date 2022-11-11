@@ -12,6 +12,16 @@ namespace MenthaAssembly
         private const string CountString = "Count";
         private const string IndexerName = "Item[]";
 
+        public ObservableRangeCollection() : base()
+        {
+        }
+        public ObservableRangeCollection(IEnumerable<T> Collection) : base(Collection)
+        {
+        }
+        public ObservableRangeCollection(List<T> List) : base(List)
+        {
+        }
+
         public virtual void AddRange(IEnumerable<T> Items)
         {
             CheckReentrancy();
