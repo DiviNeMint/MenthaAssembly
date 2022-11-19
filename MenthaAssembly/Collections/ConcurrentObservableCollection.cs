@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -109,13 +108,6 @@ namespace MenthaAssembly
                 OnPropertyChanged(CountName);
                 OnPropertyChanged(IndexerName);
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-            });
-
-        public void ForEach(Action<T> Action)
-            => Handle(() =>
-            {
-                foreach (T item in Items)
-                    Action(item);
             });
 
         private void OnPropertyChanged([CallerMemberName] string PropertyName = null)

@@ -31,6 +31,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private NearestResizePixelAdapter(NearestResizePixelAdapter<T> Adapter)
         {
             Source = Adapter.Source.Clone();
+            MaxX = Adapter.MaxX;
+            MaxY = Adapter.MaxY;
             StepX = Adapter.StepX;
             StepY = Adapter.StepY;
             FracX = Adapter.FracX;
