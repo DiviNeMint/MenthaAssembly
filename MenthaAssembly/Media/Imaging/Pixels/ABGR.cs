@@ -29,6 +29,9 @@
         }
         void IPixel.Overlay(byte A, byte R, byte G, byte B)
         {
+            if (A == byte.MinValue)
+                return;
+
             int A1 = this.A,
                 rA = 255 - A,
                 Alpha = 65025 - rA * (255 - A1);

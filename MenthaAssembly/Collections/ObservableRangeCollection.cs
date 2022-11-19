@@ -36,27 +36,19 @@ namespace MenthaAssembly
 
         public virtual void RemoveRange(IEnumerable<T> Items)
         {
+            CheckReentrancy();
+
             if (Items is not T[] &&
                 Items is not IList &&
                 Items is not ICollection)
                 Items = Items.ToArray();
 
             foreach (T Item in Items)
-                Remove(Item);
+                base.Items.Remove(Item);
 
-            //CheckReentrancy();
-
-            //if (Items is not T[] &&
-            //    Items is not IList &&
-            //    Items is not ICollection)
-            //    Items = Items.ToArray();
-
-            //foreach (T Item in Items)
-            //    base.Items.Remove(Item);
-
-            //OnPropertyChanged(CountString);
-            //OnPropertyChanged(IndexerName);
-            //OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            OnPropertyChanged(CountString);
+            OnPropertyChanged(IndexerName);
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
         protected void OnPropertyChanged(string PropertyName)
