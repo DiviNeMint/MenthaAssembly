@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -18,12 +18,12 @@ namespace MenthaAssembly
         /// <summary>
         /// Gets a special value that represents X-Axis.
         /// </summary>
-        public static Line<T> XAxis => new() { Points = new[] { new Point<T>(), new Point<T>(ToGeneric(1), default) } };
+        public static Line<T> XAxis => new() { Points = new[] { new Point<T>(), new Point<T>(Cast<double, T>(1), default) } };
 
         /// <summary>
         /// Gets a special value that represents Y-Axis.
         /// </summary>
-        public static Line<T> YAxis => new() { Points = new[] { new Point<T>(), new Point<T>(default, ToGeneric(1)) } };
+        public static Line<T> YAxis => new() { Points = new[] { new Point<T>(), new Point<T>(default, Cast<double, T>(1)) } };
 
         Point<T> IShape<T>.Center
             => IsEmpty ? default : Points[0];
@@ -75,7 +75,7 @@ namespace MenthaAssembly
                 Point<T> p0 = Points[0],
                          p1 = Points[1];
 
-                return ToDouble(Sub(p1.Y, p0.Y)) / ToDouble(Sub(p1.X, p0.X));
+                return Cast<T, double>(Subtract(p1.Y, p0.Y)) / Cast<T, double>(Subtract(p1.X, p0.X));
             }
         }
 
@@ -229,7 +229,7 @@ namespace MenthaAssembly
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Line<T> obj)
             => IsEmpty ? obj.IsEmpty :
-                              !obj.IsEmpty && IsCollinear(Points[0], Points[1], obj.Points[0], obj.Points[1]);
+                         !obj.IsEmpty && IsCollinear(Points[0], Points[1], obj.Points[0], obj.Points[1]);
         bool IShape<T>.Equals(IShape<T> obj)
             => obj is Line<T> Target && Equals(Target);
         bool ICoordinateObject<T>.Equals(ICoordinateObject<T> obj)
@@ -246,28 +246,6 @@ namespace MenthaAssembly
                      E = Points[1];
 
             return $"Sx : {S.X}, Sy : {S.Y}, Ex : {E.X}, Ey : {E.Y}";
-        }
-
-        private static readonly Func<T, T, T> Add, Sub, Mul;
-        private static readonly Func<T, T> Abs, Div2;
-        private static readonly Func<T, T, bool> GreaterThan;
-        private static readonly Predicate<T> IsDefault;
-        private static readonly Func<T, double> ToDouble;
-        private static readonly Func<double, T> ToGeneric;
-        static Line()
-        {
-            Add = ExpressionHelper<T>.CreateAdd();
-            Sub = ExpressionHelper<T>.CreateSub();
-            Mul = ExpressionHelper<T>.CreateMul();
-
-            Abs = ExpressionHelper<T>.CreateAbs();
-            Div2 = ExpressionHelper<T>.CreateDiv(2);
-
-            GreaterThan = ExpressionHelper<T>.CreateGreaterThan();
-            IsDefault = ExpressionHelper<T>.CreateIsDefault();
-
-            ToDouble = ExpressionHelper<T>.CreateCast<double>();
-            ToGeneric = ExpressionHelper<double>.CreateCast<T>();
         }
 
         /// <summary>
@@ -294,16 +272,16 @@ namespace MenthaAssembly
         /// <param name="Qy">The y-coordinate of the second target point.</param>
         public static Line<T> PerpendicularBisector(T Px, T Py, T Qx, T Qy)
         {
-            T Dx = Sub(Qx, Px),
-              Dy = Sub(Qy, Py);
+            T Dx = Subtract(Qx, Px),
+              Dy = Subtract(Qy, Py);
 
             if (IsDefault(Dx) && IsDefault(Dy))
                 return Empty;
 
-            T Mx = Div2(Dx),
-              My = Div2(Dy);
+            T Mx = Half(Dx),
+              My = Half(Dy);
 
-            return new Line<T>(Mx, My, Sub(Mx, Dy), Add(My, Dx));
+            return new Line<T>(Mx, My, Subtract(Mx, Dy), Add(My, Dx));
         }
 
         /// <summary>
@@ -365,10 +343,10 @@ namespace MenthaAssembly
         /// <param name="Py">The y-coordinate of the target point.</param>
         public static Line<T> Perpendicular(T Lx1, T Ly1, T Lx2, T Ly2, T Px, T Py)
         {
-            T Dx = Sub(Lx2, Lx1),
-              Dy = Sub(Ly2, Ly1);
+            T Dx = Subtract(Lx2, Lx1),
+              Dy = Subtract(Ly2, Ly1);
 
-            return IsDefault(Dx) && IsDefault(Dy) ? Empty : new Line<T>(Px, Py, Sub(Px, Dy), Add(Py, Dx));
+            return IsDefault(Dx) && IsDefault(Dy) ? Empty : new Line<T>(Px, Py, Subtract(Px, Dy), Add(Py, Dx));
         }
 
         /// <summary>
@@ -430,13 +408,13 @@ namespace MenthaAssembly
         /// <param name="Py">The y-coordinate of the target point.</param>
         public static double Distance(T Lx1, T Ly1, T Lx2, T Ly2, T Px, T Py)
         {
-            T v1x = Sub(Lx2, Lx1),
-              v1y = Sub(Ly2, Ly1),
-              v2x = Sub(Px, Lx1),
-              v2y = Sub(Py, Ly1);
+            T v1x = Subtract(Lx2, Lx1),
+              v1y = Subtract(Ly2, Ly1),
+              v2x = Subtract(Px, Lx1),
+              v2y = Subtract(Py, Ly1);
 
-            double v2L = Math.Sqrt(ToDouble(Add(Mul(v2x, v2x), Mul(v2y, v2y))));
-            return IsDefault(v1x) && IsDefault(v1y) ? v2L : ToDouble(Abs(Vector<T>.Cross(v1x, v1y, v2x, v2y))) / v2L;
+            double v2L = Math.Sqrt(Cast<T, double>(Add(Multiply(v2x, v2x), Multiply(v2y, v2y))));
+            return IsDefault(v1x) && IsDefault(v1y) ? v2L : Cast<T, double>(Abs(Vector<T>.Cross(v1x, v1y, v2x, v2y))) / v2L;
         }
         /// <summary>
         /// Calculate the distance between two lines.
@@ -496,23 +474,23 @@ namespace MenthaAssembly
         /// <param name="L2y2">The y-coordinate of a another point on the second target line.</param>
         public static double Distance(T L1x1, T L1y1, T L1x2, T L1y2, T L2x1, T L2y1, T L2x2, T L2y2)
         {
-            T v1x = Sub(L1x2, L1x1),
-              v1y = Sub(L1y2, L1y1);
+            T v1x = Subtract(L1x2, L1x1),
+              v1y = Subtract(L1y2, L1y1);
 
             if (IsDefault(v1x) && IsDefault(v1y))
                 return Distance(L2x1, L2y1, L2x2, L2y2, L1x1, L1y1);
 
-            T v2x = Sub(L2x2, L2x1),
-              v2y = Sub(L2y2, L2y1);
+            T v2x = Subtract(L2x2, L2x1),
+              v2y = Subtract(L2y2, L2y1);
 
             // Check if two lines intersect
             if (!IsDefault(Vector<T>.Cross(v1x, v1y, v2x, v2y)))
                 return 0d;
 
-            v2x = Sub(L2x2, L1x1);
-            v2y = Sub(L2y2, L1y1);
+            v2x = Subtract(L2x2, L1x1);
+            v2y = Subtract(L2y2, L1y1);
 
-            return ToDouble(Abs(Vector<T>.Cross(v1x, v1y, v2x, v2y))) / Math.Sqrt(ToDouble(Add(Mul(v2x, v2x), Mul(v2y, v2y))));
+            return Cast<T, double>(Abs(Vector<T>.Cross(v1x, v1y, v2x, v2y))) / Math.Sqrt(Cast<T, double>(Add(Multiply(v2x, v2x), Multiply(v2y, v2y))));
         }
 
         /// <summary>
@@ -556,15 +534,15 @@ namespace MenthaAssembly
             // Build line equation
             // aX + bY + c = 0
 
-            T a = Sub(Py2, Py1),
-              b = Sub(Px1, Px2);
+            T a = Subtract(Py2, Py1),
+              b = Subtract(Px1, Px2);
 
             if (IsDefault(a) && IsDefault(b))
                 return true;
 
-            T c = Sub(Mul(Px2, Py1), Mul(Py2, Px1));
+            T c = Subtract(Multiply(Px2, Py1), Multiply(Py2, Px1));
 
-            return IsDefault(Add(Add(Mul(a, Px3), Mul(b, Py3)), c));
+            return IsDefault(Add(Add(Multiply(a, Px3), Multiply(b, Py3)), c));
 
             //T Dx = Sub(Px2, Px1),
             //  Dy = Sub(Py2, Py1);
@@ -605,16 +583,16 @@ namespace MenthaAssembly
             // Build line equation
             // aX + bY + c = 0
 
-            T a = Sub(Py2, Py1),
-              b = Sub(Px1, Px2);
+            T a = Subtract(Py2, Py1),
+              b = Subtract(Px1, Px2);
 
             if (IsDefault(a) && IsDefault(b))
                 return IsCollinear(Px2, Py2, Px3, Py3, Px4, Py4);
 
-            T c = Sub(Mul(Px2, Py1), Mul(Py2, Px1));
+            T c = Subtract(Multiply(Px2, Py1), Multiply(Py2, Px1));
 
-            return IsDefault(Add(Add(Mul(a, Px3), Mul(b, Py3)), c)) &&
-                   IsDefault(Add(Add(Mul(a, Px4), Mul(b, Py4)), c));
+            return IsDefault(Add(Add(Multiply(a, Px3), Multiply(b, Py3)), c)) &&
+                   IsDefault(Add(Add(Multiply(a, Px4), Multiply(b, Py4)), c));
 
             //T Dx = Sub(Px2, Px1),
             //  Dy = Sub(Py2, Py1);
@@ -664,20 +642,20 @@ namespace MenthaAssembly
                 Px2 = p1.X;
                 Py2 = p1.Y;
 
-                a = Sub(Py2, Py1);
-                b = Sub(Px1, Px2);
+                a = Subtract(Py2, Py1);
+                b = Subtract(Px1, Px2);
 
                 if (IsDefault(a) && IsDefault(b))
                     continue;
 
-                T c = Sub(Mul(Px2, Py1), Mul(Py2, Px1));
+                T c = Subtract(Multiply(Px2, Py1), Multiply(Py2, Px1));
 
                 // Check on line
                 for (; i < Length; i++)
                 {
                     p1 = Points[i];
 
-                    if (!IsDefault(Add(Add(Mul(a, p1.X), Mul(b, p1.Y)), c)))
+                    if (!IsDefault(Add(Add(Multiply(a, p1.X), Multiply(b, p1.Y)), c)))
                         return false;
                 }
             }
@@ -710,13 +688,13 @@ namespace MenthaAssembly
                 Px2 = PointDatas[i++];
                 Py2 = PointDatas[i];
 
-                a = Sub(Py2, Py1);
-                b = Sub(Px1, Px2);
+                a = Subtract(Py2, Py1);
+                b = Subtract(Px1, Px2);
 
                 if (IsDefault(a) && IsDefault(b))
                     continue;
 
-                T c = Sub(Mul(Px2, Py1), Mul(Py2, Px1));
+                T c = Subtract(Multiply(Px2, Py1), Multiply(Py2, Px1));
 
                 // Check on line
                 for (; i < Length; i++)
@@ -724,7 +702,7 @@ namespace MenthaAssembly
                     Px2 = PointDatas[i++];
                     Py2 = PointDatas[i];
 
-                    if (!IsDefault(Add(Add(Mul(a, Px2), Mul(b, Py2)), c)))
+                    if (!IsDefault(Add(Add(Multiply(a, Px2), Multiply(b, Py2)), c)))
                         return false;
                 }
             }
@@ -796,15 +774,15 @@ namespace MenthaAssembly
               Lx2 = LinePoint2.X,
               Ly2 = LinePoint2.Y;
 
-            T a = Sub(Ly2, Ly1),
-              b = Sub(Lx1, Lx2);
+            T a = Subtract(Ly2, Ly1),
+              b = Subtract(Lx1, Lx2);
 
             if (IsDefault(a) && IsDefault(b))
                 return false;
 
             Point<T> p = Points[0];
-            T c = Sub(Mul(Lx2, Ly1), Mul(Ly2, Lx1)),
-              D = Add(Add(Mul(a, p.X), Mul(b, p.Y)), c);
+            T c = Subtract(Multiply(Lx2, Ly1), Multiply(Ly2, Lx1)),
+              D = Add(Add(Multiply(a, p.X), Multiply(b, p.Y)), c);
 
             if (IsDefault(D))
                 return false;
@@ -815,7 +793,7 @@ namespace MenthaAssembly
             for (int i = 1; i < Length; i++)
             {
                 p = Points[i];
-                D = Add(Add(Mul(a, p.X), Mul(b, p.Y)), c);
+                D = Add(Add(Multiply(a, p.X), Multiply(b, p.Y)), c);
 
                 if (Predict != GreaterThan(D, Zero))
                     return false;
@@ -847,19 +825,19 @@ namespace MenthaAssembly
             // Build line equation
             // aX + bY + c = 0
 
-            T a = Sub(Ly2, Ly1),
-              b = Sub(Lx1, Lx2);
+            T a = Subtract(Ly2, Ly1),
+              b = Subtract(Lx1, Lx2);
 
             if (IsDefault(a) && IsDefault(b))
                 return false;
 
-            T c = Sub(Mul(Lx2, Ly1), Mul(Ly2, Lx1)),
-              F0 = Add(Add(Mul(a, Px1), Mul(b, Py1)), c);
+            T c = Subtract(Multiply(Lx2, Ly1), Multiply(Ly2, Lx1)),
+              F0 = Add(Add(Multiply(a, Px1), Multiply(b, Py1)), c);
 
             if (IsDefault(F0))
                 return false;
 
-            T F1 = Add(Add(Mul(a, Px2), Mul(b, Py2)), c);
+            T F1 = Add(Add(Multiply(a, Px2), Multiply(b, Py2)), c);
             if (IsDefault(F1))
                 return false;
 
@@ -887,14 +865,14 @@ namespace MenthaAssembly
             // Build line equation
             // aX + bY + c = 0
 
-            T a = Sub(Ly2, Ly1),
-              b = Sub(Lx1, Lx2);
+            T a = Subtract(Ly2, Ly1),
+              b = Subtract(Lx1, Lx2);
 
             if (IsDefault(a) && IsDefault(b))
                 return false;
 
-            T c = Sub(Mul(Lx2, Ly1), Mul(Ly2, Lx1)),
-              D = Add(Add(Mul(a, PointDatas[0]), Mul(b, PointDatas[1])), c);
+            T c = Subtract(Multiply(Lx2, Ly1), Multiply(Ly2, Lx1)),
+              D = Add(Add(Multiply(a, PointDatas[0]), Multiply(b, PointDatas[1])), c);
 
             if (IsDefault(D))
                 return false;
@@ -904,7 +882,7 @@ namespace MenthaAssembly
 
             for (int i = 2; i < Length; i++)
             {
-                D = Add(Add(Mul(a, PointDatas[i++]), Mul(b, PointDatas[i])), c);
+                D = Add(Add(Multiply(a, PointDatas[i++]), Multiply(b, PointDatas[i])), c);
 
                 if (Predict != GreaterThan(D, Zero))
                     return false;
@@ -971,16 +949,16 @@ namespace MenthaAssembly
         /// <param name="L2y2">The y-coordinate of a another point on the second target line.</param>
         public static CrossPoints<T> CrossPoint(T L1x1, T L1y1, T L1x2, T L1y2, T L2x1, T L2y1, T L2x2, T L2y2)
         {
-            T v1x = Sub(L1x2, L1x1),
-              v1y = Sub(L1y2, L1y1);
+            T v1x = Subtract(L1x2, L1x1),
+              v1y = Subtract(L1y2, L1y1);
 
             if (IsDefault(v1x) && IsDefault(v1y))
                 return IsCollinear(L1x1, L1y1, L2x1, L2y1, L2x2, L2y2) ? new CrossPoints<T>(new Point<T>(L1x1, L1y1)) : CrossPoints<T>.None;
 
-            T v2x = Sub(L2x2, L2x1),
-              v2y = Sub(L2y2, L2y1),
-              v3x = Sub(L2x1, L1x1),
-              v3y = Sub(L2y1, L1y1);
+            T v2x = Subtract(L2x2, L2x1),
+              v2y = Subtract(L2y2, L2y1),
+              v3x = Subtract(L2x1, L1x1),
+              v3y = Subtract(L2y1, L1y1);
 
             if (IsDefault(v2x) && IsDefault(v2y))
                 return (IsDefault(v3x) && IsDefault(v3x)) || IsDefault(Vector<T>.Cross(v1x, v1y, v3x, v3y)) ? new CrossPoints<T>(new Point<T>(L2x1, L2y1)) : CrossPoints<T>.None;
@@ -991,11 +969,11 @@ namespace MenthaAssembly
             if (IsDefault(C1))
                 return IsDefault(C2) ? CrossPoints<T>.Infinity : CrossPoints<T>.None;
 
-            double t = ToDouble(C2) / ToDouble(C1);
+            double t = Cast<T, double>(C2) / Cast<T, double>(C1);
             if (t < 0)
                 t = -t;
 
-            return new CrossPoints<T>(new Point<T>(Add(L1x1, ToGeneric(ToDouble(v1x) * t)), Add(L1y1, ToGeneric(ToDouble(v1y) * t))));
+            return new CrossPoints<T>(new Point<T>(Add(L1x1, Cast<double, T>(Cast<T, double>(v1x) * t)), Add(L1y1, Cast<double, T>(Cast<T, double>(v1y) * t))));
         }
         /// <summary>
         /// Calculate the cross points between the specified line and the specified line segment.
@@ -1040,32 +1018,32 @@ namespace MenthaAssembly
               Sy1 = Sp1.Y,
               Sx2 = Sp2.X,
               Sy2 = Sp2.Y,
-              v1x = Sub(Lx2, Lx1),
-              v1y = Sub(Ly2, Ly1);
+              v1x = Subtract(Lx2, Lx1),
+              v1y = Subtract(Ly2, Ly1);
 
             if (IsDefault(v1x) && IsDefault(v1y))
                 return LineSegment<T>.Contain(Sx1, Sy1, Sx2, Sy2, Lx1, Ly1) ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
 
-            T v2x = Sub(Sx2, Sx1),
-              v2y = Sub(Sy2, Sy1);
+            T v2x = Subtract(Sx2, Sx1),
+              v2y = Subtract(Sy2, Sy1);
 
             if (IsDefault(v2x) && IsDefault(v2y))
                 return IsCollinear(Lx1, Ly1, Lx2, Ly2, Sx1, Sy1) ? new CrossPoints<T>(new Point<T>(Sx1, Sy1)) : CrossPoints<T>.None;
 
-            T v3x = Sub(Sx1, Lx1),
-              v3y = Sub(Sy1, Ly1),
+            T v3x = Subtract(Sx1, Lx1),
+              v3y = Subtract(Sy1, Ly1),
               C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
               C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
 
             if (IsDefault(C1))
                 return IsDefault(C2) ? CrossPoints<T>.Infinity : CrossPoints<T>.None;
 
-            double t = ToDouble(C2) / ToDouble(C1);
+            double t = Cast<T, double>(C2) / Cast<T, double>(C1);
             if (t < 0)
                 t = -t;
 
-            T X = Add(Lx1, ToGeneric(ToDouble(v1x) * t)),
-              Y = Add(Ly1, ToGeneric(ToDouble(v1y) * t));
+            T X = Add(Lx1, Cast<double, T>(Cast<T, double>(v1x) * t)),
+              Y = Add(Ly1, Cast<double, T>(Cast<T, double>(v1y) * t));
 
             return LineSegment<T>.OnSegment(Sx1, Sy1, Sx2, Sy2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : CrossPoints<T>.None;
         }
@@ -1105,8 +1083,8 @@ namespace MenthaAssembly
             if (Circle.IsEmpty)
                 return CrossPoints<T>.None;
 
-            double Dx = ToDouble(Sub(Lx2, Lx1)),
-                   Dy = ToDouble(Sub(Ly2, Ly1));
+            double Dx = Cast<T, double>(Subtract(Lx2, Lx1)),
+                   Dy = Cast<T, double>(Subtract(Ly2, Ly1));
 
             if (Dx is 0d && Dy is 0d)
                 return CrossPoints<T>.None;
@@ -1117,8 +1095,8 @@ namespace MenthaAssembly
             // Circle Equation
             // X ^ 2 + Y ^ 2 = R ^ 2
             double R = Circle.Radius,
-                   DLx = ToDouble(Lx1),
-                   DLy = ToDouble(Ly1),
+                   DLx = Cast<T, double>(Lx1),
+                   DLy = Cast<T, double>(Ly1),
                    a = Dx * Dx + Dy * Dy,
                    b = DLx * Dx + DLy * Dy,
                    c = DLx * DLx + DLy * DLy - R * R,
@@ -1131,7 +1109,7 @@ namespace MenthaAssembly
             if (D == 0)
             {
                 t = -b / a;
-                return new CrossPoints<T>(new Point<T>(ToGeneric(DLx + Dx * t), ToGeneric(DLy + Dy * t)));
+                return new CrossPoints<T>(new Point<T>(Cast<double, T>(DLx + Dx * t), Cast<double, T>(DLy + Dy * t)));
             }
 
             Point<T>[] Crosses = new Point<T>[2];
@@ -1139,10 +1117,10 @@ namespace MenthaAssembly
             double SqrD = Math.Sqrt(D);
 
             t = (-b + SqrD) / a;
-            Crosses[0] = new Point<T>(ToGeneric(DLx + Dx * t), ToGeneric(DLy + Dy * t));
+            Crosses[0] = new Point<T>(Cast<double, T>(DLx + Dx * t), Cast<double, T>(DLy + Dy * t));
 
             t = (-b - SqrD) / a;
-            Crosses[1] = new Point<T>(ToGeneric(DLx + Dx * t), ToGeneric(DLy + Dy * t));
+            Crosses[1] = new Point<T>(Cast<double, T>(DLx + Dx * t), Cast<double, T>(DLy + Dy * t));
 
             return new CrossPoints<T>(Crosses);
         }

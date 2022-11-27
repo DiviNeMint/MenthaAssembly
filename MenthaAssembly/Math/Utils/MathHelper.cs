@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -49,10 +49,8 @@ namespace MenthaAssembly
         public static double Asin(double Value)
         {
             double Result = Math.Asin(Value);
-            if (double.IsNaN(Result))
-                throw new ArgumentException($"Value must be greater than or equal to -1, but less than or equal to 1.");
-
-            return Result / UnitTheta;
+            return double.IsNaN(Result) ? throw new ArgumentException($"Value must be greater than or equal to -1, but less than or equal to 1.") :
+                                          Result / UnitTheta;
         }
         /// <summary>
         /// Returns the angle whose cosine is the specified number.
@@ -62,10 +60,8 @@ namespace MenthaAssembly
         public static double Acos(double Value)
         {
             double Result = Math.Acos(Value);
-            if (double.IsNaN(Result))
-                throw new ArgumentException($"Value must be greater than or equal to -1, but less than or equal to 1.");
-
-            return Result / UnitTheta;
+            return double.IsNaN(Result) ? throw new ArgumentException($"Value must be greater than or equal to -1, but less than or equal to 1.") :
+                                          Result / UnitTheta;
         }
         /// <summary>
         /// Returns the angle whose tangent is the specified number.
@@ -75,10 +71,8 @@ namespace MenthaAssembly
         public static double Atan(double Value)
         {
             double Result = Math.Atan(Value);
-            if (double.IsNaN(Result))
-                throw new ArgumentException($"Value is invalid.");
-
-            return Result / UnitTheta;
+            return double.IsNaN(Result) ? throw new ArgumentException($"Value is invalid.") :
+                                          Result / UnitTheta;
         }
         /// <summary>
         /// Returns the angle whose tangent is the specified number.
@@ -89,10 +83,8 @@ namespace MenthaAssembly
         public static double Atan(double X, double Y)
         {
             double Result = Math.Atan2(Y, X);
-            if (double.IsNaN(Result))
-                throw new ArgumentException($"X or Y is invalid value.");
-
-            return Result / UnitTheta;
+            return double.IsNaN(Result) ? throw new ArgumentException($"X or Y is invalid value.") :
+                                          Result / UnitTheta;
         }
 
         /// <summary>
@@ -115,7 +107,7 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Value">A number.</param>
         public static T Ceiling<T>(T Value)
-            => ExpressionHelper<double>.CreateCast<T>()(Math.Ceiling(ExpressionHelper<T>.CreateCast<double>()(Value)));
+            => Cast<double, T>(Math.Ceiling(Cast<T, double>(Value)));
         /// <summary>
         /// Returns the smallest interval number that is greater than or equal to the specified interval number.
         /// </summary>
@@ -124,9 +116,8 @@ namespace MenthaAssembly
         /// <param name="Interval">The interval number.</param>
         public static T Ceiling<T>(T Value, T Interval)
         {
-            Func<T, double> Cast0 = ExpressionHelper<T>.CreateCast<double>();
-            double DInterval = Cast0(Interval);
-            return ExpressionHelper<double>.CreateCast<T>()(Math.Ceiling(Cast0(Value) / DInterval) * DInterval);
+            double DInterval = Cast<T, double>(Interval);
+            return Cast<double, T>(Math.Ceiling(Cast<T, double>(Value) / DInterval) * DInterval);
         }
 
         /// <summary>
@@ -149,7 +140,7 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Value">A number.</param>
         public static T Floor<T>(T Value)
-            => ExpressionHelper<double>.CreateCast<T>()(Math.Floor(ExpressionHelper<T>.CreateCast<double>()(Value)));
+            => Cast<double, T>(Math.Floor(Cast<T, double>(Value)));
         /// <summary>
         /// Returns the largest interval number less than or equal to the specified interval number.
         /// </summary>
@@ -158,9 +149,8 @@ namespace MenthaAssembly
         /// <param name="Interval">The interval number.</param>
         public static T Floor<T>(T Value, T Interval)
         {
-            Func<T, double> Cast0 = ExpressionHelper<T>.CreateCast<double>();
-            double DInterval = Cast0(Interval);
-            return ExpressionHelper<double>.CreateCast<T>()(Math.Floor(Cast0(Value) / DInterval) * DInterval);
+            double DInterval = Cast<T, double>(Interval);
+            return Cast<double, T>(Math.Floor(Cast<T, double>(Value) / DInterval) * DInterval);
         }
 
         /// <summary>
@@ -199,7 +189,7 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Value">A number to be rounded.</param>
         public static T Round<T>(T Value)
-            => ExpressionHelper<double>.CreateCast<T>()(Math.Round(ExpressionHelper<T>.CreateCast<double>()(Value)));
+            => Cast<double, T>(Math.Round(Cast<T, double>(Value)));
         /// <summary>
         /// Rounds a value to the nearest interval number.
         /// </summary>
@@ -208,9 +198,8 @@ namespace MenthaAssembly
         /// <param name="Interval">The interval number.</param>
         public static T Round<T>(T Value, T Interval)
         {
-            Func<T, double> Cast0 = ExpressionHelper<T>.CreateCast<double>();
-            double DInterval = Cast0(Interval);
-            return ExpressionHelper<double>.CreateCast<T>()(Math.Round(Cast0(Value) / DInterval) * DInterval);
+            double DInterval = Cast<T, double>(Interval);
+            return Cast<double, T>(Math.Round(Cast<T, double>(Value) / DInterval) * DInterval);
         }
         /// <summary>
         /// Rounds a value to the nearest interval number.
@@ -221,9 +210,8 @@ namespace MenthaAssembly
         /// <param name="Mode">Specification for how to round d if it is midway between two other numbers.</param>
         public static T Round<T>(T Value, T Interval, MidpointRounding Mode)
         {
-            Func<T, double> Cast0 = ExpressionHelper<T>.CreateCast<double>();
-            double DInterval = Cast0(Interval);
-            return ExpressionHelper<double>.CreateCast<T>()(Math.Round(Cast0(Value) / DInterval, Mode) * DInterval);
+            double DInterval = Cast<T, double>(Interval);
+            return Cast<double, T>(Math.Round(Cast<T, double>(Value) / DInterval, Mode) * DInterval);
         }
 
         /// <summary>
@@ -235,33 +223,17 @@ namespace MenthaAssembly
         /// <param name="Max">The upper bound of the result.</param>
         public static T Clamp<T>(this T This, T Min, T Max)
             where T : IComparable<T>
-        {
-            if (This.CompareTo(Min) < 0)
-                return Min;
-
-            if (This.CompareTo(Max) > 0)
-                return Max;
-
-            return This;
-        }
+            => This.CompareTo(Min) < 0 ? Min : This.CompareTo(Max) > 0 ? Max : This;
         /// <summary>
-        /// Check value is clamped to the inclusive range of Min and Max.
+        /// Determines whether the value is clamped to the inclusive range of Min and Max.
         /// </summary>
         /// <typeparam name="T">The type of value.</typeparam>
         /// <param name="This">The value to be checked.</param>
         /// <param name="Min">The lower bound of the result.</param>
         /// <param name="Max">The upper bound of the result.</param>
         public static bool IsClamped<T>(this T This, T Min, T Max)
-            where T :IComparable<T>
-        {
-            if (This.CompareTo(Min) < 0)
-                return false;
-
-            if (This.CompareTo(Max) > 0)
-                return false;
-
-            return true;
-        }
+            where T : IComparable<T>
+            => This.CompareTo(Min) >= 0 && This.CompareTo(Max) <= 0;
 
         /// <summary>
         /// Returns the largest number of specified numbers.
@@ -299,7 +271,7 @@ namespace MenthaAssembly
             bool HasItem = false;
             Min = default;
             Max = default;
-            
+
             Comparer<T> Comparer = null;
             foreach (T Item in Source)
             {
@@ -424,7 +396,7 @@ namespace MenthaAssembly
         }
 
         /// <summary>
-        /// Swap the numbers.
+        /// Swaps the numbers.
         /// </summary>
         public static void Swap(ref int X, ref int Y)
         {
@@ -433,7 +405,7 @@ namespace MenthaAssembly
             X ^= Y;
         }
         /// <summary>
-        /// Swap the Datas.
+        /// Swaps the Datas.
         /// </summary>
         public static void Swap<T>(ref T X, ref T Y)
         {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -281,29 +281,13 @@ namespace MenthaAssembly
             return $"Sx : {S.X}, Sy : {S.Y}, Px : {P.X}, Py : {P.Y}, Ex : {E.X}, Ey : {E.Y}";
         }
 
-        private static readonly Func<T, T, T> Add, Sub, Mul;
-        private static readonly Predicate<T> IsDefault;
-        private static readonly Func<T, double> ToDouble;
-        private static readonly Func<double, T> ToGeneric;
-        static ArcSegment()
-        {
-            Add = ExpressionHelper<T>.CreateAdd();
-            Sub = ExpressionHelper<T>.CreateSub();
-            Mul = ExpressionHelper<T>.CreateMul();
-
-            IsDefault = ExpressionHelper<T>.CreateIsDefault();
-
-            ToDouble = ExpressionHelper<T>.CreateCast<double>();
-            ToGeneric = ExpressionHelper<double>.CreateCast<T>();
-        }
-
         private static void SortPoints(ref T Px1, ref T Py1, ref T Px2, ref T Py2, ref T Px3, ref T Py3)
         {
             Circle<T>.CalculateCenter(Px1, Py1, Px2, Py2, Px3, Py3, out T Cx, out T Cy);
 
-            double Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Px1)), ToDouble(Sub(Cy, Py1))),
-                   Theta2 = MathHelper.Atan(ToDouble(Sub(Cx, Px2)), ToDouble(Sub(Cy, Py2))),
-                   Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Px3)), ToDouble(Sub(Cy, Py3)));
+            double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px1)), Cast<T, double>(Subtract(Cy, Py1))),
+                   Theta2 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px2)), Cast<T, double>(Subtract(Cy, Py2))),
+                   Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px3)), Cast<T, double>(Subtract(Cy, Py3)));
 
             if (Theta2 < Theta1)
             {
@@ -330,9 +314,9 @@ namespace MenthaAssembly
         {
             Circle<T>.CalculateCenter(Px1, Py1, Px2, Py2, Px3, Py3, out Cx, out Cy);
 
-            Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Px1)), ToDouble(Sub(Cy, Py1)));
-            Theta2 = MathHelper.Atan(ToDouble(Sub(Cx, Px2)), ToDouble(Sub(Cy, Py2)));
-            Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Px3)), ToDouble(Sub(Cy, Py3)));
+            Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px1)), Cast<T, double>(Subtract(Cy, Py1)));
+            Theta2 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px2)), Cast<T, double>(Subtract(Cy, Py2)));
+            Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px3)), Cast<T, double>(Subtract(Cy, Py3)));
 
             if (Theta2 < Theta1)
             {
@@ -366,9 +350,9 @@ namespace MenthaAssembly
 
             Circle<T>.CalculateCenter(Px1, Py1, Px2, Py2, Px3, Py3, out T Cx, out T Cy);
 
-            double Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Px1)), ToDouble(Sub(Cy, Py1))),
-                   Theta2 = MathHelper.Atan(ToDouble(Sub(Cx, Px2)), ToDouble(Sub(Cy, Py2))),
-                   Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Px3)), ToDouble(Sub(Cy, Py3)));
+            double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px1)), Cast<T, double>(Subtract(Cy, Py1))),
+                   Theta2 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px2)), Cast<T, double>(Subtract(Cy, Py2))),
+                   Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px3)), Cast<T, double>(Subtract(Cy, Py3)));
 
             if (Theta2 < Theta1)
             {
@@ -456,23 +440,23 @@ namespace MenthaAssembly
         {
             Circle<T>.CalculateCenter(Lx1, Ly1, Lx2, Ly2, Lx3, Ly3, out T Cx, out T Cy);
 
-            T Dx1 = Sub(Cx, Lx1),
-              Dy1 = Sub(Cy, Ly1),
-              TDx = Sub(Cx, Px),
-              TDy = Sub(Cy, Py);
+            T Dx1 = Subtract(Cx, Lx1),
+              Dy1 = Subtract(Cy, Ly1),
+              TDx = Subtract(Cx, Px),
+              TDy = Subtract(Cy, Py);
 
-            double Radius = Math.Sqrt(ToDouble(Add(Mul(Dx1, Dx1), Mul(Dy1, Dy1)))),
-                   D = Math.Sqrt(ToDouble(Add(Mul(TDx, TDx), Mul(TDy, TDy))));
+            double Radius = Math.Sqrt(Cast<T, double>(Add(Multiply(Dx1, Dx1), Multiply(Dy1, Dy1)))),
+                   D = Math.Sqrt(Cast<T, double>(Add(Multiply(TDx, TDx), Multiply(TDy, TDy))));
 
             if (Radius != D)
                 return false;
 
-            T Dx3 = Sub(Cx, Lx3),
-              Dy3 = Sub(Cy, Ly3);
+            T Dx3 = Subtract(Cx, Lx3),
+              Dy3 = Subtract(Cy, Ly3);
 
-            double Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Dx1)), ToDouble(Sub(Cy, Dy1))),
-                   Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Dx3)), ToDouble(Sub(Cy, Dy3))),
-                   Alpha = MathHelper.Atan(ToDouble(Sub(Cx, TDx)), ToDouble(Sub(Cy, TDy)));
+            double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Dx1)), Cast<T, double>(Subtract(Cy, Dy1))),
+                   Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Dx3)), Cast<T, double>(Subtract(Cy, Dy3))),
+                   Alpha = MathHelper.Atan(Cast<T, double>(Subtract(Cx, TDx)), Cast<T, double>(Subtract(Cy, TDy)));
 
             return Theta1 <= Alpha && Alpha <= Theta3;
         }
@@ -507,12 +491,12 @@ namespace MenthaAssembly
 
             Circle<T>.CalculateCenter(Ax1, Ay1, Ax2, Ay2, Ax3, Ay3, out T Cx, out T Cy);
 
-            double Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Ax1)), ToDouble(Sub(Cy, Ay1))),
-                   Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Ax3)), ToDouble(Sub(Cy, Ay3))),
+            double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Ax1)), Cast<T, double>(Subtract(Cy, Ay1))),
+                   Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Ax3)), Cast<T, double>(Subtract(Cy, Ay3))),
                    Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
 
-            T Dx = Sub(Lx2, Lx1),
-              Dy = Sub(Ly2, Ly1);
+            T Dx = Subtract(Lx2, Lx1),
+              Dy = Subtract(Ly2, Ly1);
 
             if (IsDefault(Dx) && IsDefault(Dy))
             {
@@ -521,37 +505,37 @@ namespace MenthaAssembly
                 if (Radius != Tr)
                     return CrossPoints<T>.None;
 
-                T TDx = Sub(Cx, Lx1),
-                  TDy = Sub(Cy, Ly1);
+                T TDx = Subtract(Cx, Lx1),
+                  TDy = Subtract(Cy, Ly1);
 
-                double Alpha = MathHelper.Atan(ToDouble(TDx), ToDouble(TDy));
+                double Alpha = MathHelper.Atan(Cast<T, double>(TDx), Cast<T, double>(TDy));
 
                 return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
             }
 
-            T Kx = Sub(Lx1, Cx),
-              Ky = Sub(Ly1, Cy);
-            double a = ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))),
-                   b = ToDouble(Add(Mul(Kx, Dx), Mul(Ky, Dy))),
-                   c = ToDouble(Add(Mul(Kx, Kx), Mul(Ky, Ky))) - Radius * Radius,
+            T Kx = Subtract(Lx1, Cx),
+              Ky = Subtract(Ly1, Cy);
+            double a = Cast<T, double>(Add(Multiply(Dx, Dx), Multiply(Dy, Dy))),
+                   b = Cast<T, double>(Add(Multiply(Kx, Dx), Multiply(Ky, Dy))),
+                   c = Cast<T, double>(Add(Multiply(Kx, Kx), Multiply(Ky, Ky))) - Radius * Radius,
                    D = b * b - a * c,
-                   DDx = ToDouble(Dx),
-                   DDy = ToDouble(Dy);
+                   DDx = Cast<T, double>(Dx),
+                   DDy = Cast<T, double>(Dy);
 
             double t;
             if (D == 0)
             {
                 t = -b / a;
-                return new CrossPoints<T>(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+                return new CrossPoints<T>(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t))));
             }
 
             Point<T>[] Crosses = new Point<T>[2];
             double SqrD = Math.Sqrt(D);
 
             t = (-b + SqrD) / a;
-            Crosses[0] = new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)));
+            Crosses[0] = new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)));
             t = (-b - SqrD) / a;
-            Crosses[1] = new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)));
+            Crosses[1] = new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)));
 
             return new CrossPoints<T>(Crosses);
         }
@@ -590,8 +574,8 @@ namespace MenthaAssembly
             SortPoints(ref Ax1, ref Ay1, ref Ax2, ref Ay2, ref Ax3, ref Ay3, out T Cx, out T Cy, out double Theta1, out double Theta2, out double Theta3);
             double Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
 
-            T Dx = Sub(Lx2, Lx1),
-              Dy = Sub(Ly2, Ly1);
+            T Dx = Subtract(Lx2, Lx1),
+              Dy = Subtract(Ly2, Ly1);
 
             if (IsDefault(Dx) && IsDefault(Dy))
             {
@@ -600,37 +584,37 @@ namespace MenthaAssembly
                 if (Radius != Tr)
                     return CrossPoints<T>.None;
 
-                T TDx = Sub(Cx, Lx1),
-                  TDy = Sub(Cy, Ly1);
+                T TDx = Subtract(Cx, Lx1),
+                  TDy = Subtract(Cy, Ly1);
 
-                double Alpha = MathHelper.Atan(ToDouble(TDx), ToDouble(TDy));
+                double Alpha = MathHelper.Atan(Cast<T, double>(TDx), Cast<T, double>(TDy));
 
                 return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
             }
 
-            T Kx = Sub(Lx1, Cx),
-              Ky = Sub(Ly1, Cy);
-            double a = ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))),
-                   b = ToDouble(Add(Mul(Kx, Dx), Mul(Ky, Dy))),
-                   c = ToDouble(Add(Mul(Kx, Kx), Mul(Ky, Ky))) - Radius * Radius,
+            T Kx = Subtract(Lx1, Cx),
+              Ky = Subtract(Ly1, Cy);
+            double a = Cast<T, double>(Add(Multiply(Dx, Dx), Multiply(Dy, Dy))),
+                   b = Cast<T, double>(Add(Multiply(Kx, Dx), Multiply(Ky, Dy))),
+                   c = Cast<T, double>(Add(Multiply(Kx, Kx), Multiply(Ky, Ky))) - Radius * Radius,
                    D = b * b - a * c,
-                   DDx = ToDouble(Dx),
-                   DDy = ToDouble(Dy);
+                   DDx = Cast<T, double>(Dx),
+                   DDy = Cast<T, double>(Dy);
 
             double t;
             if (D == 0)
             {
                 t = -b / a;
-                return new CrossPoints<T>(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+                return new CrossPoints<T>(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t))));
             }
 
             Point<T>[] Crosses = new Point<T>[2];
             double SqrD = Math.Sqrt(D);
 
             t = (-b + SqrD) / a;
-            Crosses[0] = new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)));
+            Crosses[0] = new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)));
             t = (-b - SqrD) / a;
-            Crosses[1] = new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)));
+            Crosses[1] = new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)));
 
             return new CrossPoints<T>(Crosses);
         }
@@ -664,12 +648,12 @@ namespace MenthaAssembly
 
             Circle<T>.CalculateCenter(Ax1, Ay1, Ax2, Ay2, Ax3, Ay3, out T Cx, out T Cy);
 
-            double Theta1 = MathHelper.Atan(ToDouble(Sub(Cx, Ax1)), ToDouble(Sub(Cy, Ay1))),
-                   Theta3 = MathHelper.Atan(ToDouble(Sub(Cx, Ax3)), ToDouble(Sub(Cy, Ay3))),
+            double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Ax1)), Cast<T, double>(Subtract(Cy, Ay1))),
+                   Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Ax3)), Cast<T, double>(Subtract(Cy, Ay3))),
                    Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
 
-            T Dx = Sub(Lx2, Lx1),
-              Dy = Sub(Ly2, Ly1);
+            T Dx = Subtract(Lx2, Lx1),
+              Dy = Subtract(Ly2, Ly1);
 
             if (IsDefault(Dx) && IsDefault(Dy))
             {
@@ -678,28 +662,28 @@ namespace MenthaAssembly
                 if (Radius != Tr)
                     return CrossPoints<T>.None;
 
-                T TDx = Sub(Cx, Lx1),
-                  TDy = Sub(Cy, Ly1);
+                T TDx = Subtract(Cx, Lx1),
+                  TDy = Subtract(Cy, Ly1);
 
-                double Alpha = MathHelper.Atan(ToDouble(TDx), ToDouble(TDy));
+                double Alpha = MathHelper.Atan(Cast<T, double>(TDx), Cast<T, double>(TDy));
 
                 return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
             }
 
-            T Kx = Sub(Lx1, Cx),
-              Ky = Sub(Ly1, Cy);
-            double a = ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))),
-                   b = ToDouble(Add(Mul(Kx, Dx), Mul(Ky, Dy))),
-                   c = ToDouble(Add(Mul(Kx, Kx), Mul(Ky, Ky))) - Radius * Radius,
+            T Kx = Subtract(Lx1, Cx),
+              Ky = Subtract(Ly1, Cy);
+            double a = Cast<T, double>(Add(Multiply(Dx, Dx), Multiply(Dy, Dy))),
+                   b = Cast<T, double>(Add(Multiply(Kx, Dx), Multiply(Ky, Dy))),
+                   c = Cast<T, double>(Add(Multiply(Kx, Kx), Multiply(Ky, Ky))) - Radius * Radius,
                    D = b * b - a * c,
-                   DDx = ToDouble(Dx),
-                   DDy = ToDouble(Dy);
+                   DDx = Cast<T, double>(Dx),
+                   DDy = Cast<T, double>(Dy);
 
             double t;
             if (D == 0)
             {
                 t = -b / a;
-                return 0d <= t && t <= 1d ? new CrossPoints<T>(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)))) :
+                return 0d <= t && t <= 1d ? new CrossPoints<T>(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)))) :
                                           CrossPoints<T>.None;
             }
 
@@ -708,11 +692,11 @@ namespace MenthaAssembly
 
             t = (-b + SqrD) / a;
             if (0d <= t && t <= 1d)
-                Crosses.Add(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+                Crosses.Add(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t))));
 
             t = (-b - SqrD) / a;
             if (0d <= t && t <= 1d)
-                Crosses.Add(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+                Crosses.Add(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t))));
 
             return new CrossPoints<T>(Crosses);
         }
@@ -751,8 +735,8 @@ namespace MenthaAssembly
             SortPoints(ref Ax1, ref Ay1, ref Ax2, ref Ay2, ref Ax3, ref Ay3, out T Cx, out T Cy, out double Theta1, out double Theta2, out double Theta3);
             double Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
 
-            T Dx = Sub(Lx2, Lx1),
-              Dy = Sub(Ly2, Ly1);
+            T Dx = Subtract(Lx2, Lx1),
+              Dy = Subtract(Ly2, Ly1);
 
             if (IsDefault(Dx) && IsDefault(Dy))
             {
@@ -761,28 +745,28 @@ namespace MenthaAssembly
                 if (Radius != Tr)
                     return CrossPoints<T>.None;
 
-                T TDx = Sub(Cx, Lx1),
-                  TDy = Sub(Cy, Ly1);
+                T TDx = Subtract(Cx, Lx1),
+                  TDy = Subtract(Cy, Ly1);
 
-                double Alpha = MathHelper.Atan(ToDouble(TDx), ToDouble(TDy));
+                double Alpha = MathHelper.Atan(Cast<T, double>(TDx), Cast<T, double>(TDy));
 
                 return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
             }
 
-            T Kx = Sub(Lx1, Cx),
-              Ky = Sub(Ly1, Cy);
-            double a = ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))),
-                   b = ToDouble(Add(Mul(Kx, Dx), Mul(Ky, Dy))),
-                   c = ToDouble(Add(Mul(Kx, Kx), Mul(Ky, Ky))) - Radius * Radius,
+            T Kx = Subtract(Lx1, Cx),
+              Ky = Subtract(Ly1, Cy);
+            double a = Cast<T, double>(Add(Multiply(Dx, Dx), Multiply(Dy, Dy))),
+                   b = Cast<T, double>(Add(Multiply(Kx, Dx), Multiply(Ky, Dy))),
+                   c = Cast<T, double>(Add(Multiply(Kx, Kx), Multiply(Ky, Ky))) - Radius * Radius,
                    D = b * b - a * c,
-                   DDx = ToDouble(Dx),
-                   DDy = ToDouble(Dy);
+                   DDx = Cast<T, double>(Dx),
+                   DDy = Cast<T, double>(Dy);
 
             double t;
             if (D == 0)
             {
                 t = -b / a;
-                return 0d <= t && t <= 1d ? new CrossPoints<T>(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t)))) :
+                return 0d <= t && t <= 1d ? new CrossPoints<T>(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)))) :
                                           CrossPoints<T>.None;
             }
 
@@ -791,11 +775,11 @@ namespace MenthaAssembly
 
             t = (-b + SqrD) / a;
             if (0d <= t && t <= 1d)
-                Crosses.Add(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+                Crosses.Add(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t))));
 
             t = (-b - SqrD) / a;
             if (0d <= t && t <= 1d)
-                Crosses.Add(new Point<T>(Add(Lx1, ToGeneric(DDx * t)), Add(Ly1, ToGeneric(DDy * t))));
+                Crosses.Add(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t))));
 
             return new CrossPoints<T>(Crosses);
         }

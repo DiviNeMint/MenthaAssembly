@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -13,6 +13,7 @@ namespace MenthaAssembly
         where T : unmanaged
     {
         private const int Vertices = 3;
+        private static readonly T GenericVertics = Cast<int, T>(Vertices);
 
         /// <summary>
         /// Gets a special value that represents a triangle with no position or area.
@@ -42,7 +43,7 @@ namespace MenthaAssembly
                     Cy = Add(Cy, p.Y);
                 }
 
-                return new Point<T>(DivVertices(Cx), DivVertices(Cy));
+                return new Point<T>(Divide(Cx, GenericVertics), Divide(Cy, GenericVertics));
             }
         }
 
@@ -57,7 +58,7 @@ namespace MenthaAssembly
                          p1 = Points[1],
                          p2 = Points[2];
 
-                return ToDouble(Abs(Vector<T>.Cross(Sub(p1.X, p0.X), Sub(p1.Y, p0.Y), Sub(p2.X, p0.X), Sub(p2.Y, p0.Y)))) / 2d;
+                return Cast<T, double>(Abs(Vector<T>.Cross(Subtract(p1.X, p0.X), Subtract(p1.Y, p0.Y), Subtract(p2.X, p0.X), Subtract(p2.Y, p0.Y)))) / 2d;
             }
         }
 
@@ -156,12 +157,12 @@ namespace MenthaAssembly
             // Compute Vectors
             T p0x = p0.X,
               p0y = p0.Y,
-              Vx0 = Sub(p2.X, p0x),
-              Vy0 = Sub(p2.Y, p0y),
-              Vx1 = Sub(p1.X, p0x),
-              Vy1 = Sub(p1.Y, p0y),
-              Vx2 = Sub(Px, p0x),
-              Vy2 = Sub(Py, p0y);
+              Vx0 = Subtract(p2.X, p0x),
+              Vy0 = Subtract(p2.Y, p0y),
+              Vx1 = Subtract(p1.X, p0x),
+              Vy1 = Subtract(p1.Y, p0y),
+              Vx2 = Subtract(Px, p0x),
+              Vy2 = Subtract(Py, p0y);
 
             // Compute Dot
             T Dot00 = Vector<T>.Dot(Vx0, Vy0, Vx0, Vy0),
@@ -171,13 +172,13 @@ namespace MenthaAssembly
               Dot12 = Vector<T>.Dot(Vx1, Vy1, Vx2, Vy2);
 
             // Compute barycentric coordinates
-            double invDenom = 1d / ToDouble(Sub(Mul(Dot00, Dot11), Mul(Dot01, Dot01))),
-                   u = ToDouble(Sub(Mul(Dot11, Dot02), Mul(Dot01, Dot12))) * invDenom;
+            double invDenom = 1d / Cast<T, double>(Subtract(Multiply(Dot00, Dot11), Multiply(Dot01, Dot01))),
+                   u = Cast<T, double>(Subtract(Multiply(Dot11, Dot02), Multiply(Dot01, Dot12))) * invDenom;
 
             if (u < 0d)
                 return false;
 
-            double v = ToDouble(Sub(Mul(Dot00, Dot12), Mul(Dot01, Dot02))) * invDenom;
+            double v = Cast<T, double>(Subtract(Multiply(Dot00, Dot12), Multiply(Dot01, Dot02))) * invDenom;
             return 0d <= v && u + v <= 1d;
         }
 
@@ -355,22 +356,6 @@ namespace MenthaAssembly
         public override string ToString()
             => IsEmpty ? $"{nameof(Triangle<T>)}<{typeof(T).Name}>.Empty" :
                               string.Join(", ", Points.Select(i => $"{{{i}}}"));
-
-        private static readonly Func<T, T, T> Add, Sub, Mul;
-        private static readonly Func<T, T> Abs, DivVertices;
-        private static readonly Func<T, double> ToDouble;
-        static Triangle()
-        {
-            Abs = ExpressionHelper<T>.CreateAbs();
-
-            Add = ExpressionHelper<T>.CreateAdd();
-            Sub = ExpressionHelper<T>.CreateSub();
-            Mul = ExpressionHelper<T>.CreateMul();
-
-            DivVertices = ExpressionHelper<T>.CreateDiv(Vertices);
-
-            ToDouble = ExpressionHelper<T>.CreateCast<double>();
-        }
 
         /// <summary>
         /// Offsets the specified triangle's coordinates by the specified vector.

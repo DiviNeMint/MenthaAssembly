@@ -487,7 +487,7 @@ namespace MenthaAssembly
 
             T[] Center = new T[Dimension];
             Operatorable<T> Sum,
-                            Frax = Operatorable<T>.Cast(TotalDatas >> 1);
+                            Frax = OperatorHelper.Cast<int, T>(TotalDatas >> 1);
             for (int i = 0; i < Dimension; i++)
             {
                 Sum = Frax;

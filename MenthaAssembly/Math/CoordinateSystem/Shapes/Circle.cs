@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -107,10 +107,10 @@ namespace MenthaAssembly
                 return false;
 
             Point<T> C = Center;
-            T Dx = Sub(C.X, Px),
-              Dy = Sub(C.Y, Py);
+            T Dx = Subtract(C.X, Px),
+              Dy = Subtract(C.Y, Py);
 
-            return ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))) <= Radius * Radius;
+            return Cast<T, double>(Add(Multiply(Dx, Dx), Multiply(Dy, Dy))) <= Radius * Radius;
         }
 
         public void Offset(Vector<T> Vector)
@@ -124,12 +124,17 @@ namespace MenthaAssembly
         }
 
         public void Scale(T Scale)
-            => Radius *= ToDouble(Scale);
-        void IShape<T>.Scale(T ScaleX, T ScaleY) => throw new NotSupportedException();
-        void IShape<T>.Scale(Point<T> Center, T Scale) => throw new NotSupportedException();
-        void IShape<T>.Scale(Point<T> Center, T ScaleX, T ScaleY) => throw new NotSupportedException();
-        void IShape<T>.Scale(T Cx, T Cy, T Scale) => throw new NotSupportedException();
-        void IShape<T>.Scale(T Cx, T Cy, T ScaleX, T ScaleY) => throw new NotSupportedException();
+            => Radius *= Cast<T, double>(Scale);
+        void IShape<T>.Scale(T ScaleX, T ScaleY)
+            => throw new NotSupportedException();
+        void IShape<T>.Scale(Point<T> Center, T Scale)
+            => throw new NotSupportedException();
+        void IShape<T>.Scale(Point<T> Center, T ScaleX, T ScaleY)
+            => throw new NotSupportedException();
+        void IShape<T>.Scale(T Cx, T Cy, T Scale)
+            => throw new NotSupportedException();
+        void IShape<T>.Scale(T Cx, T Cy, T ScaleX, T ScaleY)
+            => throw new NotSupportedException();
 
         public void Rotate(double Theta)
         {
@@ -219,33 +224,20 @@ namespace MenthaAssembly
             => IsEmpty ? $"{nameof(Circle<T>)}<{typeof(T).Name}>.Empty" :
                               $"Center : {Center}, Radius : {Radius}";
 
-        private static readonly Func<T, T, T> Add, Sub, Mul;
-        private static readonly Func<T, double> ToDouble;
-        private static readonly Func<double, T> ToGeneric;
-        static Circle()
-        {
-            Add = ExpressionHelper<T>.CreateAdd();
-            Sub = ExpressionHelper<T>.CreateSub();
-            Mul = ExpressionHelper<T>.CreateMul();
-
-            ToDouble = ExpressionHelper<T>.CreateCast<double>();
-            ToGeneric = ExpressionHelper<double>.CreateCast<T>();
-        }
-
         public static void CalculateCenter(T Px1, T Py1, T Px2, T Py2, T Px3, T Py3, out T Cx, out T Cy)
         {
-            T Lp = Add(Mul(Px1, Px1), Mul(Py1, Py1)),
-              Lq = Add(Mul(Px2, Px2), Mul(Py2, Py2)),
-              Lr = Add(Mul(Px3, Px3), Mul(Py3, Py3)),
-              Xrq = Sub(Px2, Px3),
-              Yrq = Sub(Py2, Py3),
-              Xqp = Sub(Px1, Px2),
-              Yqp = Sub(Py1, Py2),
-              Xpr = Sub(Px3, Px1),
-              Ypr = Sub(Py3, Py1);
+            T Lp = Add(Multiply(Px1, Px1), Multiply(Py1, Py1)),
+              Lq = Add(Multiply(Px2, Px2), Multiply(Py2, Py2)),
+              Lr = Add(Multiply(Px3, Px3), Multiply(Py3, Py3)),
+              Xrq = Subtract(Px2, Px3),
+              Yrq = Subtract(Py2, Py3),
+              Xqp = Subtract(Px1, Px2),
+              Yqp = Subtract(Py1, Py2),
+              Xpr = Subtract(Px3, Px1),
+              Ypr = Subtract(Py3, Py1);
 
-            Cx = ToGeneric(ToDouble(Add(Add(Mul(Lp, Yrq), Mul(Lq, Ypr)), Mul(Lr, Yqp))) / (2d * ToDouble(Add(Add(Mul(Px1, Yrq), Mul(Px2, Ypr)), Mul(Px3, Yqp)))));
-            Cy = ToGeneric(ToDouble(Add(Add(Mul(Lp, Xrq), Mul(Lq, Xpr)), Mul(Lr, Xqp))) / (2d * ToDouble(Add(Add(Mul(Py1, Xrq), Mul(Py2, Xpr)), Mul(Py3, Xqp)))));
+            Cx = Cast<double, T>(Cast<T, double>(Add(Add(Multiply(Lp, Yrq), Multiply(Lq, Ypr)), Multiply(Lr, Yqp))) / (2d * Cast<T, double>(Add(Add(Multiply(Px1, Yrq), Multiply(Px2, Ypr)), Multiply(Px3, Yqp)))));
+            Cy = Cast<double, T>(Cast<T, double>(Add(Add(Multiply(Lp, Xrq), Multiply(Lq, Xpr)), Multiply(Lr, Xqp))) / (2d * Cast<T, double>(Add(Add(Multiply(Py1, Xrq), Multiply(Py2, Xpr)), Multiply(Py3, Xqp)))));
         }
 
         /// <summary>
@@ -270,7 +262,7 @@ namespace MenthaAssembly
         /// <param name="Circle">The circle to be scaled.</param>
         /// <param name="Scale">The scale factor.</param>
         public static Circle<T> Scale(Circle<T> Circle, T Scale)
-            => Circle.IsEmpty ? Empty : new Circle<T>(Circle.Center, Circle.Radius * ToDouble(Scale));
+            => Circle.IsEmpty ? Empty : new Circle<T>(Circle.Center, Circle.Radius * Cast<T, double>(Scale));
 
         /// <summary>
         /// Rotates the specified circle about the origin.

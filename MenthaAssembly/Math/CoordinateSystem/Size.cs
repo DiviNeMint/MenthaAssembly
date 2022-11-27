@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -7,7 +7,7 @@ namespace MenthaAssembly
     public struct Size<T> : ICloneable
         where T : unmanaged
     {
-        public static Size<T> Empty => new Size<T>();
+        public static Size<T> Empty => new();
 
         public T Width { set; get; }
 
@@ -24,13 +24,10 @@ namespace MenthaAssembly
 
         public Size<U> Cast<U>()
             where U : unmanaged
-        {
-            Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
-            return new Size<U>(CastHandler(Width), CastHandler(Height));
-        }
+            => new(Cast<T, U>(Width), Cast<T, U>(Height));
 
         public Size<T> Clone()
-            => new Size<T>(Width, Height);
+            => new(Width, Height);
         object ICloneable.Clone()
             => Clone();
 
@@ -40,34 +37,16 @@ namespace MenthaAssembly
         public bool Equals(Size<T> Target)
             => Equal(Width, Target.Width) && Equal(Height, Target.Height);
         public override bool Equals(object obj)
-        {
-            if (obj is Size<T> Target)
-                return Equals(Target);
-
-            return false;
-        }
+            => obj is Size<T> Target && Equals(Target);
 
         public override string ToString()
             => $"Width : {Width}, Height : {Height}";
 
-        internal static readonly Func<T, T, T> Mul, Div;
-        internal static readonly Predicate<T> IsDefault;
-        internal static readonly Func<T, T, bool> Equal;
-        static Size()
-        {
-            Mul = ExpressionHelper<T>.CreateMul();
-            Div = ExpressionHelper<T>.CreateDiv();
-
-            IsDefault = ExpressionHelper<T>.CreateIsDefault();
-
-            Equal = ExpressionHelper<T>.CreateEqual();
-        }
-
         public static Size<T> operator *(Size<T> This, T Factor)
-            => new Size<T>(Mul(This.Width, Factor), Mul(This.Height, Factor));
+            => new(Multiply(This.Width, Factor), Multiply(This.Height, Factor));
 
         public static Size<T> operator /(Size<T> This, T Factor)
-            => new Size<T>(Div(This.Width, Factor), Div(This.Height, Factor));
+            => new(Divide(This.Width, Factor), Divide(This.Height, Factor));
 
         public static bool operator ==(Size<T> This, Size<T> Target)
             => This.Equals(Target);

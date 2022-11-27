@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Linq.Expressions;
 using System.Reflection;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -30,28 +30,6 @@ namespace MenthaAssembly
         }
 
         public override string ToString() => $"{Value}";
-
-        private static readonly Func<T, T> Neg;
-        private static readonly Func<T, T, T> Add, Sub, Mul, Div;
-        private static readonly Func<T, T, bool> Equal, GreaterThan, LessThan, GreaterThanOrEqual, LessThanOrEqual;
-        internal static readonly Func<int, T> Cast;
-        static Operatorable()
-        {
-            Neg = ExpressionHelper<T>.CreateNeg();
-
-            Add = ExpressionHelper<T>.CreateAdd();
-            Sub = ExpressionHelper<T>.CreateSub();
-            Mul = ExpressionHelper<T>.CreateMul();
-            Div = ExpressionHelper<T>.CreateDiv();
-
-            Equal = ExpressionHelper<T>.CreateEqual();
-            GreaterThan = ExpressionHelper<T>.CreateGreaterThan();
-            LessThan = ExpressionHelper<T>.CreateLessThan();
-            GreaterThanOrEqual = ExpressionHelper<T>.CreateGreaterThanOrEqual();
-            LessThanOrEqual = ExpressionHelper<T>.CreateLessThanOrEqual();
-
-            Cast = ExpressionHelper<int>.CreateCast<T>();
-        }
 
         private static bool HasMinValue = false;
         private static T _MinValue;
@@ -88,41 +66,36 @@ namespace MenthaAssembly
         public static bool TryGetConstant(string Name, out T Value)
             => typeof(T).TryGetConstant(Name, out Value);
         public static T GetConstant(string Name)
-        {
-            if (typeof(T).TryGetConstant(Name, out T Value))
-                return Value;
-
-            throw new NotSupportedException();
-        }
+            => typeof(T).TryGetConstant(Name, out T Value) ? Value : throw new NotSupportedException();
 
         public static Operatorable<T> operator -(Operatorable<T> This)
-            => new Operatorable<T>(Neg(This.Value));
+            => new(Negate(This.Value));
         public static Operatorable<T> operator +(Operatorable<T> This, Operatorable<T> Target)
-            => new Operatorable<T>(Add(This.Value, Target.Value));
+            => new(Add(This.Value, Target.Value));
         public static Operatorable<T> operator -(Operatorable<T> This, Operatorable<T> Target)
-            => new Operatorable<T>(Sub(This.Value, Target.Value));
+            => new(Subtract(This.Value, Target.Value));
         public static Operatorable<T> operator *(Operatorable<T> This, Operatorable<T> Target)
-            => new Operatorable<T>(Mul(This.Value, Target.Value));
+            => new(Multiply(This.Value, Target.Value));
         public static Operatorable<T> operator /(Operatorable<T> This, Operatorable<T> Target)
-            => new Operatorable<T>(Div(This.Value, Target.Value));
+            => new(Divide(This.Value, Target.Value));
 
         public static Operatorable<T> operator +(Operatorable<T> This, int Target)
-            => new Operatorable<T>(Add(This.Value, Cast(Target)));
+            => new(Add(This.Value, Cast<int, T>(Target)));
         public static Operatorable<T> operator -(Operatorable<T> This, int Target)
-            => new Operatorable<T>(Sub(This.Value, Cast(Target)));
+            => new(Subtract(This.Value, Cast<int, T>(Target)));
         public static Operatorable<T> operator *(Operatorable<T> This, int Target)
-            => new Operatorable<T>(Mul(This.Value, Cast(Target)));
+            => new(Multiply(This.Value, Cast<int, T>(Target)));
         public static Operatorable<T> operator /(Operatorable<T> This, int Target)
-            => new Operatorable<T>(Div(This.Value, Cast(Target)));
+            => new(Divide(This.Value, Cast<int, T>(Target)));
 
         public static Operatorable<T> operator ++(Operatorable<T> This)
         {
-            This.Value = Add(This.Value, Cast(1));
+            This.Value = Add(This.Value, Cast<int, T>(1));
             return This;
         }
         public static Operatorable<T> operator --(Operatorable<T> This)
         {
-            This.Value = Sub(This.Value, Cast(1));
+            This.Value = Subtract(This.Value, Cast<int, T>(1));
             return This;
         }
 
@@ -141,8 +114,10 @@ namespace MenthaAssembly
         public static bool operator >=(Operatorable<T> This, Operatorable<T> Target)
             => GreaterThanOrEqual(This.Value, Target.Value);
 
-        public static implicit operator Operatorable<T>(T Value) => new Operatorable<T>(Value);
-        public static implicit operator T(Operatorable<T> This) => This.Value;
+        public static implicit operator Operatorable<T>(T Value)
+            => new(Value);
+        public static implicit operator T(Operatorable<T> This)
+            => This.Value;
 
     }
 }

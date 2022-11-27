@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -29,13 +30,13 @@ namespace MenthaAssembly
         /// The squared length of this Vector.
         /// </summary>
         public T LengthSquare
-            => _Add(Mul(X, X), Mul(Y, Y));
+            => Add<T>(Multiply<T>(X, X), Multiply<T>(Y, Y));
 
         /// <summary>
         /// The length of this Vector.
         /// </summary>
         public double Length
-            => Math.Sqrt(ToDouble(LengthSquare));
+            => Math.Sqrt(Cast<T, double>(LengthSquare));
 
         /// <summary>
         ///  Gets a value indicating whether the <see cref="Vector{T}"/> is zero vector.
@@ -61,8 +62,8 @@ namespace MenthaAssembly
         /// <param name="End">The end point.</param>
         public Vector(T Sx, T Sy, Point<T> End)
         {
-            X = Sub(End.X, Sx);
-            Y = Sub(End.Y, Sy);
+            X = Subtract<T>(End.X, Sx);
+            Y = Subtract<T>(End.Y, Sy);
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -72,8 +73,8 @@ namespace MenthaAssembly
         /// <param name="Ey">The y-coordinate of the end point.</param>
         public Vector(Point<T> Start, T Ex, T Ey)
         {
-            X = Sub(Ex, Start.X);
-            Y = Sub(Ey, Start.Y);
+            X = Subtract<T>(Ex, Start.X);
+            Y = Subtract<T>(Ey, Start.Y);
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -82,8 +83,8 @@ namespace MenthaAssembly
         /// <param name="End">The end point.</param>
         public Vector(Point<T> Start, Point<T> End)
         {
-            X = Sub(End.X, Start.X);
-            Y = Sub(End.Y, Start.Y);
+            X = Subtract<T>(End.X, Start.X);
+            Y = Subtract<T>(End.Y, Start.Y);
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -94,20 +95,28 @@ namespace MenthaAssembly
         /// <param name="Ey">The y-coordinate of the end point.</param>
         public Vector(T Sx, T Sy, T Ex, T Ey)
         {
-            X = Sub(Ex, Sx);
-            Y = Sub(Ey, Sy);
+            X = Subtract<T>(Ex, Sx);
+            Y = Subtract<T>(Ey, Sy);
         }
 
-        void ICoordinateObject<T>.Offset(Vector<T> Vector) => throw new NotSupportedException();
-        void ICoordinateObject<T>.Offset(T Dx, T Dy) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Offset(Vector<T> Vector)
+            => throw new NotSupportedException();
+        void ICoordinateObject<T>.Offset(T Dx, T Dy)
+            => throw new NotSupportedException();
 
-        void ICoordinateObject<T>.Rotate(double Theta) => throw new NotSupportedException();
-        void ICoordinateObject<T>.Rotate(Point<T> Center, double Theta) => throw new NotSupportedException();
-        void ICoordinateObject<T>.Rotate(T Cx, T Cy, double Theta) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Rotate(double Theta)
+            => throw new NotSupportedException();
+        void ICoordinateObject<T>.Rotate(Point<T> Center, double Theta)
+            => throw new NotSupportedException();
+        void ICoordinateObject<T>.Rotate(T Cx, T Cy, double Theta)
+            => throw new NotSupportedException();
 
-        void ICoordinateObject<T>.Reflect(Line<T> Line) => throw new NotSupportedException();
-        void ICoordinateObject<T>.Reflect(Point<T> LinePoint1, Point<T> LinePoint2) => throw new NotSupportedException();
-        void ICoordinateObject<T>.Reflect(T Lx1, T Ly1, T Lx2, T Ly2) => throw new NotSupportedException();
+        void ICoordinateObject<T>.Reflect(Line<T> Line)
+            => throw new NotSupportedException();
+        void ICoordinateObject<T>.Reflect(Point<T> LinePoint1, Point<T> LinePoint2)
+            => throw new NotSupportedException();
+        void ICoordinateObject<T>.Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
+            => throw new NotSupportedException();
 
         /// <summary>
         /// Creates a new casted <see cref="Vector{T}"/>.
@@ -115,10 +124,7 @@ namespace MenthaAssembly
         /// <returns></returns>
         public Vector<U> Cast<U>()
             where U : unmanaged
-        {
-            Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
-            return new Vector<U>(CastHandler(X), CastHandler(Y));
-        }
+            => new(Cast<T, U>(X), Cast<T, U>(Y));
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
             => Cast<U>();
 
@@ -149,33 +155,13 @@ namespace MenthaAssembly
         public override string ToString()
             => $"X : {X}, Y : {Y}";
 
-        private static readonly Func<T, T> Neg;
-        private static readonly Func<T, T, T> _Add, Sub, Mul, Div;
-        private static readonly Predicate<T> IsDefault;
-        private static readonly Func<T, T, bool> Equal;
-        private static readonly Func<T, double> ToDouble;
-        static Vector()
-        {
-            Neg = ExpressionHelper<T>.CreateNeg();
-
-            _Add = ExpressionHelper<T>.CreateAdd();
-            Sub = ExpressionHelper<T>.CreateSub();
-            Mul = ExpressionHelper<T>.CreateMul();
-            Div = ExpressionHelper<T>.CreateDiv();
-
-            IsDefault = ExpressionHelper<T>.CreateIsDefault();
-            Equal = ExpressionHelper<T>.CreateEqual();
-
-            ToDouble = ExpressionHelper<T>.CreateCast<double>();
-        }
-
         /// <summary>
         /// Calculates the dot product of two vectors.
         /// </summary>
         /// <param name="Vector1">The first vector to evaluate.</param>
         /// <param name="Vector2">The second vector to evaluate.</param>
         public static T Dot(Vector<T> Vector1, Vector<T> Vector2)
-            => _Add(Mul(Vector1.X, Vector2.X), Mul(Vector1.Y, Vector2.Y));
+            => Add<T>(Multiply<T>(Vector1.X, Vector2.X), Multiply<T>(Vector1.Y, Vector2.Y));
         /// <summary>
         /// Calculates the dot product of two vectors.
         /// </summary>
@@ -185,7 +171,7 @@ namespace MenthaAssembly
         /// <param name="Dy2">The delta on y-coordinate of second vector to evaluate.</param>
         /// <returns></returns>
         public static T Dot(T Dx1, T Dy1, T Dx2, T Dy2)
-            => _Add(Mul(Dx1, Dx2), Mul(Dy1, Dy2));
+            => Add<T>(Multiply<T>(Dx1, Dx2), Multiply<T>(Dy1, Dy2));
 
         /// <summary>
         /// Calculates the cross product of two vectors.
@@ -193,7 +179,7 @@ namespace MenthaAssembly
         /// <param name="Vector1">The first vector to evaluate.</param>
         /// <param name="Vector2">The second vector to evaluate.</param>
         public static T Cross(Vector<T> Vector1, Vector<T> Vector2)
-            => Sub(Mul(Vector1.X, Vector2.Y), Mul(Vector1.Y, Vector2.X));
+            => Subtract<T>(Multiply<T>(Vector1.X, Vector2.Y), Multiply<T>(Vector1.Y, Vector2.X));
         /// <summary>
         /// Calculates the cross product of two vectors.
         /// </summary>
@@ -203,7 +189,7 @@ namespace MenthaAssembly
         /// <param name="Dy2">The delta on y-coordinate of second vector to evaluate.</param>
         /// <returns></returns>
         public static T Cross(T Dx1, T Dy1, T Dx2, T Dy2)
-            => Sub(Mul(Dx1, Dy2), Mul(Dy1, Dx2));
+            => Subtract<T>(Multiply<T>(Dx1, Dy2), Multiply<T>(Dy1, Dx2));
 
         /// <summary>
         /// Retrieves the angle, expressed in degrees, between the two specified vectors.
@@ -214,7 +200,7 @@ namespace MenthaAssembly
         public static double AngleBetween(Vector<T> Vector1, Vector<T> Vector2)
         {
             T Dot = Vector<T>.Dot(Vector1, Vector2);
-            return Math.Sqrt(ToDouble(Mul(Dot, Dot)) / ToDouble(Mul(Vector1.LengthSquare, Vector2.LengthSquare)));
+            return Math.Sqrt(Cast<T, double>(Multiply<T>(Dot, Dot)) / Cast<T, double>(Multiply<T>(Vector1.LengthSquare, Vector2.LengthSquare)));
         }
         /// <summary>
         /// Retrieves the angle, expressed in degrees, between the two specified vectors.
@@ -226,9 +212,9 @@ namespace MenthaAssembly
         public static double AngleBetween(T Dx1, T Dy1, T Dx2, T Dy2)
         {
             T Dot = Vector<T>.Dot(Dx1, Dy1, Dx2, Dy2),
-              LengthSquare1 = _Add(Mul(Dx1, Dx1), Mul(Dy1, Dy1)),
-              LengthSquare2 = _Add(Mul(Dx2, Dx2), Mul(Dy2, Dy2));
-            return Math.Sqrt(ToDouble(Mul(Dot, Dot)) / ToDouble(Mul(LengthSquare1, LengthSquare2)));
+              LengthSquare1 = Add<T>(Multiply<T>(Dx1, Dx1), Multiply<T>(Dy1, Dy1)),
+              LengthSquare2 = Add<T>(Multiply<T>(Dx2, Dx2), Multiply<T>(Dy2, Dy2));
+            return Math.Sqrt(Cast<T, double>(Multiply<T>(Dot, Dot)) / Cast<T, double>(Multiply<T>(LengthSquare1, LengthSquare2)));
         }
 
         /// <summary>
@@ -238,7 +224,7 @@ namespace MenthaAssembly
         /// <param name="Vector2">The second vector to add.</param>
         /// <returns></returns>
         public static Vector<T> Add(Vector<T> Vector1, Vector<T> Vector2)
-            => new(_Add(Vector1.X, Vector2.X), _Add(Vector1.Y, Vector2.Y));
+            => new(Add<T>(Vector1.X, Vector2.X), Add<T>(Vector1.Y, Vector2.Y));
         /// <summary>
         /// Adds two vectors and returns the result as a <see cref="Vector{T}"/> structure.
         /// </summary>
@@ -247,7 +233,7 @@ namespace MenthaAssembly
         /// <param name="Dy">The delta on y-coordinate of second vector to add.</param>
         /// <returns></returns>
         public static Vector<T> Add(Vector<T> Vector, T Dx, T Dy)
-            => new(_Add(Vector.X, Dx), _Add(Vector.Y, Dy));
+            => new(Add<T>(Vector.X, Dx), Add<T>(Vector.Y, Dy));
 
         /// <summary>
         /// Subtracts the specified vector from another specified vector.
@@ -256,7 +242,7 @@ namespace MenthaAssembly
         /// <param name="Vector2">The vector to subtract from Vector1.</param>
         /// <returns></returns>
         public static Vector<T> Subtract(Vector<T> Vector1, Vector<T> Vector2)
-            => new(Sub(Vector1.X, Vector2.X), Sub(Vector1.Y, Vector2.Y));
+            => new(Subtract<T>(Vector1.X, Vector2.X), Subtract<T>(Vector1.Y, Vector2.Y));
         /// <summary>
         /// Subtracts the specified vector from another specified vector.
         /// </summary>
@@ -265,7 +251,7 @@ namespace MenthaAssembly
         /// <param name="Dy">The delta on y-coordinate of the vector to subtract from Vector.</param>
         /// <returns></returns>
         public static Vector<T> Subtract(Vector<T> Vector, T Dx, T Dy)
-            => new(Sub(Vector.X, Dx), Sub(Vector.Y, Dy));
+            => new(Subtract<T>(Vector.X, Dx), Subtract<T>(Vector.Y, Dy));
 
         /// <summary>
         /// Multiplies the specified vector by the specified scalar.
@@ -283,7 +269,7 @@ namespace MenthaAssembly
         /// <param name="ScalarY">The scalar to multiply on y-coordinate.</param>
         /// <returns></returns>
         public static Vector<T> Multiply(Vector<T> Vector, T ScalarX, T ScalarY)
-            => new(Mul(Vector.X, ScalarX), Mul(Vector.Y, ScalarY));
+            => new(Multiply<T>(Vector.X, ScalarX), Multiply<T>(Vector.Y, ScalarY));
 
         /// <summary>
         /// Divides the specified vector by the specified scalar.
@@ -301,14 +287,14 @@ namespace MenthaAssembly
         /// <param name="ScalarY">The scalar to divide on y-coordinate.</param>
         /// <returns></returns>
         public static Vector<T> Divide(Vector<T> Vector, T ScalarX, T ScalarY)
-            => new(Div(Vector.X, ScalarX), Div(Vector.Y, ScalarY));
+            => new(Divide<T>(Vector.X, ScalarX), Divide<T>(Vector.Y, ScalarY));
 
         /// <summary>
         /// Negates this vector. The vector has the same magnitude as before, but its direction is now opposite.
         /// </summary>
         /// <param name="Vector">The vector to reverse.</param>
         public static Vector<T> Reverse(Vector<T> Vector)
-            => new(Neg(Vector.X), Neg(Vector.Y));
+            => new(Negate(Vector.X), Negate(Vector.Y));
 
         /// <summary>
         /// Calculates the dot product of two vectors.

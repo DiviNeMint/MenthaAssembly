@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -40,7 +40,7 @@ namespace MenthaAssembly
                     Cy = Add(Cy, p.Y);
                 }
 
-                return new Point<T>(ToGeneric(ToDouble(Cx) / Length), ToGeneric(ToDouble(Cy) / Length));
+                return new Point<T>(Cast<double, T>(Cast<T, double>(Cx) / Length), Cast<double, T>(Cast<T, double>(Cy) / Length));
             }
         }
 
@@ -70,7 +70,7 @@ namespace MenthaAssembly
                 p = Points[0];
                 Sum = Add(Sum, Vector<T>.Cross(LPx, LPy, p.X, p.Y));
 
-                return ToDouble(Abs(Sum)) / 2d;
+                return Cast<T, double>(Abs(Sum)) / 2d;
             }
         }
 
@@ -437,26 +437,6 @@ namespace MenthaAssembly
         public override string ToString()
             => IsEmpty ? $"{nameof(Polygon<T>)}<{typeof(T).Name}>.Empty" :
                               string.Join(", ", Points.Select(i => $"{{{i}}}"));
-
-        private static readonly Func<T, T> Abs;
-        private static readonly Func<T, T, T> Add, Sub, Mul;
-        private static readonly Func<T, T, bool> Equal, GreaterThan;
-        private static readonly Func<T, double> ToDouble;
-        private static readonly Func<double, T> ToGeneric;
-        static Polygon()
-        {
-            Abs = ExpressionHelper<T>.CreateAbs();
-
-            Add = ExpressionHelper<T>.CreateAdd();
-            Sub = ExpressionHelper<T>.CreateSub();
-            Mul = ExpressionHelper<T>.CreateMul();
-
-            Equal = ExpressionHelper<T>.CreateEqual();
-            GreaterThan = ExpressionHelper<T>.CreateGreaterThan();
-
-            ToDouble = ExpressionHelper<T>.CreateCast<double>();
-            ToGeneric = ExpressionHelper<double>.CreateCast<T>();
-        }
 
         /// <summary>
         /// Offsets the specified polygon's coordinates by the specified vector.

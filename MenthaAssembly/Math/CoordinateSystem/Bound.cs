@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -18,13 +18,13 @@ namespace MenthaAssembly
         public T Bottom { set; get; }
 
         public T Width
-            => Sub(Right, Left);
+            => Subtract(Right, Left);
 
         public T Height
-            => Sub(Bottom, Top);
+            => Subtract(Bottom, Top);
 
         public Point<T> Center
-            => new(ValueHalf(Add(Left, Right)), ValueHalf(Add(Top, Bottom)));
+            => new(Half(Add(Left, Right)), Half(Add(Top, Bottom)));
 
         public Point<T> LeftTop
             => new(Left, Top);
@@ -70,26 +70,26 @@ namespace MenthaAssembly
             => this.Scale(Scale, Scale);
         public void Scale(T XScale, T YScale)
         {
-            Left = Mul(Left, XScale);
-            Top = Mul(Top, YScale);
-            Right = Mul(Right, XScale);
-            Bottom = Mul(Bottom, YScale);
+            Left = Multiply(Left, XScale);
+            Top = Multiply(Top, YScale);
+            Right = Multiply(Right, XScale);
+            Bottom = Multiply(Bottom, YScale);
         }
 
         public void ScaleSize(T Scale)
             => ScaleSize(Scale, Scale);
         public void ScaleSize(T XScale, T YScale)
         {
-            Right = Add(Left, Mul(Width, XScale));
-            Bottom = Add(Top, Mul(Height, YScale));
+            Right = Add(Left, Multiply(Width, XScale));
+            Bottom = Add(Top, Multiply(Height, YScale));
         }
 
         public void Rotate(double Theta)
         {
-            double DL = ToDouble(Left),
-                   DT = ToDouble(Top),
-                   DR = ToDouble(Right),
-                   DB = ToDouble(Bottom),
+            double DL = Cast<T, double>(Left),
+                   DT = Cast<T, double>(Top),
+                   DR = Cast<T, double>(Right),
+                   DB = Cast<T, double>(Bottom),
                    DOx = (DL + DR) * 0.5d,
                    DOy = (DT + DB) * 0.5d,
                    Sin = Math.Sin(Theta),
@@ -101,21 +101,21 @@ namespace MenthaAssembly
             Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
-            Left = ToGeneric(Min);
-            Right = ToGeneric(Max);
+            Left = Cast<double, T>(Min);
+            Right = Cast<double, T>(Max);
 
             MathHelper.MinAndMax(out Min, out Max, Y0, Y1, Y2, Y3);
-            Top = ToGeneric(Min);
-            Bottom = ToGeneric(Max);
+            Top = Cast<double, T>(Min);
+            Bottom = Cast<double, T>(Max);
         }
         public void Rotate(T Ox, T Oy, double Theta)
         {
-            double DL = ToDouble(Left),
-                   DT = ToDouble(Top),
-                   DR = ToDouble(Right),
-                   DB = ToDouble(Bottom),
-                   DOx = ToDouble(Ox),
-                   DOy = ToDouble(Oy),
+            double DL = Cast<T, double>(Left),
+                   DT = Cast<T, double>(Top),
+                   DR = Cast<T, double>(Right),
+                   DB = Cast<T, double>(Bottom),
+                   DOx = Cast<T, double>(Ox),
+                   DOy = Cast<T, double>(Oy),
                    Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
@@ -125,12 +125,12 @@ namespace MenthaAssembly
             Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
-            Left = ToGeneric(Min);
-            Right = ToGeneric(Max);
+            Left = Cast<double, T>(Min);
+            Right = Cast<double, T>(Max);
 
             MathHelper.MinAndMax(out Min, out Max, Y0, Y1, Y2, Y3);
-            Top = ToGeneric(Min);
-            Bottom = ToGeneric(Max);
+            Top = Cast<double, T>(Min);
+            Bottom = Cast<double, T>(Max);
         }
 
         public void Union(Bound<T> Bound)
@@ -157,7 +157,7 @@ namespace MenthaAssembly
                 return;
             }
 
-            if (IsDefault(Sub(Right, Left)) && IsDefault(Sub(Bottom, Top)))
+            if (IsDefault(Subtract(Right, Left)) && IsDefault(Subtract(Bottom, Top)))
                 return;
 
             this.Left = Min(this.Left, Left);
@@ -207,7 +207,7 @@ namespace MenthaAssembly
         }
         public bool IntersectsWith(T Left, T Top, T Right, T Bottom)
         {
-            if (IsEmpty || (IsDefault(Sub(Right, Left)) && IsDefault(Sub(Bottom, Top))))
+            if (IsEmpty || (IsDefault(Subtract(Right, Left)) && IsDefault(Subtract(Bottom, Top))))
                 return false;
 
             return LessThanOrEqual(Left, this.Right) &&
@@ -219,20 +219,12 @@ namespace MenthaAssembly
         public bool Contains(Point<T> Point)
             => Contains(Point.X, Point.Y);
         public bool Contains(T X, T Y)
-        {
-            if (IsEmpty)
-                return false;
-
-            return LessThan(Left, X) && LessThan(X, Right) &&
-                   LessThan(Top, Y) && LessThan(Y, Bottom);
-        }
+            => !IsEmpty && LessThan(Left, X) && LessThan(X, Right) &&
+                           LessThan(Top, Y) && LessThan(Y, Bottom);
 
         public Bound<U> Cast<U>()
             where U : unmanaged
-        {
-            Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
-            return new Bound<U>(CastHandler(Left), CastHandler(Top), CastHandler(Right), CastHandler(Bottom));
-        }
+            => new(Cast<T, U>(Left), Cast<T, U>(Top), Cast<T, U>(Right), Cast<T, U>(Bottom));
 
         public Bound<T> Clone()
             => new(Left, Top, Right, Bottom);
@@ -245,45 +237,10 @@ namespace MenthaAssembly
         public bool Equals(Bound<T> Target)
             => Equal(Left, Target.Left) && Equal(Top, Target.Top) && Equal(Right, Target.Right) && Equal(Bottom, Target.Bottom);
         public override bool Equals(object obj)
-        {
-            if (obj is Bound<T> Target)
-                return Equals(Target);
-
-            return false;
-        }
+            => obj is Bound<T> Target && Equals(Target);
 
         public override string ToString()
             => $"Left : {Left}, Top : {Top}, Right : {Right}, Bottom : {Bottom}";
-
-        internal static readonly Func<T, T, T> Add, Sub, Mul, Div;
-        internal static readonly Predicate<T> IsDefault;
-        internal static readonly Func<T, double> ToDouble;
-        internal static readonly Func<double, T> ToGeneric;
-        internal static readonly Func<T, T, bool> Equal, GreaterThan, LessThan, GreaterThanOrEqual, LessThanOrEqual;
-        internal static readonly Func<T, T, T> Min, Max;
-        internal static readonly Func<T, T> ValueHalf;
-        static Bound()
-        {
-            Add = ExpressionHelper<T>.CreateAdd();
-            Sub = ExpressionHelper<T>.CreateSub();
-            Mul = ExpressionHelper<T>.CreateMul();
-            Div = ExpressionHelper<T>.CreateDiv();
-
-            ValueHalf = ExpressionHelper<T>.CreateDiv(2);
-
-            IsDefault = ExpressionHelper<T>.CreateIsDefault();
-            ToDouble = ExpressionHelper<T>.CreateCast<double>();
-            ToGeneric = ExpressionHelper<double>.CreateCast<T>();
-
-            Equal = ExpressionHelper<T>.CreateEqual();
-            GreaterThan = ExpressionHelper<T>.CreateGreaterThan();
-            LessThan = ExpressionHelper<T>.CreateLessThan();
-            GreaterThanOrEqual = ExpressionHelper<T>.CreateGreaterThanOrEqual();
-            LessThanOrEqual = ExpressionHelper<T>.CreateLessThanOrEqual();
-
-            Min = (a, b) => LessThan(a, b) ? a : b;
-            Max = (a, b) => GreaterThan(a, b) ? a : b;
-        }
 
         public static Bound<T> Offset(Bound<T> Bound, Vector<T> Vector)
             => Offset(Bound, Vector.X, Vector.Y);
@@ -293,21 +250,21 @@ namespace MenthaAssembly
         public static Bound<T> Scale(Bound<T> Bound, T Scale)
             => Bound<T>.Scale(Bound, Scale, Scale);
         public static Bound<T> Scale(Bound<T> Bound, T XScale, T YScale)
-            => new(Mul(Bound.Left, XScale), Mul(Bound.Top, YScale), Mul(Bound.Right, XScale), Mul(Bound.Bottom, YScale));
+            => new(Multiply(Bound.Left, XScale), Multiply(Bound.Top, YScale), Multiply(Bound.Right, XScale), Multiply(Bound.Bottom, YScale));
 
         public static Bound<T> ScaleSize(Bound<T> Bound, T Scale)
-            => Bound<T>.ScaleSize(Bound, Scale, Scale);
+            => ScaleSize(Bound, Scale, Scale);
         public static Bound<T> ScaleSize(Bound<T> Bound, T XScale, T YScale)
-            => new(Bound.Left, Bound.Top, Add(Bound.Left, Mul(Bound.Width, XScale)), Add(Bound.Top, Mul(Bound.Height, YScale)));
+            => new(Bound.Left, Bound.Top, Add(Bound.Left, Multiply(Bound.Width, XScale)), Add(Bound.Top, Multiply(Bound.Height, YScale)));
 
         public static Bound<T> Rotate(Bound<T> Bound, double Theta)
         {
             Bound<T> R = new();
 
-            double DL = ToDouble(Bound.Left),
-                   DT = ToDouble(Bound.Top),
-                   DR = ToDouble(Bound.Right),
-                   DB = ToDouble(Bound.Bottom),
+            double DL = Cast<T, double>(Bound.Left),
+                   DT = Cast<T, double>(Bound.Top),
+                   DR = Cast<T, double>(Bound.Right),
+                   DB = Cast<T, double>(Bound.Bottom),
                    DOx = (DL + DR) * 0.5d,
                    DOy = (DT + DB) * 0.5d,
                    Sin = Math.Sin(Theta),
@@ -319,12 +276,12 @@ namespace MenthaAssembly
             Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
-            R.Left = ToGeneric(Min);
-            R.Right = ToGeneric(Max);
+            R.Left = Cast<double, T>(Min);
+            R.Right = Cast<double, T>(Max);
 
             MathHelper.MinAndMax(out Min, out Max, Y0, Y1, Y2, Y3);
-            R.Top = ToGeneric(Min);
-            R.Bottom = ToGeneric(Max);
+            R.Top = Cast<double, T>(Min);
+            R.Bottom = Cast<double, T>(Max);
 
             return R;
         }
@@ -332,12 +289,12 @@ namespace MenthaAssembly
         {
             Bound<T> R = new();
 
-            double DL = ToDouble(Bound.Left),
-                   DT = ToDouble(Bound.Top),
-                   DR = ToDouble(Bound.Right),
-                   DB = ToDouble(Bound.Bottom),
-                   DOx = ToDouble(Ox),
-                   DOy = ToDouble(Oy),
+            double DL = Cast<T, double>(Bound.Left),
+                   DT = Cast<T, double>(Bound.Top),
+                   DR = Cast<T, double>(Bound.Right),
+                   DB = Cast<T, double>(Bound.Bottom),
+                   DOx = Cast<T, double>(Ox),
+                   DOy = Cast<T, double>(Oy),
                    Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
 
@@ -347,12 +304,12 @@ namespace MenthaAssembly
             Point<double>.Rotate(DR, DB, DOx, DOy, Sin, Cos, out double X3, out double Y3);
 
             MathHelper.MinAndMax(out double Min, out double Max, X0, X1, X2, X3);
-            R.Left = ToGeneric(Min);
-            R.Right = ToGeneric(Max);
+            R.Left = Cast<double, T>(Min);
+            R.Right = Cast<double, T>(Max);
 
             MathHelper.MinAndMax(out Min, out Max, Y0, Y1, Y2, Y3);
-            R.Top = ToGeneric(Min);
-            R.Bottom = ToGeneric(Max);
+            R.Top = Cast<double, T>(Min);
+            R.Bottom = Cast<double, T>(Max);
 
             return R;
         }
@@ -412,7 +369,7 @@ namespace MenthaAssembly
         public static Bound<T> operator *(Bound<T> Bound, T Factor)
             => Scale(Bound, Factor);
         public static Bound<T> operator /(Bound<T> Bound, T Factor)
-            => new(Div(Bound.Left, Factor), Div(Bound.Top, Factor), Div(Bound.Right, Factor), Div(Bound.Bottom, Factor));
+            => new(Divide(Bound.Left, Factor), Divide(Bound.Top, Factor), Divide(Bound.Right, Factor), Divide(Bound.Bottom, Factor));
 
         public static bool operator ==(Bound<T> Bound1, Bound<T> Bound2)
             => Bound1.Equals(Bound2);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Linq.Expressions;
+using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
@@ -104,8 +105,8 @@ namespace MenthaAssembly
             => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
         public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
         {
-            T v1x = Sub(Lx2, Lx1),
-              v1y = Sub(Ly2, Ly1);
+            T v1x = Subtract(Lx2, Lx1),
+              v1y = Subtract(Ly2, Ly1);
 
             if (IsDefault(v1x))
             {
@@ -113,23 +114,23 @@ namespace MenthaAssembly
                     return;
 
                 // Over Y-Axis
-                X = Sub(Mul2(Lx1), X);
+                X = Subtract(Double(Lx1), X);
             }
             else if (IsDefault(v1y))
             {
                 // Over X-Axis
-                Y = Sub(Mul2(Ly1), Y);
+                Y = Subtract(Double(Ly1), Y);
             }
             else
             {
-                double PQx = ToDouble(v1x),
-                       PQy = ToDouble(v1y),
-                       PAx = ToDouble(Sub(X, Lx1)),
-                       PAy = ToDouble(Sub(Y, Ly1)),
+                double PQx = Cast<T, double>(v1x),
+                       PQy = Cast<T, double>(v1y),
+                       PAx = Cast<T, double>(Subtract(X, Lx1)),
+                       PAy = Cast<T, double>(Subtract(Y, Ly1)),
                        k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
 
-                X = Add(Lx1, ToGeneric(PQx * k - PAx));
-                Y = Add(Ly1, ToGeneric(PQy * k - PAy));
+                X = Add(Lx1, Cast<double, T>(PQx * k - PAx));
+                Y = Add(Ly1, Cast<double, T>(PQy * k - PAy));
             }
         }
 
@@ -139,10 +140,7 @@ namespace MenthaAssembly
         /// <returns></returns>
         public Point<U> Cast<U>()
             where U : unmanaged
-        {
-            Func<T, U> CastHandler = ExpressionHelper<T>.CreateCast<U>();
-            return new Point<U>(CastHandler(X), CastHandler(Y));
-        }
+            => new(Cast<T, U>(X), Cast<T, U>(Y));
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
             => Cast<U>();
 
@@ -173,32 +171,6 @@ namespace MenthaAssembly
         public override string ToString()
             => $"X : {X}, Y : {Y}";
 
-        private static readonly Func<T, T> Neg, Mul2;
-        private static readonly Func<T, T, T> Add, Sub, Mul, Div;
-        private static readonly Predicate<T> IsDefault;
-        private static readonly Func<T, T, bool> Equal, GreaterThan;
-        private static readonly Func<T, double> ToDouble;
-        private static readonly Func<double, T> ToGeneric;
-        static Point()
-        {
-            Neg = ExpressionHelper<T>.CreateNeg();
-
-            Add = ExpressionHelper<T>.CreateAdd();
-            Sub = ExpressionHelper<T>.CreateSub();
-            Mul = ExpressionHelper<T>.CreateMul();
-            Div = ExpressionHelper<T>.CreateDiv();
-
-            Mul2 = ExpressionHelper<T>.CreateMul(2);
-
-            IsDefault = ExpressionHelper<T>.CreateIsDefault();
-
-            Equal = ExpressionHelper<T>.CreateEqual();
-            GreaterThan = ExpressionHelper<T>.CreateGreaterThan();
-
-            ToDouble = ExpressionHelper<T>.CreateCast<double>();
-            ToGeneric = ExpressionHelper<double>.CreateCast<T>();
-        }
-
         /// <summary>
         /// Calculate the distance between two points.
         /// </summary>
@@ -223,9 +195,9 @@ namespace MenthaAssembly
         /// <param name="Qy">The y-coordinate of the second target point.</param>
         public static double Distance(T Px, T Py, T Qx, T Qy)
         {
-            T Dx = Sub(Qx, Px),
-              Dy = Sub(Qy, Py);
-            return Math.Sqrt(ToDouble(Add(Mul(Dx, Dx), Mul(Dy, Dy))));
+            T Dx = Subtract(Qx, Px),
+              Dy = Subtract(Qy, Py);
+            return Math.Sqrt(Cast<T, double>(Add(Multiply(Dx, Dx), Multiply(Dy, Dy))));
         }
 
         /// <summary>
@@ -322,7 +294,7 @@ namespace MenthaAssembly
         /// <param name="Qy">The y-coordinate of the rotated point.</param>
         public static void Rotate(T Px, T Py, T Cx, T Cy, double Sin, double Cos, out T Qx, out T Qy)
         {
-            Rotate(Sub(Px, Cx), Sub(Py, Cy), Sin, Cos, out Qx, out Qy);
+            Rotate(Subtract(Px, Cx), Subtract(Py, Cy), Sin, Cos, out Qx, out Qy);
 
             Qx = Add(Qx, Cx);
             Qy = Add(Qy, Cy);
@@ -348,8 +320,8 @@ namespace MenthaAssembly
         /// <param name="Qy">The y-coordinate of the rotated point.</param>
         public static void Rotate(T Px, T Py, double Sin, double Cos, out T Qx, out T Qy)
         {
-            Qx = ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin);
-            Qy = ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos);
+            Qx = Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin);
+            Qy = Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos);
         }
         /// <summary>
         /// Rotates the specified points about the origin.
@@ -371,7 +343,7 @@ namespace MenthaAssembly
                 Px = Point.X;
                 Py = Point.Y;
 
-                Result[i] = new Point<T>(ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin), ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos));
+                Result[i] = new Point<T>(Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin), Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos));
             }
 
             return Result;
@@ -395,10 +367,10 @@ namespace MenthaAssembly
             for (int i = 0; i < Length; i++)
             {
                 Point = Points[i];
-                Px = Sub(Point.X, Cx);
-                Py = Sub(Point.Y, Cy);
+                Px = Subtract(Point.X, Cx);
+                Py = Subtract(Point.Y, Cy);
 
-                Result[i] = new Point<T>(Add(ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin), Cx), Add(ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos), Cy));
+                Result[i] = new Point<T>(Add(Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin), Cx), Add(Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos), Cy));
             }
 
             return Result;
@@ -430,8 +402,8 @@ namespace MenthaAssembly
                 Px = pPoints->X;
                 Py = pPoints->Y;
 
-                pPoints->X = ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin);
-                pPoints->Y = ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos);
+                pPoints->X = Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin);
+                pPoints->Y = Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos);
             }
         }
         /// <summary>
@@ -463,11 +435,11 @@ namespace MenthaAssembly
             T Px, Py;
             for (int i = 0; i < Length; i++)
             {
-                Px = Sub(pPoints->X, Cx);
-                Py = Sub(pPoints->Y, Cy);
+                Px = Subtract(pPoints->X, Cx);
+                Py = Subtract(pPoints->Y, Cy);
 
-                pPoints->X = Add(ToGeneric(ToDouble(Px) * Cos - ToDouble(Py) * Sin), Cx);
-                pPoints->Y = Add(ToGeneric(ToDouble(Px) * Sin + ToDouble(Py) * Cos), Cy);
+                pPoints->X = Add(Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin), Cx);
+                pPoints->Y = Add(Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos), Cy);
             }
         }
 
@@ -515,8 +487,8 @@ namespace MenthaAssembly
         /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
         public static Point<T> Reflect(T Px, T Py, T Lx1, T Ly1, T Lx2, T Ly2)
         {
-            T v1x = Sub(Lx2, Lx1),
-              v1y = Sub(Ly2, Ly1);
+            T v1x = Subtract(Lx2, Lx1),
+              v1y = Subtract(Ly2, Ly1);
 
             if (IsDefault(v1x))
             {
@@ -524,22 +496,22 @@ namespace MenthaAssembly
                     return new Point<T>(Px, Py);
 
                 // Over Y-Axis
-                return new Point<T>(Sub(Mul2(Lx1), Px), Py);
+                return new Point<T>(Subtract(Double(Lx1), Px), Py);
             }
             else if (IsDefault(v1y))
             {
                 // Over X-Axis
-                return new Point<T>(Px, Sub(Mul2(Ly1), Py));
+                return new Point<T>(Px, Subtract(Double(Ly1), Py));
             }
             else
             {
-                double PQx = ToDouble(v1x),
-                       PQy = ToDouble(v1y),
-                       PAx = ToDouble(Sub(Px, Lx1)),
-                       PAy = ToDouble(Sub(Py, Ly1)),
+                double PQx = Cast<T, double>(v1x),
+                       PQy = Cast<T, double>(v1y),
+                       PAx = Cast<T, double>(Subtract(Px, Lx1)),
+                       PAy = Cast<T, double>(Subtract(Py, Ly1)),
                        k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
 
-                return new Point<T>(Add(Lx1, ToGeneric(PQx * k - PAx)), Add(Ly1, ToGeneric(PQy * k - PAy)));
+                return new Point<T>(Add(Lx1, Cast<double, T>(PQx * k - PAx)), Add(Ly1, Cast<double, T>(PQy * k - PAy)));
             }
         }
         /// <summary>
@@ -554,8 +526,8 @@ namespace MenthaAssembly
         {
             int Length = Points.Length;
             Point<T>[] Result = new Point<T>[Length];
-            T v1x = Sub(Lx2, Lx1),
-              v1y = Sub(Ly2, Ly1);
+            T v1x = Subtract(Lx2, Lx1),
+              v1y = Subtract(Ly2, Ly1);
 
             if (IsDefault(v1x))
             {
@@ -572,7 +544,7 @@ namespace MenthaAssembly
                 for (int i = 0; i < Length; i++)
                 {
                     Point = Points[i];
-                    Result[i] = new Point<T>(Sub(Mul2(Lx1), Point.X), Point.Y);
+                    Result[i] = new Point<T>(Subtract(Double(Lx1), Point.X), Point.Y);
                 }
 
                 return Result;
@@ -584,7 +556,7 @@ namespace MenthaAssembly
                 for (int i = 0; i < Length; i++)
                 {
                     Point = Points[i];
-                    Result[i] = new Point<T>(Point.X, Sub(Mul2(Ly1), Point.Y));
+                    Result[i] = new Point<T>(Point.X, Subtract(Double(Ly1), Point.Y));
                 }
 
                 return Result;
@@ -592,17 +564,17 @@ namespace MenthaAssembly
             else
             {
                 Point<T> Point;
-                double PQx = ToDouble(v1x),
-                       PQy = ToDouble(v1y);
+                double PQx = Cast<T, double>(v1x),
+                       PQy = Cast<T, double>(v1y);
 
                 for (int i = 0; i < Length; i++)
                 {
                     Point = Points[i];
-                    double PAx = ToDouble(Sub(Point.X, Lx1)),
-                           PAy = ToDouble(Sub(Point.Y, Ly1)),
+                    double PAx = Cast<T, double>(Subtract(Point.X, Lx1)),
+                           PAy = Cast<T, double>(Subtract(Point.Y, Ly1)),
                            k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
 
-                    Result[i] = new Point<T>(Add(Lx1, ToGeneric(PQx * k - PAx)), Add(Ly1, ToGeneric(PQy * k - PAy)));
+                    Result[i] = new Point<T>(Add(Lx1, Cast<double, T>(PQx * k - PAx)), Add(Ly1, Cast<double, T>(PQy * k - PAy)));
                 }
             }
 
@@ -619,8 +591,8 @@ namespace MenthaAssembly
         /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
         public static void Reflect(Point<T>* pPoints, int Length, T Lx1, T Ly1, T Lx2, T Ly2)
         {
-            T v1x = Sub(Lx2, Lx1),
-              v1y = Sub(Ly2, Ly1);
+            T v1x = Subtract(Lx2, Lx1),
+              v1y = Subtract(Ly2, Ly1);
 
             if (IsDefault(v1x))
             {
@@ -630,7 +602,7 @@ namespace MenthaAssembly
                 // Over Y-Axis
                 for (int i = 0; i < Length; i++)
                 {
-                    pPoints->X = Sub(Mul2(Lx1), pPoints->X);
+                    pPoints->X = Subtract(Double(Lx1), pPoints->X);
                     pPoints++;
                 }
 
@@ -641,7 +613,7 @@ namespace MenthaAssembly
                 // Over X-Axis
                 for (int i = 0; i < Length; i++)
                 {
-                    pPoints->Y = Sub(Mul2(Ly1), pPoints->Y);
+                    pPoints->Y = Subtract(Double(Ly1), pPoints->Y);
                     pPoints++;
                 }
 
@@ -649,17 +621,17 @@ namespace MenthaAssembly
             }
             else
             {
-                double PQx = ToDouble(v1x),
-                       PQy = ToDouble(v1y);
+                double PQx = Cast<T, double>(v1x),
+                       PQy = Cast<T, double>(v1y);
 
                 for (int i = 0; i < Length; i++)
                 {
-                    double PAx = ToDouble(Sub(pPoints->X, Lx1)),
-                           PAy = ToDouble(Sub(pPoints->Y, Ly1)),
+                    double PAx = Cast<T, double>(Subtract(pPoints->X, Lx1)),
+                           PAy = Cast<T, double>(Subtract(pPoints->Y, Ly1)),
                            k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
 
-                    pPoints->X = Add(Lx1, ToGeneric(PQx * k - PAx));
-                    pPoints->Y = Add(Ly1, ToGeneric(PQy * k - PAy));
+                    pPoints->X = Add(Lx1, Cast<double, T>(PQx * k - PAx));
+                    pPoints->Y = Add(Ly1, Cast<double, T>(PQy * k - PAy));
                     pPoints++;
                 }
             }
@@ -683,7 +655,7 @@ namespace MenthaAssembly
                 Cy = Add(Cy, p.Y);
             }
 
-            return Sort(Points, ToGeneric(ToDouble(Cx) / Length), ToGeneric(ToDouble(Cy) / Length));
+            return Sort(Points, Cast<double, T>(Cast<T, double>(Cx) / Length), Cast<double, T>(Cast<T, double>(Cy) / Length));
         }
         /// <summary>
         /// Sorts the specified points around the specified point.
@@ -707,10 +679,10 @@ namespace MenthaAssembly
                 if (IsDefault(Px1) && IsDefault(Px2))
                     return GreaterThan(Py1, Py2);
 
-                T v1x = Sub(Px1, Cx),
-                  v1y = Sub(Py1, Cy),
-                  v2x = Sub(Px2, Cx),
-                  v2y = Sub(Py2, Cy),
+                T v1x = Subtract(Px1, Cx),
+                  v1y = Subtract(Py1, Cy),
+                  v2x = Subtract(Px2, Cx),
+                  v2y = Subtract(Py2, Cy),
                   D = Vector<T>.Cross(v1x, v1y, v2x, v2y);
 
                 return IsDefault(D) ? GreaterThan(Vector<T>.Dot(v1x, v1y, v1x, v1y), Vector<T>.Dot(v2x, v2y, v2x, v2y)) :
@@ -756,7 +728,7 @@ namespace MenthaAssembly
                 Cy = Add(Cy, p.Y);
             }
 
-            Sort(pPoints, Length, ToGeneric(ToDouble(Cx) / Length), ToGeneric(ToDouble(Cy) / Length));
+            Sort(pPoints, Length, Cast<double, T>(Cast<T, double>(Cx) / Length), Cast<double, T>(Cast<T, double>(Cy) / Length));
         }
         /// <summary>
         /// Sorts the specified points around the specified point.
@@ -781,10 +753,10 @@ namespace MenthaAssembly
                 if (IsDefault(Px1) && IsDefault(Px2))
                     return GreaterThan(Py1, Py2);
 
-                T v1x = Sub(Px1, Cx),
-                  v1y = Sub(Py1, Cy),
-                  v2x = Sub(Px2, Cx),
-                  v2y = Sub(Py2, Cy),
+                T v1x = Subtract(Px1, Cx),
+                  v1y = Subtract(Py1, Cy),
+                  v2x = Subtract(Px2, Cx),
+                  v2y = Subtract(Py2, Cy),
                   D = Vector<T>.Cross(v1x, v1y, v2x, v2y);
 
                 return IsDefault(D) ? GreaterThan(Vector<T>.Dot(v1x, v1y, v1x, v1y), Vector<T>.Dot(v2x, v2y, v2x, v2y)) :
@@ -812,7 +784,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <param name="Point">The Point to negates.</param>
         public static Point<T> Negates(Point<T> Point)
-            => new(Neg(Point.X), Neg(Point.Y));
+            => new(Negate(Point.X), Negate(Point.Y));
 
         /// <summary>
         /// Negates this Point. The Point has the same magnitude as before, but its quadrant is now opposite.
