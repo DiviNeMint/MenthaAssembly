@@ -38,7 +38,7 @@ namespace MenthaAssembly
         {
             Points = new Point<T>[0];
             this.IsInfinity = IsInfinity;
-            Count = IsInfinity ? int.MaxValue : 0;
+            Count = IsInfinity ? int.MinValue : 0;
         }
         internal CrossPoints(params Point<T>[] Points)
         {

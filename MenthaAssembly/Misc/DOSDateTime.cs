@@ -43,7 +43,8 @@ namespace MenthaAssembly
             set => TimeData = (ushort)(((value >> 1) & 0b11111) | (TimeData & 0b1111111111100000));
         }
 
-        public static implicit operator DateTime(DOSDateTime This) => new DateTime(This.Year,This.Month,This.Day,This.Hour,This.Minute,This.Second);
+        public static implicit operator DateTime(DOSDateTime This)
+            => new DateTime(This.Year, This.Month, This.Day, This.Hour, This.Minute, This.Second);
 
     }
 }

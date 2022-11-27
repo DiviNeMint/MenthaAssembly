@@ -296,6 +296,9 @@ namespace MenthaAssembly.Win32
         //#endif
         #endregion
 
+        /// <summary>
+        /// The handle pointer of desktop.
+        /// </summary>
         public static IntPtr Handle
             => GetDesktopWindow();
 
@@ -323,7 +326,7 @@ namespace MenthaAssembly.Win32
         }
 
         /// <summary>
-        /// Screenshot current screen.
+        /// Screenshots the current screen.
         /// </summary>
         public static ImageContext<BGR> Screenshot()
         {
@@ -334,12 +337,12 @@ namespace MenthaAssembly.Win32
                               ScreenArea.Height);
         }
         /// <summary>
-        /// Screenshot all screen at specified rectangle.
+        /// Screenshots the specified rectangle in the screen.
         /// </summary>
-        /// <param name="X">X-coordinate of Screen.</param>
-        /// <param name="Y">Y-coordinate of Screen.</param>
-        /// <param name="Width">Width of snapshot size.</param>
-        /// <param name="Height">Height of snapshot size.</param>
+        /// <param name="X">The x-coordinate of screen.</param>
+        /// <param name="Y">The y-coordinate of screen.</param>
+        /// <param name="Width">The width of the specified rectangle.</param>
+        /// <param name="Height">The height of the specified rectangle.</param>
         public static ImageContext<BGR> Screenshot(int X, int Y, int Width, int Height)
         {
             IntPtr Hwnd = GetDesktopWindow(),
@@ -393,7 +396,7 @@ namespace MenthaAssembly.Win32
         }
 
         /// <summary>
-        /// Snapshot window
+        /// Snapshots the specified window.
         /// </summary>
         /// <param name="Hwnd">A handle to the window that will be snapshotted.</param>
         public static ImageContext<BGR> Snapshot(IntPtr Hwnd)

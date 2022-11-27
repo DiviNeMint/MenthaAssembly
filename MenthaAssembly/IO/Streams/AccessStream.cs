@@ -10,7 +10,7 @@ namespace MenthaAssembly.IO
         public override bool CanWrite { get; }
 
         public override bool CanSeek
-            => IsDisposed ? false : BaseStream.CanSeek;
+            => !IsDisposed && BaseStream.CanSeek;
 
         public override long Length
             => IsDisposed ? 0 : BaseStream.Length;
@@ -34,35 +34,41 @@ namespace MenthaAssembly.IO
             switch (Access)
             {
                 case StreamAccess.Read:
-
-                    break;
+                    {
+                        CanRead = true;
+                        break;
+                    }
                 case StreamAccess.Write:
-                    break;
+                    {
+                        CanWrite = true;
+                        break;
+                    }
                 case StreamAccess.ReadWrite:
                 default:
-                    break;
+                    {
+                        CanRead = true;
+                        CanWrite = true;
+                        break;
+                    }
             }
 
         }
 
-        public override int Read(byte[] buffer, int offset, int count)
+        public override int Read(byte[] Buffer, int Offset, int Count)
         {
             CheckDispose();
-
-            if (!CanRead)
-                throw new NotSupportedException();
-
-            return BaseStream.Read(buffer, offset, count);
+            return CanRead ? BaseStream.Read(Buffer, Offset, Count) :
+                             throw new NotSupportedException();
         }
 
-        public override void Write(byte[] buffer, int offset, int count)
+        public override void Write(byte[] Buffer, int Offset, int Count)
         {
             CheckDispose();
 
             if (!CanWrite)
                 throw new NotSupportedException();
 
-            BaseStream.Write(buffer, offset, count);
+            BaseStream.Write(Buffer, Offset, Count);
         }
 
         public override void Flush()
@@ -75,16 +81,16 @@ namespace MenthaAssembly.IO
             BaseStream.Flush();
         }
 
-        public override long Seek(long offset, SeekOrigin origin)
+        public override long Seek(long Offset, SeekOrigin Origin)
         {
             CheckDispose();
-            return BaseStream.Seek(offset, origin);
+            return BaseStream.Seek(Offset, Origin);
         }
 
-        public override void SetLength(long value)
+        public override void SetLength(long Value)
         {
             CheckDispose();
-            BaseStream.SetLength(value);
+            BaseStream.SetLength(Value);
         }
 
         private bool IsDisposed;
