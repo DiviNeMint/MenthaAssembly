@@ -117,5 +117,35 @@ namespace MenthaAssembly.Media.Imaging
             *pDestB = (byte)((B * A * 255 + *pDestB * A1 * rA) / Alpha);
         }
 
+        public static readonly ConcurrentCollection<Type> NonAlphaPixelTypes = new() { typeof(Gray8), typeof(RGB), typeof(BGR), typeof(HSV), };
+        public static bool IsNonAlphaPixel(Type PixelType)
+        {
+            if (NonAlphaPixelTypes.Contains(PixelType))
+                return true;
+
+            if (PixelType.GetCustomAttributes(typeof(NonAlphaAttribute), true).Length > 0)
+            {
+                NonAlphaPixelTypes.Add(PixelType);
+                return true;
+            }
+
+            return false;
+        }
+
+        public static readonly ConcurrentCollection<Type> CalculatedPixelTypes = new() { typeof(Gray8) };
+        public static bool IsCalculatedPixel(Type PixelType)
+        {
+            if (CalculatedPixelTypes.Contains(PixelType))
+                return true;
+
+            if (PixelType.GetCustomAttributes(typeof(CalculatedAttribute), true).Length > 0)
+            {
+                CalculatedPixelTypes.Add(PixelType);
+                return true;
+            }
+
+            return false;
+        }
+
     }
 }

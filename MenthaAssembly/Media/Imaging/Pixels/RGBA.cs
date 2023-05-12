@@ -1,5 +1,8 @@
-﻿namespace MenthaAssembly.Media.Imaging
+﻿using System;
+
+namespace MenthaAssembly.Media.Imaging
 {
+    [Serializable]
     public struct RGBA : IPixel
     {
         public byte R { set; get; }

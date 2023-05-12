@@ -3,6 +3,8 @@ using System;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    [NonAlpha]
+    [Serializable]
     public struct HSV : IPixel
     {
         private double _H;

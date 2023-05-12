@@ -2,6 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
+    [Serializable]
     public struct Indexed4 : IPixelIndexed
     {
         private byte Data;

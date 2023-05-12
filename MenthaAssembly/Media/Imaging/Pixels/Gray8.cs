@@ -1,6 +1,10 @@
-﻿namespace MenthaAssembly.Media.Imaging
+﻿using System;
+
+namespace MenthaAssembly.Media.Imaging
 {
+    [NonAlpha]
     [Calculated]
+    [Serializable]
     public struct Gray8 : IPixel
     {
         public byte Gray { set; get; }

@@ -1,5 +1,9 @@
-﻿namespace MenthaAssembly.Media.Imaging
+﻿using System;
+
+namespace MenthaAssembly.Media.Imaging
 {
+    [NonAlpha]
+    [Serializable]
     public struct RGB : IPixel
     {
         public byte A => byte.MaxValue;
