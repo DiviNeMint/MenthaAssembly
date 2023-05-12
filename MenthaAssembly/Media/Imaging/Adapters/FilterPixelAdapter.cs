@@ -73,14 +73,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Source = Adapter.Source.Clone();
             Filter = Adapter.Filter;
         }
-        public FilterPixelAdapter(IReadOnlyImageContext Context, ImageFilter Filter)
+        public FilterPixelAdapter(IImageContext Context, ImageFilter Filter) : this(Context, 0, 0, Filter)
         {
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
-            BitsPerPixel = Context.BitsPerPixel;
-
-            this.Filter = Filter;
-            Source = new ImagePatch(Context, Filter.PatchWidth, Filter.PatchHeight);
         }
         public FilterPixelAdapter(PixelAdapter<T> Adapter, ImageFilter Filter)
         {
@@ -91,12 +85,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
             this.Filter = Filter;
             Source = new ImagePatch(Adapter, Filter.PatchWidth, Filter.PatchHeight);
         }
-        internal FilterPixelAdapter(IReadOnlyImageContext Context, int X, int Y, ImageFilter Filter)
+        internal FilterPixelAdapter(IImageContext Context, int X, int Y, ImageFilter Filter)
         {
             MaxX = Context.Width - 1;
             MaxY = Context.Height - 1;
             BitsPerPixel = Context.BitsPerPixel;
-
             this.Filter = Filter;
             Source = new ImagePatch(Context, X, Y, Filter.PatchWidth, Filter.PatchHeight);
         }

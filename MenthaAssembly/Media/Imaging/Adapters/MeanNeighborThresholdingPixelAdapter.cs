@@ -80,7 +80,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Denominator = Adapter.Denominator;
             GetGray = Adapter.GetGray;
         }
-        public MeanNeighborThresholdingPixelAdapter(IReadOnlyImageContext Context, int Level)
+        public MeanNeighborThresholdingPixelAdapter(IImageContext Context, int Level)
         {
             X = 0;
             Y = 0;
@@ -89,7 +89,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             this.Level = Level;
 
             int L = (Level << 1) + 1;
-            Source = new ImagePatch(Context, L, L);
+            IPixelAdapter Adapter = Context.GetAdapter(0, 0);
+            Source = new ImagePatch(Adapter, 0, 0, L, L);
             Denominator = L * L;
             BitsPerPixel = Context.BitsPerPixel;
             GetGray = typeof(T) == GrayType ? a => a.R :

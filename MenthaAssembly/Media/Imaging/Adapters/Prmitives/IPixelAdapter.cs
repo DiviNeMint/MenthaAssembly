@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public unsafe interface IReadOnlyPixelAdapter : IReadOnlyPixel
+    public unsafe interface IPixelAdapter : IPixel
     {
         public int X { get; }
 
@@ -36,7 +36,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public void MovePreviousLine();
 
-        public IReadOnlyPixelAdapter Clone();
+        public IPixelAdapter Clone();
 
     }
 }

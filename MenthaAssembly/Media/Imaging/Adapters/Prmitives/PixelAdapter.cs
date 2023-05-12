@@ -3,10 +3,10 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public abstract unsafe class PixelAdapter<T> : IReadOnlyPixelAdapter, IPixel
+    public abstract unsafe class PixelAdapter<T> : IPixelAdapter, ICloneable
         where T : unmanaged, IPixel
     {
-        private static readonly ParallelOptions DefaultParallelOptions = new ParallelOptions();
+        private static readonly ParallelOptions DefaultParallelOptions = new();
         protected static readonly Type PixelType = typeof(T);
 
         public int X { protected set; get; } = int.MinValue;
@@ -17,8 +17,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public abstract int MaxY { get; }
 
-        Type IReadOnlyPixelAdapter.PixelType
-            => typeof(T);
+        Type IPixelAdapter.PixelType
+            => PixelType;
 
         public abstract byte A { get; }
 
@@ -213,7 +213,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
 
         public abstract PixelAdapter<T> Clone();
-        IReadOnlyPixelAdapter IReadOnlyPixelAdapter.Clone()
+        IPixelAdapter IPixelAdapter.Clone()
+            => Clone();
+        object ICloneable.Clone()
             => Clone();
 
     }

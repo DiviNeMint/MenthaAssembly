@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public unsafe class ImageContext<Pixel, Struct> : IImageIndexedContext, IReadOnlyImageContext, ICloneable
+    public unsafe class ImageContext<Pixel, Struct> : IImageIndexedContext, ICloneable
         where Pixel : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
@@ -24,13 +24,9 @@ namespace MenthaAssembly.Media.Imaging
 
         public int BitsPerPixel { get; }
 
-        public int Channels { get; }
-
         Type IImageContext.PixelType => PixelType;
-        Type IReadOnlyImageContext.PixelType => PixelType;
 
-        Type IImageContext.StructType => StructType;
-        Type IReadOnlyImageContext.StructType => StructType;
+        Type IImageIndexedContext.StructType => StructType;
 
         public Pixel this[int X, int Y]
         {
@@ -58,14 +54,13 @@ namespace MenthaAssembly.Media.Imaging
             get => this[X, Y];
             set => this[X, Y] = value.ToPixel<Pixel>();
         }
-        IReadOnlyPixel IReadOnlyImageContext.this[int X, int Y]
-            => this[X, Y];
 
-        public IntPtr Scan0 { get; }
-        IntPtr IImageContext.ScanA => throw new NotSupportedException();
-        IntPtr IImageContext.ScanR => throw new NotSupportedException();
-        IntPtr IImageContext.ScanG => throw new NotSupportedException();
-        IntPtr IImageContext.ScanB => throw new NotSupportedException();
+        private readonly SafeHandle _UnmanagedScan0;
+        private readonly IntPtr _Scan0;
+        public IntPtr Scan0
+            => _UnmanagedScan0?.DangerousGetHandle() ?? _Scan0;
+        IntPtr[] IImageContext.Scan0
+            => new IntPtr[] { Scan0 };
 
         public ImagePalette<Pixel> Palette { get; }
         IImagePalette IImageIndexedContext.Palette
@@ -73,20 +68,16 @@ namespace MenthaAssembly.Media.Imaging
 
         private ImageContext()
         {
-            Channels = 1;
             BitsPerPixel = default(Struct).BitsPerPixel;
         }
 
-        private readonly SafeHandle UnmanagedScan0;
         public ImageContext(int Width, int Height) : this()
         {
             this.Width = Width;
             this.Height = Height;
 
             Stride = (Width * BitsPerPixel + 7) >> 3;
-            UnmanagedScan0 = new HGlobalIntPtr(Stride * Height);
-            Scan0 = UnmanagedScan0.DangerousGetHandle();
-
+            _UnmanagedScan0 = new HGlobalIntPtr(Stride * Height);
             Palette = ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
 
@@ -98,7 +89,7 @@ namespace MenthaAssembly.Media.Imaging
         {
             this.Width = Width;
             this.Height = Height;
-            this.Scan0 = Scan0;
+            this._Scan0 = Scan0;
             this.Stride = Stride;
             this.Palette = Palette ?? ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
@@ -108,8 +99,7 @@ namespace MenthaAssembly.Media.Imaging
             this.Width = Width;
             this.Height = Height;
 
-            UnmanagedScan0 = new PinnedIntPtr(Data);
-            Scan0 = UnmanagedScan0.DangerousGetHandle();
+            _UnmanagedScan0 = new PinnedIntPtr(Data);
             Stride = Data.Length / Height;
 
             this.Palette = Palette ?? ImagePalette<Pixel>.GetSystemPalette<Struct>();
@@ -3413,13 +3403,13 @@ namespace MenthaAssembly.Media.Imaging
                                         new PixelIndexedAdapter<Pixel, T, Struct>(this, X, Y);
         PixelAdapter<T> IImageContext.GetAdapter<T>(int X, int Y)
             => GetAdapter<T>(X, Y);
-        IReadOnlyPixelAdapter IReadOnlyImageContext.GetAdapter(int X, int Y)
+        public IPixelAdapter GetAdapter(int X, int Y)
             => GetAdapter<Pixel>(X, Y);
 
-        object ICloneable.Clone()
-            => Clone();
         public ImageContext<Pixel, Struct> Clone()
             => Cast<Pixel, Struct>();
+        object ICloneable.Clone()
+            => Clone();
 
     }
 }

@@ -63,7 +63,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public static ImageContour FindBound(this IReadOnlyImageContext Context, int SeedX, int SeedY, ImagePredicate Predicate)
+        public static ImageContour FindBound(this IImageContext Context, int SeedX, int SeedY, ImagePredicate Predicate)
         {
             int Width = Context.Width,
                 Height = Context.Height;
@@ -80,7 +80,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             int X, Y, SaveX, Rx, Lx;
 
-            IReadOnlyPixelAdapter Seed, Pixel;
+            IPixelAdapter Seed, Pixel;
             while (StackX.Count > 0)
             {
                 X = StackX.Pop();

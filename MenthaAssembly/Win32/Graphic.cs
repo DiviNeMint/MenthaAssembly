@@ -153,7 +153,7 @@ namespace MenthaAssembly.Win32
         /// If the function fails, the return value is <see cref="IntPtr.Zero"/>.
         /// </returns>
         public static IntPtr CreateHBitmap(this IImageContext This)
-            => CreateBitmap(This.Width, This.Height, 1, This.BitsPerPixel, This.Scan0);
+            => CreateBitmap(This.Width, This.Height, 1, This.BitsPerPixel, This.Scan0[0]);
 
         public static bool TryDecodeHBitmap(IntPtr HBitmap, out IImageContext Bitmap)
         {

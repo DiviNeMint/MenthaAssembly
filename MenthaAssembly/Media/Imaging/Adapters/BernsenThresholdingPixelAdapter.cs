@@ -84,7 +84,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             BitsPerPixel = Adapter.BitsPerPixel;
             GetGray = Adapter.GetGray;
         }
-        public BernsenThresholdingPixelAdapter(IReadOnlyImageContext Context, int Level)
+        public BernsenThresholdingPixelAdapter(IImageContext Context, int Level)
         {
             X = 0;
             Y = 0;
@@ -182,13 +182,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private bool IsPixelValid = false,
                      IsCacheValid = false;
         private readonly Func<IReadOnlyPixel, int> GetGray;
-        private readonly List<int> Cache = new List<int>();
+        private readonly List<int> Cache = new();
         private void EnsurePixel()
         {
             if (IsPixelValid)
                 return;
 
-            List<int> Left = new List<int>();
+            List<int> Left = new();
             int Rx = Source.Width - 1,
                 Gray = GetGray(Source[Level, Level]);
 

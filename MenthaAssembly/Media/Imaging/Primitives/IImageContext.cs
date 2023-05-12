@@ -28,44 +28,14 @@ namespace MenthaAssembly.Media.Imaging
         public int BitsPerPixel { get; }
 
         /// <summary>
-        /// Get the channels of image.
-        /// </summary>
-        public int Channels { get; }
-
-        /// <summary>
         /// Get the pixel type of image.
         /// </summary>
         public Type PixelType { get; }
 
         /// <summary>
-        /// Get the struct type of image.
+        /// Gets the data pointers of the image.
         /// </summary>
-        public Type StructType { get; }
-
-        /// <summary>
-        /// Gets the data pointer to the image.
-        /// </summary>
-        public IntPtr Scan0 { get; }
-
-        /// <summary>
-        /// Gets the Alpha-channel data pointer to the image.
-        /// </summary>
-        public IntPtr ScanA { get; }
-
-        /// <summary>
-        /// Gets the R-channel data pointer to the image.
-        /// </summary>
-        public IntPtr ScanR { get; }
-
-        /// <summary>
-        /// Gets the G-channel data pointer to the image.
-        /// </summary>
-        public IntPtr ScanG { get; }
-
-        /// <summary>
-        /// Gets the B-channel data pointer to the image.
-        /// </summary>
-        public IntPtr ScanB { get; }
+        public IntPtr[] Scan0 { get; }
 
         /// <summary>
         /// Gets & Setters the pixel at the specified location in image.
@@ -80,6 +50,13 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="X">The x-coordinate of start point at adapter.</param>
         /// <param name="Y">The y-coordinate of start point at adapter.</param>
         public PixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel;
+
+        /// <summary>
+        /// Creates a IReadOnlyPixelAdapter.
+        /// </summary>
+        /// <param name="X">The x-coordinate of start point at adapter.</param>
+        /// <param name="Y">The y-coordinate of start point at adapter.</param>
+        public IPixelAdapter GetAdapter(int X, int Y);
 
         #region Graphic Processing
 

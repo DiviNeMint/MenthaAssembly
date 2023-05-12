@@ -2,7 +2,10 @@
 
 namespace MenthaAssembly
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = true, AllowMultiple = false)]
+    /// <summary>
+    /// Indicates that the object is calculated.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = true)]
     public sealed class CalculatedAttribute : Attribute
     {
 

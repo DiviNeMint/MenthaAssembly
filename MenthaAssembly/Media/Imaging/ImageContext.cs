@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public unsafe class ImageContext<Pixel> : IImageContext, IReadOnlyImageContext, ICloneable
+    public unsafe class ImageContext<Pixel> : IImageContext, ICloneable
         where Pixel : unmanaged, IPixel
     {
         private static readonly ParallelOptions DefaultParallelOptions = new ParallelOptions();
-        private readonly PixelAdapterGenerator AdapterGenerator;
+        private static readonly Type PixelType = typeof(Pixel);
 
         public int Width { get; }
 
@@ -22,14 +22,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public int BitsPerPixel { get; }
 
-        public int Channels { get; }
-
-        private static readonly Type PixelType = typeof(Pixel);
         Type IImageContext.PixelType => PixelType;
-        Type IReadOnlyImageContext.PixelType => PixelType;
-
-        Type IImageContext.StructType => PixelType;
-        Type IReadOnlyImageContext.StructType => PixelType;
 
         public Pixel this[int X, int Y]
         {
@@ -57,28 +50,13 @@ namespace MenthaAssembly.Media.Imaging
             get => this[X, Y];
             set => this[X, Y] = value.ToPixel<Pixel>();
         }
-        IReadOnlyPixel IReadOnlyImageContext.this[int X, int Y]
-            => this[X, Y];
 
-        private readonly SafeHandle UnmanagedScan0;
-        private readonly Func<IntPtr> GetScan0;
-        public IntPtr Scan0 => GetScan0();
-
-        private readonly SafeHandle UnmanagedScanA;
-        private readonly Func<IntPtr> GetScanA;
-        public IntPtr ScanA => GetScanA();
-
-        private readonly SafeHandle UnmanagedScanR;
-        private readonly Func<IntPtr> GetScanR;
-        public IntPtr ScanR => GetScanR();
-
-        private readonly SafeHandle UnmanagedScanG;
-        private readonly Func<IntPtr> GetScanG;
-        public IntPtr ScanG => GetScanG();
-
-        private readonly SafeHandle UnmanagedScanB;
-        private readonly Func<IntPtr> GetScanB;
-        public IntPtr ScanB => GetScanB();
+        private readonly SafeHandle[] _UnmanagedScan0;
+        private readonly IntPtr[] _Scan0;
+        public IntPtr[] Scan0
+            => _Scan0 ??
+               _UnmanagedScan0?.Select(i => i.DangerousGetHandle()).ToArray() ??
+               throw new BadImageFormatException();
 
         private ImageContext()
         {
@@ -89,17 +67,9 @@ namespace MenthaAssembly.Media.Imaging
         {
             this.Width = Width;
             this.Height = Height;
-
             Stride = (Width * BitsPerPixel + 7) >> 3;
-            Channels = 1;
 
-            UnmanagedScan0 = new HGlobalIntPtr(Stride * Height);
-            GetScan0 = () => UnmanagedScan0.DangerousGetHandle();
-            GetScanA = () => throw new InvalidOperationException();
-            GetScanR = () => throw new InvalidOperationException();
-            GetScanG = () => throw new InvalidOperationException();
-            GetScanB = () => throw new InvalidOperationException();
-
+            _UnmanagedScan0 = new SafeHandle[] { new HGlobalIntPtr(Stride * Height) };
             AdapterGenerator = PixelAdapterGenerator.Instance1;
         }
 
@@ -112,14 +82,8 @@ namespace MenthaAssembly.Media.Imaging
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
-            Channels = 1;
 
-            GetScan0 = () => Scan0;
-            GetScanA = () => throw new InvalidOperationException();
-            GetScanR = () => throw new InvalidOperationException();
-            GetScanG = () => throw new InvalidOperationException();
-            GetScanB = () => throw new InvalidOperationException();
-
+            _Scan0 = new IntPtr[] { Scan0 };
             AdapterGenerator = PixelAdapterGenerator.Instance1;
         }
         public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) :
@@ -131,14 +95,8 @@ namespace MenthaAssembly.Media.Imaging
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
-            Channels = 3;
 
-            GetScan0 = () => throw new InvalidOperationException();
-            GetScanA = () => throw new InvalidOperationException();
-            GetScanR = () => ScanR;
-            GetScanG = () => ScanG;
-            GetScanB = () => ScanB;
-
+            _Scan0 = new IntPtr[] { ScanR, ScanG, ScanB };
             AdapterGenerator = PixelAdapterGenerator.Instance3;
         }
         public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) :
@@ -150,14 +108,8 @@ namespace MenthaAssembly.Media.Imaging
             this.Width = Width;
             this.Height = Height;
             this.Stride = Stride;
-            Channels = 4;
 
-            GetScan0 = () => throw new InvalidOperationException();
-            GetScanA = () => ScanA;
-            GetScanR = () => ScanR;
-            GetScanG = () => ScanG;
-            GetScanB = () => ScanB;
-
+            _Scan0 = new IntPtr[] { ScanA, ScanR, ScanG, ScanB };
             AdapterGenerator = PixelAdapterGenerator.Instance4;
         }
 
@@ -165,17 +117,9 @@ namespace MenthaAssembly.Media.Imaging
         {
             this.Width = Width;
             this.Height = Height;
-
             Stride = Data.Length / Height;
-            Channels = 1;
 
-            UnmanagedScan0 = new PinnedIntPtr(Data);
-            GetScan0 = () => UnmanagedScan0.DangerousGetHandle();
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () => throw new NotImplementedException();
-            GetScanG = () => throw new NotImplementedException();
-            GetScanB = () => throw new NotImplementedException();
-
+            _UnmanagedScan0 = new SafeHandle[] { new PinnedIntPtr(Data) };
             AdapterGenerator = PixelAdapterGenerator.Instance1;
         }
         public ImageContext(int Width, int Height, byte[] DataR, byte[] DataG, byte[] DataB) : this()
@@ -183,18 +127,8 @@ namespace MenthaAssembly.Media.Imaging
             this.Width = Width;
             this.Height = Height;
             Stride = DataR.Length / Height;
-            Channels = 3;
 
-            UnmanagedScanR = new PinnedIntPtr(DataR);
-            UnmanagedScanG = new PinnedIntPtr(DataG);
-            UnmanagedScanB = new PinnedIntPtr(DataB);
-
-            GetScan0 = () => throw new NotImplementedException();
-            GetScanA = () => throw new NotImplementedException();
-            GetScanR = () => UnmanagedScanR.DangerousGetHandle();
-            GetScanG = () => UnmanagedScanG.DangerousGetHandle();
-            GetScanB = () => UnmanagedScanB.DangerousGetHandle();
-
+            _UnmanagedScan0 = new SafeHandle[] { new PinnedIntPtr(DataR), new PinnedIntPtr(DataG), new PinnedIntPtr(DataB) };
             AdapterGenerator = PixelAdapterGenerator.Instance3;
         }
         public ImageContext(int Width, int Height, byte[] DataA, byte[] DataR, byte[] DataG, byte[] DataB) : this()
@@ -202,19 +136,8 @@ namespace MenthaAssembly.Media.Imaging
             this.Width = Width;
             this.Height = Height;
             Stride = DataA.Length / Height;
-            Channels = 4;
 
-            UnmanagedScanA = new PinnedIntPtr(DataA);
-            UnmanagedScanR = new PinnedIntPtr(DataR);
-            UnmanagedScanG = new PinnedIntPtr(DataG);
-            UnmanagedScanB = new PinnedIntPtr(DataB);
-
-            GetScan0 = () => throw new NotImplementedException();
-            GetScanA = () => UnmanagedScanA.DangerousGetHandle();
-            GetScanR = () => UnmanagedScanR.DangerousGetHandle();
-            GetScanG = () => UnmanagedScanG.DangerousGetHandle();
-            GetScanB = () => UnmanagedScanB.DangerousGetHandle();
-
+            _UnmanagedScan0 = new SafeHandle[] { new PinnedIntPtr(DataA), new PinnedIntPtr(DataR), new PinnedIntPtr(DataG), new PinnedIntPtr(DataB) };
             AdapterGenerator = PixelAdapterGenerator.Instance4;
         }
 
@@ -3511,9 +3434,10 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        private readonly PixelAdapterGenerator AdapterGenerator;
         public PixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel
             => AdapterGenerator.GetAdapter<Pixel, T>(this, X, Y);
-        IReadOnlyPixelAdapter IReadOnlyImageContext.GetAdapter(int X, int Y)
+        public IPixelAdapter GetAdapter(int X, int Y)
             => GetAdapter<Pixel>(X, Y);
 
         public ImageContext<Pixel> Clone()

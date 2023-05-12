@@ -54,7 +54,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override int BitsPerPixel
             => Source.BitsPerPixel;
 
-        private readonly bool CalculateAlpth;
         private NearestRotatePixelAdapter(NearestRotatePixelAdapter<T> Adapter)
         {
             Sin = Adapter.Sin;
@@ -70,7 +69,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Source = Adapter.Source.Clone();
             IsPixelValid = Adapter.IsPixelValid;
             IsEmptyPixel = Adapter.IsEmptyPixel;
-            CalculateAlpth = Adapter.CalculateAlpth;
         }
         public NearestRotatePixelAdapter(IImageContext Context, double Angle)
         {
@@ -94,7 +92,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             MaxSy--;
 
             Source = Context.GetAdapter<T>(0, 0);
-            CalculateAlpth = Context.Channels == 4 || (Context.Channels == 1 && Context.BitsPerPixel == 32);
         }
         public NearestRotatePixelAdapter(PixelAdapter<T> Adapter, double Angle)
         {
@@ -117,7 +114,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             MaxSy--;
 
             Source = Adapter;
-            CalculateAlpth = Adapter.BitsPerPixel != 32;
         }
 
         public override void Override(T Pixel)

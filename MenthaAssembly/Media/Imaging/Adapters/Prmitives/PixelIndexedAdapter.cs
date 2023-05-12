@@ -84,7 +84,7 @@
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             Palette = (ImagePalette<T>)Context.Palette;
-            pScan0 = (Struct*)Context.Scan0;
+            pScan0 = (Struct*)Context.Scan0[0];
             BitLength = pScan0->Length;
             Move(X, Y);
         }
@@ -352,7 +352,7 @@
             BitsPerPixel = Context.BitsPerPixel;
             Palette = (ImagePalette<T>)Context.Palette;
             IsPixelValid = false;
-            pScan0 = (Struct*)Context.Scan0;
+            pScan0 = (Struct*)Context.Scan0[0];
             BitLength = pScan0->Length;
             Move(X, Y);
         }

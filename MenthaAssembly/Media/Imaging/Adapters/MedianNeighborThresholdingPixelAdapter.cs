@@ -84,7 +84,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             BitsPerPixel = Adapter.BitsPerPixel;
             GetGray = Adapter.GetGray;
         }
-        public MedianNeighborThresholdingPixelAdapter(IReadOnlyImageContext Context, int Level)
+        public MedianNeighborThresholdingPixelAdapter(IImageContext Context, int Level)
         {
             X = 0;
             Y = 0;
