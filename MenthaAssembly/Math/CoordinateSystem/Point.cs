@@ -162,7 +162,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Point<T> obj)
-            => Equal(X, obj.X) && Equal(Y, obj.Y);
+            => OperatorHelper.Equals(X, obj.X) && OperatorHelper.Equals(Y, obj.Y);
         bool ICoordinateObject<T>.Equals(ICoordinateObject<T> obj)
             => obj is Point<T> Target && Equals(Target);
         public override bool Equals(object obj)

@@ -17,14 +17,14 @@ namespace MenthaAssembly
             => Value.GetHashCode();
 
         public bool Equals(Operatorable<T> obj)
-            => Equal(Value, obj.Value);
+            => OperatorHelper.Equals(Value, obj.Value);
         public override bool Equals(object obj)
         {
             if (obj is Operatorable<T> Target)
                 return Equals(Target);
 
             if (obj is T Value)
-                return Equal(this.Value, Value);
+                return OperatorHelper.Equals(this.Value, Value);
 
             return false;
         }
@@ -100,9 +100,9 @@ namespace MenthaAssembly
         }
 
         public static bool operator ==(Operatorable<T> This, Operatorable<T> Target)
-            => Equal(This.Value, Target.Value);
+            => OperatorHelper.Equals(This.Value, Target.Value);
         public static bool operator !=(Operatorable<T> This, Operatorable<T> Target)
-            => !Equal(This.Value, Target.Value);
+            => !OperatorHelper.Equals(This.Value, Target.Value);
 
         public static bool operator <(Operatorable<T> This, Operatorable<T> Target)
             => LessThan(This.Value, Target.Value);

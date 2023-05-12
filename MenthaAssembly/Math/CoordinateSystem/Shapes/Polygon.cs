@@ -220,10 +220,10 @@ namespace MenthaAssembly
                     else if (Cross.Count > 0)
                     {
                         p = Cross.FirstOrDefault();
-                        if (Equal(p.X, Px) && Equal(p.Y, Py))
+                        if (OperatorHelper.Equals(p.X, Px) && OperatorHelper.Equals(p.Y, Py))
                             return true;
 
-                        if (!(Equal(p.X, CPx) && Equal(p.Y, CPy)))
+                        if (!(OperatorHelper.Equals(p.X, CPx) && OperatorHelper.Equals(p.Y, CPy)))
                             Counter++;
                     }
                 }
@@ -247,10 +247,10 @@ namespace MenthaAssembly
                 else if (Cross.Count > 0)
                 {
                     p = Cross.FirstOrDefault();
-                    if (Equal(p.X, Px) && Equal(p.Y, Py))
+                    if (OperatorHelper.Equals(p.X, Px) && OperatorHelper.Equals(p.Y, Py))
                         return true;
 
-                    if (!(Equal(p.X, CPx) && Equal(p.Y, CPy)))
+                    if (!(OperatorHelper.Equals(p.X, CPx) && OperatorHelper.Equals(p.Y, CPy)))
                         Counter++;
                 }
             }

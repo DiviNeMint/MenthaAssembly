@@ -68,8 +68,8 @@ namespace MenthaAssembly
         /// <summary>
         /// A == B
         /// </summary>
-        public static bool Equal<T>(T A, T B)
-            => Operator<T>.Equal(A, B);
+        public static bool Equals<T>(T A, T B)
+            => Operator<T>.Equals(A, B);
 
         /// <summary>
         /// A == default<T>(T)
@@ -111,7 +111,7 @@ namespace MenthaAssembly
         {
             private static Func<T, T> _Neg, _Abs, _Half, _Double;
             private static Func<T, T, T> _Add, _Sub, _Mul, _Div, _Min, _Max;
-            private static Func<T, T, bool> _Equal, _GreaterThan, _LessThan, _GreaterThanOrEqual, _LessThanOrEqual;
+            private static Func<T, T, bool> _Equals, _GreaterThan, _LessThan, _GreaterThanOrEqual, _LessThanOrEqual;
             private static Predicate<T> _IsDefault;
 
             public static T Negate(T A)
@@ -354,9 +354,9 @@ namespace MenthaAssembly
                 return _Min(A, B);
             }
 
-            public static bool Equal(T A, T B)
+            public static bool Equals(T A, T B)
             {
-                if (_Equal is null)
+                if (_Equals is null)
                 {
                     Type t = typeof(T);
                     ParameterExpression Arg1 = Expression.Parameter(t, "a"),
@@ -364,16 +364,16 @@ namespace MenthaAssembly
 
                     try
                     {
-                        _Equal = Expression.Lambda<Func<T, T, bool>>(Expression.Equal(Arg1, Arg2), Arg1, Arg2)
+                        _Equals = Expression.Lambda<Func<T, T, bool>>(Expression.Equal(Arg1, Arg2), Arg1, Arg2)
                                            .Compile();
                     }
                     catch (Exception Ex)
                     {
-                        _Equal = (a, b) => throw Ex;
+                        _Equals = (a, b) => throw Ex;
                     }
                 }
 
-                return _Equal(A, B);
+                return _Equals(A, B);
             }
 
             public static bool IsDefault(T A)

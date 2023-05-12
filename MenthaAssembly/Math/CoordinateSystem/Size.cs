@@ -35,7 +35,7 @@ namespace MenthaAssembly
             => base.GetHashCode();
 
         public bool Equals(Size<T> Target)
-            => Equal(Width, Target.Width) && Equal(Height, Target.Height);
+            => OperatorHelper.Equals(Width, Target.Width) && OperatorHelper.Equals(Height, Target.Height);
         public override bool Equals(object obj)
             => obj is Size<T> Target && Equals(Target);
 

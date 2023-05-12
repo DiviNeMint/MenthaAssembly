@@ -235,7 +235,7 @@ namespace MenthaAssembly
             => base.GetHashCode();
 
         public bool Equals(Bound<T> Target)
-            => Equal(Left, Target.Left) && Equal(Top, Target.Top) && Equal(Right, Target.Right) && Equal(Bottom, Target.Bottom);
+            => OperatorHelper.Equals(Left, Target.Left) && OperatorHelper.Equals(Top, Target.Top) && OperatorHelper.Equals(Right, Target.Right) && OperatorHelper.Equals(Bottom, Target.Bottom);
         public override bool Equals(object obj)
             => obj is Bound<T> Target && Equals(Target);
 
