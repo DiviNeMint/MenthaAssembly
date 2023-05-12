@@ -3,6 +3,9 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
+    /// <summary>
+    /// Represents the image adapter with the specified pixel type.
+    /// </summary>
     public abstract unsafe class PixelAdapter<T> : IPixelAdapter, ICloneable
         where T : unmanaged, IPixel
     {
@@ -30,12 +33,31 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public abstract int BitsPerPixel { get; }
 
+        /// <summary>
+        /// Overrides the current color components with the specified pixel.
+        /// </summary>
+        /// <param name="Pixel">The specified pixel.</param>
         public abstract void Override(T Pixel);
 
+        /// <summary>
+        /// Overrides the current color components with the color components of the specified adapter.
+        /// </summary>
+        /// <param name="Adapter">The specified pixel.</param>
         public abstract void Override(PixelAdapter<T> Adapter);
 
+        /// <summary>
+        /// Overrides the current color components with the specified color components.
+        /// </summary>
+        /// <param name="A">The specified alpha component.</param>
+        /// <param name="R">The specified red component.</param>
+        /// <param name="G">The specified green component.</param>
+        /// <param name="B">The specified blue component.</param>
         public abstract void Override(byte A, byte R, byte G, byte B);
 
+        /// <summary>
+        /// Overrides the current color components to the specified data pointer.
+        /// </summary>
+        /// <param name="pData">The specified data pointer.</param>
         public virtual void OverrideTo(T* pData)
             => pData->Override(A, R, G, B);
 
@@ -54,12 +76,31 @@ namespace MenthaAssembly.Media.Imaging.Utils
             *pDataB = B;
         }
 
+        /// <summary>
+        /// Overlays the current color components with the specified pixel.
+        /// </summary>
+        /// <param name="Pixel">The specified pixel.</param>
         public abstract void Overlay(T Pixel);
 
+        /// <summary>
+        /// Overlays the current color components with the color components of the specified adapter.
+        /// </summary>
+        /// <param name="Adapter">The specified pixel.</param>
         public abstract void Overlay(PixelAdapter<T> Adapter);
 
+        /// <summary>
+        /// Overlays the current color components with the specified color components.
+        /// </summary>
+        /// <param name="A">The specified alpha component.</param>
+        /// <param name="R">The specified red component.</param>
+        /// <param name="G">The specified green component.</param>
+        /// <param name="B">The specified blue component.</param>
         public abstract void Overlay(byte A, byte R, byte G, byte B);
 
+        /// <summary>
+        /// Overlays the current color components to the specified data pointer.
+        /// </summary>
+        /// <param name="pData">The specified data pointer.</param>
         public virtual void OverlayTo(T* pData)
         {
             byte A = this.A;
@@ -175,6 +216,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         protected internal abstract void InternalMovePreviousLine();
 
+        /// <summary>
+        /// Creates a new <see cref="ImageContext{T}"/> that is a copy of the current instance.
+        /// </summary>
         public virtual ImageContext<T> ToImageContext()
         {
             int W = MaxX + 1,
@@ -194,6 +238,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             return Context;
         }
+        /// <summary>
+        /// Creates a new <see cref="ImageContext{T}"/> that is a copy of the current instance.
+        /// </summary>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
         public virtual ImageContext<T> ToImageContext(ParallelOptions Options)
         {
             int H = MaxY + 1;
@@ -212,6 +261,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
             return Context;
         }
 
+        /// <summary>
+        /// Creates a new <see cref="PixelAdapter{T}"/> that is a copy of the current instance.
+        /// </summary>
         public abstract PixelAdapter<T> Clone();
         IPixelAdapter IPixelAdapter.Clone()
             => Clone();

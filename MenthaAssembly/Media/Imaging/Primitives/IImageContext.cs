@@ -8,7 +8,7 @@ namespace MenthaAssembly.Media.Imaging
     /// <summary>
     /// Represents an image.
     /// </summary>
-    public unsafe interface IImageContext
+    public unsafe interface IImageContext : ICloneable
     {
         /// <summary>
         /// Gets the Width for this image.
@@ -46,20 +46,6 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="X">The x-coordinate of the specified location.</param>
         /// <param name="Y">The y-coordinate of the specified location.</param>
         public IReadOnlyPixel this[int X, int Y] { set; get; }
-
-        /// <summary>
-        /// Creates a PixelAdapter.
-        /// </summary>
-        /// <param name="X">The x-coordinate of start point at adapter.</param>
-        /// <param name="Y">The y-coordinate of start point at adapter.</param>
-        public PixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel;
-
-        /// <summary>
-        /// Creates a IReadOnlyPixelAdapter.
-        /// </summary>
-        /// <param name="X">The x-coordinate of start point at adapter.</param>
-        /// <param name="Y">The y-coordinate of start point at adapter.</param>
-        public IPixelAdapter GetAdapter(int X, int Y);
 
         #region Graphic Processing
 
@@ -1800,6 +1786,26 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #endregion
+
+        /// <summary>
+        /// Creates a new <see cref="PixelAdapter{T}"/> with the specified pixel type and coordinate.
+        /// </summary>
+        /// <typeparam name="T">The specified pixel type.</typeparam>
+        /// <param name="X">The x-coordinate of start point at adapter.</param>
+        /// <param name="Y">The y-coordinate of start point at adapter.</param>
+        public PixelAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel;
+
+        /// <summary>
+        /// Creates a new <see cref="IPixelAdapter"/> with the specified coordinate.
+        /// </summary>
+        /// <param name="X">The x-coordinate of start point at adapter.</param>
+        /// <param name="Y">The y-coordinate of start point at adapter.</param>
+        public IPixelAdapter GetAdapter(int X, int Y);
+
+        /// <summary>
+        /// Creates a new <see cref="IImageContext"/> that is a copy of the current instance.
+        /// </summary>
+        public new IImageContext Clone();
 
     }
 }

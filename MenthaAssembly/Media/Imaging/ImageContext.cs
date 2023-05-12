@@ -12,7 +12,7 @@ namespace MenthaAssembly.Media.Imaging
     /// Represents a image with the specified pixel type.
     /// </summary>
     /// <typeparam name="Pixel">The specified pixel type.</typeparam>
-    public unsafe class ImageContext<Pixel> : IImageContext, ICloneable
+    public unsafe class ImageContext<Pixel> : IImageContext
         where Pixel : unmanaged, IPixel
     {
         private static readonly ParallelOptions DefaultParallelOptions = new();
@@ -67,6 +67,11 @@ namespace MenthaAssembly.Media.Imaging
             BitsPerPixel = default(Pixel).BitsPerPixel;
         }
 
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
         public ImageContext(int Width, int Height) : this()
         {
             this.Width = Width;
@@ -77,10 +82,23 @@ namespace MenthaAssembly.Media.Imaging
             AdapterGenerator = PixelAdapterGenerator.Instance1;
         }
 
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="Scan0">The specified datapointer.</param>
         public ImageContext(int Width, int Height, IntPtr Scan0) :
             this(Width, Height, Scan0, Width)
         {
         }
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="Scan0">The specified pointer to the data.</param>
+        /// <param name="Stride">The specified stride of <paramref name="Scan0"/>.</param>
         public ImageContext(int Width, int Height, IntPtr Scan0, long Stride) : this()
         {
             this.Width = Width;
@@ -90,10 +108,27 @@ namespace MenthaAssembly.Media.Imaging
             _Scan0 = new IntPtr[] { Scan0 };
             AdapterGenerator = PixelAdapterGenerator.Instance1;
         }
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="ScanR">The specified pointer to the data of red component.</param>
+        /// <param name="ScanG">The specified pointer to the data of green component.</param>
+        /// <param name="ScanB">The specified pointer to the data of blue component.</param>
         public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) :
             this(Width, Height, ScanR, ScanG, ScanB, Width)
         {
         }
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="ScanR">The specified pointer to the data of red component.</param>
+        /// <param name="ScanG">The specified pointer to the data of green component.</param>
+        /// <param name="ScanB">The specified pointer to the data of blue component.</param>
+        /// <param name="Stride">The specified stride of <paramref name="ScanR"/> and <paramref name="ScanG"/> and <paramref name="ScanB"/>.</param>
         public ImageContext(int Width, int Height, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, long Stride) : this()
         {
             this.Width = Width;
@@ -103,10 +138,29 @@ namespace MenthaAssembly.Media.Imaging
             _Scan0 = new IntPtr[] { ScanR, ScanG, ScanB };
             AdapterGenerator = PixelAdapterGenerator.Instance3;
         }
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="ScanA">The specified pointer to the data of alpha component.</param>
+        /// <param name="ScanR">The specified pointer to the data of red component.</param>
+        /// <param name="ScanG">The specified pointer to the data of green component.</param>
+        /// <param name="ScanB">The specified pointer to the data of blue component.</param>
         public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB) :
             this(Width, Height, ScanA, ScanR, ScanG, ScanB, Width)
         {
         }
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="ScanA">The specified pointer to the data of alpha component.</param>
+        /// <param name="ScanR">The specified pointer to the data of red component.</param>
+        /// <param name="ScanG">The specified pointer to the data of green component.</param>
+        /// <param name="ScanB">The specified pointer to the data of blue component.</param>
+        /// <param name="Stride">The specified stride of <paramref name="ScanR"/> and <paramref name="ScanG"/> and <paramref name="ScanB"/>.</param>
         public ImageContext(int Width, int Height, IntPtr ScanA, IntPtr ScanR, IntPtr ScanG, IntPtr ScanB, long Stride) : this()
         {
             this.Width = Width;
@@ -117,6 +171,12 @@ namespace MenthaAssembly.Media.Imaging
             AdapterGenerator = PixelAdapterGenerator.Instance4;
         }
 
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="Data">The specified image data.</param>
         public ImageContext(int Width, int Height, byte[] Data) : this()
         {
             this.Width = Width;
@@ -126,6 +186,14 @@ namespace MenthaAssembly.Media.Imaging
             _UnmanagedScan0 = new SafeHandle[] { new PinnedIntPtr(Data) };
             AdapterGenerator = PixelAdapterGenerator.Instance1;
         }
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="DataR">The specified the image data of red component.</param>
+        /// <param name="DataG">The specified the image data of green component.</param>
+        /// <param name="DataB">The specified the image data of blue component.</param>
         public ImageContext(int Width, int Height, byte[] DataR, byte[] DataG, byte[] DataB) : this()
         {
             this.Width = Width;
@@ -135,6 +203,15 @@ namespace MenthaAssembly.Media.Imaging
             _UnmanagedScan0 = new SafeHandle[] { new PinnedIntPtr(DataR), new PinnedIntPtr(DataG), new PinnedIntPtr(DataB) };
             AdapterGenerator = PixelAdapterGenerator.Instance3;
         }
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="DataA">The specified the image data of alpha component.</param>
+        /// <param name="DataR">The specified the image data of red component.</param>
+        /// <param name="DataG">The specified the image data of green component.</param>
+        /// <param name="DataB">The specified the image data of blue component.</param>
         public ImageContext(int Width, int Height, byte[] DataA, byte[] DataR, byte[] DataG, byte[] DataB) : this()
         {
             this.Width = Width;
@@ -3444,8 +3521,13 @@ namespace MenthaAssembly.Media.Imaging
         public IPixelAdapter GetAdapter(int X, int Y)
             => GetAdapter<Pixel>(X, Y);
 
+        /// <summary>
+        /// Creates a new <see cref="ImageContext{Pixel}"/> that is a copy of the current instance.
+        /// </summary>
         public ImageContext<Pixel> Clone()
             => Cast<Pixel>();
+        IImageContext IImageContext.Clone()
+            => Clone();
         object ICloneable.Clone()
             => Clone();
 

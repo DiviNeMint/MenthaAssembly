@@ -13,7 +13,7 @@ namespace MenthaAssembly.Media.Imaging
     /// </summary>
     /// <typeparam name="Pixel">The specified pixel type.</typeparam>
     /// <typeparam name="Struct">The specified index struct type.</typeparam>
-    public unsafe class ImageContext<Pixel, Struct> : IImageIndexedContext, ICloneable
+    public unsafe class ImageContext<Pixel, Struct> : IImageIndexedContext
         where Pixel : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
@@ -87,6 +87,11 @@ namespace MenthaAssembly.Media.Imaging
             BitsPerPixel = default(Struct).BitsPerPixel;
         }
 
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
         public ImageContext(int Width, int Height) : this()
         {
             this.Width = Width;
@@ -97,10 +102,25 @@ namespace MenthaAssembly.Media.Imaging
             Palette = ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
 
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="Scan0">The specified pointer to the data.</param>
+        /// <param name="Palette">The specified palette.</param>
         public ImageContext(int Width, int Height, IntPtr Scan0, ImagePalette<Pixel> Palette) :
             this(Width, Height, Scan0, (Width * default(Struct).BitsPerPixel + 7) >> 3, Palette)
         {
         }
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="Scan0">The specified pointer to the data.</param>
+        /// <param name="Stride">The specified stride of <paramref name="Scan0"/>.</param>
+        /// <param name="Palette">The specified palette.</param>
         public ImageContext(int Width, int Height, IntPtr Scan0, int Stride, ImagePalette<Pixel> Palette) : this()
         {
             this.Width = Width;
@@ -110,6 +130,13 @@ namespace MenthaAssembly.Media.Imaging
             this.Palette = Palette ?? ImagePalette<Pixel>.GetSystemPalette<Struct>();
         }
 
+        /// <summary>
+        /// Initializes a new image.
+        /// </summary>
+        /// <param name="Width">The specified width.</param>
+        /// <param name="Height">The specified height.</param>
+        /// <param name="Data">The specified image data.</param>
+        /// <param name="Palette">The specified palette.</param>
         public ImageContext(int Width, int Height, byte[] Data, ImagePalette<Pixel> Palette) : this()
         {
             this.Width = Width;
@@ -3414,6 +3441,12 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        /// <summary>
+        /// Creates a new <see cref="PixelIndexedAdapter{T}"/> with the specified pixel type and coordinate.
+        /// </summary>
+        /// <typeparam name="T">The specified pixel type.</typeparam>
+        /// <param name="X">The x-coordinate of start point at adapter.</param>
+        /// <param name="Y">The y-coordinate of start point at adapter.</param>
         public PixelIndexedAdapter<T> GetAdapter<T>(int X, int Y) where T : unmanaged, IPixel
             => PixelType == typeof(T) ? new PixelIndexedAdapter<T, Struct>(this, X, Y) :
                                         new PixelIndexedAdapter<Pixel, T, Struct>(this, X, Y);
@@ -3422,8 +3455,13 @@ namespace MenthaAssembly.Media.Imaging
         public IPixelAdapter GetAdapter(int X, int Y)
             => GetAdapter<Pixel>(X, Y);
 
+        /// <summary>
+        /// Creates a new <see cref="ImageContext{Pixel, Struct}"/> that is a copy of the current instance.
+        /// </summary>
         public ImageContext<Pixel, Struct> Clone()
             => Cast<Pixel, Struct>();
+        IImageContext IImageContext.Clone()
+            => Clone();
         object ICloneable.Clone()
             => Clone();
 
