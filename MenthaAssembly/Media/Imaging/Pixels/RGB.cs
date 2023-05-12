@@ -2,6 +2,9 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents a pixel with  a red component, a green component, and a blue component.
+    /// </summary>
     [NonAlpha]
     [Serializable]
     public struct RGB : IPixel

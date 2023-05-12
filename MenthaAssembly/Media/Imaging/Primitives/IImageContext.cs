@@ -5,15 +5,18 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents an image.
+    /// </summary>
     public unsafe interface IImageContext
     {
         /// <summary>
-        /// Gets the Width of image.
+        /// Gets the Width for this image.
         /// </summary>
         public int Width { get; }
 
         /// <summary>
-        /// Gets the Height of image.
+        /// Gets the Height for this image.
         /// </summary>
         public int Height { get; }
 
@@ -28,17 +31,17 @@ namespace MenthaAssembly.Media.Imaging
         public int BitsPerPixel { get; }
 
         /// <summary>
-        /// Get the pixel type of image.
+        /// Gets the pixel type for this image.
         /// </summary>
         public Type PixelType { get; }
 
         /// <summary>
-        /// Gets the data pointers of the image.
+        /// Gets the data pointers for this image.
         /// </summary>
         public IntPtr[] Scan0 { get; }
 
         /// <summary>
-        /// Gets & Setters the pixel at the specified location in image.
+        /// Gets/Sets the pixel at the specified location for this image.
         /// </summary>
         /// <param name="X">The x-coordinate of the specified location.</param>
         /// <param name="Y">The y-coordinate of the specified location.</param>

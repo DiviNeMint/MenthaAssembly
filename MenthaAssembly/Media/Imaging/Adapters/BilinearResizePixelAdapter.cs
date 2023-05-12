@@ -13,7 +13,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int MaxY { get; }
 
-        private byte _A;
+        private byte _A = byte.MaxValue;
         public override byte A
         {
             get
@@ -56,7 +56,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override int BitsPerPixel
             => Source.BitsPerPixel;
 
-        //private readonly bool CalculateAlpth;
+        private readonly bool CalculateAlpth;
         private BilinearResizePixelAdapter(BilinearResizePixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
@@ -76,7 +76,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracY = Adapter.FracY;
             IFracY = Adapter.IFracY;
             Source = Adapter.Source.Clone();
-            //CalculateAlpth = Adapter.CalculateAlpth;
+            CalculateAlpth = Adapter.CalculateAlpth;
         }
         public BilinearResizePixelAdapter(IImageContext Context, int NewWidth, int NewHeight)
         {
@@ -85,7 +85,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             StepY = (float)Context.Height / NewHeight;
             MaxX = NewWidth - 1;
             MaxY = NewHeight - 1;
-            //CalculateAlpth = Source.Channels == 4 || (Source.Channels == 1 && Context.BitsPerPixel == 32);
+            CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
         }
         public BilinearResizePixelAdapter(PixelAdapter<T> Adapter, int NewWidth, int NewHeight)
         {
@@ -94,7 +94,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             StepY = (float)(Adapter.MaxY + 1) / NewHeight;
             MaxX = NewWidth - 1;
             MaxY = NewHeight - 1;
-            //CalculateAlpth = Adapter.BitsPerPixel != 32;
+            CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
             Adapter.InternalMove(0, 0);
         }
         internal BilinearResizePixelAdapter(IImageContext Context, int X, int Y, float StepX, float StepY)
@@ -117,9 +117,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracY -= Ty;
             IFracY = 1f - FracY;
 
-            //CalculateAlpth = Source.Channels == 4 || (Source.Channels == 1 && Source.BitsPerPixel == 32);
-            //if (!CalculateAlpth)
-            //    _A = byte.MaxValue;
+            CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
         }
 
         public override void Override(T Pixel)
@@ -225,8 +223,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                   FxIFy = FracX * IFracY,
                   FxFy = FracX * FracY;
 
-            //if (CalculateAlpth)
-            _A = (byte)(p00.A * IFxIFy + p01.A * FxIFy + p10.A * IFxFy + p11.A * FxFy);
+            if (CalculateAlpth)
+                _A = (byte)(p00.A * IFxIFy + p01.A * FxIFy + p10.A * IFxFy + p11.A * FxFy);
 
             _R = (byte)(p00.R * IFxIFy + p01.R * FxIFy + p10.R * IFxFy + p11.R * FxFy);
             _G = (byte)(p00.G * IFxIFy + p01.G * FxIFy + p10.G * IFxFy + p11.G * FxFy);

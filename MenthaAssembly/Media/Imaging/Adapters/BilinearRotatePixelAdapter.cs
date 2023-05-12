@@ -58,7 +58,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override int BitsPerPixel
             => Source.BitsPerPixel;
 
-        //private readonly bool CalculateAlpth;
+        private readonly bool CalculateAlpth;
         private BilinearRotatePixelAdapter(BilinearRotatePixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
@@ -87,7 +87,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracY0 = Adapter.FracY0;
             Source = Adapter.Source.Clone();
             IsEmptyPixel = Adapter.IsEmptyPixel;
-            //CalculateAlpth = Adapter.CalculateAlpth;
+            CalculateAlpth = Adapter.CalculateAlpth;
         }
         public BilinearRotatePixelAdapter(IImageContext Context, double Angle)
         {
@@ -111,7 +111,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             MaxSy--;
 
             Source = Context.GetAdapter<T>(0, 0);
-            //CalculateAlpth = Context.Channels == 4 || (Context.Channels == 1 && Context.BitsPerPixel == 32);
+            CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
         }
         public BilinearRotatePixelAdapter(PixelAdapter<T> Adapter, double Angle)
         {
@@ -134,7 +134,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             MaxSy--;
 
             Source = Adapter;
-            //CalculateAlpth = Adapter.BitsPerPixel != 32;
+            CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
         }
 
         public override void Override(T Pixel)
@@ -267,8 +267,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
                   FxIFy = TFracX * IFracY,
                   FxFy = TFracX * TFracY;
 
-            //if (CalculateAlpth)
-            _A = (byte)(p00.A * IFxIFy + p01.A * FxIFy + p10.A * IFxFy + p11.A * FxFy);
+            if (CalculateAlpth)
+                _A = (byte)(p00.A * IFxIFy + p01.A * FxIFy + p10.A * IFxFy + p11.A * FxFy);
+
             _R = (byte)(p00.R * IFxIFy + p01.R * FxIFy + p10.R * IFxFy + p11.R * FxFy);
             _G = (byte)(p00.G * IFxIFy + p01.G * FxIFy + p10.G * IFxFy + p11.G * FxFy);
             _B = (byte)(p00.B * IFxIFy + p01.B * FxIFy + p10.B * IFxFy + p11.B * FxFy);

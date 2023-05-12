@@ -3,29 +3,40 @@ using System;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents a pixel with hue value, saturation, brightness.
+    /// </summary>
     [NonAlpha]
     [Serializable]
-    public struct HSV : IPixel
+    public struct HSB : IPixel
     {
-        private double _H;
+        private double _H, _S, _B;
+
+        /// <summary>
+        /// Gets the hue value for this pixel.
+        /// </summary>
         public double H
         {
             get => _H;
             set => _H = NormalizationH(value);
         }
 
-        private double _S;
+        /// <summary>
+        /// Gets the saturation value for this pixel.
+        /// </summary>
         public double S
         {
             get => _S;
             set => _S = NormalizationS(value);
         }
 
-        private double _V;
-        public double V
+        /// <summary>
+        /// Gets the brightness value for this pixel.
+        /// </summary>
+        public double B
         {
-            get => _V;
-            set => _V = NormalizationV(value);
+            get => _B;
+            set => _B = NormalizationB(value);
         }
 
         byte IReadOnlyPixel.A
@@ -35,7 +46,7 @@ namespace MenthaAssembly.Media.Imaging
         {
             get
             {
-                double V = _V * 255d;
+                double V = _B * 255d;
                 if (_S <= 0d)
                     return (byte)Math.Round(V);
 
@@ -54,7 +65,7 @@ namespace MenthaAssembly.Media.Imaging
         {
             get
             {
-                double V = _V * 255d;
+                double V = _B * 255d;
                 if (_S <= 0d)
                     return (byte)Math.Round(V);
 
@@ -73,7 +84,7 @@ namespace MenthaAssembly.Media.Imaging
         {
             get
             {
-                double V = _V * 255d;
+                double V = _B * 255d;
                 if (_S <= 0d)
                     return (byte)Math.Round(V);
 
@@ -90,15 +101,15 @@ namespace MenthaAssembly.Media.Imaging
 
         int IPixelBase.BitsPerPixel => 24;
 
-        public HSV(byte R, byte G, byte B)
+        public HSB(byte R, byte G, byte B)
         {
-            PixelHelper.ToHSV(R, G, B, out _H, out _S, out _V);
+            PixelHelper.GetHSV(R, G, B, out _H, out _S, out _B);
         }
-        public HSV(double H, double S, double V)
+        public HSB(double H, double S, double B)
         {
             _H = NormalizationH(H);
             _S = NormalizationS(S);
-            _V = NormalizationV(V);
+            _B = NormalizationB(B);
         }
 
         void IPixel.Overlay(byte A, byte R, byte G, byte B)
@@ -112,12 +123,12 @@ namespace MenthaAssembly.Media.Imaging
             int hashCode = -1944459463;
             hashCode = hashCode * -1521134295 + _H.GetHashCode();
             hashCode = hashCode * -1521134295 + _S.GetHashCode();
-            hashCode = hashCode * -1521134295 + _V.GetHashCode();
+            hashCode = hashCode * -1521134295 + _B.GetHashCode();
             return hashCode;
         }
 
         public override bool Equals(object obj)
-            => obj is HSV v && _H == v._H && _S == v._S && _V == v._V;
+            => obj is HSB v && _H == v._H && _S == v._S && _B == v._B;
 
         private static double NormalizationH(double H)
         {
@@ -132,27 +143,27 @@ namespace MenthaAssembly.Media.Imaging
         }
         private static double NormalizationS(double S)
             => MathHelper.Clamp(S, 0d, 1d);
-        private static double NormalizationV(double V)
+        private static double NormalizationB(double V)
             => MathHelper.Clamp(V, 0d, 1d);
 
-        public static implicit operator HSV(RGB Target)
+        public static implicit operator HSB(RGB Target)
             => new(Target.R, Target.G, Target.B);
-        public static implicit operator HSV(BGR Target)
+        public static implicit operator HSB(BGR Target)
             => new(Target.R, Target.G, Target.B);
-        public static implicit operator HSV(RGBA Target)
+        public static implicit operator HSB(RGBA Target)
             => new(Target.R, Target.G, Target.B);
-        public static implicit operator HSV(ARGB Target)
+        public static implicit operator HSB(ARGB Target)
             => new(Target.R, Target.G, Target.B);
-        public static implicit operator HSV(BGRA Target)
+        public static implicit operator HSB(BGRA Target)
             => new(Target.R, Target.G, Target.B);
-        public static implicit operator HSV(ABGR Target)
+        public static implicit operator HSB(ABGR Target)
             => new(Target.R, Target.G, Target.B);
-        public static implicit operator HSV(Gray8 Target)
+        public static implicit operator HSB(Gray8 Target)
             => new(0d, 0d, Target.Gray / 255d);
 
-        public static bool operator ==(HSV This, HSV Target)
+        public static bool operator ==(HSB This, HSB Target)
             => This.Equals(Target);
-        public static bool operator !=(HSV This, HSV Target)
+        public static bool operator !=(HSB This, HSB Target)
             => !This.Equals(Target);
 
     }

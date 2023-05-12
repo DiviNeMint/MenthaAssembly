@@ -4,8 +4,21 @@ namespace MenthaAssembly.Media.Imaging
 {
     public static unsafe class PixelHelper
     {
+        /// <summary>
+        /// Creates a new pixel of the specified type.
+        /// </summary>
+        /// <typeparam name="T">The specified type.</typeparam>
+        /// <param name="Color">The initial value.</param>
         public static T ToPixel<T>(this IReadOnlyPixel Color) where T : unmanaged, IPixel
             => ToPixel<T>(Color.A, Color.R, Color.G, Color.B);
+        /// <summary>
+        /// Creates a new pixel of the specified type.
+        /// </summary>
+        /// <typeparam name="T">The specified type.</typeparam>
+        /// <param name="A">The initial alpha component value.</param>
+        /// <param name="R">The initial red component value.</param>
+        /// <param name="G">The initial green component value.</param>
+        /// <param name="B">The initial blue component value.</param>
         public static T ToPixel<T>(byte A, byte R, byte G, byte B)
             where T : unmanaged, IPixel
         {
@@ -14,12 +27,59 @@ namespace MenthaAssembly.Media.Imaging
             return Pixel;
         }
 
+        /// <summary>
+        /// Calculates the grayscale of the specified pixel.
+        /// </summary>
+        /// <param name="Pixel">The specified pixel.</param>
         public static byte ToGray(this IReadOnlyPixel Pixel)
-            => ToGray(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+            => ToGray65536(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+        /// <summary>
+        /// Calculates the grayscale of the specified color components.
+        /// </summary>
+        /// <param name="A">The specified alpha component.</param>
+        /// <param name="R">The specified red component.</param>
+        /// <param name="G">The specified green component.</param>
+        /// <param name="B">The specified blue component.</param>
         public static byte ToGray(byte A, byte R, byte G, byte B)
-            => (byte)((R * 30 + G * 59 + B * 11 + 50) * A / 25500);
+            => ToGray65536(A, R, G, B);
 
-        public static void ToHSV(byte R, byte G, byte B, out double H, out double S, out double V)
+        /// <summary>
+        /// (( R + G * 2 + B ) >> 2 ) * (A / 255)
+        /// </summary>
+        public static byte ToGray4(byte A, byte R, byte G, byte B)
+            => A == byte.MaxValue ? R == G && G == B ? R : (byte)((R + (G << 1) + B) >> 2) :
+                                    (byte)(((R + (G << 1) + B) >> 2) * A / 255);
+        /// <summary>
+        /// (( R * 2 + G * 5 + B ) >> 3 ) * (A / 255)
+        /// </summary>
+        public static byte ToGray8(byte A, byte R, byte G, byte B)
+            => A == byte.MaxValue ? R == G && G == B ? R : (byte)(((R << 1) + G * 5 + B) >> 3) :
+                                    (byte)((((R << 1) + G * 5 + B) >> 3) * A / 255);
+        /// <summary>
+        /// (( R * 38 + G * 75 + B * 15) >> 7 ) * (A / 255)
+        /// </summary>
+        public static byte ToGray128(byte A, byte R, byte G, byte B)
+            => A == byte.MaxValue ? R == G && G == B ? R : (byte)((R * 38 + G * 75 + B * 15) >> 7) :
+                                    (byte)(((R * 38 + G * 75 + B * 15) >> 7) * A / 255);
+        /// <summary>
+        /// (R * 30 + G * 59 + B * 11 + 50) * A / 25500
+        /// </summary>
+        public static byte ToGray100(byte A, byte R, byte G, byte B)
+            => (byte)((R * 30 + G * 59 + B * 11 + 50) * A / 25500);
+        /// <summary>
+        /// (( R * 306 + G * 601 + B * 117) >> 10 ) * (A / 255)
+        /// </summary>
+        public static byte ToGray1024(byte A, byte R, byte G, byte B)
+            => A == byte.MaxValue ? R == G && G == B ? R : (byte)((R * 306 + G * 601 + B * 117) >> 10) :
+                                    (byte)(((R * 306 + G * 601 + B * 117) >> 10) * A / 255);
+        /// <summary>
+        /// (( R * 19595 + G * 38469 + B * 7472) >> 16 ) * (A / 255)
+        /// </summary>
+        public static byte ToGray65536(byte A, byte R, byte G, byte B)
+            => A == byte.MaxValue ? R == G && G == B ? R : (byte)((R * 19595 + G * 38469 + B * 7472) >> 16) :
+                                    (byte)(((R * 19595 + G * 38469 + B * 7472) >> 16) * A / 255);
+
+        public static void GetHSV(byte R, byte G, byte B, out double H, out double S, out double V)
         {
             MathHelper.MinAndMax(out byte Max, out byte Min, R, G, B);
 
@@ -40,7 +100,7 @@ namespace MenthaAssembly.Media.Imaging
             else
                 H = 0d;
         }
-        public static void ToRGB(double H, double S, double V, out byte R, out byte G, out byte B)
+        public static void GetRGB(double H, double S, double V, out byte R, out byte G, out byte B)
         {
             V *= 255d;
             if (S <= 0d)
@@ -117,7 +177,10 @@ namespace MenthaAssembly.Media.Imaging
             *pDestB = (byte)((B * A * 255 + *pDestB * A1 * rA) / Alpha);
         }
 
-        public static readonly ConcurrentCollection<Type> NonAlphaPixelTypes = new() { typeof(Gray8), typeof(RGB), typeof(BGR), typeof(HSV), };
+        private static readonly ConcurrentCollection<Type> NonAlphaPixelTypes = new() { typeof(Gray8), typeof(RGB), typeof(BGR), typeof(HSB), };
+        /// <summary>
+        /// Determines whether the specified pixel type is applied <see cref="NonAlphaAttribute"/>.
+        /// </summary>
         public static bool IsNonAlphaPixel(Type PixelType)
         {
             if (NonAlphaPixelTypes.Contains(PixelType))
@@ -132,7 +195,10 @@ namespace MenthaAssembly.Media.Imaging
             return false;
         }
 
-        public static readonly ConcurrentCollection<Type> CalculatedPixelTypes = new() { typeof(Gray8) };
+        private static readonly ConcurrentCollection<Type> CalculatedPixelTypes = new() { typeof(Gray8) };
+        /// <summary>
+        /// Determines whether the specified pixel type is applied <see cref="CalculatedAttribute"/>.
+        /// </summary>
         public static bool IsCalculatedPixel(Type PixelType)
         {
             if (CalculatedPixelTypes.Contains(PixelType))

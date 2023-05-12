@@ -2,11 +2,18 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents a pixel with grayscale.<para/>
+    /// Grayscale = R * 0.299 + G * 0.587 + B * 0.114
+    /// </summary>
     [NonAlpha]
     [Calculated]
     [Serializable]
     public struct Gray8 : IPixel
     {
+        /// <summary>
+        /// Gets the grayscale for this pixel.
+        /// </summary>
         public byte Gray { set; get; }
 
         byte IReadOnlyPixel.A => byte.MaxValue;

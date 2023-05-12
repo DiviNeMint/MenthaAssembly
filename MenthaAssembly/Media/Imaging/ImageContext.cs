@@ -8,10 +8,14 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents a image with the specified pixel type.
+    /// </summary>
+    /// <typeparam name="Pixel">The specified pixel type.</typeparam>
     public unsafe class ImageContext<Pixel> : IImageContext, ICloneable
         where Pixel : unmanaged, IPixel
     {
-        private static readonly ParallelOptions DefaultParallelOptions = new ParallelOptions();
+        private static readonly ParallelOptions DefaultParallelOptions = new();
         private static readonly Type PixelType = typeof(Pixel);
 
         public int Width { get; }

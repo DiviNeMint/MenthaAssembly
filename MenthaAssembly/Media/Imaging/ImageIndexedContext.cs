@@ -8,6 +8,11 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
+    /// <summary>
+    /// Represents an image with the specified pixel type and index struct type.
+    /// </summary>
+    /// <typeparam name="Pixel">The specified pixel type.</typeparam>
+    /// <typeparam name="Struct">The specified index struct type.</typeparam>
     public unsafe class ImageContext<Pixel, Struct> : IImageIndexedContext, ICloneable
         where Pixel : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
@@ -28,6 +33,11 @@ namespace MenthaAssembly.Media.Imaging
 
         Type IImageIndexedContext.StructType => StructType;
 
+        /// <summary>
+        /// Gets/Sets the pixel at the specified location for this image.
+        /// </summary>
+        /// <param name="X">The x-coordinate of the specified location.</param>
+        /// <param name="Y">The y-coordinate of the specified location.</param>
         public Pixel this[int X, int Y]
         {
             get
@@ -57,11 +67,17 @@ namespace MenthaAssembly.Media.Imaging
 
         private readonly SafeHandle _UnmanagedScan0;
         private readonly IntPtr _Scan0;
+        /// <summary>
+        /// Gets the data pointer for this image.
+        /// </summary>
         public IntPtr Scan0
             => _UnmanagedScan0?.DangerousGetHandle() ?? _Scan0;
         IntPtr[] IImageContext.Scan0
             => new IntPtr[] { Scan0 };
 
+        /// <summary>
+        /// Gets the palette for this image.
+        /// </summary>
         public ImagePalette<Pixel> Palette { get; }
         IImagePalette IImageIndexedContext.Palette
             => Palette;
