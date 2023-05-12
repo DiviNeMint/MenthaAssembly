@@ -43,15 +43,39 @@
             this.A = (byte)(Alpha / 255);
         }
 
+        public override int GetHashCode()
+        {
+            int hashCode = 1642429756;
+            hashCode = hashCode * -1521134295 + B.GetHashCode();
+            hashCode = hashCode * -1521134295 + G.GetHashCode();
+            hashCode = hashCode * -1521134295 + R.GetHashCode();
+            hashCode = hashCode * -1521134295 + A.GetHashCode();
+            return hashCode;
+        }
+
+        public override bool Equals(object obj)
+            => obj is BGRA v && B == v.B && G == v.G && R == v.R && A == v.A;
+
         public override string ToString()
             => $"B : {B}, G : {G}, R : {R}, A : {A}";
 
-        public static implicit operator BGRA(RGB Target) => new BGRA(Target.B, Target.G, Target.R, 0xFF);
-        public static implicit operator BGRA(BGR Target) => new BGRA(Target.B, Target.G, Target.R, 0xFF);
-        public static implicit operator BGRA(ARGB Target) => new BGRA(Target.B, Target.G, Target.R, Target.A);
-        public static implicit operator BGRA(ABGR Target) => new BGRA(Target.B, Target.G, Target.R, Target.A);
-        public static implicit operator BGRA(RGBA Target) => new BGRA(Target.B, Target.G, Target.R, Target.A);
-        public static implicit operator BGRA(Gray8 Target) => new BGRA(Target.B, Target.G, Target.R, 0xFF);
-        public static implicit operator int(BGRA This) => This.A << 24 | This.R << 16 | This.G << 8 | This.B;
+        public static implicit operator BGRA(RGB Target)
+            => new(Target.B, Target.G, Target.R, byte.MaxValue);
+        public static implicit operator BGRA(BGR Target)
+            => new(Target.B, Target.G, Target.R, byte.MaxValue);
+        public static implicit operator BGRA(ARGB Target)
+            => new(Target.B, Target.G, Target.R, Target.A);
+        public static implicit operator BGRA(ABGR Target)
+            => new(Target.B, Target.G, Target.R, Target.A);
+        public static implicit operator BGRA(RGBA Target)
+            => new(Target.B, Target.G, Target.R, Target.A);
+        public static implicit operator BGRA(Gray8 Target)
+            => new(Target.Gray, Target.Gray, Target.Gray, byte.MaxValue);
+
+        public static bool operator ==(BGRA This, BGRA Target)
+            => This.Equals(Target);
+        public static bool operator !=(BGRA This, BGRA Target)
+            => !This.Equals(Target);
+
     }
 }

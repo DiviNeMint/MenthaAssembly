@@ -37,15 +37,38 @@
             this.B = (byte)((B * A + this.B * rA) / 255);
         }
 
+        public override int GetHashCode()
+        {
+            int hashCode = -1520100960;
+            hashCode = hashCode * -1521134295 + R.GetHashCode();
+            hashCode = hashCode * -1521134295 + G.GetHashCode();
+            hashCode = hashCode * -1521134295 + B.GetHashCode();
+            return hashCode;
+        }
+
+        public override bool Equals(object obj)
+            => obj is RGB v && R == v.R && G == v.G && B == v.B;
+
         public override string ToString()
             => $"R : {R}, G : {G}, B : {B}";
 
-        public static implicit operator RGB(BGR Target) => new RGB(Target.R, Target.G, Target.B);
-        public static implicit operator RGB(ARGB Target) => new RGB(Target.R, Target.G, Target.B);
-        public static implicit operator RGB(ABGR Target) => new RGB(Target.R, Target.G, Target.B);
-        public static implicit operator RGB(RGBA Target) => new RGB(Target.R, Target.G, Target.B);
-        public static implicit operator RGB(BGRA Target) => new RGB(Target.R, Target.G, Target.B);
-        public static implicit operator RGB(Gray8 Target) => new RGB(Target.R, Target.G, Target.B);
-        //public static implicit operator RGB(int Target) => -16777216 | Target.R << 16 | Target.G << 8 | Target.B;
+        public static implicit operator RGB(BGR Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator RGB(ARGB Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator RGB(ABGR Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator RGB(RGBA Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator RGB(BGRA Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator RGB(Gray8 Target)
+            => new(Target.Gray, Target.Gray, Target.Gray);
+
+        public static bool operator ==(RGB This, RGB Target)
+            => This.Equals(Target);
+        public static bool operator !=(RGB This, RGB Target)
+            => !This.Equals(Target);
+
     }
 }

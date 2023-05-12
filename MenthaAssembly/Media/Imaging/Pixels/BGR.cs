@@ -37,15 +37,38 @@
             this.R = (byte)((R * A + this.R * rA) / 255);
         }
 
+        public override int GetHashCode()
+        {
+            int hashCode = 931614316;
+            hashCode = hashCode * -1521134295 + B.GetHashCode();
+            hashCode = hashCode * -1521134295 + G.GetHashCode();
+            hashCode = hashCode * -1521134295 + R.GetHashCode();
+            return hashCode;
+        }
+
+        public override bool Equals(object obj)
+            => obj is BGR v && B == v.B && G == v.G && R == v.R;
+
         public override string ToString()
             => $"B : {B}, G : {G}, R : {R}";
 
-        public static implicit operator BGR(RGB Target) => new BGR(Target.B, Target.G, Target.R);
-        public static implicit operator BGR(ABGR Target) => new BGR(Target.B, Target.G, Target.R);
-        public static implicit operator BGR(ARGB Target) => new BGR(Target.B, Target.G, Target.R);
-        public static implicit operator BGR(BGRA Target) => new BGR(Target.B, Target.G, Target.R);
-        public static implicit operator BGR(RGBA Target) => new BGR(Target.B, Target.G, Target.R);
-        public static implicit operator BGR(Gray8 Target) => new BGR(Target.B, Target.G, Target.R);
+        public static implicit operator BGR(RGB Target)
+            => new(Target.B, Target.G, Target.R);
+        public static implicit operator BGR(ABGR Target)
+            => new(Target.B, Target.G, Target.R);
+        public static implicit operator BGR(ARGB Target)
+            => new(Target.B, Target.G, Target.R);
+        public static implicit operator BGR(BGRA Target)
+            => new(Target.B, Target.G, Target.R);
+        public static implicit operator BGR(RGBA Target)
+            => new(Target.B, Target.G, Target.R);
+        public static implicit operator BGR(Gray8 Target)
+            => new(Target.Gray, Target.Gray, Target.Gray);
+
+        public static bool operator ==(BGR This, BGR Target)
+            => This.Equals(Target);
+        public static bool operator !=(BGR This, BGR Target)
+            => !This.Equals(Target);
 
     }
 }

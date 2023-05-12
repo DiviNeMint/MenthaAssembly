@@ -43,15 +43,39 @@
             this.B = (byte)((B * A * 255 + this.B * A1 * rA) / Alpha);
         }
 
+        public override int GetHashCode()
+        {
+            int hashCode = -1749689076;
+            hashCode = hashCode * -1521134295 + A.GetHashCode();
+            hashCode = hashCode * -1521134295 + R.GetHashCode();
+            hashCode = hashCode * -1521134295 + G.GetHashCode();
+            hashCode = hashCode * -1521134295 + B.GetHashCode();
+            return hashCode;
+        }
+
+        public override bool Equals(object obj)
+            => obj is ARGB v && A == v.A && R == v.R && G == v.G && B == v.B;
+
         public override string ToString()
             => $"A : {A}, R : {R}, G : {G}, B : {B}";
 
-        public static implicit operator ARGB(RGB Target) => new ARGB(0xFF, Target.R, Target.G, Target.B);
-        public static implicit operator ARGB(BGR Target) => new ARGB(0xFF, Target.R, Target.G, Target.B);
-        public static implicit operator ARGB(RGBA Target) => new ARGB(Target.A, Target.R, Target.G, Target.B);
-        public static implicit operator ARGB(BGRA Target) => new ARGB(Target.A, Target.R, Target.G, Target.B);
-        public static implicit operator ARGB(ABGR Target) => new ARGB(Target.A, Target.R, Target.G, Target.B);
-        public static implicit operator ARGB(Gray8 Target) => new ARGB(0xFF, Target.R, Target.G, Target.B);
-        //public static implicit operator ARGB(int This) => new ARGB((byte)(This >> 24), (byte)(This >> 16), (byte)(This >> 8), (byte)This);
+        public static implicit operator ARGB(RGB Target)
+            => new(byte.MaxValue, Target.R, Target.G, Target.B);
+        public static implicit operator ARGB(BGR Target)
+            => new(byte.MaxValue, Target.R, Target.G, Target.B);
+        public static implicit operator ARGB(RGBA Target)
+            => new(Target.A, Target.R, Target.G, Target.B);
+        public static implicit operator ARGB(BGRA Target)
+            => new(Target.A, Target.R, Target.G, Target.B);
+        public static implicit operator ARGB(ABGR Target)
+            => new(Target.A, Target.R, Target.G, Target.B);
+        public static implicit operator ARGB(Gray8 Target)
+            => new(byte.MaxValue, Target.Gray, Target.Gray, Target.Gray);
+
+        public static bool operator ==(ARGB This, ARGB Target)
+            => This.Equals(Target);
+        public static bool operator !=(ARGB This, ARGB Target)
+            => !This.Equals(Target);
+
     }
 }

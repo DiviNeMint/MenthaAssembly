@@ -43,15 +43,39 @@
             this.A = (byte)(Alpha / 255);
         }
 
+        public override int GetHashCode()
+        {
+            int hashCode = 1960784236;
+            hashCode = hashCode * -1521134295 + R.GetHashCode();
+            hashCode = hashCode * -1521134295 + G.GetHashCode();
+            hashCode = hashCode * -1521134295 + B.GetHashCode();
+            hashCode = hashCode * -1521134295 + A.GetHashCode();
+            return hashCode;
+        }
+
+        public override bool Equals(object obj)
+            => obj is RGBA v && R == v.R && G == v.G && B == v.B && A == v.A;
+
         public override string ToString()
             => $"R : {R}, G : {G}, B : {B}, A : {A}";
 
-        public static implicit operator RGBA(RGB Target) => new RGBA(Target.R, Target.G, Target.B, 0xFF);
-        public static implicit operator RGBA(BGR Target) => new RGBA(Target.R, Target.G, Target.B, 0xFF);
-        public static implicit operator RGBA(ARGB Target) => new RGBA(Target.R, Target.G, Target.B, Target.A);
-        public static implicit operator RGBA(ABGR Target) => new RGBA(Target.R, Target.G, Target.B, Target.A);
-        public static implicit operator RGBA(BGRA Target) => new RGBA(Target.R, Target.G, Target.B, Target.A);
-        public static implicit operator RGBA(Gray8 Target) => new RGBA(Target.R, Target.G, Target.B, 0xFF);
+        public static implicit operator RGBA(RGB Target)
+            => new(Target.R, Target.G, Target.B, byte.MaxValue);
+        public static implicit operator RGBA(BGR Target)
+            => new(Target.R, Target.G, Target.B, byte.MaxValue);
+        public static implicit operator RGBA(ARGB Target)
+            => new(Target.R, Target.G, Target.B, Target.A);
+        public static implicit operator RGBA(ABGR Target)
+            => new(Target.R, Target.G, Target.B, Target.A);
+        public static implicit operator RGBA(BGRA Target)
+            => new(Target.R, Target.G, Target.B, Target.A);
+        public static implicit operator RGBA(Gray8 Target)
+            => new(Target.Gray, Target.Gray, Target.Gray, byte.MaxValue);
+
+        public static bool operator ==(RGBA This, RGBA Target)
+            => This.Equals(Target);
+        public static bool operator !=(RGBA This, RGBA Target)
+            => !This.Equals(Target);
 
     }
 }

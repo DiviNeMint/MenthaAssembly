@@ -1,16 +1,17 @@
 ﻿namespace MenthaAssembly.Media.Imaging
 {
-    public struct Gray8 : ICalculatedPixel
+    [Calculated]
+    public struct Gray8 : IPixel
     {
         public byte Gray { set; get; }
 
-        public byte A => byte.MaxValue;
+        byte IReadOnlyPixel.A => byte.MaxValue;
 
-        public byte R => Gray;
+        byte IReadOnlyPixel.R => Gray;
 
-        public byte G => Gray;
+        byte IReadOnlyPixel.G => Gray;
 
-        public byte B => Gray;
+        byte IReadOnlyPixel.B => Gray;
 
         public int BitsPerPixel => 8;
 
@@ -38,15 +39,32 @@
                            (B * A + Gray * rA) * 11 + 50) / 25500);
         }
 
-        public override string ToString()
-            => $"R : {R}, G : {G}, B : {B}";
+        public override int GetHashCode()
+            => 1200207562 + Gray.GetHashCode();
 
-        public static implicit operator Gray8(RGB Target) => new Gray8(Target.R, Target.G, Target.B);
-        public static implicit operator Gray8(BGR Target) => new Gray8(Target.R, Target.G, Target.B);
-        public static implicit operator Gray8(ARGB Target) => new Gray8(Target.R, Target.G, Target.B);
-        public static implicit operator Gray8(ABGR Target) => new Gray8(Target.R, Target.G, Target.B);
-        public static implicit operator Gray8(RGBA Target) => new Gray8(Target.R, Target.G, Target.B);
-        public static implicit operator Gray8(BGRA Target) => new Gray8(Target.R, Target.G, Target.B);
+        public override bool Equals(object obj)
+            => obj is Gray8 v && Gray == v.Gray;
+
+        public override string ToString()
+            => $"R : {Gray}, G : {Gray}, B : {Gray}";
+
+        public static implicit operator Gray8(RGB Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator Gray8(BGR Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator Gray8(ARGB Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator Gray8(ABGR Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator Gray8(RGBA Target)
+            => new(Target.R, Target.G, Target.B);
+        public static implicit operator Gray8(BGRA Target)
+            => new(Target.R, Target.G, Target.B);
+
+        public static bool operator ==(Gray8 This, Gray8 Target)
+            => This.Equals(Target);
+        public static bool operator !=(Gray8 This, Gray8 Target)
+            => !This.Equals(Target);
 
     }
 }

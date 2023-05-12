@@ -1,11 +1,11 @@
-﻿namespace MenthaAssembly.Media.Imaging
+﻿using System;
+
+namespace MenthaAssembly.Media.Imaging
 {
     public static unsafe class PixelHelper
     {
-        public static T ToPixel<T>(this IReadOnlyPixel Color)
-            where T : unmanaged, IPixel
+        public static T ToPixel<T>(this IReadOnlyPixel Color) where T : unmanaged, IPixel
             => ToPixel<T>(Color.A, Color.R, Color.G, Color.B);
-
         public static T ToPixel<T>(byte A, byte R, byte G, byte B)
             where T : unmanaged, IPixel
         {
@@ -18,6 +18,85 @@
             => ToGray(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
         public static byte ToGray(byte A, byte R, byte G, byte B)
             => (byte)((R * 30 + G * 59 + B * 11 + 50) * A / 25500);
+
+        public static void ToHSV(byte R, byte G, byte B, out double H, out double S, out double V)
+        {
+            MathHelper.MinAndMax(out byte Max, out byte Min, R, G, B);
+
+            double Delta = Max - Min;
+            V = Max / 255d;
+            S = Max == byte.MinValue ? 0d : Delta / Max;
+
+            if (Delta == 0d)
+                H = 0d;
+            else if (Max == R && G >= B)
+                H = (G - B) * 60d / Delta;
+            else if (Max == R && G < B)
+                H = (G - B) * 60d / Delta + 360d;
+            else if (Max == G)
+                H = (B - R) * 60d / Delta + 120d;
+            else if (Max == B)
+                H = (R - G) * 60d / Delta + 240d;
+            else
+                H = 0d;
+        }
+        public static void ToRGB(double H, double S, double V, out byte R, out byte G, out byte B)
+        {
+            V *= 255d;
+            if (S <= 0d)
+            {
+                R = G = B = (byte)Math.Round(V);
+                return;
+            }
+
+            double hh = H / 60d;
+            switch (Math.Floor(hh))
+            {
+                case 1:
+                    {
+                        R = (byte)Math.Round(V * (1d - S * (hh - 1d)));
+                        G = (byte)Math.Round(V);
+                        B = (byte)Math.Round(V * (1d - S));
+                        break;
+                    }
+                case 2:
+                    {
+                        R = (byte)Math.Round(V * (1d - S));
+                        G = (byte)Math.Round(V);
+                        B = (byte)Math.Round(V * (1d - S * (3d - hh)));
+                        break;
+                    }
+                case 3:
+                    {
+                        R = (byte)Math.Round(V * (1d - S));
+                        G = (byte)Math.Round(V * (1d - S * (hh - 3d)));
+                        B = (byte)Math.Round(V);
+                        break;
+                    }
+                case 4:
+                    {
+                        R = (byte)Math.Round(V * (1d - S * (5d - hh)));
+                        G = (byte)Math.Round(V * (1d - S));
+                        B = (byte)Math.Round(V);
+                        break;
+                    }
+                case 5:
+                    {
+                        R = (byte)Math.Round(V);
+                        G = (byte)Math.Round(V * (1d - S));
+                        B = (byte)Math.Round(V * (1d - S * (hh - 5d)));
+                        break;
+                    }
+                case 0:
+                default:
+                    {
+                        R = (byte)Math.Round(V);
+                        G = (byte)Math.Round(V * (1d - S * (1d - hh)));
+                        B = (byte)Math.Round(V * (1d - S));
+                    }
+                    break;
+            }
+        }
 
         public static void Overlay(ref byte* pDestR, ref byte* pDestG, ref byte* pDestB, byte A, byte R, byte G, byte B)
         {
