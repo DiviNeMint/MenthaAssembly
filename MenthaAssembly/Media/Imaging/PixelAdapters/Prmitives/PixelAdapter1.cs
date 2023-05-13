@@ -1,6 +1,6 @@
 ﻿namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal unsafe class PixelAdapter1<T> : PixelAdapter<T>
+    internal sealed unsafe class PixelAdapter1<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
         public override int XLength { get; }
@@ -19,7 +19,7 @@
 
         private readonly long Stride;
         private readonly byte* pScan0;
-        protected T* pScan;
+        private T* pScan;
         private PixelAdapter1(PixelAdapter1<T> Adapter)
         {
             X = Adapter.X;
@@ -33,8 +33,8 @@
         }
         public PixelAdapter1(IImageContext Context, int X, int Y)
         {
-            XLength = Context.Width - 1;
-            YLength = Context.Height - 1;
+            XLength = Context.Width;
+            YLength = Context.Height;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             pScan0 = (byte*)Context.Scan0[0];
@@ -67,22 +67,22 @@
                 pScan->Overlay(A, R, G, B);
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
             => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
 
-        protected internal override void InternalOffsetX(int Delta)
+        public override void DangerousOffsetX(int Delta)
             => pScan += Delta;
-        protected internal override void InternalOffsetY(int Delta)
+        public override void DangerousOffsetY(int Delta)
             => pScan = (T*)((byte*)pScan + Stride * Delta);
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
             => pScan++;
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
             => pScan--;
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
             => pScan = (T*)((byte*)pScan + Stride);
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
             => pScan = (T*)((byte*)pScan - Stride);
 
         public override PixelAdapter<T> Clone()
@@ -90,7 +90,7 @@
 
     }
 
-    internal unsafe class PixelAdapter1<T, U> : PixelAdapter<U>
+    internal sealed unsafe class PixelAdapter1<T, U> : PixelAdapter<U>
         where T : unmanaged, IPixel
         where U : unmanaged, IPixel
     {
@@ -110,22 +110,23 @@
 
         private readonly long Stride;
         private readonly byte* pScan0;
-        protected T* pScan;
+        private T* pScan;
         private PixelAdapter1(PixelAdapter1<T, U> Adapter)
         {
-            X = Adapter.X;
-            Y = Adapter.Y;
             XLength = Adapter.XLength;
             YLength = Adapter.YLength;
             Stride = Adapter.Stride;
             BitsPerPixel = Adapter.BitsPerPixel;
+
+            X = Adapter.X;
+            Y = Adapter.Y;
             pScan0 = Adapter.pScan0;
             pScan = Adapter.pScan;
         }
         public PixelAdapter1(IImageContext Context, int X, int Y)
         {
-            XLength = Context.Width - 1;
-            YLength = Context.Height - 1;
+            XLength = Context.Width;
+            YLength = Context.Height;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             pScan0 = (byte*)Context.Scan0[0];
@@ -181,27 +182,26 @@
             }
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
             => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
 
-        protected internal override void InternalOffsetX(int Delta)
+        public override void DangerousOffsetX(int Delta)
             => pScan += Delta;
-        protected internal override void InternalOffsetY(int Delta)
+        public override void DangerousOffsetY(int Delta)
             => pScan = (T*)((byte*)pScan + Stride * Delta);
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
             => pScan++;
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
             => pScan--;
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
             => pScan = (T*)((byte*)pScan + Stride);
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
             => pScan = (T*)((byte*)pScan - Stride);
 
         public override PixelAdapter<U> Clone()
             => new PixelAdapter1<T, U>(this);
 
     }
-
 }

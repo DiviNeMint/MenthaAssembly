@@ -37,7 +37,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 if (Ty < 0 || MaxY < Ty)
                     continue;
 
-                Adapter.InternalMove(0, Ty);
+                Adapter.DangerousMove(0, Ty);
 
                 int CurrentX = 0;
                 List<int> Data = Content.Value.Datas;
@@ -54,8 +54,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     Sx = Math.Max(Sx, 0);
                     Ex = Math.Min(Ex, MaxX);
 
-                    Adapter.InternalOffsetX(Sx - CurrentX);
-                    for (int j = Sx; j <= Ex; j++, Adapter.InternalMoveNextX())
+                    Adapter.DangerousOffsetX(Sx - CurrentX);
+                    for (int j = Sx; j <= Ex; j++, Adapter.DangerousMoveNextX())
                         Handler(Adapter);
 
                     CurrentX = Ex + 1;
@@ -175,8 +175,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Dictionary<int, int> Palette = new();
             for (int j = 0; j < Adapter.YLength; j++)
             {
-                Adapter.InternalMove(0, j);
-                for (int i = 0; i < Adapter.XLength; i++, Adapter.InternalMoveNextX())
+                Adapter.DangerousMove(0, j);
+                for (int i = 0; i < Adapter.XLength; i++, Adapter.DangerousMoveNextX())
                 {
                     int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
                     if (Palette.ContainsKey(Key))
@@ -303,8 +303,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Dictionary<int, int> Palette = new();
             for (int j = 0; j < Adapter.YLength; j++)
             {
-                Adapter.InternalMove(0, j);
-                for (int i = 0; i < Adapter.XLength; i++, Adapter.InternalMoveNextX())
+                Adapter.DangerousMove(0, j);
+                for (int i = 0; i < Adapter.XLength; i++, Adapter.DangerousMoveNextX())
                 {
                     int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
                     if (Palette.ContainsKey(Key))
@@ -529,8 +529,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 D;
             for (int j = 0; j < Adapter.YLength; j++)
             {
-                Adapter.InternalMove(0, j);
-                for (int i = 0; i < Adapter.XLength; i++, Adapter.InternalMoveNextX())
+                Adapter.DangerousMove(0, j);
+                for (int i = 0; i < Adapter.XLength; i++, Adapter.DangerousMoveNextX())
                 {
                     int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
                     if (Palette.ContainsKey(Key))
@@ -780,8 +780,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     D;
                 for (int j = 0; j < Adapter.YLength; j++)
                 {
-                    Adapter.InternalMove(0, j);
-                    for (int i = 0; i < Adapter.XLength; i++, Adapter.InternalMoveNextX())
+                    Adapter.DangerousMove(0, j);
+                    for (int i = 0; i < Adapter.XLength; i++, Adapter.DangerousMoveNextX())
                     {
                         int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
                         if (Palette.ContainsKey(Key))

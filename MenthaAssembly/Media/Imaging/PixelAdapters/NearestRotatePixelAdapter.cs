@@ -62,9 +62,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracY = Adapter.FracY;
             FracX0 = Adapter.FracX0;
             FracY0 = Adapter.FracY0;
-            Source = Adapter.Source.Clone();
+
             IsPixelValid = Adapter.IsPixelValid;
             IsEmptyPixel = Adapter.IsEmptyPixel;
+
+            X = Adapter.X;
+            Y = Adapter.Y;
+            Source = Adapter.Source.Clone();
         }
         public NearestRotatePixelAdapter(IImageContext Context, double Angle)
         {
@@ -81,6 +85,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracX = FracX0;
             FracY = FracY0;
 
+            X = 0;
+            Y = 0;
             Source = Context.GetAdapter<T>(0, 0);
         }
         public NearestRotatePixelAdapter(PixelAdapter<T> Adapter, double Angle)
@@ -98,6 +104,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracX = FracX0;
             FracY = FracY0;
 
+            X = Adapter.X;
+            Y = Adapter.Y;
             Source = Adapter;
         }
 
@@ -165,49 +173,49 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (IsEmptyPixel)
                 return;
 
-            Source.InternalMove(a1, b1);
+            Source.DangerousMove(a1, b1);
             IsPixelValid = true;
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
             FracX = FracX0 + X * Cos + Y * Sin;
             FracY = FracY0 + Y * Cos - X * Sin;
             IsPixelValid = false;
         }
-        protected internal override void InternalOffsetX(int OffsetX)
+        public override void DangerousOffsetX(int OffsetX)
         {
             FracX += Cos * OffsetX;
             FracY -= Sin * OffsetX;
             IsPixelValid = false;
         }
-        protected internal override void InternalOffsetY(int OffsetY)
+        public override void DangerousOffsetY(int OffsetY)
         {
             FracX += Sin * OffsetY;
             FracY += Cos * OffsetY;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
         {
             FracX += Cos;
             FracY -= Sin;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
         {
             FracX -= Cos;
             FracY += Sin;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
         {
             FracX += Sin;
             FracY += Cos;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
         {
             FracX -= Sin;
             FracY -= Cos;

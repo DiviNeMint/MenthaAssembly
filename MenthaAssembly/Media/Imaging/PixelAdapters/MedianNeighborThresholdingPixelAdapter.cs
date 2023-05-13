@@ -74,48 +74,49 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Cache = new List<byte>();
             }
 
-            X = Adapter.X;
-            Y = Adapter.Y;
             XLength = Adapter.XLength;
             YLength = Adapter.YLength;
             Level = Adapter.Level;
-            Source = Adapter.Source.Clone();
-            MedianIndex = Adapter.MedianIndex;
             BitsPerPixel = Adapter.BitsPerPixel;
             GetGray = Adapter.GetGray;
+
+            X = Adapter.X;
+            Y = Adapter.Y;
+            Source = Adapter.Source.Clone();
+            MedianIndex = Adapter.MedianIndex;
         }
         public MedianNeighborThresholdingPixelAdapter(IImageContext Context, int Level)
         {
-            X = 0;
-            Y = 0;
+            Cache = new List<byte>();
             XLength = Context.Width;
             YLength = Context.Height;
-            Cache = new List<byte>();
             this.Level = Level;
-
-            int Size = (Level << 1) + 1;
-            Source = new ImagePatch(Context, Size, Size);
-            MedianIndex = (Size * Size) >> 1;
             BitsPerPixel = Context.BitsPerPixel;
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
+
+            int Size = (Level << 1) + 1;
+            X = 0;
+            Y = 0;
+            Source = new ImagePatch(Context, Size, Size);
+            MedianIndex = (Size * Size) >> 1;
         }
         public MedianNeighborThresholdingPixelAdapter(PixelAdapter<T> Adapter, int Level)
         {
-            Adapter.InternalMove(0, 0);
-            X = 0;
-            Y = 0;
+            Cache = new List<byte>();
             XLength = Adapter.XLength;
             YLength = Adapter.YLength;
-            Cache = new List<byte>();
             this.Level = Level;
-
-            int Size = (Level << 1) + 1;
-            Source = new ImagePatch(Adapter, Size, Size);
-            MedianIndex = (Size * Size) >> 1;
             BitsPerPixel = Adapter.BitsPerPixel;
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
+
+            int Size = (Level << 1) + 1;
+            X = 0;
+            Y = 0;
+            Source = new ImagePatch(Adapter, Size, Size);
+            MedianIndex = (Size * Size) >> 1;
+            Adapter.DangerousMove(0, 0);
         }
 
         public override void Override(T Pixel)
@@ -229,44 +230,44 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Collection.Insert(i, Value);
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
             Source.Move(X, Y);
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalOffsetX(int OffsetX)
+        public override void DangerousOffsetX(int OffsetX)
         {
             Source.Move(Source.X + OffsetX, Source.Y);
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalOffsetY(int OffsetY)
+        public override void DangerousOffsetY(int OffsetY)
         {
             Source.Move(Source.X, Source.Y + OffsetY);
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
         {
             Source.MoveNextX();
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
         {
             Source.MovePreviousX();
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
         {
             Source.MoveNextY();
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
         {
             Source.MovePreviousY();
             IsPixelValid = false;

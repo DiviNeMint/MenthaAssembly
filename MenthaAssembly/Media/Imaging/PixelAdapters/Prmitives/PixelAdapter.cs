@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging.Utils
@@ -6,15 +7,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
     /// <summary>
     /// Represents the pixel adapter with the specified pixel type in image.
     /// </summary>
-    public abstract unsafe class PixelAdapter<T> : IPixelAdapter<T>, ICloneable
+    public abstract unsafe class PixelAdapter<T> : IPixelAdapter, ICloneable
         where T : unmanaged, IPixel
     {
         private static readonly ParallelOptions DefaultParallelOptions = new();
         protected static readonly Type PixelType = typeof(T);
 
-        public int X { protected set; get; } = int.MinValue;
+        public int X {  set; get; } = int.MinValue;
 
-        public int Y { protected set; get; } = int.MinValue;
+        public int Y {  set; get; } = int.MinValue;
 
         public abstract int XLength { get; }
 
@@ -33,8 +34,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public abstract int BitsPerPixel { get; }
 
+        /// <summary>
+        /// Overrides the current color components with the specified pixel.
+        /// </summary>
+        /// <param name="Pixel">The specified pixel.</param>
         public abstract void Override(T Pixel);
 
+        /// <summary>
+        /// Overrides the current color components with the color components of the specified adapter.
+        /// </summary>
+        /// <param name="Adapter">The specified pixel.</param>
         public abstract void Override(PixelAdapter<T> Adapter);
 
         /// <summary>
@@ -46,6 +55,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// <param name="B">The specified blue component.</param>
         public abstract void Override(byte A, byte R, byte G, byte B);
 
+        /// <summary>
+        /// Overrides the current color components to the specified data pointer.
+        /// </summary>
+        /// <param name="pData">The specified data pointer.</param>
         public virtual void OverrideTo(T* pData)
             => pData->Override(A, R, G, B);
 
@@ -64,8 +77,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
             *pDataB = B;
         }
 
+        /// <summary>
+        /// Overlays the current color components with the specified pixel.
+        /// </summary>
+        /// <param name="Pixel">The specified pixel.</param>
         public abstract void Overlay(T Pixel);
 
+        /// <summary>
+        /// Overlays the current color components with the color components of the specified adapter.
+        /// </summary>
+        /// <param name="Adapter">The specified pixel.</param>
         public abstract void Overlay(PixelAdapter<T> Adapter);
 
         /// <summary>
@@ -77,6 +98,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// <param name="B">The specified blue component.</param>
         public abstract void Overlay(byte A, byte R, byte G, byte B);
 
+        /// <summary>
+        /// Overlays the current color components to the specified data pointer.
+        /// </summary>
+        /// <param name="pData">The specified data pointer.</param>
         public virtual void OverlayTo(T* pData)
         {
             byte A = this.A;
@@ -116,7 +141,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Y = MathHelper.Clamp(Y, 0, YLength - 1);
                 this.X = X;
                 this.Y = Y;
-                InternalMove(X, Y);
+                DangerousMove(X, Y);
             }
         }
 
@@ -127,7 +152,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (Dx != 0)
             {
                 X = Nx;
-                InternalOffsetX(Dx);
+                DangerousOffsetX(Dx);
             }
         }
 
@@ -138,7 +163,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (Dy != 0)
             {
                 Y = Ny;
-                InternalOffsetY(Dy);
+                DangerousOffsetY(Dy);
             }
         }
 
@@ -147,7 +172,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (X < XLength - 1)
             {
                 X++;
-                InternalMoveNextX();
+                DangerousMoveNextX();
             }
         }
 
@@ -156,7 +181,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (Y < YLength - 1)
             {
                 Y++;
-                InternalMoveNextY();
+                DangerousMoveNextY();
             }
         }
 
@@ -165,7 +190,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (0 < X)
             {
                 X--;
-                InternalMovePreviousX();
+                DangerousMovePreviousX();
             }
         }
 
@@ -174,25 +199,30 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (0 < Y)
             {
                 Y--;
-                InternalMovePreviousY();
+                DangerousMovePreviousY();
             }
         }
 
-        protected internal abstract void InternalMove(int X, int Y);
-        protected internal abstract void InternalOffsetX(int Delta);
-        protected internal abstract void InternalOffsetY(int Delta);
-        protected internal abstract void InternalMoveNextX();
-        protected internal abstract void InternalMoveNextY();
-        protected internal abstract void InternalMovePreviousX();
-        protected internal abstract void InternalMovePreviousY();
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public abstract void DangerousMove(int X, int Y);
 
-        void IPixelAdapter.InternalMove(int X, int Y) => InternalMove(X, Y);
-        void IPixelAdapter.InternalOffsetX(int Delta) => InternalOffsetX(Delta);
-        void IPixelAdapter.InternalOffsetY(int Delta) => InternalOffsetY(Delta);
-        void IPixelAdapter.InternalMoveNextX() => InternalMoveNextX();
-        void IPixelAdapter.InternalMoveNextY() => InternalMoveNextY();
-        void IPixelAdapter.InternalMovePreviousX() => InternalMovePreviousX();
-        void IPixelAdapter.InternalMovePreviousY() => InternalMovePreviousY();
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public abstract void DangerousOffsetX(int Delta);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public abstract void DangerousOffsetY(int Delta);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public abstract void DangerousMoveNextX();
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public abstract void DangerousMoveNextY();
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public abstract void DangerousMovePreviousX();
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public abstract void DangerousMovePreviousY();
 
         /// <summary>
         /// Creates a new <see cref="ImageContext{T}"/> that is a copy of the current instance.
@@ -202,16 +232,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
             ImageContext<T> Context = new(XLength, YLength);
             PixelAdapter<T> Dest = Context.GetAdapter<T>(0, 0);
 
-            InternalMove(0, 0);
+            DangerousMove(0, 0);
 
             int Dx = -XLength;
-            for (int j = 0; j < YLength; j++, InternalMoveNextY(), Dest.InternalMoveNextY())
+            for (int j = 0; j < YLength; j++, DangerousMoveNextY(), Dest.DangerousMoveNextY())
             {
-                for (int i = 0; i < XLength; i++, InternalMoveNextX(), Dest.InternalMoveNextX())
+                for (int i = 0; i < XLength; i++, DangerousMoveNextX(), Dest.DangerousMoveNextX())
                     Dest.Override(this);
 
-                InternalOffsetX(Dx);
-                Dest.InternalOffsetX(Dx);
+                DangerousOffsetX(Dx);
+                Dest.DangerousOffsetX(Dx);
             }
 
             return Context;
@@ -229,8 +259,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 PixelAdapter<T> Sorc = Clone(),
                                 Dest = Context.GetAdapter<T>(0, j);
 
-                Sorc.InternalMove(0, j);
-                for (int i = 0; i < XLength; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
+                Sorc.DangerousMove(0, j);
+                for (int i = 0; i < XLength; i++, Sorc.DangerousMoveNextX(), Dest.DangerousMoveNextX())
                     Dest.Override(Sorc);
 
             });
@@ -242,9 +272,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// Creates a new <see cref="PixelAdapter{T}"/> that is a copy of the current instance.
         /// </summary>
         public abstract PixelAdapter<T> Clone();
-        IPixelAdapter<T> IPixelAdapter<T>.Clone()
-            => Clone();
         IPixelAdapter IPixelAdapter.Clone()
+            => Clone();
+        IImageAdapter IImageAdapter.Clone()
             => Clone();
         object ICloneable.Clone()
             => Clone();

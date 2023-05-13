@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public class LoGEdgeKernel : ConvoluteKernel
+    public sealed class LoGEdgeKernel : ConvoluteKernel
     {
         public override float[,] Matrix { get; }
 

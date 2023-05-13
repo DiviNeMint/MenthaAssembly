@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public class LaplacianEdgeKernel : ConvoluteKernel
+    public sealed class LaplacianEdgeKernel : ConvoluteKernel
     {
         public override float[,] Matrix { get; }
 

@@ -30,30 +30,39 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         private NearestResizePixelAdapter(NearestResizePixelAdapter<T> Adapter)
         {
-            Source = Adapter.Source.Clone();
             XLength = Adapter.XLength;
             YLength = Adapter.YLength;
             StepX = Adapter.StepX;
             StepY = Adapter.StepY;
             FracX = Adapter.FracX;
             FracY = Adapter.FracY;
+
+            X = Adapter.X;
+            Y = Adapter.Y;
+            Source = Adapter.Source.Clone();
         }
         public NearestResizePixelAdapter(IImageContext Context, int NewWidth, int NewHeight)
         {
-            Source = Context.GetAdapter<T>(0, 0);
             XLength = NewWidth;
             YLength = NewHeight;
             StepX = (float)Context.Width / NewWidth;
             StepY = (float)Context.Height / NewHeight;
+
+            X = 0;
+            Y = 0;
+            Source = Context.GetAdapter<T>(0, 0);
         }
         public NearestResizePixelAdapter(PixelAdapter<T> Adapter, int NewWidth, int NewHeight)
         {
-            Source = Adapter;
             XLength = NewWidth;
             YLength = NewHeight;
             StepX = (float)Adapter.XLength / NewWidth;
             StepY = (float)Adapter.YLength / NewHeight;
-            Adapter.InternalMove(0, 0);
+
+            X = Adapter.X;
+            Y = Adapter.Y;
+            Source = Adapter;
+            Adapter.DangerousMove(0, 0);
         }
         internal NearestResizePixelAdapter(IImageContext Context, int X, int Y, float StepX, float StepY)
         {
@@ -65,6 +74,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             int Tx = (int)Math.Floor(FracX),
                 Ty = (int)Math.Floor(FracY);
+            this.X = Tx;
+            this.Y = Ty;
             Source = Context.GetAdapter<T>(Tx, Ty);
 
             FracX -= Tx;
@@ -97,72 +108,72 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => Source.OverlayTo(pDataA, pDataR, pDataG, pDataB);
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
             FracX = X * StepX;
             FracY = Y * StepY;
 
             int Tx = (int)Math.Floor(FracX),
                 Ty = (int)Math.Floor(FracY);
-            Source.InternalMove(Tx, Ty);
+            Source.DangerousMove(Tx, Ty);
 
             FracX -= Tx;
             FracY -= Ty;
         }
-        protected internal override void InternalOffsetX(int OffsetX)
+        public override void DangerousOffsetX(int OffsetX)
         {
             FracX += StepX * OffsetX;
 
             int Dx = (int)Math.Floor(FracX);
-            Source.InternalOffsetX(Dx);
+            Source.DangerousOffsetX(Dx);
 
             FracX -= Dx;
         }
-        protected internal override void InternalOffsetY(int OffsetY)
+        public override void DangerousOffsetY(int OffsetY)
         {
             FracY += StepY * OffsetY;
 
             int Dy = (int)Math.Floor(FracY);
-            Source.InternalOffsetY(Dy);
+            Source.DangerousOffsetY(Dy);
 
             FracY -= Dy;
         }
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
         {
             FracX += StepX;
             while (FracX >= 1f)
             {
                 FracX -= 1f;
-                Source.InternalMoveNextX();
+                Source.DangerousMoveNextX();
             }
         }
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
         {
             FracX -= StepX;
             while (FracX < 0f)
             {
                 FracX += 1f;
-                Source.InternalMovePreviousX();
+                Source.DangerousMovePreviousX();
             }
         }
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
         {
             FracY += StepY;
             while (FracY >= 1f)
             {
                 FracY -= 1f;
-                Source.InternalMoveNextY();
+                Source.DangerousMoveNextY();
             }
         }
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
         {
             FracY -= StepY;
             while (FracY < 0f)
             {
                 FracY += 1f;
-                Source.InternalMovePreviousY();
+                Source.DangerousMovePreviousY();
             }
         }
 

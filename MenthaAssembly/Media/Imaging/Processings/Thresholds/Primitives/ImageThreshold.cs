@@ -26,13 +26,13 @@ namespace MenthaAssembly.Media.Imaging
                 Height = Adapter.YLength,
                 Dx = -Width;
 
-            Adapter.InternalMove(0, 0);
-            for (int j = 0; j < Height; j++, Adapter.InternalMoveNextY())
+            Adapter.DangerousMove(0, 0);
+            for (int j = 0; j < Height; j++, Adapter.DangerousMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Adapter.InternalMoveNextX())
+                for (int i = 0; i < Width; i++, Adapter.DangerousMoveNextX())
                     yield return GetGray();
 
-                Adapter.InternalOffsetX(Dx);
+                Adapter.DangerousOffsetX(Dx);
             }
         }
 

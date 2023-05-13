@@ -7,7 +7,7 @@
 
     }
 
-    internal unsafe class PixelIndexedAdapter<T, Struct> : PixelIndexedAdapter<T>
+    internal sealed unsafe class PixelIndexedAdapter<T, Struct> : PixelIndexedAdapter<T>
         where T : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
@@ -58,22 +58,23 @@
 
         public ImagePalette<T> Palette { get; }
 
-        protected int XBit;
+        private int XBit;
         private readonly int BitLength;
         private readonly Struct* pScan0;
         private readonly long Stride;
         private Struct* pScan;
         private PixelIndexedAdapter(PixelIndexedAdapter<T, Struct> Adapter)
         {
-            X = Adapter.X;
-            XBit = Adapter.XBit;
-            Y = Adapter.Y;
             XLength = Adapter.XLength;
             YLength = Adapter.YLength;
             Stride = Adapter.Stride;
             BitLength = Adapter.BitLength;
             BitsPerPixel = Adapter.BitsPerPixel;
             Palette = Adapter.Palette;
+
+            X = Adapter.X;
+            Y = Adapter.Y;
+            XBit = Adapter.XBit;
             pScan0 = Adapter.pScan0;
             pScan = Adapter.pScan;
         }
@@ -84,6 +85,7 @@
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             Palette = (ImagePalette<T>)Context.Palette;
+
             pScan0 = (Struct*)Context.Scan0[0];
             BitLength = pScan0->Length;
             Move(X, Y);
@@ -200,7 +202,7 @@
             IsPixelValid = true;
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
             int XBits = X * BitsPerPixel,
                 OffsetX = XBits >> 3;
@@ -208,7 +210,7 @@
             XBit = (XBits & 0x07) / BitsPerPixel;
             pScan = pScan0 + Stride * Y + OffsetX;
         }
-        protected internal override void InternalOffsetX(int OffsetX)
+        public override void DangerousOffsetX(int OffsetX)
         {
             XBit += OffsetX;
 
@@ -231,13 +233,13 @@
 
             IsPixelValid = false;
         }
-        protected internal override void InternalOffsetY(int OffsetY)
+        public override void DangerousOffsetY(int OffsetY)
         {
             pScan += Stride * OffsetY;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
         {
             XBit++;
             if (BitLength <= XBit)
@@ -247,7 +249,7 @@
             }
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
         {
             XBit--;
             if (XBit < 0)
@@ -258,12 +260,12 @@
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
         {
             pScan += Stride;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
         {
             pScan -= Stride;
             IsPixelValid = false;
@@ -273,7 +275,7 @@
             => new PixelIndexedAdapter<T, Struct>(this);
     }
 
-    internal unsafe class PixelIndexedAdapter<T, U, Struct> : PixelIndexedAdapter<U>
+    internal sealed unsafe class PixelIndexedAdapter<T, U, Struct> : PixelIndexedAdapter<U>
         where T : unmanaged, IPixel
         where U : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
@@ -325,11 +327,11 @@
 
         public ImagePalette<T> Palette { get; }
 
-        protected int XBit;
+        private int XBit;
         private readonly int BitLength;
         private readonly Struct* pScan0;
         private readonly long Stride;
-        protected Struct* pScan;
+        private Struct* pScan;
         private PixelIndexedAdapter(PixelIndexedAdapter<T, U, Struct> Adapter)
         {
             X = Adapter.X;
@@ -346,8 +348,8 @@
         }
         public PixelIndexedAdapter(IImageIndexedContext Context, int X, int Y)
         {
-            XLength = Context.Width - 1;
-            YLength = Context.Height - 1;
+            XLength = Context.Width;
+            YLength = Context.Height;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             Palette = (ImagePalette<T>)Context.Palette;
@@ -462,7 +464,7 @@
             IsPixelValid = true;
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
             int XBits = X * BitsPerPixel,
                 OffsetX = XBits >> 3;
@@ -472,7 +474,7 @@
 
             IsPixelValid = false;
         }
-        protected internal override void InternalOffsetX(int OffsetX)
+        public override void DangerousOffsetX(int OffsetX)
         {
             XBit += OffsetX;
 
@@ -495,13 +497,13 @@
 
             IsPixelValid = false;
         }
-        protected internal override void InternalOffsetY(int OffsetY)
+        public override void DangerousOffsetY(int OffsetY)
         {
             pScan += Stride * OffsetY;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
         {
             XBit++;
             if (BitLength <= XBit)
@@ -511,7 +513,7 @@
             }
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
         {
             XBit--;
             if (XBit < 0)
@@ -522,12 +524,12 @@
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
         {
             pScan += Stride;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
         {
             pScan -= Stride;
             IsPixelValid = false;
@@ -537,5 +539,4 @@
             => new PixelIndexedAdapter<T, U, Struct>(this);
 
     }
-
 }

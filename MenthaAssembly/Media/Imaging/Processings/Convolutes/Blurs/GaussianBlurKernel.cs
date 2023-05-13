@@ -6,7 +6,7 @@ namespace MenthaAssembly.Media.Imaging
     /// <summary>
     /// Represents a convolution kernel calculating by the 2-D gaussian function G(x,y) = (1 / 2πσ ^ 2 ) * e ^ -[(x ^ 2 + y ^ 2) / 2 * σ ^ 2].
     /// </summary>
-    public class GaussianBlurKernel : ConvoluteKernel
+    public sealed class GaussianBlurKernel : ConvoluteKernel
     {
         public override float[,] Matrix { get; }
 

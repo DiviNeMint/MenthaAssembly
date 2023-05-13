@@ -1,18 +1,20 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
+using System.Data.SqlTypes;
+using System.Diagnostics;
 using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
 {
     public sealed class ImagePatch : IImageAdapter, ICloneable
     {
-        public int Width { get; }
+        public int Width { set; get; }
 
-        public int Height { get; }
+        public int Height { set; get; }
 
-        public int X { private set; get; }
+        public int X { set; get; }
 
-        public int Y { private set; get; }
+        public int Y { set; get; }
 
         public int XLength { get; }
 
@@ -124,79 +126,189 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         public void Move(int X, int Y)
-        {
-            X = X.Clamp(0, XLength - 1);
-            Y = Y.Clamp(0, YLength - 1);
-
-            for (int i = 0; i < Width; i++)
-            {
-                int Tx = X + i - Cx;
-                for (int j = 0; j < Height; j++)
-                    Adapters[j, i]?.Move(Tx, Y + j - Cx);
-            }
-
-            IPixelAdapter Adapter = Adapters[Cy, Cx];
-            this.X = Adapter.X;
-            this.Y = Adapter.Y;
-        }
+            => DangerousMove(X, Y);
 
         public void OffsetX(int Delta)
-            => throw new NotImplementedException();
+        {
+            int Nx = X + Delta;
+            if (Nx < 0)
+            {
+                Delta += Nx;
+                Nx = 0;
+            }
+            else if (Nx >= XLength)
+            {
+                Nx = XLength - 1;
+                Delta = Nx - X;
+            }
+
+            if (Delta == 0)
+                return;
+
+            DangerousOffsetX(Delta);
+            X = Nx;
+        }
         public void OffsetY(int Delta)
-            => throw new NotImplementedException();
+        {
+            int Ny = Y + Delta;
+            if (Ny < 0)
+            {
+                Delta += Ny;
+                Ny = 0;
+            }
+            else if (Ny >= YLength)
+            {
+                Ny = YLength - 1;
+                Delta = Ny - Y;
+            }
+
+            if (Delta == 0)
+                return;
+
+            DangerousOffsetY(Delta);
+            Y = Ny;
+        }
 
         public void MoveNextX()
-        {
-            int Tx = X + 1;
-            if (XLength <= Tx)
-                return;
-
-            for (int i = X == 0 ? 1 : 0; i < Width; i++)
-                for (int j = 0; j < Height; j++)
-                    Adapters[j, i]?.MoveNextX();
-
-            X = Tx;
-        }
+            => DangerousMoveNextX();
         public void MoveNextY()
-        {
-            int Ty = Y + 1;
-            if (YLength <= Ty)
-                return;
-
-            for (int i = 0; i < Width; i++)
-                for (int j = Y == 0 ? 1 : 0; j < Height; j++)
-                    Adapters[j, i]?.MoveNextY();
-
-            Y = Ty;
-        }
+            => DangerousMoveNextY();
 
         public void MovePreviousX()
+            => DangerousMovePreviousX();
+        public void MovePreviousY()
+            => DangerousMovePreviousY();
+
+        public void DangerousMove(int X, int Y)
+        {
+            int MaxX = XLength - 1,
+                MaxY = YLength - 1;
+
+            X = X.Clamp(0, MaxX);
+            Y = Y.Clamp(0, MaxY);
+            for (int i = 0; i < Width; i++)
+            {
+                int Tx = MathHelper.Clamp(X + i - Cx, 0, MaxX),
+                    Ty = Y - Cy;
+                for (int j = 0; j < Height; j++)
+                    Adapters[j, i]?.DangerousMove(Tx, MathHelper.Clamp(Ty + j, 0, MaxY));
+            }
+
+            this.X = X;
+            this.Y = Y;
+        }
+
+        public void DangerousOffsetX(int Delta)
+        {
+            int MaxX = XLength - 1;
+            Delta = MathHelper.Clamp(X + Delta, 0, MaxX) - X;
+
+            if (Delta == 0)
+                return;
+
+            int Tx = X - Cx;
+            for (int i = 0; i < Width; i++, Tx++)
+            {
+                int Dx = MathHelper.Clamp(Tx + Delta, 0, MaxX) - Tx.Clamp(0, MaxX);
+                if (Dx == 0)
+                    continue;
+
+                for (int j = 0; j < Height; j++)
+                    Adapters[j, i]?.DangerousOffsetX(Dx);
+            }
+
+            X += Delta;
+        }
+        public void DangerousOffsetY(int Delta)
+        {
+            int MayY = YLength - 1;
+            Delta = MathHelper.Clamp(Y + Delta, 0, MayY) - Y;
+
+            if (Delta == 0)
+                return;
+
+            int Ty = Y - Cy;
+            for (int j = 0; j < Height; j++, Ty++)
+            {
+                int Dy = MathHelper.Clamp(Ty + Delta, 0, MayY) - Ty.Clamp(0, MayY);
+                if (Dy == 0)
+                    continue;
+
+                for (int i = 0; i < Width; i++)
+                    Adapters[j, i]?.DangerousOffsetY(Dy);
+            }
+
+            Y += Delta;
+        }
+
+        public void DangerousMoveNextX()
+        {
+            int Nx = X + 1;
+            if (XLength <= Nx)
+                return;
+
+            int DL = Cx - X,
+                DR = Width - DL - XLength + 1,
+                Ex = Width - Math.Max(DR, 0);
+
+            for (int i = Math.Max(DL, 0); i < Ex; i++)
+                for (int j = 0; j < Height; j++)
+                    Adapters[j, i]?.DangerousMoveNextX();
+
+            X = Nx;
+        }
+        public void DangerousMoveNextY()
+        {
+            int Ny = Y + 1;
+            if (YLength <= Ny)
+                return;
+
+            int DT = Cy - Y,
+                DB = Height - DT - YLength + 1,
+                Ey = Height - Math.Max(DB, 0);
+
+            for (int j = Math.Max(DT, 0); j < Ey; j++)
+                for (int i = 0; i < Width; i++)
+                    Adapters[j, i]?.DangerousMoveNextY();
+
+            Y = Ny;
+        }
+
+        public void DangerousMovePreviousX()
         {
             if (X <= 0)
                 return;
 
-            int Ex = X < XLength - 1 ? Width : Width - 1;
-            for (int i = 0; i < Ex; i++)
+            int DL = Cx - X,
+                DR = Width - DL - XLength,
+                Ex = Width - Math.Max(DR, 0);
+
+            for (int i = Math.Max(DL + 1, 0); i < Ex; i++)
                 for (int j = 0; j < Height; j++)
-                    Adapters[j, i]?.MovePreviousX();
+                    Adapters[j, i]?.DangerousMoveNextX();
 
             X--;
         }
-        public void MovePreviousY()
+        public void DangerousMovePreviousY()
         {
             if (Y <= 0)
                 return;
 
-            int Ey = Y < YLength - 1 ? Height : Height - 1;
-            for (int i = 0; i < Width; i++)
-                for (int j = 0; j < Ey; j++)
-                    Adapters[j, i]?.MovePreviousY();
+            int DT = Cy - Y,
+                DB = Height - DT - YLength,
+                Ey = Height - Math.Max(DB, 0);
+
+            for (int j = Math.Max(DT + 1, 0); j < Ey; j++)
+                for (int i = 0; i < Width; i++)
+                    Adapters[j, i]?.DangerousMoveNextY();
 
             Y--;
         }
 
         public ImagePatch Clone()
             => new(this);
+        IImageAdapter IImageAdapter.Clone()
+            => Clone();
         object ICloneable.Clone()
             => Clone();
 

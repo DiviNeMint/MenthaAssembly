@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    internal unsafe class PixelAdapter4<T> : PixelAdapter<T>
+    internal sealed unsafe class PixelAdapter4<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
         public override int XLength { get; }
@@ -23,12 +23,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private byte* pScanA, pScanR, pScanG, pScanB;
         private PixelAdapter4(PixelAdapter4<T> Adapter)
         {
-            X = Adapter.X;
-            Y = Adapter.Y;
             XLength = Adapter.XLength;
             YLength = Adapter.YLength;
             Stride = Adapter.Stride;
             BitsPerPixel = Adapter.BitsPerPixel;
+
+            X = Adapter.X;
+            Y = Adapter.Y;
             pScanA = Adapter.pScanA;
             pScanR = Adapter.pScanR;
             pScanG = Adapter.pScanG;
@@ -36,8 +37,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public PixelAdapter4(IImageContext Context, int X, int Y)
         {
-            XLength = Context.Width - 1;
-            YLength = Context.Height - 1;
+            XLength = Context.Width;
+            YLength = Context.Height;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
 
@@ -74,10 +75,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Y = MathHelper.Clamp(Y, 0, YLength);
 
             if (X != this.X || Y != this.Y)
-                InternalMove(X, Y);
+                DangerousMove(X, Y);
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
             long Offset = Stride * (this.Y - Y) + (this.X - X);
 
@@ -89,14 +90,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
             pScanG += Offset;
             pScanB += Offset;
         }
-        protected internal override void InternalOffsetX(int OffsetX)
+        public override void DangerousOffsetX(int OffsetX)
         {
             pScanA += OffsetX;
             pScanR += OffsetX;
             pScanG += OffsetX;
             pScanB += OffsetX;
         }
-        protected internal override void InternalOffsetY(int OffsetY)
+        public override void DangerousOffsetY(int OffsetY)
         {
             long Offset = Stride * OffsetY;
             pScanA += Offset;
@@ -105,14 +106,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
             pScanB += Offset;
         }
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
         {
             pScanA++;
             pScanR++;
             pScanG++;
             pScanB++;
         }
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
         {
             pScanA--;
             pScanR--;
@@ -120,14 +121,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
             pScanB--;
         }
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
         {
             pScanA += Stride;
             pScanR += Stride;
             pScanG += Stride;
             pScanB += Stride;
         }
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
         {
             pScanA -= Stride;
             pScanR -= Stride;

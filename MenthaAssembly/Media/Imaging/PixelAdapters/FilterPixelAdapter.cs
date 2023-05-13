@@ -70,6 +70,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             YLength = Adapter.YLength;
             BitsPerPixel = Adapter.BitsPerPixel;
 
+            X = Adapter.X;
+            Y = Adapter.Y;
             Source = Adapter.Source.Clone();
             Filter = Adapter.Filter;
         }
@@ -82,16 +84,21 @@ namespace MenthaAssembly.Media.Imaging.Utils
             YLength = Adapter.YLength;
             BitsPerPixel = Adapter.BitsPerPixel;
 
-            this.Filter = Filter;
+            X = Adapter.X;
+            Y = Adapter.Y;
             Source = new ImagePatch(Adapter, Filter.PatchWidth, Filter.PatchHeight);
+            this.Filter = Filter;
         }
         internal FilterPixelAdapter(IImageContext Context, int X, int Y, ImageFilter Filter)
         {
             XLength = Context.Width;
             YLength = Context.Height;
             BitsPerPixel = Context.BitsPerPixel;
-            this.Filter = Filter;
+
+            this.X = X;
+            this.Y = Y;
             Source = new ImagePatch(Context, X, Y, Filter.PatchWidth, Filter.PatchHeight);
+            this.Filter = Filter;
         }
 
         public override void Override(T Pixel)
@@ -155,46 +162,47 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IsPixelValid = true;
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
-            Source.Move(X, Y);
-            Args = null;
-            IsPixelValid = false;
-        }
-        protected internal override void InternalOffsetX(int OffsetX)
-        {
-            Source.Move(Source.X + OffsetX, Source.Y);
-            Args = null;
-            IsPixelValid = false;
-        }
-        protected internal override void InternalOffsetY(int OffsetY)
-        {
-            Source.Move(Source.X, Source.Y + OffsetY);
+            Source.DangerousMove(X, Y);
             Args = null;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousOffsetX(int Delta)
         {
-            Source.MoveNextX();
+            Source.DangerousOffsetX(Delta);
+            Args = null;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousOffsetY(int Delta)
         {
-            Source.MovePreviousX();
+            Source.DangerousOffsetY(Delta);
             Args = null;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextX()
         {
-            Source.MoveNextY();
+            Source.DangerousMoveNextX();
+            IsPixelValid = false;
+        }
+        public override void DangerousMoveNextY()
+        {
+            Source.DangerousMoveNextY();
             Args = null;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousY()
+
+        public override void DangerousMovePreviousX()
         {
-            Source.MovePreviousY();
+            Source.DangerousMovePreviousX();
+            Args = null;
+            IsPixelValid = false;
+        }
+        public override void DangerousMovePreviousY()
+        {
+            Source.DangerousMovePreviousY();
             Args = null;
             IsPixelValid = false;
         }

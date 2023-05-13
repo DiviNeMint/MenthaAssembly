@@ -166,41 +166,41 @@
             IsPixelValid = true;
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
-            Adapter.InternalMove(X, Y);
+            Adapter.DangerousMove(X, Y);
             IsPixelValid = false;
         }
-        protected internal override void InternalOffsetX(int OffsetX)
+        public override void DangerousOffsetX(int OffsetX)
         {
-            Adapter.InternalOffsetX(OffsetX);
+            Adapter.DangerousOffsetX(OffsetX);
             IsPixelValid = false;
         }
-        protected internal override void InternalOffsetY(int OffsetY)
+        public override void DangerousOffsetY(int OffsetY)
         {
-            Adapter.InternalOffsetY(OffsetY);
-            IsPixelValid = false;
-        }
-
-        protected internal override void InternalMoveNextX()
-        {
-            Adapter.InternalMoveNextX();
-            IsPixelValid = false;
-        }
-        protected internal override void InternalMovePreviousX()
-        {
-            Adapter.InternalMovePreviousX();
+            Adapter.DangerousOffsetY(OffsetY);
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextX()
         {
-            Adapter.InternalMoveNextY();
+            Adapter.DangerousMoveNextX();
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousX()
         {
-            Adapter.InternalMovePreviousY();
+            Adapter.DangerousMovePreviousX();
+            IsPixelValid = false;
+        }
+
+        public override void DangerousMoveNextY()
+        {
+            Adapter.DangerousMoveNextY();
+            IsPixelValid = false;
+        }
+        public override void DangerousMovePreviousY()
+        {
+            Adapter.DangerousMovePreviousY();
             IsPixelValid = false;
         }
 

@@ -102,7 +102,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public BernsenThresholdingPixelAdapter(PixelAdapter<T> Adapter, int Level)
         {
-            Adapter.InternalMove(0, 0);
+            Adapter.DangerousMove(0, 0);
             X = 0;
             Y = 0;
             XLength = Adapter.XLength;
@@ -229,44 +229,44 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Collection.Insert(i, Value);
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
             Source.Move(X, Y);
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalOffsetX(int OffsetX)
+        public override void DangerousOffsetX(int OffsetX)
         {
             Source.Move(Source.X + OffsetX, Source.Y);
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalOffsetY(int OffsetY)
+        public override void DangerousOffsetY(int OffsetY)
         {
             Source.Move(Source.X, Source.Y + OffsetY);
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
         {
             Source.MoveNextX();
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
         {
             Source.MoveNextY();
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
         {
             Source.MovePreviousX();
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
         {
             Source.MovePreviousY();
             IsPixelValid = false;

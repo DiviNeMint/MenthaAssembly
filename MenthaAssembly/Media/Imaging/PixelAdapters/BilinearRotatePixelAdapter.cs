@@ -84,6 +84,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracY = Adapter.FracY;
             FracX0 = Adapter.FracX0;
             FracY0 = Adapter.FracY0;
+
+            X = Adapter.X;
+            Y = Adapter.Y;
             Source = Adapter.Source.Clone();
             IsEmptyPixel = Adapter.IsEmptyPixel;
             CalculateAlpth = Adapter.CalculateAlpth;
@@ -107,6 +110,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             SourceMaxX--;
             SourceMaxY--;
 
+            X = 0;
+            Y = 0;
             Source = Context.GetAdapter<T>(0, 0);
             CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
         }
@@ -128,6 +133,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             SourceMaxX--;
             SourceMaxY--;
 
+            X = Adapter.X;
+            Y = Adapter.Y;
             Source = Adapter;
             CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
         }
@@ -233,7 +240,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (IsEmptyPixel)
                 return;
 
-            Source.InternalMove(a1, b1);
+            Source.DangerousMove(a1, b1);
             PixelAdapter<T> p00 = Source,
                             p10 = p00,
                             p01 = p00,
@@ -242,15 +249,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (b1 < SourceMaxY)
             {
                 p10 = p00.Clone();
-                p10.InternalMoveNextY();
+                p10.DangerousMoveNextY();
             }
 
             if (a1 < SourceMaxX)
             {
                 p01 = p00.Clone();
                 p11 = p10.Clone();
-                p01.InternalMoveNextX();
-                p11.InternalMoveNextX();
+                p01.DangerousMoveNextX();
+                p11.DangerousMoveNextX();
             }
 
             float TFracX = (float)(FracX - a1),
@@ -272,45 +279,45 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IsPixelValid = true;
         }
 
-        protected internal override void InternalMove(int X, int Y)
+        public override void DangerousMove(int X, int Y)
         {
             FracX = FracX0 + X * Cos + Y * Sin;
             FracY = FracY0 + Y * Cos - X * Sin;
             IsPixelValid = false;
         }
-        protected internal override void InternalOffsetX(int OffsetX)
+        public override void DangerousOffsetX(int OffsetX)
         {
             FracX += Cos * OffsetX;
             FracY -= Sin * OffsetX;
             IsPixelValid = false;
         }
-        protected internal override void InternalOffsetY(int OffsetY)
+        public override void DangerousOffsetY(int OffsetY)
         {
             FracX += Sin * OffsetY;
             FracY += Cos * OffsetY;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
         {
             FracX += Cos;
             FracY -= Sin;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
         {
             FracX -= Cos;
             FracY += Sin;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
         {
             FracX += Sin;
             FracY += Cos;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
         {
             FracX -= Sin;
             FracY -= Cos;

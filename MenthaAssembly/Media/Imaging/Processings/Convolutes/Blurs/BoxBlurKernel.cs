@@ -5,7 +5,7 @@ namespace MenthaAssembly.Media.Imaging
     /// <summary>
     /// Represents a convolution kernel with all elements be 1.
     /// </summary>
-    public class BoxBlurKernel : ConvoluteKernel
+    public sealed class BoxBlurKernel : ConvoluteKernel
     {
         public override float[,] Matrix { get; }
 

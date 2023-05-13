@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public class MedianFilter : ImageFilter
+    public sealed class MedianFilter : ImageFilter
     {
         public int Level { get; }
 

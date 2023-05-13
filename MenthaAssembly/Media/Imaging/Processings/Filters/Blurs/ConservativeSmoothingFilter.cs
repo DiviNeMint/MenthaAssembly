@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public class ConservativeSmoothingFilter : ImageFilter
+    public sealed class ConservativeSmoothingFilter : ImageFilter
     {
         public int Level { get; }
 

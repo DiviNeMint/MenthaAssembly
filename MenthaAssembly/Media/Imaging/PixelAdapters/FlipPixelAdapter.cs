@@ -38,30 +38,30 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     {
                         ConvertX = x => XLength - x - 1;
                         ConvertY = y => y;
-                        _InternalMoveNext = Source.InternalMovePreviousX;
-                        _InternalMovePrevious = Source.InternalMoveNextX;
-                        _InternalMoveNextLine = Source.InternalMoveNextY;
-                        _InternalMovePreviousLine = Source.InternalMovePreviousY;
+                        _InternalMoveNext = Source.DangerousMovePreviousX;
+                        _InternalMovePrevious = Source.DangerousMoveNextX;
+                        _InternalMoveNextLine = Source.DangerousMoveNextY;
+                        _InternalMovePreviousLine = Source.DangerousMovePreviousY;
                         break;
                     }
                 case FlipMode.Vertical:
                     {
                         ConvertX = x => x;
                         ConvertY = y => YLength - y - 1;
-                        _InternalMoveNext = Source.InternalMoveNextX;
-                        _InternalMovePrevious = Source.InternalMovePreviousX;
-                        _InternalMoveNextLine = Source.InternalMovePreviousY;
-                        _InternalMovePreviousLine = Source.InternalMoveNextY;
+                        _InternalMoveNext = Source.DangerousMoveNextX;
+                        _InternalMovePrevious = Source.DangerousMovePreviousX;
+                        _InternalMoveNextLine = Source.DangerousMovePreviousY;
+                        _InternalMovePreviousLine = Source.DangerousMoveNextY;
                         break;
                     }
                 case FlipMode.Horizontal | FlipMode.Vertical:
                     {
                         ConvertX = x => XLength - x - 1;
                         ConvertY = y => YLength - y - 1;
-                        _InternalMoveNext = Source.InternalMovePreviousX;
-                        _InternalMovePrevious = Source.InternalMoveNextX;
-                        _InternalMoveNextLine = Source.InternalMovePreviousY;
-                        _InternalMovePreviousLine = Source.InternalMoveNextY;
+                        _InternalMoveNext = Source.DangerousMovePreviousX;
+                        _InternalMovePrevious = Source.DangerousMoveNextX;
+                        _InternalMoveNextLine = Source.DangerousMovePreviousY;
+                        _InternalMovePreviousLine = Source.DangerousMoveNextY;
                         break;
                     }
                 case FlipMode.None:
@@ -69,19 +69,19 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     {
                         ConvertX = x => x;
                         ConvertY = y => y;
-                        _InternalMoveNext = Source.InternalMoveNextX;
-                        _InternalMovePrevious = Source.InternalMovePreviousX;
-                        _InternalMoveNextLine = Source.InternalMoveNextY;
-                        _InternalMovePreviousLine = Source.InternalMovePreviousY;
+                        _InternalMoveNext = Source.DangerousMoveNextX;
+                        _InternalMovePrevious = Source.DangerousMovePreviousX;
+                        _InternalMoveNextLine = Source.DangerousMoveNextY;
+                        _InternalMovePreviousLine = Source.DangerousMovePreviousY;
                         break;
                     }
             }
         }
         private FlipPixelAdapter(FlipPixelAdapter<T> Adapter)
         {
-            Source = Adapter.Source.Clone();
             X = Adapter.X;
             Y = Adapter.Y;
+            Source = Adapter.Source.Clone();
             ConvertX = Adapter.ConvertX;
             ConvertY = Adapter.ConvertY;
             _InternalMoveNext = Adapter._InternalMoveNext;
@@ -91,60 +91,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public FlipPixelAdapter(IImageContext Context, FlipMode Mode) : this(Mode)
         {
+            X = 0;
+            Y = 0;
             Source = Context.GetAdapter<T>(0, 0);
-            InternalMove(0, 0);
+            DangerousMove(0, 0);
         }
         public FlipPixelAdapter(PixelAdapter<T> Adapter, FlipMode Mode) : this(Mode)
         {
-            Source = Adapter;
-
-            switch (Mode)
-            {
-                case FlipMode.Horizontal:
-                    {
-                        ConvertX = x => XLength - x - 1;
-                        ConvertY = y => y;
-                        _InternalMoveNext = Source.InternalMovePreviousX;
-                        _InternalMovePrevious = Source.InternalMoveNextX;
-                        _InternalMoveNextLine = Source.InternalMoveNextY;
-                        _InternalMovePreviousLine = Source.InternalMovePreviousY;
-                        break;
-                    }
-                case FlipMode.Vertical:
-                    {
-                        ConvertX = x => x;
-                        ConvertY = y => YLength - y - 1;
-                        _InternalMoveNext = Source.InternalMoveNextX;
-                        _InternalMovePrevious = Source.InternalMovePreviousX;
-                        _InternalMoveNextLine = Source.InternalMovePreviousY;
-                        _InternalMovePreviousLine = Source.InternalMoveNextY;
-                        break;
-                    }
-                case FlipMode.Horizontal | FlipMode.Vertical:
-                    {
-                        ConvertX = x => XLength - x - 1;
-                        ConvertY = y => YLength - y - 1;
-                        _InternalMoveNext = Source.InternalMovePreviousX;
-                        _InternalMovePrevious = Source.InternalMoveNextX;
-                        _InternalMoveNextLine = Source.InternalMovePreviousY;
-                        _InternalMovePreviousLine = Source.InternalMoveNextY;
-                        break;
-                    }
-                case FlipMode.None:
-                default:
-                    {
-                        ConvertX = x => x;
-                        ConvertY = y => y;
-                        _InternalMoveNext = Source.InternalMoveNextX;
-                        _InternalMovePrevious = Source.InternalMovePreviousX;
-                        _InternalMoveNextLine = Source.InternalMoveNextY;
-                        _InternalMovePreviousLine = Source.InternalMovePreviousY;
-                        break;
-                    }
-            }
-
             X = ConvertX(Adapter.X);
             Y = ConvertY(Adapter.Y);
+            Source = Adapter;
         }
 
         public override void Override(T Pixel)
@@ -173,21 +129,21 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
             => Source.OverlayTo(pDataA, pDataR, pDataG, pDataB);
 
-        protected internal override void InternalMove(int X, int Y)
-            => Source.InternalMove(ConvertX(X), ConvertY(Y));
-        protected internal override void InternalOffsetX(int OffsetX)
-            => Source.InternalOffsetX(ConvertX(OffsetX) - ConvertX(0));
-        protected internal override void InternalOffsetY(int OffsetY)
-            => Source.InternalOffsetY(ConvertY(OffsetY) - ConvertY(0));
+        public override void DangerousMove(int X, int Y)
+            => Source.DangerousMove(ConvertX(X), ConvertY(Y));
+        public override void DangerousOffsetX(int OffsetX)
+            => Source.DangerousOffsetX(ConvertX(OffsetX) - ConvertX(0));
+        public override void DangerousOffsetY(int OffsetY)
+            => Source.DangerousOffsetY(ConvertY(OffsetY) - ConvertY(0));
 
-        protected internal override void InternalMoveNextX()
+        public override void DangerousMoveNextX()
             => _InternalMoveNext();
-        protected internal override void InternalMovePreviousX()
+        public override void DangerousMovePreviousX()
             => _InternalMovePrevious();
 
-        protected internal override void InternalMoveNextY()
+        public override void DangerousMoveNextY()
             => _InternalMoveNextLine();
-        protected internal override void InternalMovePreviousY()
+        public override void DangerousMovePreviousY()
             => _InternalMovePreviousLine();
 
         public override PixelAdapter<T> Clone()
