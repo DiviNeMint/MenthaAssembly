@@ -21,17 +21,18 @@ namespace MenthaAssembly.Media.Imaging
         protected IEnumerable<byte> EnumGrays<T>(PixelAdapter<T> Adapter)
             where T : unmanaged, IPixel
         {
-            int Width = Adapter.MaxX + 1,
-                Height = Adapter.MaxY + 1;
-            Func<byte> GetGray = typeof(T) == typeof(Gray8) ? () => Adapter.R : () => Adapter.ToGray();
+            Func<byte> GetGray = typeof(T) == typeof(Gray8) ? () => Adapter.R : Adapter.ToGray;
+            int Width = Adapter.XLength,
+                Height = Adapter.YLength,
+                Dx = -Width;
 
             Adapter.InternalMove(0, 0);
-            for (int j = 0; j < Height; j++, Adapter.InternalMoveNextLine())
+            for (int j = 0; j < Height; j++, Adapter.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Adapter.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Adapter.InternalMoveNextX())
                     yield return GetGray();
 
-                Adapter.InternalMoveX(-Width);
+                Adapter.InternalOffsetX(Dx);
             }
         }
 

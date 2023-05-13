@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 namespace MenthaAssembly.Media.Imaging.Utils
 {
     /// <summary>
-    /// Represents the image adapter with the specified pixel type.
+    /// Represents the pixel adapter with the specified pixel type in image.
     /// </summary>
-    public abstract unsafe class PixelAdapter<T> : IPixelAdapter, ICloneable
+    public abstract unsafe class PixelAdapter<T> : IPixelAdapter<T>, ICloneable
         where T : unmanaged, IPixel
     {
         private static readonly ParallelOptions DefaultParallelOptions = new();
@@ -16,9 +16,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public int Y { protected set; get; } = int.MinValue;
 
-        public abstract int MaxX { get; }
+        public abstract int XLength { get; }
 
-        public abstract int MaxY { get; }
+        public abstract int YLength { get; }
 
         Type IPixelAdapter.PixelType
             => PixelType;
@@ -33,16 +33,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public abstract int BitsPerPixel { get; }
 
-        /// <summary>
-        /// Overrides the current color components with the specified pixel.
-        /// </summary>
-        /// <param name="Pixel">The specified pixel.</param>
         public abstract void Override(T Pixel);
 
-        /// <summary>
-        /// Overrides the current color components with the color components of the specified adapter.
-        /// </summary>
-        /// <param name="Adapter">The specified pixel.</param>
         public abstract void Override(PixelAdapter<T> Adapter);
 
         /// <summary>
@@ -54,10 +46,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// <param name="B">The specified blue component.</param>
         public abstract void Override(byte A, byte R, byte G, byte B);
 
-        /// <summary>
-        /// Overrides the current color components to the specified data pointer.
-        /// </summary>
-        /// <param name="pData">The specified data pointer.</param>
         public virtual void OverrideTo(T* pData)
             => pData->Override(A, R, G, B);
 
@@ -76,16 +64,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             *pDataB = B;
         }
 
-        /// <summary>
-        /// Overlays the current color components with the specified pixel.
-        /// </summary>
-        /// <param name="Pixel">The specified pixel.</param>
         public abstract void Overlay(T Pixel);
 
-        /// <summary>
-        /// Overlays the current color components with the color components of the specified adapter.
-        /// </summary>
-        /// <param name="Adapter">The specified pixel.</param>
         public abstract void Overlay(PixelAdapter<T> Adapter);
 
         /// <summary>
@@ -97,10 +77,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// <param name="B">The specified blue component.</param>
         public abstract void Overlay(byte A, byte R, byte G, byte B);
 
-        /// <summary>
-        /// Overlays the current color components to the specified data pointer.
-        /// </summary>
-        /// <param name="pData">The specified data pointer.</param>
         public virtual void OverlayTo(T* pData)
         {
             byte A = this.A;
@@ -131,109 +107,111 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public virtual void Move(int X, int Y)
         {
             if (this.X == X)
-                MoveY(Y - this.Y);
+                OffsetY(Y - this.Y);
             else if (this.Y == Y)
-                MoveX(X - this.X);
+                OffsetX(X - this.X);
             else
             {
-                X = MathHelper.Clamp(X, 0, MaxX);
-                Y = MathHelper.Clamp(Y, 0, MaxY);
+                X = MathHelper.Clamp(X, 0, XLength - 1);
+                Y = MathHelper.Clamp(Y, 0, YLength - 1);
                 this.X = X;
                 this.Y = Y;
                 InternalMove(X, Y);
             }
         }
 
-        public virtual void MoveX(int OffsetX)
+        public virtual void OffsetX(int Delta)
         {
-            int Nx = MathHelper.Clamp(X + OffsetX, 0, MaxX),
+            int Nx = MathHelper.Clamp(X + Delta, 0, XLength - 1),
                 Dx = Nx - X;
             if (Dx != 0)
             {
                 X = Nx;
-                InternalMoveX(Dx);
+                InternalOffsetX(Dx);
             }
         }
 
-        public virtual void MoveY(int OffsetY)
+        public virtual void OffsetY(int Delta)
         {
-            int Ny = MathHelper.Clamp(Y + OffsetY, 0, MaxY),
+            int Ny = MathHelper.Clamp(Y + Delta, 0, YLength - 1),
                 Dy = Ny - Y;
             if (Dy != 0)
             {
                 Y = Ny;
-                InternalMoveY(Dy);
+                InternalOffsetY(Dy);
             }
         }
 
-        public virtual void MoveNext()
+        public virtual void MoveNextX()
         {
-            if (X < MaxX)
+            if (X < XLength - 1)
             {
                 X++;
-                InternalMoveNext();
+                InternalMoveNextX();
             }
         }
 
-        public virtual void MovePrevious()
+        public virtual void MoveNextY()
+        {
+            if (Y < YLength - 1)
+            {
+                Y++;
+                InternalMoveNextY();
+            }
+        }
+
+        public virtual void MovePreviousX()
         {
             if (0 < X)
             {
                 X--;
-                InternalMovePrevious();
+                InternalMovePreviousX();
             }
         }
 
-        public virtual void MoveNextLine()
-        {
-            if (Y < MaxY)
-            {
-                Y++;
-                InternalMoveNextLine();
-            }
-        }
-
-        public virtual void MovePreviousLine()
+        public virtual void MovePreviousY()
         {
             if (0 < Y)
             {
                 Y--;
-                InternalMovePreviousLine();
+                InternalMovePreviousY();
             }
         }
 
         protected internal abstract void InternalMove(int X, int Y);
+        protected internal abstract void InternalOffsetX(int Delta);
+        protected internal abstract void InternalOffsetY(int Delta);
+        protected internal abstract void InternalMoveNextX();
+        protected internal abstract void InternalMoveNextY();
+        protected internal abstract void InternalMovePreviousX();
+        protected internal abstract void InternalMovePreviousY();
 
-        protected internal abstract void InternalMoveX(int OffsetX);
-
-        protected internal abstract void InternalMoveY(int OffsetY);
-
-        protected internal abstract void InternalMoveNext();
-
-        protected internal abstract void InternalMovePrevious();
-
-        protected internal abstract void InternalMoveNextLine();
-
-        protected internal abstract void InternalMovePreviousLine();
+        void IPixelAdapter.InternalMove(int X, int Y) => InternalMove(X, Y);
+        void IPixelAdapter.InternalOffsetX(int Delta) => InternalOffsetX(Delta);
+        void IPixelAdapter.InternalOffsetY(int Delta) => InternalOffsetY(Delta);
+        void IPixelAdapter.InternalMoveNextX() => InternalMoveNextX();
+        void IPixelAdapter.InternalMoveNextY() => InternalMoveNextY();
+        void IPixelAdapter.InternalMovePreviousX() => InternalMovePreviousX();
+        void IPixelAdapter.InternalMovePreviousY() => InternalMovePreviousY();
 
         /// <summary>
         /// Creates a new <see cref="ImageContext{T}"/> that is a copy of the current instance.
         /// </summary>
         public virtual ImageContext<T> ToImageContext()
         {
-            int W = MaxX + 1,
-                H = MaxY + 1;
-            ImageContext<T> Context = new ImageContext<T>(W, H);
+            ImageContext<T> Context = new(XLength, YLength);
             PixelAdapter<T> Dest = Context.GetAdapter<T>(0, 0);
 
             InternalMove(0, 0);
-            for (int j = 0; j < H; j++, InternalMoveNextLine(), Dest.InternalMoveNextLine())
+
+            int Dx = -XLength;
+            for (int j = 0; j < YLength; j++, InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < W; i++, InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < XLength; i++, InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(this);
 
-                InternalMoveX(-W);
-                Dest.InternalMoveX(-W);
+                InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Context;
@@ -245,15 +223,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// If it is null, the function will run with default options. </param>
         public virtual ImageContext<T> ToImageContext(ParallelOptions Options)
         {
-            int H = MaxY + 1;
-            ImageContext<T> Context = new ImageContext<T>(MaxX + 1, H);
-            Parallel.For(0, H, Options ?? DefaultParallelOptions, j =>
+            ImageContext<T> Context = new(XLength, YLength);
+            Parallel.For(0, YLength, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = Clone(),
                                 Dest = Context.GetAdapter<T>(0, j);
 
                 Sorc.InternalMove(0, j);
-                for (int i = 0; i <= MaxX; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < XLength; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Sorc);
 
             });
@@ -265,6 +242,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// Creates a new <see cref="PixelAdapter{T}"/> that is a copy of the current instance.
         /// </summary>
         public abstract PixelAdapter<T> Clone();
+        IPixelAdapter<T> IPixelAdapter<T>.Clone()
+            => Clone();
         IPixelAdapter IPixelAdapter.Clone()
             => Clone();
         object ICloneable.Clone()

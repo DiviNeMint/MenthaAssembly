@@ -29,7 +29,7 @@ namespace MenthaAssembly.Media.Imaging
             int[] Histogram = CreateHistogram(Source);
 
             byte Threshold = byte.MinValue;
-            int MinAmount = (int)Math.Round((Source.MaxX + 1d) * Percentage * (Source.MaxY + 1d)),
+            int MinAmount = (int)Math.Round(Source.XLength * Percentage * Source.YLength),
                 Amount = 0;
 
             for (int i = 0; i < Histogram.Length; i++)

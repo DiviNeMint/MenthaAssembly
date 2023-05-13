@@ -1,21 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public sealed unsafe class MedianNeighborThresholdingPixelAdapter<T> : PixelAdapter<T>
+    public sealed unsafe class MeanNeighborThresholdingPixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
         private static readonly Type GrayType = typeof(Gray8);
 
         private readonly ImagePatch Source;
 
-        private readonly int MedianIndex;
+        private readonly int Denominator;
         public int Level { get; }
 
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         private byte _Value;
         public override byte A
@@ -56,7 +55,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int BitsPerPixel { get; }
 
-        private MedianNeighborThresholdingPixelAdapter(MedianNeighborThresholdingPixelAdapter<T> Adapter)
+        private MeanNeighborThresholdingPixelAdapter(MeanNeighborThresholdingPixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
             {
@@ -67,52 +66,47 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (Adapter.IsCacheValid)
             {
                 IsCacheValid = true;
-                Cache = new List<byte>(Adapter.Cache);
-            }
-            else
-            {
-                Cache = new List<byte>();
+                Cache = Adapter.Cache;
             }
 
             X = Adapter.X;
             Y = Adapter.Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             Level = Adapter.Level;
             Source = Adapter.Source.Clone();
-            MedianIndex = Adapter.MedianIndex;
             BitsPerPixel = Adapter.BitsPerPixel;
+            Denominator = Adapter.Denominator;
             GetGray = Adapter.GetGray;
         }
-        public MedianNeighborThresholdingPixelAdapter(IImageContext Context, int Level)
+        public MeanNeighborThresholdingPixelAdapter(IImageContext Context, int Level)
         {
             X = 0;
             Y = 0;
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
-            Cache = new List<byte>();
+            XLength = Context.Width;
+            YLength = Context.Height;
             this.Level = Level;
 
-            int Size = (Level << 1) + 1;
-            Source = new ImagePatch(Context, Size, Size);
-            MedianIndex = (Size * Size) >> 1;
+            int L = (Level << 1) + 1;
+            IPixelAdapter Adapter = Context.GetAdapter(0, 0);
+            Source = new ImagePatch(Adapter, 0, 0, L, L);
+            Denominator = L * L;
             BitsPerPixel = Context.BitsPerPixel;
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
         }
-        public MedianNeighborThresholdingPixelAdapter(PixelAdapter<T> Adapter, int Level)
+        public MeanNeighborThresholdingPixelAdapter(PixelAdapter<T> Adapter, int Level)
         {
             Adapter.InternalMove(0, 0);
             X = 0;
             Y = 0;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
-            Cache = new List<byte>();
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             this.Level = Level;
 
-            int Size = (Level << 1) + 1;
-            Source = new ImagePatch(Adapter, Size, Size);
-            MedianIndex = (Size * Size) >> 1;
+            int L = (Level << 1) + 1;
+            Source = new ImagePatch(Adapter, L, L);
+            Denominator = L * L;
             BitsPerPixel = Adapter.BitsPerPixel;
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
@@ -182,51 +176,37 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private bool IsPixelValid = false,
                      IsCacheValid = false;
         private readonly Func<IReadOnlyPixel, byte> GetGray;
-        private readonly List<byte> Cache = new List<byte>();
+        private int Cache;
         private void EnsurePixel()
         {
             if (IsPixelValid)
                 return;
 
-            List<byte> Left = new List<byte>();
-            int Rx = Source.Width - 1;
-            byte Gray = GetGray(Source[Level, Level]);
+            int Gray = GetGray(Source[Level, Level]),
+                Rx = Source.Width - 1,
+                Left = 0;
 
             for (int j = 0; j < Source.Height; j++)
-                AddOrder(Left, GetGray(Source[0, j]));
+                Left += GetGray(Source[0, j]);
 
             if (!IsCacheValid)
             {
-                Cache.Clear();
-                Cache.AddRange(Left);
-
+                Cache = Left;
                 for (int i = 1; i < Rx; i++)
                     for (int j = 0; j < Source.Height; j++)
-                        AddOrder(Cache, GetGray(Source[i, j]));
+                        Cache += GetGray(Source[i, j]);
             }
 
             for (int j = 0; j < Source.Height; j++)
-                AddOrder(Cache, GetGray(Source[Rx, j]));
+                Cache += GetGray(Source[Rx, j]);
 
-            byte Median = Cache[MedianIndex];
+            int Tg = Cache / Denominator;
+            _Value = Gray < Tg ? byte.MinValue : byte.MaxValue;
 
-            _Value = Gray < Median ? byte.MinValue : byte.MaxValue;
-
-            foreach (byte Lv in Left)
-                Cache.Remove(Lv);
+            Cache -= Left;
 
             IsPixelValid = true;
             IsCacheValid = true;
-        }
-
-        private void AddOrder(List<byte> Collection, byte Value)
-        {
-            int i = 0;
-            for (; i < Collection.Count; i++)
-                if (Value < Collection[i])
-                    break;
-
-            Collection.Insert(i, Value);
         }
 
         protected internal override void InternalMove(int X, int Y)
@@ -235,46 +215,46 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
             Source.Move(Source.X + OffsetX, Source.Y);
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
             Source.Move(Source.X, Source.Y + OffsetY);
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
-            Source.MoveNext();
+            Source.MoveNextX();
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
         {
-            Source.MovePrevious();
+            Source.MovePreviousX();
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
         {
-            Source.MoveNextLine();
+            Source.MoveNextY();
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
         {
-            Source.MovePreviousLine();
+            Source.MovePreviousY();
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
         public override PixelAdapter<T> Clone()
-            => new MedianNeighborThresholdingPixelAdapter<T>(this);
+            => new MeanNeighborThresholdingPixelAdapter<T>(this);
 
     }
 }

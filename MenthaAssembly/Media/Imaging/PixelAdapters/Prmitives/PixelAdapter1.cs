@@ -3,9 +3,9 @@
     internal unsafe class PixelAdapter1<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         public override byte A => pScan->A;
 
@@ -24,8 +24,8 @@
         {
             X = Adapter.X;
             Y = Adapter.Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             Stride = Adapter.Stride;
             BitsPerPixel = Adapter.BitsPerPixel;
             pScan0 = Adapter.pScan0;
@@ -33,8 +33,8 @@
         }
         public PixelAdapter1(IImageContext Context, int X, int Y)
         {
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
+            XLength = Context.Width - 1;
+            YLength = Context.Height - 1;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             pScan0 = (byte*)Context.Scan0[0];
@@ -69,19 +69,20 @@
 
         protected internal override void InternalMove(int X, int Y)
             => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
-        protected internal override void InternalMoveX(int OffsetX)
-            => pScan += OffsetX;
-        protected internal override void InternalMoveY(int OffsetY)
-            => pScan = (T*)((byte*)pScan + Stride * OffsetY);
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalOffsetX(int Delta)
+            => pScan += Delta;
+        protected internal override void InternalOffsetY(int Delta)
+            => pScan = (T*)((byte*)pScan + Stride * Delta);
+
+        protected internal override void InternalMoveNextX()
             => pScan++;
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
             => pScan--;
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
             => pScan = (T*)((byte*)pScan + Stride);
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
             => pScan = (T*)((byte*)pScan - Stride);
 
         public override PixelAdapter<T> Clone()
@@ -93,9 +94,9 @@
         where T : unmanaged, IPixel
         where U : unmanaged, IPixel
     {
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         public override byte A => pScan->A;
 
@@ -114,8 +115,8 @@
         {
             X = Adapter.X;
             Y = Adapter.Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             Stride = Adapter.Stride;
             BitsPerPixel = Adapter.BitsPerPixel;
             pScan0 = Adapter.pScan0;
@@ -123,8 +124,8 @@
         }
         public PixelAdapter1(IImageContext Context, int X, int Y)
         {
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
+            XLength = Context.Width - 1;
+            YLength = Context.Height - 1;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             pScan0 = (byte*)Context.Scan0[0];
@@ -182,19 +183,20 @@
 
         protected internal override void InternalMove(int X, int Y)
             => pScan = (T*)(pScan0 + Stride * Y + ((X * BitsPerPixel) >> 3));
-        protected internal override void InternalMoveX(int OffsetX)
-            => pScan += OffsetX;
-        protected internal override void InternalMoveY(int OffsetY)
-            => pScan = (T*)((byte*)pScan + Stride * OffsetY);
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalOffsetX(int Delta)
+            => pScan += Delta;
+        protected internal override void InternalOffsetY(int Delta)
+            => pScan = (T*)((byte*)pScan + Stride * Delta);
+
+        protected internal override void InternalMoveNextX()
             => pScan++;
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
             => pScan--;
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
             => pScan = (T*)((byte*)pScan + Stride);
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
             => pScan = (T*)((byte*)pScan - Stride);
 
         public override PixelAdapter<U> Clone()

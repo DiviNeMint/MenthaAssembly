@@ -16,7 +16,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             where T : unmanaged, IPixel
         {
             PixelAdapter<T> Adapter = Context.GetAdapter<T>(X, Y);
-            for (int i = 0; i < Length; i++, Adapter.MoveNext())
+            for (int i = 0; i < Length; i++, Adapter.MoveNextX())
                 Handler(Adapter);
         }
 
@@ -28,8 +28,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Dy = (int)Math.Round(Contour.OffsetY + OffsetY);
 
             PixelAdapter<T> Adapter = Context.GetAdapter<T>(0, 0);
-            int MaxX = Adapter.MaxX,
-                MaxY = Adapter.MaxY,
+            int MaxX = Adapter.XLength - 1,
+                MaxY = Adapter.YLength - 1,
                 Ty;
             foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
             {
@@ -54,8 +54,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     Sx = Math.Max(Sx, 0);
                     Ex = Math.Min(Ex, MaxX);
 
-                    Adapter.InternalMoveX(Sx - CurrentX);
-                    for (int j = Sx; j <= Ex; j++, Adapter.InternalMoveNext())
+                    Adapter.InternalOffsetX(Sx - CurrentX);
+                    for (int j = Sx; j <= Ex; j++, Adapter.InternalMoveNextX())
                         Handler(Adapter);
 
                     CurrentX = Ex + 1;
@@ -72,9 +72,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 SeedY < 0 || Height <= SeedY)
                 return null;
 
-            ImageContour Contour = new ImageContour();
-            Stack<int> StackX = new Stack<int>(),
-                       StackY = new Stack<int>();
+            ImageContour Contour = new();
+            Stack<int> StackX = new(),
+                       StackY = new();
             StackX.Push(SeedX);
             StackY.Push(SeedY);
 
@@ -94,7 +94,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 while (X < Width && !Predicate(X, Y, Pixel))
                 {
                     X++;
-                    Pixel.MoveNext();
+                    Pixel.MoveNextX();
                 }
 
                 // Find Left Bound
@@ -102,11 +102,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 X = SaveX - 1;
 
                 Pixel = Seed.Clone();
-                Pixel.MovePrevious();
+                Pixel.MovePreviousX();
                 while (-1 < X && !Predicate(X, Y, Pixel))
                 {
                     X--;
-                    Pixel.MovePrevious();
+                    Pixel.MovePreviousX();
                 }
 
                 Lx = X + 1;
@@ -128,7 +128,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         {
                             NeedFill = true;
                             X++;
-                            Seed.MoveNext();
+                            Seed.MoveNextX();
                         }
 
                         if (NeedFill)
@@ -153,7 +153,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         {
                             NeedFill = true;
                             X++;
-                            Seed.MoveNext();
+                            Seed.MoveNextX();
                         }
 
                         if (NeedFill)
@@ -172,11 +172,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
             where T : unmanaged, IPixel
         {
             // Initialize Palette
-            Dictionary<int, int> Palette = new Dictionary<int, int>();
-            for (int j = 0; j <= Adapter.MaxY; j++)
+            Dictionary<int, int> Palette = new();
+            for (int j = 0; j < Adapter.YLength; j++)
             {
                 Adapter.InternalMove(0, j);
-                for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
+                for (int i = 0; i < Adapter.XLength; i++, Adapter.InternalMoveNextX())
                 {
                     int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
                     if (Palette.ContainsKey(Key))
@@ -242,8 +242,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         }
                 }
 
-                List<QuantizationBox> Boxes = new List<QuantizationBox> { new QuantizationBox(Dimension, 0, 255) },
-                                      UnableSplitBoxes = new List<QuantizationBox>();
+                List<QuantizationBox> Boxes = new() { new QuantizationBox(Dimension, 0, 255) },
+                                      UnableSplitBoxes = new();
                 do
                 {
                     foreach (int Key in Palette.Keys)
@@ -300,11 +300,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
             where T : unmanaged, IPixel
         {
             // Initialize Palette
-            Dictionary<int, int> Palette = new Dictionary<int, int>();
-            for (int j = 0; j <= Adapter.MaxY; j++)
+            Dictionary<int, int> Palette = new();
+            for (int j = 0; j < Adapter.YLength; j++)
             {
                 Adapter.InternalMove(0, j);
-                for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
+                for (int i = 0; i < Adapter.XLength; i++, Adapter.InternalMoveNextX())
                 {
                     int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
                     if (Palette.ContainsKey(Key))
@@ -367,8 +367,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     }
             }
 
-            List<QuantizationBox> Boxes = new List<QuantizationBox> { new QuantizationBox(Dimension, 0, 255) },
-                                  UnableSplitBoxes = new List<QuantizationBox>();
+            List<QuantizationBox> Boxes = new() { new QuantizationBox(Dimension, 0, 255) },
+                                  UnableSplitBoxes = new();
             do
             {
                 _ = Parallel.ForEach(Palette, Options, Content =>
@@ -425,7 +425,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public static IEnumerable<QuantizationCluster> ClusterQuantize<T>(PixelAdapter<T> Adapter, int Count, out Func<QuantizationCluster, PixelAdapter<T>, int> GetDistanceConst, out Func<QuantizationCluster, T> GetColor)
             where T : unmanaged, IPixel
         {
-            List<QuantizationCluster> Clusters = new List<QuantizationCluster>(Count);
+            List<QuantizationCluster> Clusters = new(Count);
             int Dimension = (Adapter.BitsPerPixel + 7) >> 3;
 
             Action<int[], int> FillDatas;
@@ -519,7 +519,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
 
             // Initializes Clusters
-            Dictionary<int, int> Palette = new Dictionary<int, int>();
+            Dictionary<int, int> Palette = new();
             int[] Datas = new int[Dimension],
                   Empty = new int[Dimension],
                   MinCenter = null,
@@ -527,10 +527,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             int MinD = int.MaxValue,
                 MaxD = int.MinValue,
                 D;
-            for (int j = 0; j <= Adapter.MaxY; j++)
+            for (int j = 0; j < Adapter.YLength; j++)
             {
                 Adapter.InternalMove(0, j);
-                for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
+                for (int i = 0; i < Adapter.XLength; i++, Adapter.InternalMoveNextX())
                 {
                     int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
                     if (Palette.ContainsKey(Key))
@@ -671,7 +671,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public static IEnumerable<QuantizationCluster> ClusterQuantize<T>(PixelAdapter<T> Adapter, int Count, ParallelOptions Options, out Func<QuantizationCluster, PixelAdapter<T>, int> GetDistanceConst, out Func<QuantizationCluster, T> GetColor)
             where T : unmanaged, IPixel
         {
-            List<QuantizationCluster> Clusters = new List<QuantizationCluster>(Count);
+            List<QuantizationCluster> Clusters = new(Count);
             int Dimension = (Adapter.BitsPerPixel + 7) >> 3;
 
             Action<int[], int> FillDatas;
@@ -769,7 +769,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
 
             // Initializes Clusters
-            Dictionary<int, int> Palette = new Dictionary<int, int>();
+            Dictionary<int, int> Palette = new();
             int[] MinCenter = null,
                   MaxCenter = null;
             {
@@ -778,10 +778,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 int MinD = int.MaxValue,
                     MaxD = int.MinValue,
                     D;
-                for (int j = 0; j <= Adapter.MaxY; j++)
+                for (int j = 0; j < Adapter.YLength; j++)
                 {
                     Adapter.InternalMove(0, j);
-                    for (int i = 0; i <= Adapter.MaxX; i++, Adapter.InternalMoveNext())
+                    for (int i = 0; i < Adapter.XLength; i++, Adapter.InternalMoveNextX())
                     {
                         int Key = Adapter.A << 24 | Adapter.R << 16 | Adapter.G << 8 | Adapter.B;
                         if (Palette.ContainsKey(Key))

@@ -6,14 +6,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where T : unmanaged, IPixel
     {
         private readonly PixelAdapter<T> Source;
+        private readonly int SourceMaxX, SourceMaxY;
         private readonly double Sin, Cos, FracX0, FracY0;
         private double FracX, FracY;
 
-        private readonly int MaxSx, MaxSy;
+        public override int XLength { get; }
 
-        public override int MaxX { get; }
-
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         private byte _A = byte.MaxValue;
         public override byte A
@@ -77,10 +76,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             Sin = Adapter.Sin;
             Cos = Adapter.Cos;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
-            MaxSx = Adapter.MaxSx;
-            MaxSy = Adapter.MaxSy;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
+            SourceMaxX = Adapter.SourceMaxX;
+            SourceMaxY = Adapter.SourceMaxY;
             FracX = Adapter.FracX;
             FracY = Adapter.FracY;
             FracX0 = Adapter.FracX0;
@@ -95,20 +94,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             Sin = Math.Sin(Theta);
             Cos = Math.Cos(Theta);
-            MaxSx = Context.Width;
-            MaxSy = Context.Height;
+            SourceMaxX = Context.Width;
+            SourceMaxY = Context.Height;
 
-            MaxX = (int)(Math.Abs(MaxSx * Cos) + Math.Abs(MaxSy * Sin));
-            MaxY = (int)(Math.Abs(MaxSx * Sin) + Math.Abs(MaxSy * Cos));
-            FracX0 = -(MaxX * Cos + MaxY * Sin - MaxSx) / 2d;
-            FracY0 = (MaxX * Sin - MaxY * Cos + MaxSy) / 2d;
+            XLength = (int)(Math.Abs(SourceMaxX * Cos) + Math.Abs(SourceMaxY * Sin));
+            YLength = (int)(Math.Abs(SourceMaxX * Sin) + Math.Abs(SourceMaxY * Cos));
+            FracX0 = -(XLength * Cos + YLength * Sin - SourceMaxX) / 2d;
+            FracY0 = (XLength * Sin - YLength * Cos + SourceMaxY) / 2d;
             FracX = FracX0;
             FracY = FracY0;
 
-            MaxX--;
-            MaxY--;
-            MaxSx--;
-            MaxSy--;
+            SourceMaxX--;
+            SourceMaxY--;
 
             Source = Context.GetAdapter<T>(0, 0);
             CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
@@ -119,19 +116,17 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             Sin = Math.Sin(Theta);
             Cos = Math.Cos(Theta);
-            MaxSx = Adapter.MaxX;
-            MaxSy = Adapter.MaxY;
-            MaxX = (int)(Math.Abs(MaxSx * Cos) + Math.Abs(MaxSy * Sin));
-            MaxY = (int)(Math.Abs(MaxSx * Sin) + Math.Abs(MaxSy * Cos));
-            FracX0 = -(MaxX * Cos + MaxY * Sin - MaxSx) / 2d;
-            FracY0 = (MaxX * Sin - MaxY * Cos + MaxSy) / 2d;
+            SourceMaxX = Adapter.XLength;
+            SourceMaxY = Adapter.YLength;
+            XLength = (int)(Math.Abs(SourceMaxX * Cos) + Math.Abs(SourceMaxY * Sin));
+            YLength = (int)(Math.Abs(SourceMaxX * Sin) + Math.Abs(SourceMaxY * Cos));
+            FracX0 = -(XLength * Cos + YLength * Sin - SourceMaxX) / 2d;
+            FracY0 = (XLength * Sin - YLength * Cos + SourceMaxY) / 2d;
             FracX = FracX0;
             FracY = FracY0;
 
-            MaxX--;
-            MaxY--;
-            MaxSx--;
-            MaxSy--;
+            SourceMaxX--;
+            SourceMaxY--;
 
             Source = Adapter;
             CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
@@ -234,7 +229,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             int a1 = (int)Math.Floor(FracX),
                 b1 = (int)Math.Floor(FracY);
 
-            IsEmptyPixel = a1 < 0 || MaxSx < a1 || b1 < 0 || MaxSy < b1;
+            IsEmptyPixel = a1 < 0 || SourceMaxX < a1 || b1 < 0 || SourceMaxY < b1;
             if (IsEmptyPixel)
                 return;
 
@@ -244,18 +239,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             p01 = p00,
                             p11 = p10;
 
-            if (b1 < MaxSy)
+            if (b1 < SourceMaxY)
             {
                 p10 = p00.Clone();
-                p10.InternalMoveNextLine();
+                p10.InternalMoveNextY();
             }
 
-            if (a1 < MaxSx)
+            if (a1 < SourceMaxX)
             {
                 p01 = p00.Clone();
                 p11 = p10.Clone();
-                p01.InternalMoveNext();
-                p11.InternalMoveNext();
+                p01.InternalMoveNextX();
+                p11.InternalMoveNextX();
             }
 
             float TFracX = (float)(FracX - a1),
@@ -283,39 +278,39 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracY = FracY0 + Y * Cos - X * Sin;
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
             FracX += Cos * OffsetX;
             FracY -= Sin * OffsetX;
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
             FracX += Sin * OffsetY;
             FracY += Cos * OffsetY;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
             FracX += Cos;
             FracY -= Sin;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
         {
             FracX -= Cos;
             FracY += Sin;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
         {
             FracX += Sin;
             FracY += Cos;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
         {
             FracX -= Sin;
             FracY -= Cos;

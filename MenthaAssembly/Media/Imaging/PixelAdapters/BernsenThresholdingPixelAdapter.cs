@@ -1,20 +1,21 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public sealed unsafe class MeanNeighborThresholdingPixelAdapter<T> : PixelAdapter<T>
+    public sealed unsafe class BernsenThresholdingPixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
         private static readonly Type GrayType = typeof(Gray8);
 
         private readonly ImagePatch Source;
 
-        private readonly int Denominator;
+        private readonly int MaxIndex;
         public int Level { get; }
 
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         private byte _Value;
         public override byte A
@@ -55,7 +56,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int BitsPerPixel { get; }
 
-        private MeanNeighborThresholdingPixelAdapter(MeanNeighborThresholdingPixelAdapter<T> Adapter)
+        private BernsenThresholdingPixelAdapter(BernsenThresholdingPixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
             {
@@ -66,47 +67,52 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (Adapter.IsCacheValid)
             {
                 IsCacheValid = true;
-                Cache = Adapter.Cache;
+                Cache = new List<int>(Adapter.Cache);
+            }
+            else
+            {
+                Cache = new List<int>();
             }
 
             X = Adapter.X;
             Y = Adapter.Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             Level = Adapter.Level;
             Source = Adapter.Source.Clone();
+            MaxIndex = Adapter.MaxIndex;
             BitsPerPixel = Adapter.BitsPerPixel;
-            Denominator = Adapter.Denominator;
             GetGray = Adapter.GetGray;
         }
-        public MeanNeighborThresholdingPixelAdapter(IImageContext Context, int Level)
+        public BernsenThresholdingPixelAdapter(IImageContext Context, int Level)
         {
             X = 0;
             Y = 0;
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
+            XLength = Context.Width;
+            YLength = Context.Height;
+            Cache = new List<int>();
             this.Level = Level;
 
-            int L = (Level << 1) + 1;
-            IPixelAdapter Adapter = Context.GetAdapter(0, 0);
-            Source = new ImagePatch(Adapter, 0, 0, L, L);
-            Denominator = L * L;
+            int Size = (Level << 1) + 1;
+            Source = new ImagePatch(Context, Size, Size);
+            MaxIndex = Size * Size - 1;
             BitsPerPixel = Context.BitsPerPixel;
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
         }
-        public MeanNeighborThresholdingPixelAdapter(PixelAdapter<T> Adapter, int Level)
+        public BernsenThresholdingPixelAdapter(PixelAdapter<T> Adapter, int Level)
         {
             Adapter.InternalMove(0, 0);
             X = 0;
             Y = 0;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
+            Cache = new List<int>();
             this.Level = Level;
 
-            int L = (Level << 1) + 1;
-            Source = new ImagePatch(Adapter, L, L);
-            Denominator = L * L;
+            int Size = (Level << 1) + 1;
+            Source = new ImagePatch(Adapter, Size, Size);
+            MaxIndex = Size * Size - 1;
             BitsPerPixel = Adapter.BitsPerPixel;
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
@@ -175,38 +181,52 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         private bool IsPixelValid = false,
                      IsCacheValid = false;
-        private readonly Func<IReadOnlyPixel, byte> GetGray;
-        private int Cache;
+        private readonly Func<IReadOnlyPixel, int> GetGray;
+        private readonly List<int> Cache = new();
         private void EnsurePixel()
         {
             if (IsPixelValid)
                 return;
 
-            int Gray = GetGray(Source[Level, Level]),
-                Rx = Source.Width - 1,
-                Left = 0;
+            List<int> Left = new();
+            int Rx = Source.Width - 1,
+                Gray = GetGray(Source[Level, Level]);
 
             for (int j = 0; j < Source.Height; j++)
-                Left += GetGray(Source[0, j]);
+                AddOrder(Left, GetGray(Source[0, j]));
 
             if (!IsCacheValid)
             {
-                Cache = Left;
+                Cache.Clear();
+                Cache.AddRange(Left);
+
                 for (int i = 1; i < Rx; i++)
                     for (int j = 0; j < Source.Height; j++)
-                        Cache += GetGray(Source[i, j]);
+                        AddOrder(Cache, GetGray(Source[i, j]));
             }
 
             for (int j = 0; j < Source.Height; j++)
-                Cache += GetGray(Source[Rx, j]);
+                AddOrder(Cache, GetGray(Source[Rx, j]));
 
-            int Tg = Cache / Denominator;
-            _Value = Gray < Tg ? byte.MinValue : byte.MaxValue;
+            int Threshold = (Cache[0] + Cache[MaxIndex]) >> 1;
 
-            Cache -= Left;
+            _Value = Gray < Threshold ? byte.MinValue : byte.MaxValue;
+
+            foreach (int Lv in Left)
+                Cache.Remove(Lv);
 
             IsPixelValid = true;
             IsCacheValid = true;
+        }
+
+        private void AddOrder(List<int> Collection, int Value)
+        {
+            int i = 0;
+            for (; i < Collection.Count; i++)
+                if (Value < Collection[i])
+                    break;
+
+            Collection.Insert(i, Value);
         }
 
         protected internal override void InternalMove(int X, int Y)
@@ -215,46 +235,46 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
             Source.Move(Source.X + OffsetX, Source.Y);
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
             Source.Move(Source.X, Source.Y + OffsetY);
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
-            Source.MoveNext();
+            Source.MoveNextX();
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMoveNextY()
         {
-            Source.MovePrevious();
+            Source.MoveNextY();
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMovePreviousX()
         {
-            Source.MoveNextLine();
+            Source.MovePreviousX();
             IsPixelValid = false;
             IsCacheValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
         {
-            Source.MovePreviousLine();
+            Source.MovePreviousY();
             IsPixelValid = false;
             IsCacheValid = false;
         }
 
         public override PixelAdapter<T> Clone()
-            => new MeanNeighborThresholdingPixelAdapter<T>(this);
+            => new BernsenThresholdingPixelAdapter<T>(this);
 
     }
 }

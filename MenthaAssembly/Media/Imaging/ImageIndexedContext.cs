@@ -223,7 +223,7 @@ namespace MenthaAssembly.Media.Imaging
                     LeftBound.Remove(Y);
 
                     Adapter.InternalMove(TLx, Y);
-                    for (; TLx <= TRx; TLx++, Adapter.InternalMoveNext())
+                    for (; TLx <= TRx; TLx++, Adapter.InternalMoveNextX())
                         Handler(Adapter);
                 }
                 else
@@ -471,7 +471,7 @@ namespace MenthaAssembly.Media.Imaging
                         LeftBound.Remove(Y);
 
                         Adapter.InternalMove(TLx, Y);
-                        for (; TLx <= TRx; TLx++, Adapter.InternalMoveNext())
+                        for (; TLx <= TRx; TLx++, Adapter.InternalMoveNextX())
                             Handler(Adapter);
                     }
                     else
@@ -1994,8 +1994,8 @@ namespace MenthaAssembly.Media.Imaging
                           Y1 = P1.Y + OffsetY;
 
                     // Is the scanline between the two points
-                    if (Y0 < y && y <= Y1 ||
-                        Y1 < y && y <= Y0)
+                    if ((Y0 < y && y <= Y1) ||
+                        (Y1 < y && y <= Y0))
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
                         IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
@@ -2042,7 +2042,7 @@ namespace MenthaAssembly.Media.Imaging
 
                         // Fill the pixels
                         Adapter.InternalMove(x0, y);
-                        for (; x0 <= x1; x0++, Adapter.InternalMoveNext())
+                        for (; x0 <= x1; x0++, Adapter.InternalMoveNextX())
                             Handler(Adapter);
                     }
                 }
@@ -2064,7 +2064,7 @@ namespace MenthaAssembly.Media.Imaging
 
                         // Fill the pixels
                         Adapter.InternalMove(x0, y);
-                        for (; x0 <= x1; x0++, Adapter.InternalMoveNext())
+                        for (; x0 <= x1; x0++, Adapter.InternalMoveNextX())
                             Handler(Adapter);
                     }
                 }
@@ -2125,8 +2125,8 @@ namespace MenthaAssembly.Media.Imaging
                           Y1 = Datas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
-                    if (Y0 < y && y <= Y1 ||
-                        Y1 < y && y <= Y0)
+                    if ((Y0 < y && y <= Y1) ||
+                        (Y1 < y && y <= Y0))
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
                         IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
@@ -2173,7 +2173,7 @@ namespace MenthaAssembly.Media.Imaging
 
                         // Fill the pixels
                         Adapter.InternalMove(x0, y);
-                        for (; x0 <= x1; x0++, Adapter.InternalMoveNext())
+                        for (; x0 <= x1; x0++, Adapter.InternalMoveNextX())
                             Handler(Adapter);
                     }
                 }
@@ -2195,7 +2195,7 @@ namespace MenthaAssembly.Media.Imaging
 
                         // Fill the pixels
                         Adapter.InternalMove(x0, y);
-                        for (; x0 <= x1; x0++, Adapter.InternalMoveNext())
+                        for (; x0 <= x1; x0++, Adapter.InternalMoveNextX())
                             Handler(Adapter);
                     }
                 }
@@ -2240,9 +2240,9 @@ namespace MenthaAssembly.Media.Imaging
 
             PixelAdapter<Pixel> Sorc = Stamp.GetAdapter<Pixel>(SourceX, SourceY),
                                 Dest = GetAdapter<Pixel>(Sx, Sy);
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                 {
                     if (Sorc.A == byte.MinValue)
                         continue;
@@ -2254,8 +2254,8 @@ namespace MenthaAssembly.Media.Imaging
                         Dest.Overlay(Sorc);
                 }
 
-                Sorc.MoveX(-Width);
-                Dest.MoveX(-Width);
+                Sorc.OffsetX(-Width);
+                Dest.OffsetX(-Width);
             }
         }
 
@@ -2331,17 +2331,19 @@ namespace MenthaAssembly.Media.Imaging
                 _ => throw new NotSupportedException($"Not support InterpolationTypes.{Interpolation}."),
             };
 
-            ImageContext<T> Result = new ImageContext<T>(Sorc.MaxX + 1, Sorc.MaxY + 1);
-            PixelAdapter<T> Dest = Result.GetAdapter<T>(0, 0);
+            int Nw = Sorc.XLength,
+                Nh = Sorc.YLength,
+                Dx = -Nw;
 
-            int Nw = Result.Width;
-            for (int j = 0; j < Result.Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            ImageContext<T> Result = new(Nw, Nh);
+            PixelAdapter<T> Dest = Result.GetAdapter<T>(0, 0);
+            for (int j = 0; j < Nh; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < Nw; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Nw; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Sorc);
 
-                Sorc.InternalMoveX(-Nw);
-                Dest.InternalMoveX(-Nw);
+                Sorc.InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Result;
@@ -2358,16 +2360,17 @@ namespace MenthaAssembly.Media.Imaging
                 _ => throw new NotSupportedException($"Not support InterpolationTypes.{Interpolation}."),
             };
 
-            ImageContext<T> Result = new ImageContext<T>(RotateAdapter.MaxX + 1, RotateAdapter.MaxY + 1);
+            int Nw = RotateAdapter.XLength,
+                Nh = RotateAdapter.YLength;
 
-            int Width = Result.Width;
-            _ = Parallel.For(0, Result.Height, Options ?? DefaultParallelOptions, j =>
+            ImageContext<T> Result = new(Nw, Nh);
+            _ = Parallel.For(0, Nh, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = RotateAdapter.Clone(),
                                 Dest = Result.GetAdapter<T>(0, j);
 
-                Sorc.InternalMoveY(j);
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                Sorc.InternalOffsetY(j);
+                for (int i = 0; i < Nw; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Sorc);
             });
 
@@ -2377,7 +2380,8 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Resize<T>(int Width, int Height, InterpolationTypes Interpolation)
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
+            ImageContext<T> Result = new(Width, Height);
+
             switch (Interpolation)
             {
                 case InterpolationTypes.Nearest:
@@ -2385,13 +2389,14 @@ namespace MenthaAssembly.Media.Imaging
                         PixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, Width, Height),
                                         Dest = Result.GetAdapter<T>(0, 0);
 
-                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+                        int Dx = -Width;
+                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
                         {
-                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMoveX(-Width);
-                            Dest.InternalMoveX(-Width);
+                            Sorc.InternalOffsetX(Dx);
+                            Dest.InternalOffsetX(Dx);
                         }
 
                         break;
@@ -2401,13 +2406,14 @@ namespace MenthaAssembly.Media.Imaging
                         PixelAdapter<T> Sorc = new BilinearResizePixelAdapter<T>(this, Width, Height),
                                         Dest = Result.GetAdapter<T>(0, 0);
 
-                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+                        int Dx = -Width;
+                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
                         {
-                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMoveX(-Width);
-                            Dest.InternalMoveX(-Width);
+                            Sorc.InternalOffsetX(Dx);
+                            Dest.InternalOffsetX(Dx);
                         }
                         break;
                     }
@@ -2418,7 +2424,7 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Resize<T>(int Width, int Height, InterpolationTypes Interpolation, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
+            ImageContext<T> Result = new(Width, Height);
             switch (Interpolation)
             {
                 case InterpolationTypes.Nearest:
@@ -2430,7 +2436,7 @@ namespace MenthaAssembly.Media.Imaging
                             PixelAdapter<T> Sorc = new NearestResizePixelAdapter<T>(this, 0, j, StepX, StepY),
                                             Dest = Result.GetAdapter<T>(0, j);
 
-                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
                         });
                         break;
@@ -2445,7 +2451,7 @@ namespace MenthaAssembly.Media.Imaging
                             PixelAdapter<T> Sorc = new BilinearResizePixelAdapter<T>(this, 0, j, StepX, StepY),
                                             Dest = Result.GetAdapter<T>(0, j);
 
-                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
                         });
                         break;
@@ -2462,51 +2468,54 @@ namespace MenthaAssembly.Media.Imaging
             {
                 case FlipMode.Vertical:
                     {
-                        ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
+                        ImageContext<T> Result = new(Width, Height);
                         PixelAdapter<T> Sorc = GetAdapter<T>(0, Height - 1),
                                         Dest = Result.GetAdapter<T>(0, 0);
-                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousLine(), Dest.InternalMoveNextLine())
+
+                        int Dx = -Width;
+                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousY(), Dest.InternalMoveNextY())
                         {
-                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMoveX(-Width);
-                            Dest.InternalMoveX(-Width);
+                            Sorc.InternalOffsetX(Dx);
+                            Dest.InternalOffsetX(Dx);
                         }
 
                         return Result;
                     }
                 case FlipMode.Horizontal:
                     {
-                        ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
+                        ImageContext<T> Result = new(Width, Height);
                         PixelAdapter<T> Sorc = GetAdapter<T>(Width - 1, 0),
                                         Dest = Result.GetAdapter<T>(0, 0);
-                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+
+                        int Dx = -Width;
+                        for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
                         {
-                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePreviousX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMoveX(Width);
-                            Dest.InternalMoveX(-Width);
+                            Sorc.InternalOffsetX(Width);
+                            Dest.InternalOffsetX(Dx);
                         }
 
                         return Result;
                     }
                 case FlipMode.Vertical | FlipMode.Horizontal:
                     {
-                        ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
+                        ImageContext<T> Result = new(Width, Height);
                         PixelAdapter<T> Sorc = GetAdapter<T>(Width - 1, Height - 1),
                                         Dest = Result.GetAdapter<T>(0, 0);
-                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousLine(), Dest.InternalMoveNextLine())
+
+                        int Dx = -Width;
+                        for (int j = 0; j < Height; j++, Sorc.InternalMovePreviousY(), Dest.InternalMoveNextY())
                         {
-                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePreviousX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
 
-                            Sorc.InternalMoveX(Width);
-                            Dest.InternalMoveX(-Width);
+                            Sorc.InternalOffsetX(Width);
+                            Dest.InternalOffsetX(Dx);
                         }
 
                         return Result;
@@ -2522,14 +2531,14 @@ namespace MenthaAssembly.Media.Imaging
             {
                 case FlipMode.Vertical:
                     {
-                        ImageContext<T> Result = new ImageContext<T>(Width, Height);
+                        ImageContext<T> Result = new(Width, Height);
 
                         int MaxY = Height - 1;
                         _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
                             PixelAdapter<T> Sorc = GetAdapter<T>(0, MaxY - y),
-                                             Dest = Result.GetAdapter<T>(0, y);
-                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                                            Dest = Result.GetAdapter<T>(0, y);
+                            for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
                         });
 
@@ -2537,14 +2546,14 @@ namespace MenthaAssembly.Media.Imaging
                     }
                 case FlipMode.Horizontal:
                     {
-                        ImageContext<T> Result = new ImageContext<T>(Width, Height);
+                        ImageContext<T> Result = new(Width, Height);
 
                         int MaxX = Width - 1;
                         _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
                             PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, y),
-                                             Dest = Result.GetAdapter<T>(0, y);
-                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                            Dest = Result.GetAdapter<T>(0, y);
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePreviousX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
                         });
 
@@ -2552,15 +2561,15 @@ namespace MenthaAssembly.Media.Imaging
                     }
                 case FlipMode.Vertical | FlipMode.Horizontal:
                     {
-                        ImageContext<T> Result = new ImageContext<T>(Width, Height);
+                        ImageContext<T> Result = new(Width, Height);
 
                         int MaxX = Width - 1,
                             MaxY = Height - 1;
                         _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, (y) =>
                         {
                             PixelAdapter<T> Sorc = GetAdapter<T>(MaxX, MaxY - y),
-                                             Dest = Result.GetAdapter<T>(0, y);
-                            for (int i = 0; i < Width; i++, Sorc.InternalMovePrevious(), Dest.InternalMoveNext())
+                                            Dest = Result.GetAdapter<T>(0, y);
+                            for (int i = 0; i < Width; i++, Sorc.InternalMovePreviousX(), Dest.InternalMoveNextX())
                                 Dest.Override(Sorc);
                         });
 
@@ -2575,26 +2584,46 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             // If the rectangle is completely out of the bitmap
-            if (X > this.Width || Y > this.Height)
-                return new ImageContext<T>(0, 0);
+            if (this.Width <= X || this.Height <= Y)
+                return new(0, 0);
 
             // Clamp to boundaries
-            X = Math.Max(X, 0);
-            Y = Math.Max(Y, 0);
-            Width = Width.Clamp(0, this.Width - X);
-            Height = Height.Clamp(0, this.Height - Y);
+            if (X < 0)
+            {
+                Width = Math.Min(Width + X, this.Width);
+                X = 0;
+            }
+            else
+            {
+                Width = Width.Clamp(0, this.Width - X);
+            }
+
+            if (Y < 0)
+            {
+                Height = Math.Min(Height + Y, this.Height);
+                Y = 0;
+            }
+            else
+            {
+                Height = Height.Clamp(0, this.Height - Y);
+            }
+
+            if (Width <= 0 || Height <= 0)
+                return new(0, 0);
 
             // Create Result
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
+            ImageContext<T> Result = new(Width, Height);
             PixelAdapter<T> Sorc = GetAdapter<T>(X, Y),
-                             Dest = Result.GetAdapter<T>(0, 0);
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+                            Dest = Result.GetAdapter<T>(0, 0);
+
+            int Dx = -Width;
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Sorc);
 
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
+                Sorc.InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Result;
@@ -2603,24 +2632,41 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             // If the rectangle is completely out of the bitmap
-            if (X > this.Width || Y > this.Height)
-                return new ImageContext<T>(0, 0);
+            if (this.Width <= X || this.Height <= Y)
+                return new(0, 0);
 
             // Clamp to boundaries
-            X = Math.Max(X, 0);
-            Y = Math.Max(Y, 0);
-            Width = Math.Max(Math.Min(Width, this.Width - X), 0);
-            Height = Math.Max(Math.Min(Height, this.Height - Y), 0);
+            if (X < 0)
+            {
+                Width = Math.Min(Width + X, this.Width);
+                X = 0;
+            }
+            else
+            {
+                Width = Width.Clamp(0, this.Width - X);
+            }
+
+            if (Y < 0)
+            {
+                Height = Math.Min(Height + Y, this.Height);
+                Y = 0;
+            }
+            else
+            {
+                Height = Height.Clamp(0, this.Height - Y);
+            }
+
+            if (Width <= 0 || Height <= 0)
+                return new(0, 0);
 
             // Create Result
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
+            ImageContext<T> Result = new(Width, Height);
             _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = GetAdapter<T>(X, Y + j),
-                                 Dest = Result.GetAdapter<T>(0, j);
+                                Dest = Result.GetAdapter<T>(0, j);
 
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Sorc);
             });
 
@@ -2635,16 +2681,17 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Filter<T>(ImageFilter Filter)
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
+            ImageContext<T> Result = new(Width, Height);
             PixelAdapter<T> Sorc = new FilterPixelAdapter<T>(this, Filter),
                             Dest = Result.GetAdapter<T>(0, 0);
-            for (int j = 0; j < Height; j++, Sorc.InternalMove(0, j), Dest.InternalMoveNextLine())
+
+            int Dx = -Width;
+            for (int j = 0; j < Height; j++, Sorc.InternalMove(0, j), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Sorc);
 
-                Dest.InternalMoveX(-Width);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Result;
@@ -2652,14 +2699,13 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Filter<T>(ImageFilter Filter, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
+            ImageContext<T> Result = new(Width, Height);
             _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
             {
                 PixelAdapter<T> Sorc = new FilterPixelAdapter<T>(this, 0, y, Filter),
                                 Dest = Result.GetAdapter<T>(0, y);
 
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Sorc);
             });
 
@@ -2672,8 +2718,7 @@ namespace MenthaAssembly.Media.Imaging
             if (Count < 2)
                 throw new ArgumentOutOfRangeException($"Parameter {nameof(Count)} must greater than 1.");
 
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
+            ImageContext<T> Result = new(Width, Height);
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
                             Dest = Result.GetAdapter<T>(0, 0);
 
@@ -2722,14 +2767,15 @@ namespace MenthaAssembly.Media.Imaging
                     break;
             }
 
+            int Dx = -Width;
             Sorc.InternalMove(0, 0);
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Colors[GetColorIndex(Sorc)]);
 
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
+                Sorc.InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Result;
@@ -2740,8 +2786,7 @@ namespace MenthaAssembly.Media.Imaging
             if (Count < 2)
                 throw new ArgumentOutOfRangeException($"Parameter {nameof(Count)} must greater than 1.");
 
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
+            ImageContext<T> Result = new(Width, Height);
             PixelAdapter<T> Sorc0 = GetAdapter<T>(0, 0);
 
             T[] Colors;
@@ -2795,7 +2840,7 @@ namespace MenthaAssembly.Media.Imaging
                                 Dest = Result.GetAdapter<T>(0, j);
 
                 Sorc.InternalMove(0, j);
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Colors[GetColorIndex(Sorc)]);
             });
 
@@ -2805,19 +2850,20 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Binarize<T>(ImageThreshold Threshold)
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Image = new ImageContext<T>(Width, Height);
+            ImageContext<T> Image = new(Width, Height);
             PixelAdapter<T> Sorc = Threshold.CreateAdapter(GetAdapter<T>(0, 0)),
                             Dest = Image.GetAdapter<T>(0, 0);
 
+            int Dx = -Width;
             T Color0 = default;
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
                         Dest.Override(Sorc);
 
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
+                Sorc.InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Image;
@@ -2825,7 +2871,7 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Binarize<T>(ImageThreshold Threshold, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Image = new ImageContext<T>(Width, Height);
+            ImageContext<T> Image = new(Width, Height);
             PixelAdapter<T> Sorc0 = Threshold.CreateAdapter(GetAdapter<T>(0, 0));
 
             T Color0 = default;
@@ -2835,10 +2881,9 @@ namespace MenthaAssembly.Media.Imaging
                                 Dest = Image.GetAdapter<T>(0, j);
 
                 Sorc.Move(0, j);
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
                         Dest.Override(Sorc);
-
             });
 
             return Image;
@@ -2846,20 +2891,20 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Binarize<T>(ImagePredicate Predicate)
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Image = new ImageContext<T>(Width, Height);
+            ImageContext<T> Image = new(Width, Height);
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
                             Dest = Image.GetAdapter<T>(0, 0);
 
+            int Dx = -Width;
             T Max = PixelHelper.ToPixel<T>(255, 255, 255, 255);
-            int MaxX = Sorc.MaxX;
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i <= MaxX; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     if (Predicate(i, j, Sorc))
                         Dest.Override(Max);
 
-                Sorc.InternalMoveX(-MaxX);
-                Dest.InternalMoveX(-MaxX);
+                Sorc.InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Image;
@@ -2867,7 +2912,7 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Binarize<T>(ImagePredicate Predicate, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Image = new ImageContext<T>(Width, Height);
+            ImageContext<T> Image = new(Width, Height);
 
             T Max = PixelHelper.ToPixel<T>(255, 255, 255, 255);
             _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
@@ -2875,7 +2920,7 @@ namespace MenthaAssembly.Media.Imaging
                 PixelAdapter<T> Sorc = GetAdapter<T>(0, j),
                                 Dest = Image.GetAdapter<T>(0, j);
 
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     if (Predicate(i, j, Sorc))
                         Dest.Override(Max);
             });
@@ -2886,22 +2931,23 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
         {
-            ImageContext<T, U> Image = new ImageContext<T, U>(Width, Height);
+            ImageContext<T, U> Image = new(Width, Height);
             PixelAdapter<T> Sorc = Threshold.CreateAdapter(GetAdapter<T>(0, 0));
             PixelIndexedAdapter<T> Dest = Image.GetAdapter<T>(0, 0);
 
+            int Dx = -Width;
             T Color0 = default;
             Image.Palette.Datas.Add(Color0);
             Image.Palette.Datas.Add(PixelHelper.ToPixel<T>(255, 255, 255, 255));
 
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
                         Dest.OverrideIndex(1);
 
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
+                Sorc.InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Image;
@@ -2910,7 +2956,7 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
         {
-            ImageContext<T, U> Image = new ImageContext<T, U>(Width, Height);
+            ImageContext<T, U> Image = new(Width, Height);
             PixelAdapter<T> Sorc0 = Threshold.CreateAdapter(GetAdapter<T>(0, 0));
 
             T Color0 = default;
@@ -2923,10 +2969,9 @@ namespace MenthaAssembly.Media.Imaging
                 PixelIndexedAdapter<T> Dest = Image.GetAdapter<T>(0, j);
 
                 Sorc.Move(0, j);
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     if (Sorc.A != Color0.A || Sorc.R != Color0.R || Sorc.G != Color0.G || Sorc.B != Color0.B)
                         Dest.OverrideIndex(1);
-
             });
 
             return Image;
@@ -2935,22 +2980,22 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
         {
-            ImageContext<T, U> Image = new ImageContext<T, U>(Width, Height);
+            ImageContext<T, U> Image = new(Width, Height);
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0);
             PixelIndexedAdapter<T> Dest = Image.GetAdapter<T>(0, 0);
 
             Image.Palette.Datas.Add(default);
             Image.Palette.Datas.Add(PixelHelper.ToPixel<T>(255, 255, 255, 255));
 
-            int MaxX = Sorc.MaxX;
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+            int Dx = -Width;
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i <= MaxX; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     if (Predicate(i, j, Sorc))
                         Dest.OverrideIndex(1);
 
-                Sorc.InternalMoveX(-MaxX);
-                Dest.InternalMoveX(-MaxX);
+                Sorc.InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Image;
@@ -2959,7 +3004,7 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
         {
-            ImageContext<T, U> Image = new ImageContext<T, U>(Width, Height);
+            ImageContext<T, U> Image = new(Width, Height);
 
             Image.Palette.Datas.Add(default);
             Image.Palette.Datas.Add(PixelHelper.ToPixel<T>(255, 255, 255, 255));
@@ -2968,7 +3013,7 @@ namespace MenthaAssembly.Media.Imaging
             {
                 PixelAdapter<T> Sorc = GetAdapter<T>(0, j);
                 PixelIndexedAdapter<T> Dest = Image.GetAdapter<T>(0, j);
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     if (Predicate(i, j, Sorc))
                         Dest.OverrideIndex(1);
             });
@@ -2979,17 +3024,18 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Cast<T>()
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
-
+            ImageContext<T> Result = new(Width, Height);
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0),
-                             Dest = Result.GetAdapter<T>(0, 0);
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+                            Dest = Result.GetAdapter<T>(0, 0);
+
+            int Dx = -Width;
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Sorc);
 
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
+                Sorc.InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Result;
@@ -2997,14 +3043,14 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Cast<T>(ParallelOptions Options)
             where T : unmanaged, IPixel
         {
-            ImageContext<T> Result = new ImageContext<T>(Width, Height);
+            ImageContext<T> Result = new(Width, Height);
 
             _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Sorc = GetAdapter<T>(0, j),
                                 Dest = Result.GetAdapter<T>(0, j);
 
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.Override(Sorc);
             });
 
@@ -3014,7 +3060,7 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
         {
-            ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
+            ImageContext<T, U> Result = new(Width, Height);
             ImagePalette<T> Palette = Result.Palette;
 
             PixelAdapter<T> Sorc = GetAdapter<T>(0, 0);
@@ -3023,15 +3069,16 @@ namespace MenthaAssembly.Media.Imaging
                                                                   out Func<QuantizationBox, PixelAdapter<T>, bool> Contain,
                                                                   out Func<QuantizationBox, T> GetColor).ToArray();
             Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));
-
             Sorc.InternalMove(0, 0);
-            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextLine(), Dest.InternalMoveNextLine())
+
+            int Dx = -Width;
+            for (int j = 0; j < Height; j++, Sorc.InternalMoveNextY(), Dest.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.OverrideIndex(Boxes.IndexOf(b => Contain(b, Sorc)));
 
-                Sorc.InternalMoveX(-Width);
-                Dest.InternalMoveX(-Width);
+                Sorc.InternalOffsetX(Dx);
+                Dest.InternalOffsetX(Dx);
             }
 
             return Result;
@@ -3040,12 +3087,12 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
             where U : unmanaged, IPixelIndexed
         {
-            ImageContext<T, U> Result = new ImageContext<T, U>(Width, Height);
+            ImageContext<T, U> Result = new(Width, Height);
             ImagePalette<T> Palette = Result.Palette;
             PixelAdapter<T> Sorc0 = GetAdapter<T>(0, 0);
             QuantizationBox[] Boxes = ImageContextHelper.BoxQuantize(Sorc0, QuantizationTypes.Median, Palette.Capacity, Options ?? DefaultParallelOptions,
-                                                                  out Func<QuantizationBox, PixelAdapter<T>, bool> Contain,
-                                                                  out Func<QuantizationBox, T> GetColor).ToArray();
+                                                                     out Func<QuantizationBox, PixelAdapter<T>, bool> Contain,
+                                                                     out Func<QuantizationBox, T> GetColor).ToArray();
             Palette.Datas.AddRange(Boxes.Select(b => GetColor(b)));
 
             _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
@@ -3054,7 +3101,7 @@ namespace MenthaAssembly.Media.Imaging
                 PixelIndexedAdapter<T> Dest = Result.GetAdapter<T>(0, j);
 
                 Sorc.InternalMove(0, j);
-                for (int i = 0; i < Width; i++, Sorc.InternalMoveNext(), Dest.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Sorc.InternalMoveNextX(), Dest.InternalMoveNextX())
                     Dest.OverrideIndex(Boxes.IndexOf(b => Contain(b, Sorc)));
             });
 
@@ -3065,19 +3112,21 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             PixelAdapter<T> Adapter = GetAdapter<T>(0, 0);
-            for (int j = 0; j < Height; j++, Adapter.InternalMoveNextLine())
+
+            int Dx = -Width;
+            for (int j = 0; j < Height; j++, Adapter.InternalMoveNextY())
             {
-                for (int i = 0; i < Width; i++, Adapter.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Adapter.InternalMoveNextX())
                     Adapter.Override(Color);
 
-                Adapter.InternalMoveX(-Width);
+                Adapter.InternalOffsetX(Dx);
             }
         }
         public void Clear<T>(T Color, ParallelOptions Options) where T : unmanaged, IPixel
             => Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
                 PixelAdapter<T> Adapter = GetAdapter<T>(0, j);
-                for (int i = 0; i < Width; i++, Adapter.InternalMoveNext())
+                for (int i = 0; i < Width; i++, Adapter.InternalMoveNextX())
                     Adapter.Override(Color);
             });
 

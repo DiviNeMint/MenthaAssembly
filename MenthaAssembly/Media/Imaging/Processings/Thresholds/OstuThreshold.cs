@@ -52,7 +52,7 @@ namespace MenthaAssembly.Media.Imaging
                 SumGrays += Gray;
             }
 
-            SumPixels = (Adapter.MaxX + 1) * (Adapter.MaxY + 1);
+            SumPixels = Adapter.XLength * Adapter.YLength;
             return Histogram;
         }
 

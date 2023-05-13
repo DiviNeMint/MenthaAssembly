@@ -6,9 +6,9 @@
     {
         private readonly PixelAdapter<T> Adapter;
 
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
 #pragma warning disable IDE0044 // 新增唯讀修飾元
         // If sets readonly, it will cause pixel's value can't change.
@@ -57,8 +57,8 @@
         {
             X = Adapter.X;
             Y = Adapter.Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             BitsPerPixel = Adapter.BitsPerPixel;
             this.Adapter = Adapter.Adapter;
 
@@ -72,8 +72,8 @@
         {
             X = Adapter.X;
             Y = Adapter.Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             BitsPerPixel = Adapter.BitsPerPixel;
             this.Adapter = Adapter;
         }
@@ -171,36 +171,36 @@
             Adapter.InternalMove(X, Y);
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
-            Adapter.InternalMoveX(OffsetX);
+            Adapter.InternalOffsetX(OffsetX);
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
-            Adapter.InternalMoveY(OffsetY);
-            IsPixelValid = false;
-        }
-
-        protected internal override void InternalMoveNext()
-        {
-            Adapter.InternalMoveNext();
-            IsPixelValid = false;
-        }
-        protected internal override void InternalMovePrevious()
-        {
-            Adapter.InternalMovePrevious();
+            Adapter.InternalOffsetY(OffsetY);
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextX()
         {
-            Adapter.InternalMoveNextLine();
+            Adapter.InternalMoveNextX();
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousX()
         {
-            Adapter.InternalMovePreviousLine();
+            Adapter.InternalMovePreviousX();
+            IsPixelValid = false;
+        }
+
+        protected internal override void InternalMoveNextY()
+        {
+            Adapter.InternalMoveNextY();
+            IsPixelValid = false;
+        }
+        protected internal override void InternalMovePreviousY()
+        {
+            Adapter.InternalMovePreviousY();
             IsPixelValid = false;
         }
 

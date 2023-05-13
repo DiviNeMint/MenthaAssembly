@@ -1,21 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public sealed unsafe class BernsenThresholdingPixelAdapter<T> : PixelAdapter<T>
+    public sealed unsafe class RangesThresholdingPixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
     {
         private static readonly Type GrayType = typeof(Gray8);
 
-        private readonly ImagePatch Source;
+        private readonly PixelAdapter<T> Source;
 
-        private readonly int MaxIndex;
-        public int Level { get; }
+        public override int XLength => Source.XLength;
 
-        public override int MaxX { get; }
-
-        public override int MaxY { get; }
+        public override int YLength => Source.YLength;
 
         private byte _Value;
         public override byte A
@@ -54,9 +50,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        public override int BitsPerPixel { get; }
+        public override int BitsPerPixel
+            => Source.BitsPerPixel;
 
-        private BernsenThresholdingPixelAdapter(BernsenThresholdingPixelAdapter<T> Adapter)
+        private readonly byte[] Ranges;
+        private RangesThresholdingPixelAdapter(RangesThresholdingPixelAdapter<T> Adapter)
         {
             if (Adapter.IsPixelValid)
             {
@@ -64,56 +62,28 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 _Value = Adapter._Value;
             }
 
-            if (Adapter.IsCacheValid)
-            {
-                IsCacheValid = true;
-                Cache = new List<int>(Adapter.Cache);
-            }
-            else
-            {
-                Cache = new List<int>();
-            }
-
-            X = Adapter.X;
-            Y = Adapter.Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
-            Level = Adapter.Level;
+            Ranges = Adapter.Ranges;
             Source = Adapter.Source.Clone();
-            MaxIndex = Adapter.MaxIndex;
-            BitsPerPixel = Adapter.BitsPerPixel;
             GetGray = Adapter.GetGray;
         }
-        public BernsenThresholdingPixelAdapter(IImageContext Context, int Level)
+        public RangesThresholdingPixelAdapter(IImageContext Context, params byte[] Ranges)
         {
-            X = 0;
-            Y = 0;
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
-            Cache = new List<int>();
-            this.Level = Level;
+            if ((Ranges.Length & 0x01) > 1)
+                throw new ArgumentException("The length of the range must be an even number.");
 
-            int Size = (Level << 1) + 1;
-            Source = new ImagePatch(Context, Size, Size);
-            MaxIndex = Size * Size - 1;
-            BitsPerPixel = Context.BitsPerPixel;
+            this.Ranges = Ranges;
+            Source = Context.GetAdapter<T>(0, 0);
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
         }
-        public BernsenThresholdingPixelAdapter(PixelAdapter<T> Adapter, int Level)
+        public RangesThresholdingPixelAdapter(PixelAdapter<T> Adapter, params byte[] Ranges)
         {
-            Adapter.InternalMove(0, 0);
-            X = 0;
-            Y = 0;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
-            Cache = new List<int>();
-            this.Level = Level;
+            if ((Ranges.Length & 0x01) > 1)
+                throw new ArgumentException("The length of the range must be an even number.");
 
-            int Size = (Level << 1) + 1;
-            Source = new ImagePatch(Adapter, Size, Size);
-            MaxIndex = Size * Size - 1;
-            BitsPerPixel = Adapter.BitsPerPixel;
+            Adapter.InternalMove(0, 0);
+            this.Ranges = Ranges;
+            Source = Adapter;
             GetGray = typeof(T) == GrayType ? a => a.R :
                                               a => a.ToGray();
         }
@@ -179,102 +149,72 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
         }
 
-        private bool IsPixelValid = false,
-                     IsCacheValid = false;
-        private readonly Func<IReadOnlyPixel, int> GetGray;
-        private readonly List<int> Cache = new();
+        private bool IsPixelValid = false;
+        private readonly Func<PixelAdapter<T>, byte> GetGray;
         private void EnsurePixel()
         {
             if (IsPixelValid)
                 return;
 
-            List<int> Left = new();
-            int Rx = Source.Width - 1,
-                Gray = GetGray(Source[Level, Level]);
+            byte Gray = GetGray(Source);
 
-            for (int j = 0; j < Source.Height; j++)
-                AddOrder(Left, GetGray(Source[0, j]));
-
-            if (!IsCacheValid)
+            bool IsContain = false;
+            for (int i = 0; i < Ranges.Length;)
             {
-                Cache.Clear();
-                Cache.AddRange(Left);
+                int Sv = Ranges[i++],
+                    Ev = Ranges[i++];
+                if (Sv <= Gray && Gray <= Ev)
+                {
+                    IsContain = true;
+                    break;
+                }
 
-                for (int i = 1; i < Rx; i++)
-                    for (int j = 0; j < Source.Height; j++)
-                        AddOrder(Cache, GetGray(Source[i, j]));
             }
 
-            for (int j = 0; j < Source.Height; j++)
-                AddOrder(Cache, GetGray(Source[Rx, j]));
-
-            int Threshold = (Cache[0] + Cache[MaxIndex]) >> 1;
-
-            _Value = Gray < Threshold ? byte.MinValue : byte.MaxValue;
-
-            foreach (byte Lv in Left)
-                Cache.Remove(Lv);
-
+            _Value = IsContain ? byte.MaxValue : byte.MinValue;
             IsPixelValid = true;
-            IsCacheValid = true;
-        }
-
-        private void AddOrder(List<int> Collection, int Value)
-        {
-            int i = 0;
-            for (; i < Collection.Count; i++)
-                if (Value < Collection[i])
-                    break;
-
-            Collection.Insert(i, Value);
         }
 
         protected internal override void InternalMove(int X, int Y)
         {
-            Source.Move(X, Y);
+            Source.InternalMove(X, Y);
             IsPixelValid = false;
-            IsCacheValid = false;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
-            Source.Move(Source.X + OffsetX, Source.Y);
+            Source.InternalOffsetX(OffsetX);
             IsPixelValid = false;
-            IsCacheValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
-            Source.Move(Source.X, Source.Y + OffsetY);
+            Source.InternalOffsetY(OffsetY);
             IsPixelValid = false;
-            IsCacheValid = false;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
-            Source.MoveNext();
+            Source.InternalMoveNextX();
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
         {
-            Source.MovePrevious();
+            Source.InternalMovePreviousX();
             IsPixelValid = false;
-            IsCacheValid = false;
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
         {
-            Source.MoveNextLine();
+            Source.InternalMoveNextY();
             IsPixelValid = false;
-            IsCacheValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
         {
-            Source.MovePreviousLine();
+            Source.InternalMovePreviousY();
             IsPixelValid = false;
-            IsCacheValid = false;
         }
 
         public override PixelAdapter<T> Clone()
-            => new BernsenThresholdingPixelAdapter<T>(this);
+            => new RangesThresholdingPixelAdapter<T>(this);
 
     }
 }

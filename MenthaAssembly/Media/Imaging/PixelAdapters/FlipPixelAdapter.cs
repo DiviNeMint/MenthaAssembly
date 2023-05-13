@@ -7,11 +7,11 @@ namespace MenthaAssembly.Media.Imaging.Utils
     {
         private readonly PixelAdapter<T> Source;
 
-        public override int MaxX
-            => Source.MaxX;
+        public override int XLength
+            => Source.XLength;
 
-        public override int MaxY
-            => Source.MaxY;
+        public override int YLength
+            => Source.YLength;
 
         public override byte A
             => Source.A;
@@ -36,32 +36,32 @@ namespace MenthaAssembly.Media.Imaging.Utils
             {
                 case FlipMode.Horizontal:
                     {
-                        ConvertX = x => MaxX - x;
+                        ConvertX = x => XLength - x - 1;
                         ConvertY = y => y;
-                        _InternalMoveNext = () => Source.InternalMovePrevious();
-                        _InternalMovePrevious = () => Source.InternalMoveNext();
-                        _InternalMoveNextLine = () => Source.InternalMoveNextLine();
-                        _InternalMovePreviousLine = () => Source.InternalMovePreviousLine();
+                        _InternalMoveNext = Source.InternalMovePreviousX;
+                        _InternalMovePrevious = Source.InternalMoveNextX;
+                        _InternalMoveNextLine = Source.InternalMoveNextY;
+                        _InternalMovePreviousLine = Source.InternalMovePreviousY;
                         break;
                     }
                 case FlipMode.Vertical:
                     {
                         ConvertX = x => x;
-                        ConvertY = y => MaxY - y;
-                        _InternalMoveNext = () => Source.InternalMoveNext();
-                        _InternalMovePrevious = () => Source.InternalMovePrevious();
-                        _InternalMoveNextLine = () => Source.InternalMovePreviousLine();
-                        _InternalMovePreviousLine = () => Source.InternalMoveNextLine();
+                        ConvertY = y => YLength - y - 1;
+                        _InternalMoveNext = Source.InternalMoveNextX;
+                        _InternalMovePrevious = Source.InternalMovePreviousX;
+                        _InternalMoveNextLine = Source.InternalMovePreviousY;
+                        _InternalMovePreviousLine = Source.InternalMoveNextY;
                         break;
                     }
                 case FlipMode.Horizontal | FlipMode.Vertical:
                     {
-                        ConvertX = x => MaxX - x;
-                        ConvertY = y => MaxY - y;
-                        _InternalMoveNext = () => Source.InternalMovePrevious();
-                        _InternalMovePrevious = () => Source.InternalMoveNext();
-                        _InternalMoveNextLine = () => Source.InternalMovePreviousLine();
-                        _InternalMovePreviousLine = () => Source.InternalMoveNextLine();
+                        ConvertX = x => XLength - x - 1;
+                        ConvertY = y => YLength - y - 1;
+                        _InternalMoveNext = Source.InternalMovePreviousX;
+                        _InternalMovePrevious = Source.InternalMoveNextX;
+                        _InternalMoveNextLine = Source.InternalMovePreviousY;
+                        _InternalMovePreviousLine = Source.InternalMoveNextY;
                         break;
                     }
                 case FlipMode.None:
@@ -69,10 +69,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     {
                         ConvertX = x => x;
                         ConvertY = y => y;
-                        _InternalMoveNext = () => Source.InternalMoveNext();
-                        _InternalMovePrevious = () => Source.InternalMovePrevious();
-                        _InternalMoveNextLine = () => Source.InternalMoveNextLine();
-                        _InternalMovePreviousLine = () => Source.InternalMovePreviousLine();
+                        _InternalMoveNext = Source.InternalMoveNextX;
+                        _InternalMovePrevious = Source.InternalMovePreviousX;
+                        _InternalMoveNextLine = Source.InternalMoveNextY;
+                        _InternalMovePreviousLine = Source.InternalMovePreviousY;
                         break;
                     }
             }
@@ -102,32 +102,32 @@ namespace MenthaAssembly.Media.Imaging.Utils
             {
                 case FlipMode.Horizontal:
                     {
-                        ConvertX = x => MaxX - x;
+                        ConvertX = x => XLength - x - 1;
                         ConvertY = y => y;
-                        _InternalMoveNext = () => Source.InternalMovePrevious();
-                        _InternalMovePrevious = () => Source.InternalMoveNext();
-                        _InternalMoveNextLine = () => Source.InternalMoveNextLine();
-                        _InternalMovePreviousLine = () => Source.InternalMovePreviousLine();
+                        _InternalMoveNext = Source.InternalMovePreviousX;
+                        _InternalMovePrevious = Source.InternalMoveNextX;
+                        _InternalMoveNextLine = Source.InternalMoveNextY;
+                        _InternalMovePreviousLine = Source.InternalMovePreviousY;
                         break;
                     }
                 case FlipMode.Vertical:
                     {
                         ConvertX = x => x;
-                        ConvertY = y => MaxY - y;
-                        _InternalMoveNext = () => Source.InternalMoveNext();
-                        _InternalMovePrevious = () => Source.InternalMovePrevious();
-                        _InternalMoveNextLine = () => Source.InternalMovePreviousLine();
-                        _InternalMovePreviousLine = () => Source.InternalMoveNextLine();
+                        ConvertY = y => YLength - y - 1;
+                        _InternalMoveNext = Source.InternalMoveNextX;
+                        _InternalMovePrevious = Source.InternalMovePreviousX;
+                        _InternalMoveNextLine = Source.InternalMovePreviousY;
+                        _InternalMovePreviousLine = Source.InternalMoveNextY;
                         break;
                     }
                 case FlipMode.Horizontal | FlipMode.Vertical:
                     {
-                        ConvertX = x => MaxX - x;
-                        ConvertY = y => MaxY - y;
-                        _InternalMoveNext = () => Source.InternalMovePrevious();
-                        _InternalMovePrevious = () => Source.InternalMoveNext();
-                        _InternalMoveNextLine = () => Source.InternalMovePreviousLine();
-                        _InternalMovePreviousLine = () => Source.InternalMoveNextLine();
+                        ConvertX = x => XLength - x - 1;
+                        ConvertY = y => YLength - y - 1;
+                        _InternalMoveNext = Source.InternalMovePreviousX;
+                        _InternalMovePrevious = Source.InternalMoveNextX;
+                        _InternalMoveNextLine = Source.InternalMovePreviousY;
+                        _InternalMovePreviousLine = Source.InternalMoveNextY;
                         break;
                     }
                 case FlipMode.None:
@@ -135,10 +135,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     {
                         ConvertX = x => x;
                         ConvertY = y => y;
-                        _InternalMoveNext = () => Source.InternalMoveNext();
-                        _InternalMovePrevious = () => Source.InternalMovePrevious();
-                        _InternalMoveNextLine = () => Source.InternalMoveNextLine();
-                        _InternalMovePreviousLine = () => Source.InternalMovePreviousLine();
+                        _InternalMoveNext = Source.InternalMoveNextX;
+                        _InternalMovePrevious = Source.InternalMovePreviousX;
+                        _InternalMoveNextLine = Source.InternalMoveNextY;
+                        _InternalMovePreviousLine = Source.InternalMovePreviousY;
                         break;
                     }
             }
@@ -175,19 +175,19 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         protected internal override void InternalMove(int X, int Y)
             => Source.InternalMove(ConvertX(X), ConvertY(Y));
-        protected internal override void InternalMoveX(int OffsetX)
-            => Source.InternalMoveX(ConvertX(OffsetX) - ConvertX(0));
-        protected internal override void InternalMoveY(int OffsetY)
-            => Source.InternalMoveY(ConvertY(OffsetY) - ConvertY(0));
+        protected internal override void InternalOffsetX(int OffsetX)
+            => Source.InternalOffsetX(ConvertX(OffsetX) - ConvertX(0));
+        protected internal override void InternalOffsetY(int OffsetY)
+            => Source.InternalOffsetY(ConvertY(OffsetY) - ConvertY(0));
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
             => _InternalMoveNext();
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
             => _InternalMovePrevious();
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
             => _InternalMoveNextLine();
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
             => _InternalMovePreviousLine();
 
         public override PixelAdapter<T> Clone()

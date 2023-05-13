@@ -50,7 +50,7 @@ namespace MenthaAssembly.Media.Imaging
                 S += Gray;
             }
 
-            MeanGray = (byte)(S / ((long)(Adapter.MaxX + 1) * (Adapter.MaxY + 1)));
+            MeanGray = (byte)(S / ((long)Adapter.XLength * Adapter.YLength));
             return Histogram;
         }
 

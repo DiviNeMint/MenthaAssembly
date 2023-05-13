@@ -4,11 +4,19 @@ using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public sealed class ImagePatch : ICloneable
+    public sealed class ImagePatch : IImageAdapter, ICloneable
     {
         public int Width { get; }
 
         public int Height { get; }
+
+        public int X { private set; get; }
+
+        public int Y { private set; get; }
+
+        public int XLength { get; }
+
+        public int YLength { get; }
 
         public IReadOnlyPixel this[int X, int Y]
         {
@@ -24,8 +32,7 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        internal int X, Y;
-        private readonly int Cx, Cy, MaxX, MaxY;
+        private readonly int Cx, Cy;
         private readonly IPixelAdapter[,] Adapters;
         public ImagePatch(ImagePatch Patch)
         {
@@ -34,8 +41,8 @@ namespace MenthaAssembly.Media.Imaging
 
             X = Patch.X;
             Y = Patch.Y;
-            MaxX = Patch.MaxX;
-            MaxY = Patch.MaxY;
+            XLength = Patch.XLength;
+            YLength = Patch.YLength;
             Cx = Patch.Cx;
             Cy = Patch.Cy;
 
@@ -57,8 +64,8 @@ namespace MenthaAssembly.Media.Imaging
             Adapters = new IPixelAdapter[PatchWidth, PatchHeight];
             Adapters[Cy, Cx] = Adapter;
 
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
         }
         public ImagePatch(IImageContext Context, int X, int Y, int PatchWidth, int PatchHeight)
         {
@@ -78,16 +85,16 @@ namespace MenthaAssembly.Media.Imaging
             Adapters = new IPixelAdapter[PatchWidth, PatchHeight];
             Adapters[Cy, Cx] = Adapter;
 
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
         }
         public ImagePatch(IPixelAdapter Adapter, int PatchWidth, int PatchHeight)
         {
             Width = PatchWidth;
             Height = PatchHeight;
 
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             Cx = PatchWidth >> 1;
             Cy = PatchHeight >> 1;
 
@@ -97,8 +104,8 @@ namespace MenthaAssembly.Media.Imaging
         }
         public ImagePatch(IPixelAdapter Adapter, int X, int Y, int PatchWidth, int PatchHeight)
         {
-            if (X < 0 || Adapter.MaxX < X ||
-                Y < 0 || Adapter.MaxY < Y)
+            if (X < 0 || Adapter.XLength <= X ||
+                Y < 0 || Adapter.YLength <= Y)
                 throw new IndexOutOfRangeException();
 
             Width = PatchWidth;
@@ -106,8 +113,8 @@ namespace MenthaAssembly.Media.Imaging
 
             this.X = X;
             this.Y = Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             Cx = PatchWidth >> 1;
             Cy = PatchHeight >> 1;
 
@@ -118,8 +125,8 @@ namespace MenthaAssembly.Media.Imaging
 
         public void Move(int X, int Y)
         {
-            X = X.Clamp(0, MaxX);
-            Y = Y.Clamp(0, MaxX);
+            X = X.Clamp(0, XLength - 1);
+            Y = Y.Clamp(0, YLength - 1);
 
             for (int i = 0; i < Width; i++)
             {
@@ -133,62 +140,69 @@ namespace MenthaAssembly.Media.Imaging
             this.Y = Adapter.Y;
         }
 
-        public void MoveNext()
+        public void OffsetX(int Delta)
+            => throw new NotImplementedException();
+        public void OffsetY(int Delta)
+            => throw new NotImplementedException();
+
+        public void MoveNextX()
         {
-            if (MaxX <= X)
+            int Tx = X + 1;
+            if (XLength <= Tx)
                 return;
 
             for (int i = X == 0 ? 1 : 0; i < Width; i++)
                 for (int j = 0; j < Height; j++)
-                    Adapters[j, i]?.MoveNext();
+                    Adapters[j, i]?.MoveNextX();
 
-            X++;
+            X = Tx;
         }
-        public void MovePrevious()
+        public void MoveNextY()
         {
-            if (X <= 0)
-                return;
-
-            int Ex = X < MaxX ? Width : Width - 1;
-            for (int i = 0; i < Ex; i++)
-                for (int j = 0; j < Height; j++)
-                    Adapters[j, i]?.MovePrevious();
-
-            X--;
-        }
-
-        public void MoveNextLine()
-        {
-            if (MaxY <= Y)
+            int Ty = Y + 1;
+            if (YLength <= Ty)
                 return;
 
             for (int i = 0; i < Width; i++)
                 for (int j = Y == 0 ? 1 : 0; j < Height; j++)
-                    Adapters[j, i]?.MoveNextLine();
+                    Adapters[j, i]?.MoveNextY();
 
-            Y++;
+            Y = Ty;
         }
-        public void MovePreviousLine()
+
+        public void MovePreviousX()
+        {
+            if (X <= 0)
+                return;
+
+            int Ex = X < XLength - 1 ? Width : Width - 1;
+            for (int i = 0; i < Ex; i++)
+                for (int j = 0; j < Height; j++)
+                    Adapters[j, i]?.MovePreviousX();
+
+            X--;
+        }
+        public void MovePreviousY()
         {
             if (Y <= 0)
                 return;
 
-            int Ey = Y < MaxY ? Height : Height - 1;
+            int Ey = Y < YLength - 1 ? Height : Height - 1;
             for (int i = 0; i < Width; i++)
                 for (int j = 0; j < Ey; j++)
-                    Adapters[j, i]?.MovePreviousLine();
+                    Adapters[j, i]?.MovePreviousY();
 
             Y--;
         }
 
         public ImagePatch Clone()
-            => new ImagePatch(this);
+            => new(this);
         object ICloneable.Clone()
             => Clone();
 
         public override string ToString()
         {
-            StringBuilder Builder = new StringBuilder();
+            StringBuilder Builder = new();
             try
             {
                 for (int j = 0; j < Height; j++)

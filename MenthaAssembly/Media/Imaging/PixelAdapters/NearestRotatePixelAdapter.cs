@@ -9,11 +9,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private readonly double Sin, Cos, FracX0, FracY0;
         private double FracX, FracY;
 
-        private readonly int MaxSx, MaxSy;
+        public override int XLength { get; }
 
-        public override int MaxX { get; }
-
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         public override byte A
         {
@@ -58,10 +56,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         {
             Sin = Adapter.Sin;
             Cos = Adapter.Cos;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
-            MaxSx = Adapter.MaxSx;
-            MaxSy = Adapter.MaxSy;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             FracX = Adapter.FracX;
             FracY = Adapter.FracY;
             FracX0 = Adapter.FracX0;
@@ -73,45 +69,34 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public NearestRotatePixelAdapter(IImageContext Context, double Angle)
         {
             double Theta = Angle * MathHelper.UnitTheta;
+            int Sw = Context.Width,
+                Sh = Context.Height;
 
             Sin = Math.Sin(Theta);
             Cos = Math.Cos(Theta);
-            MaxSx = Context.Width;
-            MaxSy = Context.Height;
-
-            MaxX = (int)(Math.Abs(MaxSx * Cos) + Math.Abs(MaxSy * Sin));
-            MaxY = (int)(Math.Abs(MaxSx * Sin) + Math.Abs(MaxSy * Cos));
-            FracX0 = -(MaxX * Cos + MaxY * Sin - MaxSx) / 2d;
-            FracY0 = (MaxX * Sin - MaxY * Cos + MaxSy) / 2d;
+            XLength = (int)(Math.Abs(Sw * Cos) + Math.Abs(Sh * Sin));
+            YLength = (int)(Math.Abs(Sw * Sin) + Math.Abs(Sh * Cos));
+            FracX0 = -(XLength * Cos + YLength * Sin - Sw) / 2d;
+            FracY0 = (XLength * Sin - YLength * Cos + Sh) / 2d;
             FracX = FracX0;
             FracY = FracY0;
-
-            MaxX--;
-            MaxY--;
-            MaxSx--;
-            MaxSy--;
 
             Source = Context.GetAdapter<T>(0, 0);
         }
         public NearestRotatePixelAdapter(PixelAdapter<T> Adapter, double Angle)
         {
             double Theta = Angle * MathHelper.UnitTheta;
+            int Sw = Adapter.XLength,
+                Sh = Adapter.YLength;
 
             Sin = Math.Sin(Theta);
             Cos = Math.Cos(Theta);
-            MaxSx = Adapter.MaxX;
-            MaxSy = Adapter.MaxY;
-            MaxX = (int)(Math.Abs(MaxSx * Cos) + Math.Abs(MaxSy * Sin));
-            MaxY = (int)(Math.Abs(MaxSx * Sin) + Math.Abs(MaxSy * Cos));
-            FracX0 = -(MaxX * Cos + MaxY * Sin - MaxSx) / 2d;
-            FracY0 = (MaxX * Sin - MaxY * Cos + MaxSy) / 2d;
+            XLength = (int)(Math.Abs(Sw * Cos) + Math.Abs(Sh * Sin));
+            YLength = (int)(Math.Abs(Sw * Sin) + Math.Abs(Sh * Cos));
+            FracX0 = -(XLength * Cos + YLength * Sin - Sw) / 2d;
+            FracY0 = (XLength * Sin - YLength * Cos + Sh) / 2d;
             FracX = FracX0;
             FracY = FracY0;
-
-            MaxX--;
-            MaxY--;
-            MaxSx--;
-            MaxSy--;
 
             Source = Adapter;
         }
@@ -176,7 +161,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             int a1 = (int)Math.Round(FracX),
                 b1 = (int)Math.Round(FracY);
 
-            IsEmptyPixel = a1 < 0 || MaxSx < a1 || b1 < 0 || MaxSy < b1;
+            IsEmptyPixel = a1 < 0 || Source.XLength <= a1 || b1 < 0 || Source.YLength <= b1;
             if (IsEmptyPixel)
                 return;
 
@@ -190,39 +175,39 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracY = FracY0 + Y * Cos - X * Sin;
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
             FracX += Cos * OffsetX;
             FracY -= Sin * OffsetX;
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
             FracX += Sin * OffsetY;
             FracY += Cos * OffsetY;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
             FracX += Cos;
             FracY -= Sin;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
         {
             FracX -= Cos;
             FracY += Sin;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
         {
             FracX += Sin;
             FracY += Cos;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
         {
             FracX -= Sin;
             FracY -= Cos;

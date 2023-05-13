@@ -7,9 +7,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
     {
         private readonly PixelAdapter<T> Source;
 
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         public override byte A
             => Source.A;
@@ -32,24 +32,24 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Source = Adapter.Source.Clone();
             Sx = Adapter.Sx;
             Sy = Adapter.Sy;
-            MaxX = Adapter.Source.MaxX;
-            MaxY = Adapter.Source.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
         }
         public CropPixelAdapter(IImageContext Context, int X, int Y, int Width, int Height)
         {
             Source = Context.GetAdapter<T>(X, Y);
             Sx = X;
             Sy = Y;
-            MaxX = Math.Min(Width - 1, Source.MaxX - X);
-            MaxY = Math.Min(Height - 1, Source.MaxY - Y);
+            XLength = Math.Min(Width, Source.XLength - X);
+            YLength = Math.Min(Height, Source.YLength - Y);
         }
         public CropPixelAdapter(PixelAdapter<T> Adapter, int X, int Y, int Width, int Height)
         {
             Source = Adapter;
             Sx = X;
             Sy = Y;
-            MaxX = Math.Min(Width - 1, Source.MaxX - X);
-            MaxY = Math.Min(Height - 1, Source.MaxY - Y);
+            XLength = Math.Min(Width, Source.XLength - X);
+            YLength = Math.Min(Height, Source.YLength - Y);
         }
 
         public override void Override(T Pixel)
@@ -80,20 +80,20 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         protected internal override void InternalMove(int X, int Y)
             => Source.InternalMove(Sx + X, Sy + Y);
-        protected internal override void InternalMoveX(int OffsetX)
-            => Source.InternalMoveX(OffsetX);
-        protected internal override void InternalMoveY(int OffsetY)
-            => Source.InternalMoveY(OffsetY);
+        protected internal override void InternalOffsetX(int OffsetX)
+            => Source.InternalOffsetX(OffsetX);
+        protected internal override void InternalOffsetY(int OffsetY)
+            => Source.InternalOffsetY(OffsetY);
 
-        protected internal override void InternalMoveNext()
-            => Source.InternalMoveNext();
-        protected internal override void InternalMovePrevious()
-            => Source.InternalMovePrevious();
+        protected internal override void InternalMoveNextX()
+            => Source.InternalMoveNextX();
+        protected internal override void InternalMovePreviousX()
+            => Source.InternalMovePreviousX();
 
-        protected internal override void InternalMoveNextLine()
-            => Source.InternalMoveNextLine();
-        protected internal override void InternalMovePreviousLine()
-            => Source.InternalMovePreviousLine();
+        protected internal override void InternalMoveNextY()
+            => Source.InternalMoveNextY();
+        protected internal override void InternalMovePreviousY()
+            => Source.InternalMovePreviousY();
 
         public override PixelAdapter<T> Clone()
             => new CropPixelAdapter<T>(this);

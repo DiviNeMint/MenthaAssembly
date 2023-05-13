@@ -6,12 +6,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
         where T : unmanaged, IPixel
     {
         private readonly PixelAdapter<T> Source;
+        private readonly int SourceMaxX, SourceMaxY;
         private readonly float StepX, StepY;
         private float FracX, FracY;
 
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         private byte _A = byte.MaxValue;
         public override byte A
@@ -68,40 +69,58 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 _B = Adapter._B;
             }
 
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
             StepX = Adapter.StepX;
             StepY = Adapter.StepY;
             FracX = Adapter.FracX;
             FracY = Adapter.FracY;
             IFracY = Adapter.IFracY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
+
             Source = Adapter.Source.Clone();
+            SourceMaxX = Adapter.SourceMaxX;
+            SourceMaxY = Adapter.SourceMaxY;
             CalculateAlpth = Adapter.CalculateAlpth;
         }
         public BilinearResizePixelAdapter(IImageContext Context, int NewWidth, int NewHeight)
         {
+            int Sw = Context.Width,
+                Sh = Context.Height;
+
+            StepX = (float)Sw / NewWidth;
+            StepY = (float)Sh / NewHeight;
+            XLength = NewWidth;
+            YLength = NewHeight;
+
             Source = Context.GetAdapter<T>(0, 0);
-            StepX = (float)Context.Width / NewWidth;
-            StepY = (float)Context.Height / NewHeight;
-            MaxX = NewWidth - 1;
-            MaxY = NewHeight - 1;
+            SourceMaxX = Sw - 1;
+            SourceMaxY = Sh - 1;
             CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
         }
         public BilinearResizePixelAdapter(PixelAdapter<T> Adapter, int NewWidth, int NewHeight)
         {
+            int Sw = Adapter.XLength,
+                Sh = Adapter.YLength;
+
+            StepX = (float)Sw / NewWidth;
+            StepY = (float)Sh / NewHeight;
+            XLength = NewWidth;
+            YLength = NewHeight;
+
             Source = Adapter;
-            StepX = (float)(Adapter.MaxX + 1) / NewWidth;
-            StepY = (float)(Adapter.MaxY + 1) / NewHeight;
-            MaxX = NewWidth - 1;
-            MaxY = NewHeight - 1;
+            SourceMaxX = Sw - 1;
+            SourceMaxY = Sh - 1;
             CalculateAlpth = !PixelHelper.IsNonAlphaPixel(typeof(T));
             Adapter.InternalMove(0, 0);
         }
         internal BilinearResizePixelAdapter(IImageContext Context, int X, int Y, float StepX, float StepY)
         {
+            int Sw = Context.Width,
+                Sh = Context.Height;
+
             // Can calculate by step & context size
-            MaxX = -1;
-            MaxY = -1;
+            XLength = -1;
+            YLength = -1;
 
             this.StepX = StepX;
             this.StepY = StepY;
@@ -112,6 +131,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             int Tx = (int)Math.Floor(FracX),
                 Ty = (int)Math.Floor(FracY);
             Source = Context.GetAdapter<T>(Tx, Ty);
+            SourceMaxX = Sw - 1;
+            SourceMaxY = Sh - 1;
 
             FracX -= Tx;
             FracY -= Ty;
@@ -203,18 +224,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             p01 = p00,
                             p11 = p10;
 
-            if (Source.Y < Source.MaxY)
+            if (Source.Y < SourceMaxY)
             {
                 p10 = p00.Clone();
-                p10.InternalMoveNextLine();
+                p10.InternalMoveNextY();
             }
 
-            if (Source.X < Source.MaxX)
+            if (Source.X < SourceMaxX)
             {
                 p01 = p00.Clone();
                 p11 = p10.Clone();
-                p01.InternalMoveNext();
-                p11.InternalMoveNext();
+                p01.InternalMoveNextX();
+                p11.InternalMoveNextX();
             }
 
             float IFracX = 1f - FracX,
@@ -247,67 +268,67 @@ namespace MenthaAssembly.Media.Imaging.Utils
             IFracY = 1f - FracY;
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
             FracX += StepX * OffsetX;
 
             int Dx = (int)Math.Floor(FracX);
-            Source.MoveX(Dx);
+            Source.OffsetX(Dx);
 
             FracX -= Dx;
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
             FracY += StepY * OffsetY;
 
             int Dy = (int)Math.Floor(FracY);
-            Source.MoveY(Dy);
+            Source.OffsetY(Dy);
 
             FracY -= Dy;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
             FracX += StepX;
             while (FracX >= 1f)
             {
                 FracX -= 1f;
-                Source.MoveNext();
+                Source.MoveNextX();
             }
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePrevious()
-        {
-            FracX -= StepX;
-            while (FracX < 0f)
-            {
-                FracX += 1f;
-                Source.MovePrevious();
-            }
-            IsPixelValid = false;
-        }
-
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
         {
             FracY += StepY;
             while (FracY >= 1f)
             {
                 FracY -= 1f;
-                Source.MoveNextLine();
+                Source.MoveNextY();
             }
 
             IFracY = 1f - FracY;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+
+        protected internal override void InternalMovePreviousX()
+        {
+            FracX -= StepX;
+            while (FracX < 0f)
+            {
+                FracX += 1f;
+                Source.MovePreviousX();
+            }
+            IsPixelValid = false;
+        }
+        protected internal override void InternalMovePreviousY()
         {
             FracY -= StepY;
             while (FracY < 0f)
             {
                 FracY += 1f;
-                Source.MovePreviousLine();
+                Source.MovePreviousY();
             }
 
             IFracY = 1f - FracY;

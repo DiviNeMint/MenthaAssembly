@@ -9,9 +9,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private readonly float StepX, StepY;
         private float FracX, FracY;
 
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         public override byte A
             => Source.A;
@@ -31,8 +31,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private NearestResizePixelAdapter(NearestResizePixelAdapter<T> Adapter)
         {
             Source = Adapter.Source.Clone();
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             StepX = Adapter.StepX;
             StepY = Adapter.StepY;
             FracX = Adapter.FracX;
@@ -41,18 +41,18 @@ namespace MenthaAssembly.Media.Imaging.Utils
         public NearestResizePixelAdapter(IImageContext Context, int NewWidth, int NewHeight)
         {
             Source = Context.GetAdapter<T>(0, 0);
+            XLength = NewWidth;
+            YLength = NewHeight;
             StepX = (float)Context.Width / NewWidth;
             StepY = (float)Context.Height / NewHeight;
-            MaxX = NewWidth - 1;
-            MaxY = NewHeight - 1;
         }
         public NearestResizePixelAdapter(PixelAdapter<T> Adapter, int NewWidth, int NewHeight)
         {
             Source = Adapter;
-            StepX = (float)(Adapter.MaxX + 1) / NewWidth;
-            StepY = (float)(Adapter.MaxY + 1) / NewHeight;
-            MaxX = NewWidth - 1;
-            MaxY = NewHeight - 1;
+            XLength = NewWidth;
+            YLength = NewHeight;
+            StepX = (float)Adapter.XLength / NewWidth;
+            StepY = (float)Adapter.YLength / NewHeight;
             Adapter.InternalMove(0, 0);
         }
         internal NearestResizePixelAdapter(IImageContext Context, int X, int Y, float StepX, float StepY)
@@ -109,60 +109,60 @@ namespace MenthaAssembly.Media.Imaging.Utils
             FracX -= Tx;
             FracY -= Ty;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
             FracX += StepX * OffsetX;
 
             int Dx = (int)Math.Floor(FracX);
-            Source.InternalMoveX(Dx);
+            Source.InternalOffsetX(Dx);
 
             FracX -= Dx;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
             FracY += StepY * OffsetY;
 
             int Dy = (int)Math.Floor(FracY);
-            Source.InternalMoveY(Dy);
+            Source.InternalOffsetY(Dy);
 
             FracY -= Dy;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
             FracX += StepX;
             while (FracX >= 1f)
             {
                 FracX -= 1f;
-                Source.InternalMoveNext();
+                Source.InternalMoveNextX();
             }
         }
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
         {
             FracX -= StepX;
             while (FracX < 0f)
             {
                 FracX += 1f;
-                Source.InternalMovePrevious();
+                Source.InternalMovePreviousX();
             }
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
         {
             FracY += StepY;
             while (FracY >= 1f)
             {
                 FracY -= 1f;
-                Source.InternalMoveNextLine();
+                Source.InternalMoveNextY();
             }
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
         {
             FracY -= StepY;
             while (FracY < 0f)
             {
                 FracY += 1f;
-                Source.InternalMovePreviousLine();
+                Source.InternalMovePreviousY();
             }
         }
 

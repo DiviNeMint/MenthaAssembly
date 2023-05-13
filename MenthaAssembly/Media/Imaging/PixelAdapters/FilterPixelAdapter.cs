@@ -8,9 +8,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
         internal readonly ImagePatch Source;
         private readonly ImageFilter Filter;
 
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         private byte _A;
         public override byte A
@@ -66,8 +66,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
             Args = Adapter.Args?.Clone();
 
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             BitsPerPixel = Adapter.BitsPerPixel;
 
             Source = Adapter.Source.Clone();
@@ -78,8 +78,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public FilterPixelAdapter(PixelAdapter<T> Adapter, ImageFilter Filter)
         {
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             BitsPerPixel = Adapter.BitsPerPixel;
 
             this.Filter = Filter;
@@ -87,8 +87,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         internal FilterPixelAdapter(IImageContext Context, int X, int Y, ImageFilter Filter)
         {
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
+            XLength = Context.Width;
+            YLength = Context.Height;
             BitsPerPixel = Context.BitsPerPixel;
             this.Filter = Filter;
             Source = new ImagePatch(Context, X, Y, Filter.PatchWidth, Filter.PatchHeight);
@@ -150,9 +150,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (IsPixelValid)
                 return;
 
-            if (Args is null)
-                Args = new ImageFilterArgs();
-
+            Args ??= new ImageFilterArgs();
             Filter.Filter(Source, Args, out _A, out _R, out _G, out _B);
             IsPixelValid = true;
         }
@@ -163,40 +161,40 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Args = null;
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
             Source.Move(Source.X + OffsetX, Source.Y);
             Args = null;
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
             Source.Move(Source.X, Source.Y + OffsetY);
             Args = null;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
-            Source.MoveNext();
+            Source.MoveNextX();
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
         {
-            Source.MovePrevious();
+            Source.MovePreviousX();
             Args = null;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
         {
-            Source.MoveNextLine();
+            Source.MoveNextY();
             Args = null;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
         {
-            Source.MovePreviousLine();
+            Source.MovePreviousY();
             Args = null;
             IsPixelValid = false;
         }

@@ -6,7 +6,6 @@ namespace MenthaAssembly.Media.Imaging
     public struct Indexed1 : IPixelIndexed
     {
         private byte Data;
-        byte IPixelIndexed.Data => this.Data;
 
         public int BitsPerPixel => 1;
 

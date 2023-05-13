@@ -17,7 +17,7 @@ namespace MenthaAssembly.Media.Imaging
             foreach (byte Gray in EnumGrays(Adapter))
                 S += Gray;
 
-            return (byte)(S / ((long)(Adapter.MaxX + 1) * (Adapter.MaxY + 1)));
+            return (byte)(S / ((long)Adapter.XLength * Adapter.YLength));
         }
 
     }

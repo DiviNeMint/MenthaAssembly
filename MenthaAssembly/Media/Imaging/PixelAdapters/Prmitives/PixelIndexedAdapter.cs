@@ -11,9 +11,9 @@
         where T : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         private int Index;
         private T Pixel;
@@ -68,8 +68,8 @@
             X = Adapter.X;
             XBit = Adapter.XBit;
             Y = Adapter.Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             Stride = Adapter.Stride;
             BitLength = Adapter.BitLength;
             BitsPerPixel = Adapter.BitsPerPixel;
@@ -79,8 +79,8 @@
         }
         public PixelIndexedAdapter(IImageIndexedContext Context, int X, int Y)
         {
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
+            XLength = Context.Width - 1;
+            YLength = Context.Height - 1;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             Palette = (ImagePalette<T>)Context.Palette;
@@ -208,7 +208,7 @@
             XBit = (XBits & 0x07) / BitsPerPixel;
             pScan = pScan0 + Stride * Y + OffsetX;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
             XBit += OffsetX;
 
@@ -231,13 +231,13 @@
 
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
             pScan += Stride * OffsetY;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
             XBit++;
             if (BitLength <= XBit)
@@ -247,7 +247,7 @@
             }
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
         {
             XBit--;
             if (XBit < 0)
@@ -258,12 +258,12 @@
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
         {
             pScan += Stride;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
         {
             pScan -= Stride;
             IsPixelValid = false;
@@ -278,9 +278,9 @@
         where U : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
-        public override int MaxX { get; }
+        public override int XLength { get; }
 
-        public override int MaxY { get; }
+        public override int YLength { get; }
 
         private int Index;
         private T Pixel;
@@ -335,8 +335,8 @@
             X = Adapter.X;
             XBit = Adapter.XBit;
             Y = Adapter.Y;
-            MaxX = Adapter.MaxX;
-            MaxY = Adapter.MaxY;
+            XLength = Adapter.XLength;
+            YLength = Adapter.YLength;
             Stride = Adapter.Stride;
             BitLength = Adapter.BitLength;
             BitsPerPixel = Adapter.BitsPerPixel;
@@ -346,8 +346,8 @@
         }
         public PixelIndexedAdapter(IImageIndexedContext Context, int X, int Y)
         {
-            MaxX = Context.Width - 1;
-            MaxY = Context.Height - 1;
+            XLength = Context.Width - 1;
+            YLength = Context.Height - 1;
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             Palette = (ImagePalette<T>)Context.Palette;
@@ -472,7 +472,7 @@
 
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveX(int OffsetX)
+        protected internal override void InternalOffsetX(int OffsetX)
         {
             XBit += OffsetX;
 
@@ -495,13 +495,13 @@
 
             IsPixelValid = false;
         }
-        protected internal override void InternalMoveY(int OffsetY)
+        protected internal override void InternalOffsetY(int OffsetY)
         {
             pScan += Stride * OffsetY;
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNext()
+        protected internal override void InternalMoveNextX()
         {
             XBit++;
             if (BitLength <= XBit)
@@ -511,7 +511,7 @@
             }
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePrevious()
+        protected internal override void InternalMovePreviousX()
         {
             XBit--;
             if (XBit < 0)
@@ -522,12 +522,12 @@
             IsPixelValid = false;
         }
 
-        protected internal override void InternalMoveNextLine()
+        protected internal override void InternalMoveNextY()
         {
             pScan += Stride;
             IsPixelValid = false;
         }
-        protected internal override void InternalMovePreviousLine()
+        protected internal override void InternalMovePreviousY()
         {
             pScan -= Stride;
             IsPixelValid = false;
