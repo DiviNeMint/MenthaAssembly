@@ -88,7 +88,10 @@
 
             pScan0 = (Struct*)Context.Scan0[0];
             BitLength = pScan0->Length;
-            Move(X, Y);
+
+            this.X = X;
+            this.Y = Y;
+            DangerousMove(X, Y);
         }
 
         public override void OverrideIndex(int Index)
@@ -209,6 +212,8 @@
 
             XBit = (XBits & 0x07) / BitsPerPixel;
             pScan = pScan0 + Stride * Y + OffsetX;
+
+            IsPixelValid = false;
         }
         public override void DangerousOffsetX(int OffsetX)
         {
@@ -356,7 +361,10 @@
             IsPixelValid = false;
             pScan0 = (Struct*)Context.Scan0[0];
             BitLength = pScan0->Length;
-            Move(X, Y);
+
+            this.X = X;
+            this.Y = Y;
+            DangerousMove(X, Y);
         }
 
         public override void OverrideIndex(int Index)

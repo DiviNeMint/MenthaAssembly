@@ -45,7 +45,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             pScanR = (byte*)Scan0[0];
             pScanG = (byte*)Scan0[1];
             pScanB = (byte*)Scan0[2];
-            Move(X, Y);
+
+            this.X = 0;
+            this.Y = 0;
+            DangerousMove(X, Y);
         }
 
         public override void Override(T Pixel)

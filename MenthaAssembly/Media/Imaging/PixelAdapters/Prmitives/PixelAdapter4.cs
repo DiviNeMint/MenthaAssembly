@@ -19,6 +19,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
         public override int BitsPerPixel { get; }
 
+        private IImageContext Image;
+
         private readonly long Stride;
         private byte* pScanA, pScanR, pScanG, pScanB;
         private PixelAdapter4(PixelAdapter4<T> Adapter)
@@ -37,6 +39,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public PixelAdapter4(IImageContext Context, int X, int Y)
         {
+            Image = Context;
+
             XLength = Context.Width;
             YLength = Context.Height;
             Stride = Context.Stride;
@@ -47,7 +51,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             pScanR = (byte*)Scan0[1];
             pScanG = (byte*)Scan0[2];
             pScanB = (byte*)Scan0[3];
-            Move(X, Y);
+
+            this.X = 0;
+            this.Y = 0;
+            DangerousMove(X, Y);
         }
 
         public override void Override(T Pixel)

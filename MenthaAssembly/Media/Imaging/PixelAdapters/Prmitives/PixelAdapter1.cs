@@ -38,7 +38,10 @@
             Stride = Context.Stride;
             BitsPerPixel = Context.BitsPerPixel;
             pScan0 = (byte*)Context.Scan0[0];
-            Move(X, Y);
+
+            this.X = X;
+            this.Y = Y;
+            DangerousMove(X, Y);
         }
 
         public override void Override(T Pixel)
