@@ -1,109 +1,150 @@
-﻿using MenthaAssembly.Utils;
+﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
+using System.Buffers;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public unsafe static class BmpCoder
+    /// <summary>
+    /// Represents an encoder for bitmap format.
+    /// </summary>
+    public static unsafe class BmpCoder
     {
-        public const int IdentifyHeaderSize = 2;
+        // Bitmap File Struct
+        // https://crazycat1130.pixnet.net/blog/post/1345538#mark-4
+        // ============================================================
+        //                          File Header
+        // ============================================================
+        // Identifier           , 2 Bytes
+        // FileSize             , 4 Bytes
+        // Reserved             , 4 Bytes
+        // DataOffset           , 4 Bytes (54 bytes for common header struct)
+        // ============================================================
+        //                          Info Header
+        // ============================================================
+        // InfoSize             , 4 Bytes (40 Bytes for common info struce)
+        // Width                , 4 Bytes
+        // Height               , 4 Bytes
+        // Planes               , 2 Bytes (forever be set 1.)
+        // BitsPerPixel         , 2 Bytes
+        // Compression          , 4 Bytes
+        // ImageSize            , 4 Bytes
+        // XResolution          , 4 Bytes (Dpi * 39.37)
+        // YResolution          , 4 Bytes
+        // NumPaletteColors     , 4 Bytes
+        // ImportantColors      , 4 Bytes
+        // ============================================================
+        //                            Context
+        // ============================================================
+        // PaletteEntries       , 4 * NumPaletteColors Bytes
+        // ImageDatas           , ImageSize Bytes
+        // ============================================================
 
-        public static bool TryDecode(string FilePath, out IImageContext Image)
+        /// <summary>
+        /// Decodes a bitmap file from the specified path.
+        /// </summary>
+        /// <param name="Path">The specified path.</param>
+        /// <param name="Image">The decoded bitmap.</param>
+        public static bool TryDecode(string Path, out IImageContext Image)
         {
-            using Stream Stream = new FileStream(FilePath, FileMode.Open, FileAccess.Read);
+            using Stream Stream = new FileStream(Path, FileMode.Open, FileAccess.Read);
             return TryDecode(Stream, out Image);
         }
+        /// <summary>
+        /// Decodes a bitmap file from the specified stream.
+        /// </summary>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Image">The decoded bitmap.</param>
         public static bool TryDecode(Stream Stream, out IImageContext Image)
         {
-            byte[] Datas = new byte[IdentifyHeaderSize];
+            Image = null;
+            long Begin = Stream.Position;
 
-            //if (Stream.Position != 0)
-            //    Stream.Seek(0, SeekOrigin.Begin);
-
-            Stream.Read(Datas, 0, Datas.Length);
-
-            // Identify
-            if (!Identify(Datas))
+            // Header
+            if (!Stream.TryReadString(2, Encoding.ASCII, out string Identifier) ||
+                !Identify(Identifier) ||
+                !Stream.TrySeek(8, SeekOrigin.Current) ||
+                !Stream.TryRead(out int DataOffset) ||
+                !Stream.TryRead(out int HeaderSize) ||
+                !Stream.TryRead(out int Width) ||
+                !Stream.TryRead(out int Height) ||
+                !Stream.TrySeek(2, SeekOrigin.Current) ||
+                !Stream.TryRead(out short Bits) ||
+                !Stream.TrySeek(16, SeekOrigin.Current))
             {
-                Image = null;
+                Stream.TrySeek(Begin, SeekOrigin.Begin);
                 return false;
             }
 
-            Datas = new byte[sizeof(int)];
-            // Offset
-            Stream.Seek(10, SeekOrigin.Begin);
-            Stream.Read(Datas, 0, Datas.Length);
-            int Offset = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
-
-            // HeaderSize
-            Stream.Read(Datas, 0, Datas.Length);
-            int HeaderSize = (Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24) + 14; // ImageStruct + FileHeader 
-
-            // Width
-            Stream.Read(Datas, 0, Datas.Length);
-            int Width = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
-
-            // Height
-            Stream.Read(Datas, 0, Datas.Length);
-            int Height = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
-
-            // BitsPerPixel
-            Stream.Seek(28, SeekOrigin.Begin);
-            Stream.Read(Datas, 0, sizeof(short));
-            int Bits = Datas[0] | Datas[1] << 8,
-                Stride = (((Width * Bits) >> 3) + 3) & 2147483644;
-
-            //// Compression
-            //Stream.Read(Datas, 0, Datas.Length);
-            //int Compression = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
-
             // Palette
             ImagePalette<BGRA> Palette = null;
-            if (Offset > HeaderSize)
+            int PaletteOffset = 14 + HeaderSize;    // File Header + Info Header
+            if (PaletteOffset < DataOffset)
             {
-                Palette = new ImagePalette<BGRA>(Bits);
-
                 // NColors
-                Stream.Seek(46, SeekOrigin.Begin);
-                Stream.Read(Datas, 0, Datas.Length);
-                int NColors = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+                if (!Stream.TryRead(out int NColors))
+                {
+                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                    return false;
+                }
 
-                if (NColors.Equals(0))
+                if (NColors == 0)
                     NColors = 1 << Bits;
 
-                Stream.Seek(HeaderSize, SeekOrigin.Begin);
-                BGRA BlackColor = new BGRA(0, 0, 0, 255),
-                     Color;
-                for (int i = 0; i < NColors; i++)
+                if (!Stream.TrySeek(Begin + PaletteOffset, SeekOrigin.Begin))
+                    return false;
+
+                const int EntryLength = 4;
+                byte[] Entry = ArrayPool<byte>.Shared.Rent(EntryLength);
+                try
                 {
-                    Stream.Read(Datas, 0, Datas.Length);
-                    Color = new BGRA(Datas[0], Datas[1], Datas[2], byte.MaxValue);
+                    Palette = new ImagePalette<BGRA>(Bits);
+                    for (int i = 0; i < NColors; i++)
+                    {
+                        if (!Stream.ReadBuffer(Entry, 0, EntryLength))
+                            return false;
 
-                    if (Color == BlackColor && Datas[3] == 0)
-                        continue;
+                        // Transparent
+                        if (Entry[0] == byte.MinValue &&
+                            Entry[1] == byte.MinValue &&
+                            Entry[2] == byte.MinValue &&
+                            Entry[3] == byte.MinValue)
+                            continue;
 
-                    Palette.Datas.Add(Color);
+                        Palette.Datas.Add(new BGRA(Entry[0], Entry[1], Entry[2], byte.MaxValue));
+                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(Entry);
                 }
             }
 
-            bool IsHeightNegative = Height < 0;
-            if (IsHeightNegative)
+            // ImageDatas
+            if (!Stream.TrySeek(Begin + DataOffset, SeekOrigin.Begin))
+                return false;
+
+            int Stride = (((Width * Bits) >> 3) + 3) & 2147483644;
+            byte[] ImageDatas;
+            if (Height < 0)
+            {
                 Height = ~Height + 1;   // Abs
 
-            // ImageDatas
-            byte[] ImageDatas = new byte[Stride * Height];
-
-            Stream.Seek(Offset, SeekOrigin.Begin);
-            if (IsHeightNegative)
-            {
-                Stream.Read(ImageDatas, 0, ImageDatas.Length);
+                ImageDatas = new byte[Stride * Height];
+                if (!Stream.ReadBuffer(ImageDatas))
+                    return false;
             }
             else
             {
-                for (int j = Height - 1; j >= 0; j--)
-                    Stream.Read(ImageDatas, j * Stride, Stride);
+                ImageDatas = new byte[Stride * Height];
+                for (int j = Height - 1, Offset = Stride * j; j >= 0; j--, Offset -= Stride)
+                    if (!Stream.ReadBuffer(ImageDatas, Offset, Stride))
+                        return false;
             }
 
             switch (Bits)
@@ -126,160 +167,214 @@ namespace MenthaAssembly.Media.Imaging
                     return true;
             }
 
-
-            Image = null;
             return false;
         }
 
-        public static void Encode(IImageContext Image, string FilePath)
+        /// <summary>
+        /// Encodes the specified image to the specified path.
+        /// </summary>
+        /// <param name="Image">The specified image.</param>
+        /// <param name="Path">The specified path.</param>
+        public static void Encode(IImageContext Image, string Path)
         {
-            using Stream Stream = new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write);
+            using Stream Stream = new FileStream(Path, FileMode.CreateNew, FileAccess.Write);
             Encode(Image, Stream);
         }
+        /// <summary>
+        /// Encodes the specified image to the specified stream.
+        /// </summary>
+        /// <param name="Image">The specified image.</param>
+        /// <param name="Stream">The specified stream.</param>
         public static void Encode(IImageContext Image, Stream Stream)
         {
-            // Bitmap File Struct
-            // https://crazycat1130.pixnet.net/blog/post/1345538#mark-4
+            int Iw = Image.Width,
+                Ih = Image.Height,
+                Bits = Image.BitsPerPixel,
+                Stride = (((Iw * Bits) >> 3) + 3) & 2147483644,
+                ImageSize = Stride * Ih,
+                PaletteNum = 0,
+                PaletteSize = 0,
+                DataOffset = 54;
 
-            int Stride = (((Image.Width * Image.BitsPerPixel) >> 3) + 3) >> 2 << 2,
-                PaletteByteLength = 4 << Image.BitsPerPixel,
-                ImageSize = Stride * Image.Height,
-                HeaderOffset = Image.BitsPerPixel > 8 ? 54 : 54 + PaletteByteLength,
-                FileSize = ImageSize + HeaderOffset;
-            byte[] InfoDatas =
+            if (Bits < 8)
             {
-                66, 77,                                                                                                 // Format       , 2 Bytes
-                (byte)FileSize, (byte)(FileSize >> 8), (byte)(FileSize >> 16), (byte)(FileSize >> 24),                  // FileSize     , 4 Bytes
-                0, 0, 0, 0,                                                                                             // Reserved     , 4 Bytes
-                (byte)HeaderOffset, (byte)(HeaderOffset >> 8), (byte)(HeaderOffset >> 16), (byte)(HeaderOffset >> 24),  // Offset       , 4 Bytes (54 Bytes for Header Struct)
-                40, 0, 0, 0,                                                                                            // InfoSize     , 4 Bytes (40 Bytes for Info Struce)
-                (byte)Image.Width, (byte)(Image.Width >> 8), (byte)(Image.Width >> 16), (byte)(Image.Width >> 24),      // Width        , 4 Bytes
-                (byte)Image.Height, (byte)(Image.Height >> 8), (byte)(Image.Height >> 16), (byte)(Image.Height >> 24),  // Height       , 4 Bytes
-                1, 0,                                                                                                   // Planes       , 2 Bytes (forever be set 1.)
-                (byte)Image.BitsPerPixel, (byte)(Image.BitsPerPixel >> 8),                                              // BitsPerPixel , 2 Bytes
-                0, 0, 0, 0,                                                                                             // Compression  , 4 Bytes
-                (byte)ImageSize, (byte)(ImageSize >> 8), (byte)(ImageSize >> 16), (byte)(ImageSize >> 24),              // ImageSize    , 4 Bytes
-                0, 0, 0, 0,                                                                                             // XResolution  , 4 Bytes (Dpi * 39.37)
-                0, 0, 0, 0,                                                                                             // YResolution  , 4 Bytes
-                0, 0, 0, 0,                                                                                             // NColors      , 4 Bytes
-                0, 0, 0, 0,                                                                                             // ImportantColours  , 4 Bytes
+                PaletteNum = 1 << Bits;
+                PaletteSize = PaletteNum << 2;
+                DataOffset += PaletteSize;
+            }
+
+            // Bitmap File Header
+            BitmapFileHeader Header = new()
+            {
+                FileSize = DataOffset + ImageSize,
+                DataOffset = DataOffset,
+                Width = Iw,
+                Height = Ih,
+                BitsPerPixel = (short)Bits,
+                ImageSize = ImageSize,
             };
-            Stream.Write(InfoDatas, 0, InfoDatas.Length);
+            Stream.Write(Header);
 
             // Palette
-            if (HeaderOffset > 54)
+            if (DataOffset > 54)
             {
-                byte[] Datas = new byte[sizeof(int)];
-                if (Image is IImageIndexedContext IndexedContext)
+                const int EntryLength = 4;
+                byte[] Entry = ArrayPool<byte>.Shared.Rent(EntryLength);
+                Entry[3] = 0;
+
+                try
                 {
-                    IImagePalette Palette = IndexedContext.Palette;
-                    for (int i = 0; i < Palette.Count; i++)
+                    // Indexed Colors
+                    if (Image is IImageIndexedContext IndexedContext)
                     {
-                        IReadOnlyPixel Value = Palette[i];
-                        Datas[0] = Value.B;
-                        Datas[1] = Value.G;
-                        Datas[2] = Value.R;
-                        Stream.Write(Datas, 0, Datas.Length);
+                        IImagePalette Palette = IndexedContext.Palette;
+                        for (int i = 0; i < Palette.Count; i++)
+                        {
+                            IReadOnlyPixel Value = Palette[i];
+                            Entry[0] = Value.B;
+                            Entry[1] = Value.G;
+                            Entry[2] = Value.R;
+                            Stream.Write(Entry, 0, EntryLength);
+                        }
+
+                        int Num = Palette.Count;
+                        if (Num < PaletteNum)
+                        {
+                            int Length = PaletteSize - (Num << 2);
+                            Stream.Write(new byte[Length], 0, Length);
+                        }
                     }
 
-                    int CurrentLength = Palette.Count << 2;
-                    if (CurrentLength < PaletteByteLength)
+                    // Gray Colors
+                    else
                     {
-                        int EmptyLength = PaletteByteLength - CurrentLength;
-                        Stream.Write(new byte[EmptyLength], 0, EmptyLength);
+                        int ColorStep = byte.MaxValue / (PaletteNum - 1);
+                        for (int i = 0; i < 256; i += ColorStep)
+                        {
+                            Entry[0] = Entry[1] = Entry[2] = (byte)i;
+                            Stream.Write(Entry, 0, EntryLength);
+                        }
                     }
                 }
-                else
+                finally
                 {
-                    int ColorStep = byte.MaxValue / ((1 << Image.BitsPerPixel) - 1);
-                    for (int i = 0; i < 256; i += ColorStep)
-                    {
-                        Datas[0] = (byte)i;
-                        Datas[1] = Datas[0];
-                        Datas[2] = Datas[0];
-                        Stream.Write(Datas, 0, Datas.Length);
-                    }
+                    ArrayPool<byte>.Shared.Return(Entry);
                 }
             }
 
-            // Datas
-            byte[] ImageDatas = new byte[Stride];
-            using PinnedIntPtr Pinned = new PinnedIntPtr(ImageDatas);
-            byte* pImageDatas = (byte*)Pinned.DangerousGetHandle();
-
-            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ? y => Image.ScanLineCopy<BGRA>(0, y, Image.Width, pImageDatas) :
-                                         Image.BitsPerPixel == 8 ? y => Image.ScanLineCopy<Gray8>(0, y, Image.Width, pImageDatas) :
-                                         y => Image.ScanLineCopy<BGR>(0, y, Image.Width, pImageDatas);
-            for (int j = Image.Height - 1; j >= 0; j--)
+            // ImageDatas
+            void WriteImageGenericDatas<T>() where T : unmanaged, IPixel
             {
-                DataCopyAction(j);
-                Stream.Write(ImageDatas, 0, Stride);
+                byte[] ScanLineData = ArrayPool<byte>.Shared.Rent(Stride);
+                try
+                {
+                    int Sy = Ih - 1,
+                        Dx = -Iw;
+                    fixed (byte* pScanLineData = ScanLineData)
+                    {
+                        T* pData0 = (T*)pScanLineData;
+                        PixelAdapter<T> Adapter = Image.GetAdapter<T>(0, Sy);
+                        for (; Sy >= 0; Sy--, Adapter.DangerousMovePreviousY())
+                        {
+                            T* pData = pData0;
+                            for (int i = 0; i < Iw; i++, Adapter.DangerousMoveNextX())
+                                Adapter.OverrideTo(pData++);
+
+                            Adapter.DangerousOffsetX(Dx);
+                            Stream.Write(ScanLineData, 0, Stride);
+                        }
+                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(ScanLineData);
+                }
             }
+
+            Action WriteImageDatas = Bits switch
+            {
+                8 => WriteImageGenericDatas<Gray8>,
+                32 => WriteImageGenericDatas<BGRA>,
+                _ => WriteImageGenericDatas<BGR>,
+            };
+            WriteImageDatas();
         }
 
-        public static bool Identify(byte[] Data)
+        /// <summary>
+        /// Indicates whether the specified Identifier is bitmap Identifier.
+        /// </summary>
+        /// <param name="Identifier">The specified Identifier.</param>
+        public static bool Identify(string Identifier)
         {
-            if (Data.Length < IdentifyHeaderSize)
+            const int IdentifierSize = 2;
+            if (Identifier.Length != IdentifierSize)
                 return false;
 
-            return Data[0].Equals(0x42) && Data[1].Equals(0x4D);    // BM – Windows 3.1x, 95, NT, ... etc.
-
-            //return (Data[0].Equals(0x42) && Data[1].Equals(0x4D)) ||    // BM – Windows 3.1x, 95, NT, ... etc.
-            //       (Data[0].Equals(0x42) && Data[1].Equals(0x41)) ||    // BA – OS / 2 struct Bitmap Array
-            //       (Data[0].Equals(0x43) && Data[1].Equals(0x49)) ||    // CI – OS / 2 struct Color Icon
-            //       (Data[0].Equals(0x43) && Data[1].Equals(0x50)) ||    // CP – OS / 2 const Color Pointer
-            //       (Data[0].Equals(0x49) && Data[1].Equals(0x43)) ||    // IC – OS / 2 struct Icon
-            //       (Data[0].Equals(0x50) && Data[1].Equals(0x54));      // PT – OS / 2 Pointer
+            return Identifier is "BM" or    // BM – Windows 3.1x, 95, NT, ... etc.
+                   "BA" or    // BA – OS / 2 struct Bitmap Array
+                   "CI" or    // CI – OS / 2 struct Color Icon
+                   "CP" or    // CP – OS / 2 const Color Pointer
+                   "IC" or    // IC – OS / 2 struct Icon
+                   "PT";      // PT – OS / 2 Pointer
         }
 
         [Conditional("DEBUG")]
-        public static void Parse(string FilePath)
+        public static void Parse(string Path)
         {
-            FileStream FS = new FileStream(FilePath, FileMode.Open, FileAccess.Read);
-            byte[] Datas = new byte[IdentifyHeaderSize];
-            FS.Read(Datas, 0, Datas.Length);
+            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
 
-            if (!Identify(Datas))
+            // Identifier
+            if (!Stream.TryReadString(2, Encoding.ASCII, out string Identifier) ||
+                !Identify(Identifier))
             {
                 Debug.WriteLine("This is not Bmp file.");
                 return;
             }
 
-            Datas = new byte[sizeof(int)];
             // FileSize
-            FS.Read(Datas, 0, Datas.Length);
-            int FileSize = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int FileSize))
+                return;
+
             Debug.WriteLine($"FileSize    : {FileSize}");
 
+            // Reserved
+            if (!Stream.TryRead(4, out _))
+                return;
+
             // Offset
-            FS.Seek(10, SeekOrigin.Begin);
-            FS.Read(Datas, 0, Datas.Length);
-            int Offset = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int Offset))
+                return;
+
             Debug.WriteLine($"Offset      : {Offset}");
 
             // HeaderSize
-            FS.Read(Datas, 0, Datas.Length);
-            int HeaderSize = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int HeaderSize))
+                return;
+
             Debug.WriteLine($"HeaderSize  : {HeaderSize}");
 
             // Width
-            FS.Read(Datas, 0, Datas.Length);
-            int Width = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int Width))
+                return;
+
             Debug.WriteLine($"Width       : {Width}");
 
             // Height
-            FS.Read(Datas, 0, Datas.Length);
-            int Height = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int Height))
+                return;
+
             Debug.WriteLine($"Height      : {Height}");
 
             // Planes
-            FS.Read(Datas, 0, sizeof(short));
-            int Planes = Datas[0] | Datas[1] << 8;
+            if (!Stream.TryRead(out short Planes))
+                return;
+
             Debug.WriteLine($"Planes      : {Planes}");
 
             // BitsPerPixel
-            FS.Read(Datas, 0, sizeof(short));
-            int Bits = Datas[0] | Datas[1] << 8;
+            if (!Stream.TryRead(out short Bits))
+                return;
+
             int Channels = (Bits + 7) >> 3;
             int Stride = (((Width * Bits) >> 3) + 3) >> 2 << 2;
             Debug.WriteLine($"Bits        : {Bits}\r\n" +
@@ -287,44 +382,50 @@ namespace MenthaAssembly.Media.Imaging
                             $"Stride      : {Stride}");
 
             // Compression
-            FS.Read(Datas, 0, Datas.Length);
-            int Compression = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int Compression))
+                return;
+
             Debug.WriteLine($"Compression : {Compression}");
 
             // ImageSize
-            FS.Read(Datas, 0, Datas.Length);
-            int ImageSize = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int ImageSize))
+                return;
+
             Debug.WriteLine($"ImageSize   : {ImageSize}");
 
             // XResolution
-            FS.Read(Datas, 0, Datas.Length);
-            int XResolution = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int XResolution))
+                return;
+
             Debug.WriteLine($"XResolution : {XResolution}");
 
             // YResolution
-            FS.Read(Datas, 0, Datas.Length);
-            int YResolution = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int YResolution))
+                return;
+
             Debug.WriteLine($"YResolution : {YResolution}");
 
             // NColors
-            FS.Read(Datas, 0, Datas.Length);
-            int NColors = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int NColors))
+                return;
+
             Debug.WriteLine($"NColors     : {NColors}");
 
             // ImportantColors
-            FS.Read(Datas, 0, Datas.Length);
-            int ImportantColors = Datas[0] | Datas[1] << 8 | Datas[2] << 16 | Datas[3] << 24;
+            if (!Stream.TryRead(out int ImportantColors))
+                return;
+
             Debug.WriteLine($"ImpColors   : {ImportantColors}");
 
             // Palette
-            int PaletteSize = Offset - (int)FS.Position;
+            int PaletteSize = Offset - (int)Stream.Position;
             if (PaletteSize > 0)
             {
                 Debug.WriteLine($"Palette     :");
-                Datas = new byte[sizeof(int)];
+                byte[] Datas = new byte[sizeof(int)];
                 for (int i = 0; i < PaletteSize >> 2; i++)
                 {
-                    FS.Read(Datas, 0, Datas.Length);
+                    Stream.Read(Datas, 0, Datas.Length);
                     if (i > 99)
                         Debug.WriteLine($"{i} : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
                     else if (i > 9)
@@ -334,7 +435,64 @@ namespace MenthaAssembly.Media.Imaging
                 }
             }
 
-            FS.Close();
+            Stream.Close();
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 54)]
+        private struct BitmapFileHeader
+        {
+            [FieldOffset(0)]
+            private readonly byte Identifier1 = (byte)'B';
+
+            [FieldOffset(1)]
+            private readonly byte Identifier2 = (byte)'M';
+
+            [FieldOffset(2)]
+            public int FileSize;
+
+            [FieldOffset(6)]
+            private fixed byte Reserved[4];
+
+            [FieldOffset(10)]
+            public int DataOffset;
+
+            [FieldOffset(14)]
+            private readonly int InfoSize = 40;
+
+            [FieldOffset(18)]
+            public int Width;
+
+            [FieldOffset(22)]
+            public int Height;
+
+            [FieldOffset(26)]
+            private readonly short Planes = 1;
+
+            [FieldOffset(28)]
+            public short BitsPerPixel;
+
+            [FieldOffset(30)]
+            public int Compression;
+
+            [FieldOffset(34)]
+            public int ImageSize;
+
+            [FieldOffset(38)]
+            public int XResolution;
+
+            [FieldOffset(42)]
+            public int YResolution;
+
+            [FieldOffset(46)]
+            public int NumPaletteColors;
+
+            [FieldOffset(50)]
+            public int ImportantColors;
+
+            public BitmapFileHeader()
+            {
+            }
+
         }
 
     }

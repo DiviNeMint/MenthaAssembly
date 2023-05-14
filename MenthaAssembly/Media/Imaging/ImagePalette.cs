@@ -8,20 +8,23 @@ namespace MenthaAssembly.Media.Imaging
     public class ImagePalette<Pixel> : IImagePalette, IDisposable
         where Pixel : unmanaged, IPixel
     {
-        protected readonly object LockObject = new object();
+        protected readonly object LockObject = new();
         internal readonly List<Pixel> Datas;
 
-        public int Count => Datas.Count;
+        public int Count
+            => Datas.Count;
 
         public int Capacity { get; }
 
         public Pixel this[int Index]
-            => Index < Datas.Count ? Datas[Index] : default;
+            => Datas[Index];
         IReadOnlyPixel IImagePalette.this[int Index]
             => this[Index];
 
-        public int this[Pixel Color] => Datas.IndexOf(Color);
-        int IImagePalette.this[IReadOnlyPixel Color] => Datas.FindIndex(i => i.A == Color.A && i.R == Color.R && i.G == Color.G && i.B == Color.B);
+        public int this[Pixel Color]
+            => Datas.IndexOf(Color);
+        int IImagePalette.this[IReadOnlyPixel Color]
+            => Datas.FindIndex(i => i.A == Color.A && i.R == Color.R && i.G == Color.G && i.B == Color.B);
 
         public ImagePalette(int BitsPerPixel)
         {
