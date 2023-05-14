@@ -1,35 +1,36 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace MenthaAssembly.IO
 {
-    public class AccessStream : Stream
+    public sealed class AccessStream : Stream
     {
         public override bool CanRead { get; }
 
         public override bool CanWrite { get; }
 
         public override bool CanSeek
-            => !IsDisposed && BaseStream.CanSeek;
+            => !IsDisposed && Stream.CanSeek;
 
         public override long Length
-            => IsDisposed ? 0 : BaseStream.Length;
+            => IsDisposed ? 0 : Stream.Length;
 
         public override long Position
         {
-            get => IsDisposed ? 0 : BaseStream.Position;
+            get => IsDisposed ? 0 : Stream.Position;
             set
             {
                 CheckDispose();
-                BaseStream.Position = value;
+                Stream.Position = value;
             }
         }
 
-        private Stream BaseStream;
         private readonly bool LeaveOpen;
+        private readonly Stream Stream;
         public AccessStream(Stream BaseStream, bool LeaveOpen, StreamAccess Access)
         {
-            this.BaseStream = BaseStream;
+            this.Stream = BaseStream;
             this.LeaveOpen = LeaveOpen;
             switch (Access)
             {
@@ -51,13 +52,12 @@ namespace MenthaAssembly.IO
                         break;
                     }
             }
-
         }
 
         public override int Read(byte[] Buffer, int Offset, int Count)
         {
             CheckDispose();
-            return CanRead ? BaseStream.Read(Buffer, Offset, Count) :
+            return CanRead ? Stream.Read(Buffer, Offset, Count) :
                              throw new NotSupportedException();
         }
 
@@ -68,50 +68,63 @@ namespace MenthaAssembly.IO
             if (!CanWrite)
                 throw new NotSupportedException();
 
-            BaseStream.Write(Buffer, Offset, Count);
-        }
-
-        public override void Flush()
-        {
-            CheckDispose();
-
-            if (!CanWrite)
-                throw new NotSupportedException();
-
-            BaseStream.Flush();
+            Stream.Write(Buffer, Offset, Count);
         }
 
         public override long Seek(long Offset, SeekOrigin Origin)
         {
             CheckDispose();
-            return BaseStream.Seek(Offset, Origin);
+            return Stream.Seek(Offset, Origin);
         }
 
         public override void SetLength(long Value)
         {
             CheckDispose();
-            BaseStream.SetLength(Value);
+            Stream.SetLength(Value);
         }
 
-        private bool IsDisposed;
-        protected override void Dispose(bool Disposing)
+        public override void Flush()
         {
-            if (!IsDisposed)
-            {
-                if (!LeaveOpen)
-                    BaseStream.Dispose();
-                BaseStream = null;
+            if (!CanWrite)
+                throw new NotSupportedException();
 
-                IsDisposed = true;
-            }
+            Stream.Flush();
+        }
 
-            base.Dispose(Disposing);
+        public override void Close()
+        {
+            if (IsDisposed)
+                return;
+
+            if (!LeaveOpen)
+                Stream.Close();
+
+            base.Close();
         }
 
         private void CheckDispose()
         {
             if (IsDisposed)
                 throw new ObjectDisposedException(nameof(AccessStream));
+        }
+
+        private bool IsDisposed;
+        protected override void Dispose(bool Disposing)
+        {
+            if (IsDisposed)
+                return;
+
+            try
+            {
+                if (!LeaveOpen)
+                    Stream.Dispose();
+
+                base.Dispose(Disposing);
+            }
+            finally
+            {
+                IsDisposed = true;
+            }
         }
 
     }

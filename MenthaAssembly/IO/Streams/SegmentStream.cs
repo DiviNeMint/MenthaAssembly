@@ -1,53 +1,61 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace MenthaAssembly.Utils
 {
-    public class SegmentStream : Stream
+    public sealed class SegmentStream : Stream
     {
-        public override bool CanRead => true;
+        public override bool CanRead
+            => true;
 
-        public override bool CanSeek => Stream.CanSeek;
+        public override bool CanSeek
+            => Stream.CanSeek;
 
-        public override bool CanWrite => false;
+        public override bool CanWrite
+            => false;
 
         public override long Length { get; }
 
-        private long _Position;
-        private readonly long _Offset;
         public override long Position
         {
-            get => _Position;
+            get => Current;
             set => Seek(value, SeekOrigin.Begin);
         }
 
+        private long Current;
+        private readonly long Begin;
         private readonly bool LeaveOpen;
-
-        protected Stream Stream;
+        private readonly Stream Stream;
         public SegmentStream(Stream Stream, long Length) : this(Stream, Stream.CanSeek ? Stream.Position : 0L, Length)
+        {
+        }
+        public SegmentStream(Stream Stream, long Length, bool LeaveOpen) : this(Stream, Stream.CanSeek ? Stream.Position : 0L, Length, LeaveOpen)
         {
         }
         public SegmentStream(Stream Stream, long Offset, long Length)
         {
             this.Stream = Stream;
-            _Offset = Offset;
             this.Length = Length;
+            Begin = Offset;
         }
         public SegmentStream(Stream Stream, long Offset, long Length, bool LeaveOpen)
         {
             this.Stream = Stream;
-            _Offset = Offset;
             this.Length = Length;
             this.LeaveOpen = LeaveOpen;
+            Begin = Offset;
         }
 
         public override int Read(byte[] Buffer, int Offset, int Count)
         {
-            int Length = Math.Min((int)(this.Length - _Position), Count);
+            CheckDispose();
+
+            int Length = Math.Min((int)(this.Length - Current), Count);
             if (Length > 0)
             {
                 Length = Stream.Read(Buffer, Offset, Length);
-                _Position += Length;
+                Current += Length;
                 return Length;
             }
 
@@ -59,30 +67,23 @@ namespace MenthaAssembly.Utils
 
         public override long Seek(long Offset, SeekOrigin Origin)
         {
+            CheckDispose();
             if (!CanSeek)
                 throw new NotSupportedException();
 
-            switch (Origin)
+            long Position = Origin switch
             {
-                case SeekOrigin.Begin:
-                    {
-                        _Position = _Offset + Offset;
-                        return Stream.Seek(_Position, SeekOrigin.Begin);
-                    }
-                case SeekOrigin.Current:
-                    {
-                        _Position = MathHelper.Clamp(_Position + Offset, _Offset, Length);
-                        return Stream.Seek(_Position, SeekOrigin.Begin);
-                    }
-                case SeekOrigin.End:
-                    {
-                        _Position = _Offset + Length + Offset;
-                        return Stream.Seek(_Position, SeekOrigin.Begin);
-                    }
-                default:
-                    return _Position;
-            }
+                SeekOrigin.Begin => Offset,
+                SeekOrigin.Current => Current + Offset,
+                SeekOrigin.End => Length - Offset,
+                _ => throw new NotSupportedException()
+            };
 
+            Position = MathHelper.Clamp(Position, 0, Length);
+
+            long Delta = Position - Current;
+            Current = Position;
+            return Stream.Seek(Delta, SeekOrigin.Current);
         }
 
         public override void SetLength(long value)
@@ -102,6 +103,12 @@ namespace MenthaAssembly.Utils
             base.Close();
         }
 
+        private void CheckDispose()
+        {
+            if (IsDisposed)
+                throw new ObjectDisposedException(nameof(SegmentStream));
+        }
+
         private bool IsDisposed = false;
         protected override void Dispose(bool Disposing)
         {
@@ -112,14 +119,12 @@ namespace MenthaAssembly.Utils
             {
                 if (!LeaveOpen)
                     Stream.Dispose();
-                Stream = null;
 
                 base.Dispose(Disposing);
             }
             finally
             {
                 IsDisposed = true;
-
             }
         }
 

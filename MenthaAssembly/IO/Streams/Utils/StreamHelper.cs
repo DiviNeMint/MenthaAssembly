@@ -24,15 +24,6 @@ namespace System.IO
                 return true;
             }
 
-            if (Origin == SeekOrigin.Begin)
-            {
-                Offset -= This.Position;
-                if (Offset == 0)
-                    return true;
-
-                Origin = SeekOrigin.Current;
-            }
-
             const int BufferLength = 8192;
             if (Origin == SeekOrigin.Current)
             {
@@ -238,7 +229,9 @@ namespace System.IO
                 }
 
                 fixed (byte* pBuffer = Buffer)
-                    Result = Marshal.PtrToStructure<T>((IntPtr)pBuffer);
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
+                    Result = *(T*)pBuffer;
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
                 return true;
             }
@@ -259,13 +252,8 @@ namespace System.IO
             where T : struct
         {
             int Size = Marshal.SizeOf<T>();
-            if (Offset + Size > Buffer.Length)
-            {
-                Result = default;
-                return false;
-            }
-
-            if (!This.ReadBuffer(Buffer, Offset, Size))
+            if (Offset + Size > Buffer.Length ||
+                !This.ReadBuffer(Buffer, Offset, Size))
             {
                 Result = default;
                 return false;
@@ -293,7 +281,6 @@ namespace System.IO
 
             return true;
         }
-
 
         /// <summary>
         /// Reads string of specified encoding from the stream.
