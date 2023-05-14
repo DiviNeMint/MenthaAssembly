@@ -34,8 +34,8 @@ namespace MenthaAssembly
         private DllEntryProc DllEntry;
         private ImageDataDirectory ExportDirectory;
 
-        private readonly ConcurrentDictionary<string, Delegate> MethodInfos = new ConcurrentDictionary<string, Delegate>();
-        private readonly List<IntPtr> ImportLibraries = new List<IntPtr>();
+        private readonly ConcurrentDictionary<string, Delegate> MethodInfos = new();
+        private readonly List<IntPtr> ImportLibraries = new();
 
         internal readonly bool IsLoaded;
         internal UnmanagedLibrary(string Path, LibraryType Type) : base(Path, Type)
@@ -387,12 +387,13 @@ namespace MenthaAssembly
             if (ExportDirectory.Size == 0)
                 yield break;
 
-            ImageExportDirectory pExports = (CodeBase + ExportDirectory.VirtualAddress).Cast<ImageExportDirectory>();
+            IntPtr pExports = CodeBase + ExportDirectory.VirtualAddress;
+            ImageExportDirectory Exports = pExports.Get<ImageExportDirectory>();
 
-            IntPtr nameRef = CodeBase + pExports.AddressOfNames;
-            for (uint i = 0; i < pExports.NumberOfNames; i++, nameRef += 4)
+            IntPtr nameRef = CodeBase + Exports.AddressOfNames;
+            for (uint i = 0; i < Exports.NumberOfNames; i++, nameRef += 4)
             {
-                IntPtr pStr = CodeBase + nameRef.Cast<int>();
+                IntPtr pStr = CodeBase + nameRef.Get<int>();
                 yield return Marshal.PtrToStringAnsi(pStr);
             }
         }

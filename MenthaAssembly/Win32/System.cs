@@ -173,6 +173,12 @@ namespace MenthaAssembly.Win32
         [DllImport("Kernel32.dll", SetLastError = true)]
         internal static extern bool CloseHandle(IntPtr hObject);
 
+        [DllImport("msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern IntPtr MemoryCopy(IntPtr pDest, IntPtr pSrc, long Length);
+
+        [DllImport("msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern IntPtr MemoryCopy(void* pDest, void* pSrc, long Length);
+
         #endregion
 
         #region Windows API (System parameter)
