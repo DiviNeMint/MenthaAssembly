@@ -11,12 +11,13 @@ using System.Text;
 namespace MenthaAssembly.Media.Imaging
 {
     /// <summary>
-    /// Represents an encoder for bitmap format.
+    /// Represents an encoder for bitmap file format.
     /// </summary>
     public static unsafe class BmpCoder
     {
         // Bitmap File Struct
         // https://crazycat1130.pixnet.net/blog/post/1345538#mark-4
+        // https://en.wikipedia.org/wiki/BMP_file_format
         // ============================================================
         //                          File Header
         // ============================================================
@@ -45,6 +46,8 @@ namespace MenthaAssembly.Media.Imaging
         // ImageDatas           , ImageSize Bytes
         // ============================================================
 
+        public const int IdentifierSize = 2;
+
         /// <summary>
         /// Decodes a bitmap file from the specified path.
         /// </summary>
@@ -52,7 +55,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Image">The decoded bitmap.</param>
         public static bool TryDecode(string Path, out IImageContext Image)
         {
-            using Stream Stream = new FileStream(Path, FileMode.Open, FileAccess.Read);
+            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
             return TryDecode(Stream, out Image);
         }
         /// <summary>
@@ -63,10 +66,10 @@ namespace MenthaAssembly.Media.Imaging
         public static bool TryDecode(Stream Stream, out IImageContext Image)
         {
             Image = null;
-            long Begin = Stream.Position;
+            long Begin = Stream.CanSeek ? Stream.Position : 0L;
 
             // Header
-            if (!Stream.TryReadString(2, Encoding.ASCII, out string Identifier) ||
+            if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
                 !Identify(Identifier) ||
                 !Stream.TrySeek(8, SeekOrigin.Current) ||
                 !Stream.TryRead(out int DataOffset) ||
@@ -80,6 +83,8 @@ namespace MenthaAssembly.Media.Imaging
                 Stream.TrySeek(Begin, SeekOrigin.Begin);
                 return false;
             }
+
+            long Current = 46L;
 
             // Palette
             ImagePalette<BGRA> Palette = null;
@@ -96,25 +101,20 @@ namespace MenthaAssembly.Media.Imaging
                 if (NColors == 0)
                     NColors = 1 << Bits;
 
-                if (!Stream.TrySeek(Begin + PaletteOffset, SeekOrigin.Begin))
+                Current += 4L;
+                long Offset = Begin + PaletteOffset - Current;
+                if (!Stream.TrySeek(Offset, SeekOrigin.Current))
                     return false;
 
-                const int EntryLength = 4;
-                byte[] Entry = ArrayPool<byte>.Shared.Rent(EntryLength);
+                const int EntrySize = 4;
+                byte[] Entry = ArrayPool<byte>.Shared.Rent(EntrySize);
                 try
                 {
                     Palette = new ImagePalette<BGRA>(Bits);
                     for (int i = 0; i < NColors; i++)
                     {
-                        if (!Stream.ReadBuffer(Entry, 0, EntryLength))
+                        if (!Stream.ReadBuffer(Entry, 0, EntrySize))
                             return false;
-
-                        // Transparent
-                        if (Entry[0] == byte.MinValue &&
-                            Entry[1] == byte.MinValue &&
-                            Entry[2] == byte.MinValue &&
-                            Entry[3] == byte.MinValue)
-                            continue;
 
                         Palette.Datas.Add(new BGRA(Entry[0], Entry[1], Entry[2], byte.MaxValue));
                     }
@@ -123,10 +123,12 @@ namespace MenthaAssembly.Media.Imaging
                 {
                     ArrayPool<byte>.Shared.Return(Entry);
                 }
+
+                Current += Offset + NColors * EntrySize;
             }
 
             // ImageDatas
-            if (!Stream.TrySeek(Begin + DataOffset, SeekOrigin.Begin))
+            if (!Stream.TrySeek(Begin + DataOffset - Current, SeekOrigin.Current))
                 return false;
 
             int Stride = (((Width * Bits) >> 3) + 3) & 2147483644;
@@ -301,22 +303,18 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         /// <summary>
-        /// Indicates whether the specified Identifier is bitmap Identifier.
+        /// Indicates whether the specified Identifier is bitmap Identifier.<para/>
+        /// BM – Windows 3.1x, 95, NT, ... etc.<para/>
+        /// BA – OS / 2 struct Bitmap Array<para/>
+        /// CI – OS / 2 struct Color Icon<para/>
+        /// CP – OS / 2 const Color Pointer<para/>
+        /// IC – OS / 2 struct Icon<para/>
+        /// PT – OS / 2 Pointer<para/>
         /// </summary>
         /// <param name="Identifier">The specified Identifier.</param>
         public static bool Identify(string Identifier)
-        {
-            const int IdentifierSize = 2;
-            if (Identifier.Length != IdentifierSize)
-                return false;
-
-            return Identifier is "BM" or    // BM – Windows 3.1x, 95, NT, ... etc.
-                   "BA" or    // BA – OS / 2 struct Bitmap Array
-                   "CI" or    // CI – OS / 2 struct Color Icon
-                   "CP" or    // CP – OS / 2 const Color Pointer
-                   "IC" or    // IC – OS / 2 struct Icon
-                   "PT";      // PT – OS / 2 Pointer
-        }
+            => Identifier.Length == IdentifierSize &&
+               Identifier is "BM" or "BA" or "CI" or "CP" or "IC" or "PT";
 
         [Conditional("DEBUG")]
         public static void Parse(string Path)
