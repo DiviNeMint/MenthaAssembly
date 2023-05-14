@@ -8,6 +8,73 @@ namespace System.IO
     public static unsafe class StreamHelper
     {
         /// <summary>
+        /// Sets the position within the current stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Offset">A byte offset relative to the <paramref name="Origin"/>.</param>
+        /// <param name="Origin">Indicates the reference point used to obtain the new position.</param>
+        public static bool TrySeek(this Stream This, long Offset, SeekOrigin Origin)
+        {
+            if (Offset == 0)
+                return true;
+
+            if (This.CanSeek)
+            {
+                This.Seek(Offset, Origin);
+                return true;
+            }
+
+            if (Origin == SeekOrigin.Begin)
+            {
+                Offset -= This.Position;
+                if (Offset == 0)
+                    return true;
+
+                Origin = SeekOrigin.Current;
+            }
+
+            const int BufferLength = 8192;
+            if (Origin == SeekOrigin.Current)
+            {
+                if (Offset < 0)
+                    return false;
+
+                byte[] Buffer = ArrayPool<byte>.Shared.Rent(BufferLength);
+                try
+                {
+                    // More than 2GB
+                    const int Buffer2GBLoop = int.MaxValue / BufferLength;
+                    const long IntMaxValue = int.MaxValue;
+                    while (IntMaxValue <= Offset)
+                    {
+                        for (int i = 0; i < Buffer2GBLoop; i++)
+                            if (!ReadBuffer(This, Buffer, 0, BufferLength))
+                                return false;
+
+                        Offset -= IntMaxValue;
+                    }
+
+                    // More than BufferLength
+                    while (BufferLength <= Offset)
+                    {
+                        if (!ReadBuffer(This, Buffer, 0, BufferLength))
+                            return false;
+
+                        Offset -= BufferLength;
+                    }
+
+                    return ReadBuffer(This, Buffer, 0, (int)Offset);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(Buffer);
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Writes a data of specified type to the stream.
         /// </summary>
         /// <typeparam name="T">The specified type of data.</typeparam>
@@ -34,8 +101,7 @@ namespace System.IO
         /// <typeparam name="T">The specified type of array.</typeparam>
         /// <param name="This">The current stream.</param>
         /// <param name="Datas">The array of specified type to write to the stream.</param>
-        public static void Write<T>(this Stream This, T[] Datas)
-            where T : unmanaged
+        public static void Write<T>(this Stream This, T[] Datas) where T : unmanaged
             => Write(This, Datas, 0, Datas.Length);
         /// <summary>
         /// Writes an array of specified type to the stream.
@@ -107,8 +173,7 @@ namespace System.IO
         /// <typeparam name="T">The specified type of array.</typeparam>
         /// <param name="This">The current stream.</param>
         /// <param name="Datas">The array of specified type to write to the stream.</param>
-        public static Task WriteAsync<T>(this Stream This, T[] Datas)
-            where T : unmanaged
+        public static Task WriteAsync<T>(this Stream This, T[] Datas) where T : unmanaged
             => WriteAsync(This, Datas, 0, Datas.Length);
         /// <summary>
         /// Asynchronously writes an array of specified type to the stream.
@@ -134,15 +199,48 @@ namespace System.IO
         /// </summary>
         /// <typeparam name="T">The sepecial type of data.</typeparam>
         /// <param name="This">The current stream.</param>
-        public static T Read<T>(this Stream This)
-            where T : unmanaged
+        public static T Read<T>(this Stream This) where T : struct
+            => TryRead(This, out T Result) ? Result : throw new IOException();
+        /// <summary>
+        /// Reads a data of the specified type from the stream.
+        /// </summary>
+        /// <typeparam name="T">The sepecial type of data.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Buffer">The buffer to be filled by the stream.</param>
+        /// <param name="Offset">The zero-based byte offset in buffer at which to begin storing the data read from the current stream.</param>
+        public static T Read<T>(this Stream This, byte[] Buffer, int Offset) where T : struct
+            => TryRead(This, Buffer, Offset, out T Result) ? Result : throw new IOException();
+        /// <summary>
+        /// Reads a  specified length buffer from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Length">The length of specified buffer.</param>
+        public static byte[] Read(this Stream This, int Length)
+            => TryRead(This, Length, out byte[] Buffer) ? Buffer : throw new IOException();
+
+        /// <summary>
+        /// Reads a data of the specified type from the stream.
+        /// </summary>
+        /// <typeparam name="T">The sepecial type of data.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Result">The object read from the stream.</param>
+        public static bool TryRead<T>(this Stream This, out T Result)
+            where T : struct
         {
-            int Size = sizeof(T);
+            int Size = Marshal.SizeOf<T>();
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
             try
             {
-                This.ReadBuffer(Buffer, Size);
-                return *(T*)Buffer.ToPointer();
+                if (!This.ReadBuffer(Buffer, Size))
+                {
+                    Result = default;
+                    return false;
+                }
+
+                fixed (byte* pBuffer = Buffer)
+                    Result = Marshal.PtrToStructure<T>((IntPtr)pBuffer);
+
+                return true;
             }
             finally
             {
@@ -150,18 +248,52 @@ namespace System.IO
             }
         }
         /// <summary>
-        /// Reads a  specified length buffer from the stream.
+        /// Reads a data of the specified type from the stream.
+        /// </summary>
+        /// <typeparam name="T">The sepecial type of data.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Buffer">The buffer to be filled by the stream.</param>
+        /// <param name="Offset">The zero-based byte offset in buffer at which to begin storing the data read from the current stream.</param>
+        /// <param name="Result">The object read from the stream.</param>
+        public static bool TryRead<T>(this Stream This, byte[] Buffer, int Offset, out T Result)
+            where T : struct
+        {
+            int Size = Marshal.SizeOf<T>();
+            if (Offset + Size > Buffer.Length)
+            {
+                Result = default;
+                return false;
+            }
+
+            if (!This.ReadBuffer(Buffer, Offset, Size))
+            {
+                Result = default;
+                return false;
+            }
+
+            fixed (byte* pBuffer = Buffer)
+                Result = Marshal.PtrToStructure<T>((IntPtr)pBuffer);
+
+            return true;
+        }
+        /// <summary>
+        /// Reads a specified length buffer from the stream.
         /// </summary>
         /// <param name="This">The current stream.</param>
         /// <param name="Length">The length of specified buffer.</param>
-        public static byte[] Read(this Stream This, int Length)
+        /// <param name="Buffer">Data read from the stream.</param>
+        public static bool TryRead(this Stream This, int Length, out byte[] Buffer)
         {
-            byte[] Buffer = new byte[Length];
+            Buffer = new byte[Length];
             if (!ReadBuffer(This, Buffer))
-                throw new OutOfMemoryException();
+            {
+                Buffer = null;
+                return false;
+            }
 
-            return Buffer;
+            return true;
         }
+
 
         /// <summary>
         /// Reads string of specified encoding from the stream.
@@ -169,7 +301,7 @@ namespace System.IO
         /// <param name="This">The current stream.</param>
         /// <param name="BytesLength">The byte length of string.</param>
         public static string ReadString(this Stream This, int BytesLength)
-            => ReadString(This, BytesLength, Encoding.Default);
+            => TryReadString(This, BytesLength, Encoding.Default, out string Result) ? Result : throw new IOException();
         /// <summary>
         /// Reads string of specified encoding from the stream.
         /// </summary>
@@ -177,12 +309,36 @@ namespace System.IO
         /// <param name="BytesLength">The byte length of string.</param>
         /// <param name="Encoding">The specified encoding of string.</param>
         public static string ReadString(this Stream This, int BytesLength, Encoding Encoding)
+            => TryReadString(This, BytesLength, Encoding, out string Result) ? Result : throw new IOException();
+
+        /// <summary>
+        /// Reads string of specified encoding from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="BytesLength">The byte length of string.</param>
+        /// <param name="Result">The string decoded from the stream.</param>
+        public static bool TryReadString(this Stream This, int BytesLength, out string Result)
+            => TryReadString(This, BytesLength, Encoding.Default, out Result);
+        /// <summary>
+        /// Reads string of specified encoding from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="BytesLength">The byte length of string.</param>
+        /// <param name="Encoding">The specified encoding of string.</param>
+        /// <param name="Result">The string decoded from the stream.</param>
+        public static bool TryReadString(this Stream This, int BytesLength, Encoding Encoding, out string Result)
         {
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(BytesLength);
             try
             {
-                This.ReadBuffer(Buffer, BytesLength);
-                return Encoding.GetString(Buffer, 0, BytesLength);
+                if (!This.ReadBuffer(Buffer, BytesLength))
+                {
+                    Result = string.Empty;
+                    return false;
+                }
+
+                Result = Encoding.GetString(Buffer, 0, BytesLength);
+                return true;
             }
             finally
             {
