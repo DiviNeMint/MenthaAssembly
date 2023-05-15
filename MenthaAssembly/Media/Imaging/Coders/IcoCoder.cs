@@ -4,7 +4,6 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -40,15 +39,22 @@ namespace MenthaAssembly.Media.Imaging
         // ============================================================
 
         public const int IdentifierSize = 4;
-        public const int IdentifyHeaderSize = 6;
 
-        private const int IconEnrtyLength = 16;
-
-        public static bool TryDecode(string FilePath, out IImageContext[] Images)
+        /// <summary>
+        /// Decodes a ico file from the specified path.
+        /// </summary>
+        /// <param name="Path">The specified path.</param>
+        /// <param name="Images">The decoded images.</param>
+        public static bool TryDecode(string Path, out IImageContext[] Images)
         {
-            using FileStream Stream = new(FilePath, FileMode.Open, FileAccess.Read);
+            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
             return TryDecode(Stream, out Images);
         }
+        /// <summary>
+        /// Decodes a icon file from the specified stream.
+        /// </summary>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Images">The decoded images.</param>
         public static bool TryDecode(Stream Stream, out IImageContext[] Images)
         {
             Images = null;
@@ -78,7 +84,7 @@ namespace MenthaAssembly.Media.Imaging
 
             // Images
             Images = new IImageContext[NumImages];
-            const int MaxIdentifierSize = PngCoder.IdentifyHeaderSize;
+            const int MaxIdentifierSize = PngCoder.IdentifierSize;
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(MaxIdentifierSize);
             try
             {
@@ -133,11 +139,23 @@ namespace MenthaAssembly.Media.Imaging
             return true;
         }
 
-        public static void Encode(string FilePath, params IImageContext[] Images)
+        private const int IconEnrtyLength = 16;
+
+        /// <summary>
+        /// Encodes the specified images to the specified path.
+        /// </summary>
+        /// <param name="Path">The specified path.</param>
+        /// <param name="Images">The specified image.</param>
+        public static void Encode(string Path, params IImageContext[] Images)
         {
-            using FileStream Stream = new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write);
+            using FileStream Stream = new FileStream(Path, FileMode.CreateNew, FileAccess.Write);
             Encode(Stream, Images);
         }
+        /// <summary>
+        /// Encodes the specified images to the specified stream.
+        /// </summary>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Images">The specified images.</param>
         public static void Encode(Stream Stream, params IImageContext[] Images)
         {
             int NumImages = Images.Length;
@@ -212,9 +230,9 @@ namespace MenthaAssembly.Media.Imaging
                Identifier == "\0\0\u0001\0";
 
         [Conditional("DEBUG")]
-        public static void Parse(string FilePath)
+        public static void Parse(string Path)
         {
-            using FileStream Stream = new(FilePath, FileMode.Open, FileAccess.Read);
+            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
 
             // Identifier
             if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||

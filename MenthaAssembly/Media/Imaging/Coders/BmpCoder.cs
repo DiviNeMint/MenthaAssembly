@@ -52,7 +52,7 @@ namespace MenthaAssembly.Media.Imaging
         /// Decodes a bitmap file from the specified path.
         /// </summary>
         /// <param name="Path">The specified path.</param>
-        /// <param name="Image">The decoded bitmap.</param>
+        /// <param name="Image">The decoded image.</param>
         public static bool TryDecode(string Path, out IImageContext Image)
         {
             using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
@@ -62,7 +62,7 @@ namespace MenthaAssembly.Media.Imaging
         /// Decodes a bitmap file from the specified stream.
         /// </summary>
         /// <param name="Stream">The specified stream.</param>
-        /// <param name="Image">The decoded bitmap.</param>
+        /// <param name="Image">The decoded image.</param>
         public static bool TryDecode(Stream Stream, out IImageContext Image)
         {
             Image = null;

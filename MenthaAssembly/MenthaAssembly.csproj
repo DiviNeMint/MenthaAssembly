@@ -27,12 +27,16 @@
       <_Parameter1>ControlTest</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
-  
+
   <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="7.0.0" />
     <PackageReference Include="System.Buffers" Version="4.5.1" />
     <PackageReference Include="System.Memory" Version="4.5.5" />
   </ItemGroup>
+
+  <!--<ItemGroup Condition="'$(TargetFramework)'=='net6.0'">
+    <PackageReference Include="System.Runtime.Experimental" Version="6.0.2" />
+  </ItemGroup>-->
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />

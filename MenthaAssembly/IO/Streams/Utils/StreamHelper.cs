@@ -143,6 +143,28 @@ namespace System.IO
                 ArrayPool<byte>.Shared.Return(Buffer);
             }
         }
+        /// <summary>
+        /// Writes a reaverse data of specified type to the stream.
+        /// </summary>
+        /// <typeparam name="T">The specified type of data.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Data">The specified type of data to write to the stream.</param>
+        public static void ReaverseWrite<T>(this Stream This, T Data)
+            where T : unmanaged
+        {
+            int Size = sizeof(T);
+            byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
+            try
+            {
+                *(T*)Buffer.ToPointer() = Data;
+                Array.Reverse(Buffer, 0, Size);
+                This.Write(Buffer, 0, Size);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Buffer);
+            }
+        }
 
         /// <summary>
         /// Asynchronously writes a data of specified type to the stream.
@@ -260,7 +282,9 @@ namespace System.IO
             }
 
             fixed (byte* pBuffer = Buffer)
-                Result = Marshal.PtrToStructure<T>((IntPtr)pBuffer);
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
+                Result = *(T*)pBuffer;
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
             return true;
         }
@@ -280,6 +304,38 @@ namespace System.IO
             }
 
             return true;
+        }
+        /// <summary>
+        /// Reads a reversed data of the specified type from the stream.
+        /// </summary>
+        /// <typeparam name="T">The sepecial type of data.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Result">The object read from the stream.</param>
+        public static bool TryReverseRead<T>(this Stream This, out T Result)
+            where T : struct
+        {
+            int Size = Marshal.SizeOf<T>();
+            byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
+            try
+            {
+                if (!This.ReadBuffer(Buffer, Size))
+                {
+                    Result = default;
+                    return false;
+                }
+
+                Array.Reverse(Buffer, 0, Size);
+                fixed (byte* pBuffer = Buffer)
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
+                    Result = *(T*)pBuffer;
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
+
+                return true;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Buffer);
+            }
         }
 
         /// <summary>

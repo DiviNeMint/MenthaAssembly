@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -10,31 +12,75 @@ using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    // PNG Specification
-    // https://www.w3.org/TR/PNG/
+    /// <summary>
+    /// Represents an encoder for Png file format.
+    /// </summary>
     public unsafe static class PngCoder
     {
-        public const int IdentifyHeaderSize = 8;
+        // PNG File Struct
+        // https://www.w3.org/TR/PNG/
+        // ============================================================
+        //                          File Header
+        // ============================================================
+        // Identifier           , 8 Bytes
+        // ============================================================
+        //                            Chunks
+        // ============================================================
+        // Length               , 4 Bytes
+        // TypeCode             , 4 Bytes
+        // Datas                , n Bytes
+        // CRC32                , 4 Bytes
+        // ============================================================
 
-        public static bool TryDecode(string FilePath, out IImageContext Image)
+        public const int IdentifierSize = 8;
+
+        private const int ChunkTypeCodeSize = 4;
+        private const int CRC32CodeSize = sizeof(int);
+
+        /// <summary>
+        /// Decode a png file from the specified path without verifying the datas.
+        /// </summary>
+        /// <param name="Path">The specified path.</param>
+        /// <param name="Image">The decoded image.</param>
+        public static bool TryDecode(string Path, out IImageContext Image)
         {
-            using FileStream Stream = new FileStream(FilePath, FileMode.Open, FileAccess.Read);
-            return TryDecode(Stream, out Image);
+            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
+            return TryDecode(Stream, false, out Image);
         }
-        public static bool TryDecode(Stream Stream, out IImageContext Image)
+        /// <summary>
+        /// Decodes a png file from the specified path.
+        /// </summary>
+        /// <param name="Path">The specified path.</param>
+        /// <param name="VerifyDatas">Determine whether to verify the data.</param>
+        /// <param name="Image">The decoded image.</param>
+        public static bool TryDecode(string Path, bool VerifyDatas, out IImageContext Image)
         {
-            bool CheckCRC32 = true;
-            byte[] Datas = new byte[IdentifyHeaderSize];
+            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
+            return TryDecode(Stream, VerifyDatas, out Image);
+        }
+        /// <summary>
+        /// Decodes a png file from the specified stream without verifying the datas.
+        /// </summary>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Image">The decoded image.</param>
+        public static bool TryDecode(Stream Stream, out IImageContext Image)
+            => TryDecode(Stream, false, out Image);
+        /// <summary>
+        /// Decodes a png file from the specified stream.
+        /// </summary>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="VerifyDatas">Determine whether to verify the data.</param>
+        /// <param name="Image">The decoded image.</param>
+        public static bool TryDecode(Stream Stream, bool VerifyDatas, out IImageContext Image)
+        {
+            Image = null;
+            long Begin = Stream.CanSeek ? Stream.Position : 0L;
 
-            //if (Stream.Position != 0)
-            //    Stream.Seek(0, SeekOrigin.Begin);
-
-            Stream.Read(Datas, 0, Datas.Length);
-
-            // Identify
-            if (!Identify(Datas))
+            // Header
+            if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
+                !Identify(Identifier))
             {
-                Image = null;
+                Stream.TrySeek(Begin, SeekOrigin.Begin);
                 return false;
             }
 
@@ -49,267 +95,286 @@ namespace MenthaAssembly.Media.Imaging
             //Filter,
             //Interlace;
 
-            MemoryStream DataStream = new MemoryStream();
-            DeflateStream Decompressor = new DeflateStream(DataStream, CompressionMode.Decompress);
+            MemoryStream DataStream = new();
+            DeflateStream Decompressor = new(DataStream, CompressionMode.Decompress);
             int IDAT_Offset = 0,
                 IDAT_DecodeLength = 0,
                 IDAT_DecodeHeight = 0;
-            byte[] DecodeDatas = null;
-
-            byte[] TypeCode = new byte[sizeof(int)];
-            do
+            byte[] DecodeDatas = null,
+                   TypeCode = ArrayPool<byte>.Shared.Rent(ChunkTypeCodeSize),
+                   Datas = null;
+            try
             {
-                Datas = new byte[sizeof(int)];
-
-                Stream.Read(Datas, 0, Datas.Length);
-                int Length = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
-
-                Stream.Read(TypeCode, 0, TypeCode.Length);  // TypeCode
-
-                #region IEND
-                // IEND
-                if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x45) && TypeCode[2].Equals(0x4E) && TypeCode[3].Equals(0x44))
-                    break;
-
-                #endregion
-
-                #region IHDR
-                if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x48) && TypeCode[2].Equals(0x44) && TypeCode[3].Equals(0x52))
+                do
                 {
-                    Datas = new byte[Length];
-                    Stream.Read(Datas, 0, Datas.Length);
-
-                    Width = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
-                    Height = Datas[4] << 24 | Datas[5] << 16 | Datas[6] << 8 | Datas[7];
-                    switch (Datas[9])
+                    if (!Stream.TryReverseRead(out int Length) ||
+                        !Stream.ReadBuffer(TypeCode, 0, ChunkTypeCodeSize))
                     {
-                        case 0:
-                        case 3:
-                            Bits = Datas[8];
-                            break;
-                        case 2:
-                            Bits = 24;
-                            break;
-                        case 4:
-                        case 6:
-                            Bits = 32;
-                            break;
+                        Stream.TrySeek(Begin, SeekOrigin.Begin);
+                        return false;
                     }
 
-                    //Compression = Datas[10];           // Always be 0 (ZibCompress).
-                    //Filter = Datas[11];                // Always be 0.
-                    //Interlace = Datas[12];   
-                    Channels = (Bits + 7) >> 3;
-                    Stride = (Width * Bits + 7) >> 3; //(((Width * Bits) >> 3) + 3) >> 2 << 2;
-                }
-                else
-                #endregion
-                // sBIT
-                //if (TypeCode[0].Equals(0x73) && TypeCode[1].Equals(0x42) && TypeCode[2].Equals(0x49) && TypeCode[3].Equals(0x54)) { }
-                #region PLTE
-                if (TypeCode[0].Equals(0x50) && TypeCode[1].Equals(0x4C) && TypeCode[2].Equals(0x54) && TypeCode[3].Equals(0x45))
-                {
-                    Datas = new byte[Length];
-                    Stream.Read(Datas, 0, Datas.Length);
+                    #region IEND
+                    if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x45) && TypeCode[2].Equals(0x4E) && TypeCode[3].Equals(0x44))
+                        break;
 
-                    Palette = new List<BGRA>();
-                    for (int i = 0; i < Length; i += 3)
-                        Palette.Add(new BGRA(Datas[i + 2], Datas[i + 1], Datas[i], byte.MaxValue));
-                }
-                else
-                #endregion
-                // pHYs
-                //if (TypeCode[0].Equals(0x70) && TypeCode[1].Equals(0x48) && TypeCode[2].Equals(0x59) && TypeCode[3].Equals(0x73)) { }
-                //else
-                #region tEXt
-                if (TypeCode[0].Equals(0x74) && TypeCode[1].Equals(0x45) && TypeCode[2].Equals(0x58) && TypeCode[3].Equals(0x74))
-                {
-                    Datas = new byte[Length];
-                    Stream.Read(Datas, 0, Datas.Length);
+                    #endregion
 
-                    int SeparatorIndex = Datas.IndexOf(i => i.Equals(0x00));
-                    if (SeparatorIndex > 0)
+                    #region IHDR
+                    if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x48) && TypeCode[2].Equals(0x44) && TypeCode[3].Equals(0x52))
                     {
-                        string Property = Encoding.Default.GetString(Datas, 0, SeparatorIndex),
-                               Content = Encoding.Default.GetString(Datas.Skip(SeparatorIndex).ToArray());
-                        Debug.WriteLine($"{Property} : {Content}");
+                        Datas = new byte[Length];
+                        Stream.Read(Datas, 0, Datas.Length);
+
+                        Width = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
+                        Height = Datas[4] << 24 | Datas[5] << 16 | Datas[6] << 8 | Datas[7];
+                        switch (Datas[9])
+                        {
+                            case 0:
+                            case 3:
+                                Bits = Datas[8];
+                                break;
+                            case 2:
+                                Bits = 24;
+                                break;
+                            case 4:
+                            case 6:
+                                Bits = 32;
+                                break;
+                        }
+
+                        //Compression = Datas[10];           // Always be 0 (ZibCompress).
+                        //Filter = Datas[11];                // Always be 0.
+                        //Interlace = Datas[12];   
+                        Channels = (Bits + 7) >> 3;
+                        Stride = (Width * Bits + 7) >> 3; //(((Width * Bits) >> 3) + 3) >> 2 << 2;
                     }
-                }
-                else
-                #endregion
 
-                #region IDAT
-                if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x44) && TypeCode[2].Equals(0x41) && TypeCode[3].Equals(0x54))
-                {
-                    Datas = new byte[Length];
-                    Stream.Read(Datas, 0, Datas.Length);
+                    #endregion
 
-                    DataStream.Position = 0;
+                    // sBIT
+                    //if (TypeCode[0].Equals(0x73) && TypeCode[1].Equals(0x42) && TypeCode[2].Equals(0x49) && TypeCode[3].Equals(0x54)) { }
+
+                    #region PLTE
+                    else if (TypeCode[0].Equals(0x50) && TypeCode[1].Equals(0x4C) && TypeCode[2].Equals(0x54) && TypeCode[3].Equals(0x45))
+                    {
+                        Datas = new byte[Length];
+                        Stream.Read(Datas, 0, Datas.Length);
+
+                        Palette = new List<BGRA>();
+                        for (int i = 0; i < Length; i += 3)
+                            Palette.Add(new BGRA(Datas[i + 2], Datas[i + 1], Datas[i], byte.MaxValue));
+                    }
+                    #endregion
+
+                    // pHYs
+                    //if (TypeCode[0].Equals(0x70) && TypeCode[1].Equals(0x48) && TypeCode[2].Equals(0x59) && TypeCode[3].Equals(0x73)) { }
+                    //else
+
+                    #region tEXt
+                    else if (TypeCode[0].Equals(0x74) && TypeCode[1].Equals(0x45) && TypeCode[2].Equals(0x58) && TypeCode[3].Equals(0x74))
+                    {
+                        Datas = new byte[Length];
+                        Stream.Read(Datas, 0, Datas.Length);
+
+                        int SeparatorIndex = Datas.IndexOf(i => i.Equals(0x00));
+                        if (SeparatorIndex > 0)
+                        {
+                            string Property = Encoding.Default.GetString(Datas, 0, SeparatorIndex),
+                                   Content = Encoding.Default.GetString(Datas, SeparatorIndex, Length - SeparatorIndex);
+                            Debug.WriteLine($"{Property} : {Content}");
+                        }
+                    }
+
+                    #endregion
+
+                    #region IDAT
+                    else if (TypeCode[0].Equals(0x49) && TypeCode[1].Equals(0x44) && TypeCode[2].Equals(0x41) && TypeCode[3].Equals(0x54))
+                    {
+                        Datas = new byte[Length];
+                        Stream.Read(Datas, 0, Datas.Length);
+
+                        DataStream.Position = 0;
 #if NETSTANDARD2_1
-                    DataStream.Write(Datas.AsSpan(IdentifyRFC1950(Datas) ? 2 : 0));
+                        DataStream.Write(Datas.AsSpan(IdentifyRFC1950(Datas) ? 2 : 0));
 #else
                     if (IdentifyRFC1950(Datas))
                         DataStream.Write(Datas, 2, Datas.Length - 2);
                     else
                         DataStream.Write(Datas, 0, Datas.Length);
 #endif
-                    DataStream.Position = 0;
+                        DataStream.Position = 0;
 
-                    // ImageDatas
-                    int ChannelStride = Channels > 1 ? Width : Stride,
-                        ChannelSize = ChannelStride * Height;
-                    if (ImageDatas is null)
-                        ImageDatas = new byte[Channels][];
-                    if (DecodeDatas is null)
-                        DecodeDatas = new byte[Stride + 1];
+                        // ImageDatas
+                        int ChannelStride = Channels > 1 ? Width : Stride,
+                            ChannelSize = ChannelStride * Height;
+                        if (ImageDatas is null)
+                            ImageDatas = new byte[Channels][];
+                        if (DecodeDatas is null)
+                            DecodeDatas = new byte[Stride + 1];
 
-                    for (int j = IDAT_DecodeHeight; j < Height; j++)
-                    {
-                        // Check First IDAT Chunks
-                        if (IDAT_DecodeLength.Equals(0) ||
-                            IDAT_DecodeLength.Equals(DecodeDatas.Length))
+                        for (int j = IDAT_DecodeHeight; j < Height; j++)
                         {
-                            IDAT_DecodeLength = Decompressor.Read(DecodeDatas, 0, DecodeDatas.Length);
-                        }
-                        else
-                        {
-                            IDAT_DecodeLength = Decompressor.Read(DecodeDatas, IDAT_DecodeLength, DecodeDatas.Length - IDAT_DecodeLength);
-                            IDAT_DecodeLength = DecodeDatas.Length;
-                        }
-                        if (IDAT_DecodeLength < DecodeDatas.Length)
-                            break;
+                            // Check First IDAT Chunks
+                            if (IDAT_DecodeLength.Equals(0) ||
+                                IDAT_DecodeLength.Equals(DecodeDatas.Length))
+                            {
+                                IDAT_DecodeLength = Decompressor.Read(DecodeDatas, 0, DecodeDatas.Length);
+                            }
+                            else
+                            {
+                                IDAT_DecodeLength = Decompressor.Read(DecodeDatas, IDAT_DecodeLength, DecodeDatas.Length - IDAT_DecodeLength);
+                                IDAT_DecodeLength = DecodeDatas.Length;
+                            }
+                            if (IDAT_DecodeLength < DecodeDatas.Length)
+                                break;
 
-                        // IDAT Filter
-                        //https://www.w3.org/TR/2003/REC-PNG-20031110/#7Filtering
-                        switch (DecodeDatas[0])
-                        {
-                            case 1:     // Sub
-                                {
-                                    Parallel.For(0, ImageDatas.Length,
-                                        (c) =>
-                                        {
-                                            if (ImageDatas[c] is null)
-                                                ImageDatas[c] = new byte[ChannelSize];
-
-                                            ImageDatas[c][IDAT_Offset] = DecodeDatas[c + 1];
-                                            for (int i = 1; i < ChannelStride; i++)
-                                                ImageDatas[c][IDAT_Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] +
-                                                                                        ImageDatas[c][IDAT_Offset + i - 1]);
-                                        });
-                                    break;
-                                }
-                            case 2:     // LastLine
-                                {
-                                    Parallel.For(0, ImageDatas.Length,
-                                        (c) =>
-                                        {
-                                            if (ImageDatas[c] is null)
-                                                ImageDatas[c] = new byte[ChannelSize];
-                                            for (int i = 0; i < ChannelStride; i++)
-                                                ImageDatas[c][IDAT_Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] +
-                                                                                        ImageDatas[c][IDAT_Offset - ChannelStride + i]);
-                                        });
-                                    break;
-                                }
-                            case 3:     // Average
-                                {
-                                    Parallel.For(0, ImageDatas.Length,
-                                        (c) =>
-                                        {
-                                            if (ImageDatas[c] is null)
-                                                ImageDatas[c] = new byte[ChannelSize];
-
-                                            // FirstData (no last data)
-                                            ImageDatas[c][IDAT_Offset] = (byte)(DecodeDatas[c + 1] +
-                                                                                Math.Floor(ImageDatas[c][IDAT_Offset - ChannelStride] / 2d));
-                                            for (int i = 1; i < ChannelStride; i++)
+                            // IDAT Filter
+                            //https://www.w3.org/TR/2003/REC-PNG-20031110/#7Filtering
+                            switch (DecodeDatas[0])
+                            {
+                                case 1:     // Sub
+                                    {
+                                        Parallel.For(0, ImageDatas.Length,
+                                            (c) =>
                                             {
-                                                int Index = IDAT_Offset + i;
-                                                ImageDatas[c][Index] = (byte)(DecodeDatas[i * Channels + c + 1] +
-                                                                              Math.Floor((ImageDatas[c][Index - ChannelStride] + ImageDatas[c][Index - 1]) / 2d));
+                                                if (ImageDatas[c] is null)
+                                                    ImageDatas[c] = new byte[ChannelSize];
 
-                                            }
-                                        });
-                                    break;
-                                }
-                            case 4:     // Paeth
-                                {
-                                    Parallel.For(0, ImageDatas.Length,
-                                        (c) =>
-                                        {
-                                            if (ImageDatas[c] is null)
-                                                ImageDatas[c] = new byte[ChannelSize];
-
-                                            // FirstData (no last data)
-                                            ImageDatas[c][IDAT_Offset] = (byte)(DecodeDatas[c + 1] + ImageDatas[c][IDAT_Offset - ChannelStride]);
-                                            for (int i = 1; i < ChannelStride; i++)
+                                                ImageDatas[c][IDAT_Offset] = DecodeDatas[c + 1];
+                                                for (int i = 1; i < ChannelStride; i++)
+                                                    ImageDatas[c][IDAT_Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] +
+                                                                                            ImageDatas[c][IDAT_Offset + i - 1]);
+                                            });
+                                        break;
+                                    }
+                                case 2:     // LastLine
+                                    {
+                                        Parallel.For(0, ImageDatas.Length,
+                                            (c) =>
                                             {
-                                                int Index = IDAT_Offset + i;
-                                                byte Last = ImageDatas[c][Index - 1];
-                                                byte PreviousLine = ImageDatas[c][Index - ChannelStride];
-                                                byte PreviousLineLast = ImageDatas[c][Index - ChannelStride - 1];
+                                                if (ImageDatas[c] is null)
+                                                    ImageDatas[c] = new byte[ChannelSize];
+                                                for (int i = 0; i < ChannelStride; i++)
+                                                    ImageDatas[c][IDAT_Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] +
+                                                                                            ImageDatas[c][IDAT_Offset - ChannelStride + i]);
+                                            });
+                                        break;
+                                    }
+                                case 3:     // Average
+                                    {
+                                        Parallel.For(0, ImageDatas.Length,
+                                            (c) =>
+                                            {
+                                                if (ImageDatas[c] is null)
+                                                    ImageDatas[c] = new byte[ChannelSize];
 
-                                                ImageDatas[c][Index] = (byte)(DecodeDatas[i * Channels + c + 1] +
-                                                                              CalculatePaeth(ImageDatas[c][Index - 1], ImageDatas[c][Index - ChannelStride], ImageDatas[c][Index - ChannelStride - 1]));
-                                            }
-                                        });
-                                    break;
-                                }
-                            case 0:     // None
-                            default:
-                                {
-                                    Parallel.For(0, ImageDatas.Length,
-                                        (c) =>
-                                        {
-                                            if (ImageDatas[c] is null)
-                                                ImageDatas[c] = new byte[ChannelSize];
-                                            for (int i = 0; i < ChannelStride; i++)
-                                                ImageDatas[c][IDAT_Offset + i] = DecodeDatas[i * Channels + c + 1];
-                                        });
-                                    break;
-                                }
+                                                // FirstData (no last data)
+                                                ImageDatas[c][IDAT_Offset] = (byte)(DecodeDatas[c + 1] +
+                                                                                    Math.Floor(ImageDatas[c][IDAT_Offset - ChannelStride] / 2d));
+                                                for (int i = 1; i < ChannelStride; i++)
+                                                {
+                                                    int Index = IDAT_Offset + i;
+                                                    ImageDatas[c][Index] = (byte)(DecodeDatas[i * Channels + c + 1] +
+                                                                                  Math.Floor((ImageDatas[c][Index - ChannelStride] + ImageDatas[c][Index - 1]) / 2d));
+
+                                                }
+                                            });
+                                        break;
+                                    }
+                                case 4:     // Paeth
+                                    {
+                                        Parallel.For(0, ImageDatas.Length,
+                                            (c) =>
+                                            {
+                                                if (ImageDatas[c] is null)
+                                                    ImageDatas[c] = new byte[ChannelSize];
+
+                                                // FirstData (no last data)
+                                                ImageDatas[c][IDAT_Offset] = (byte)(DecodeDatas[c + 1] + ImageDatas[c][IDAT_Offset - ChannelStride]);
+                                                for (int i = 1; i < ChannelStride; i++)
+                                                {
+                                                    int Index = IDAT_Offset + i;
+                                                    byte Last = ImageDatas[c][Index - 1];
+                                                    byte PreviousLine = ImageDatas[c][Index - ChannelStride];
+                                                    byte PreviousLineLast = ImageDatas[c][Index - ChannelStride - 1];
+
+                                                    ImageDatas[c][Index] = (byte)(DecodeDatas[i * Channels + c + 1] +
+                                                                                  CalculatePaeth(ImageDatas[c][Index - 1], ImageDatas[c][Index - ChannelStride], ImageDatas[c][Index - ChannelStride - 1]));
+                                                }
+                                            });
+                                        break;
+                                    }
+                                case 0:     // None
+                                default:
+                                    {
+                                        Parallel.For(0, ImageDatas.Length,
+                                            (c) =>
+                                            {
+                                                if (ImageDatas[c] is null)
+                                                    ImageDatas[c] = new byte[ChannelSize];
+                                                for (int i = 0; i < ChannelStride; i++)
+                                                    ImageDatas[c][IDAT_Offset + i] = DecodeDatas[i * Channels + c + 1];
+                                            });
+                                        break;
+                                    }
+                            }
+                            IDAT_Offset += ChannelStride;
+                            IDAT_DecodeHeight++;
                         }
-                        IDAT_Offset += ChannelStride;
-                        IDAT_DecodeHeight++;
                     }
-                }
-                else
-                #endregion
 
-                #region Other
-                if (Length > 0)
-                {
-                    Stream.Seek(Length + sizeof(int), SeekOrigin.Current);  // Skip Datas & CRC32.
-                    continue;
-                }
-                #endregion
+                    #endregion
 
-                #region CRC32
-                if (CheckCRC32)
-                {
-                    CRC32.Calculate(Datas: TypeCode, out uint NextRegister);
-                    CRC32.Calculate(Datas: Datas, out int CRCResult, NextRegister);
-                    Datas = new byte[sizeof(int)];
-                    Stream.Read(Datas, 0, Datas.Length);
-                    if (!CRCResult.Equals(Datas[0] << 24 |
-                                          Datas[1] << 16 |
-                                          Datas[2] << 8 |
-                                          Datas[3]))
+                    #region Other
+                    else if (Length > 0)
+                    {
+                        // Skip Datas & CRC32.
+                        if (!Stream.TrySeek(Length + ChunkTypeCodeSize, SeekOrigin.Current))
+                        {
+                            Image = null;
+                            return false;
+                        }
+
+                        continue;
+                    }
+
+                    #endregion
+
+                    #region CRC32
+                    // Verify CRC32
+                    if (VerifyDatas)
+                    {
+                        CRC32.Calculate(TypeCode, 0, ChunkTypeCodeSize, out uint NextRegister);
+                        CRC32.Calculate(Datas: Datas, out int CRCResult, NextRegister);
+                        if (!Stream.TryReverseRead(out int CRC32Code) ||
+                            CRCResult != CRC32Code)
+                        {
+                            Image = null;
+                            return false;
+                        }
+                    }
+
+                    // Skip CRC32.
+                    else if (!Stream.TrySeek(CRC32CodeSize, SeekOrigin.Current))
                     {
                         Image = null;
                         return false;
                     }
-                }
-                else
-                {
-                    Stream.Seek(sizeof(int), SeekOrigin.Current);   // Skip CRC32.
-                }
 
-                #endregion
-            } while (Stream.Position < Stream.Length);
-            Decompressor.Dispose();
-            DataStream.Dispose();
-            //Stream.Dispose();
+                    #endregion
+
+                } while (Stream.Position < Stream.Length);
+            }
+            finally
+            {
+                Decompressor.Dispose();
+                DataStream.Dispose();
+                //Stream.Dispose();
+
+                //ArrayPool<byte>.Shared.Return(Datas);
+                ArrayPool<byte>.Shared.Return(TypeCode);
+            }
 
             switch (ImageDatas.Length)
             {
@@ -328,11 +393,21 @@ namespace MenthaAssembly.Media.Imaging
             return false;
         }
 
-        public static void Encode(IImageContext Image, string FilePath)
+        /// <summary>
+        /// Encodes the specified image to the specified path.
+        /// </summary>
+        /// <param name="Image">The specified image.</param>
+        /// <param name="Path">The specified path.</param>
+        public static void Encode(IImageContext Image, string Path)
         {
-            using FileStream Stream = new FileStream(FilePath, FileMode.CreateNew, FileAccess.Write);
+            using FileStream Stream = new(Path, FileMode.CreateNew, FileAccess.Write);
             Encode(Image, Stream);
         }
+        /// <summary>
+        /// Encodes the specified image to the specified stream.
+        /// </summary>
+        /// <param name="Image">The specified image.</param>
+        /// <param name="Stream">The specified stream.</param>
         public static void Encode(IImageContext Image, Stream Stream)
         {
             // IdentifyHeader
@@ -500,9 +575,32 @@ namespace MenthaAssembly.Media.Imaging
             return c;
         }
 
+        /// <summary>
+        /// Indicates whether the specified Identifier is bitmap Identifier.<para/>
+        /// BM – Windows 3.1x, 95, NT, ... etc.<para/>
+        /// BA – OS / 2 struct Bitmap Array<para/>
+        /// CI – OS / 2 struct Color Icon<para/>
+        /// CP – OS / 2 const Color Pointer<para/>
+        /// IC – OS / 2 struct Icon<para/>
+        /// PT – OS / 2 Pointer<para/>
+        /// </summary>
+        /// <param name="Identifier">The specified Identifier.</param>
+        public static bool Identify(string Identifier)
+            => Identifier.Length == IdentifierSize &&
+               Identifier is "?PNG\r\n\u001a\n";
+
+        private static bool IdentifyRFC1950(byte[] Datas)
+            => (Datas[0].Equals(0x08) && (Datas[1].Equals(0x1D) || Datas[1].Equals(0x5B) || Datas[1].Equals(0x99) || Datas[1].Equals(0xD7))) ||
+               (Datas[0].Equals(0x18) && (Datas[1].Equals(0x19) || Datas[1].Equals(0x57) || Datas[1].Equals(0x95) || Datas[1].Equals(0xD3))) ||
+               (Datas[0].Equals(0x28) && (Datas[1].Equals(0x15) || Datas[1].Equals(0x53) || Datas[1].Equals(0x91) || Datas[1].Equals(0xCF))) ||
+               (Datas[0].Equals(0x38) && (Datas[1].Equals(0x11) || Datas[1].Equals(0x4F) || Datas[1].Equals(0x8D) || Datas[1].Equals(0xCB))) ||
+               (Datas[0].Equals(0x48) && (Datas[1].Equals(0x0D) || Datas[1].Equals(0x4B) || Datas[1].Equals(0x89) || Datas[1].Equals(0xC7))) ||
+               (Datas[0].Equals(0x58) && (Datas[1].Equals(0x09) || Datas[1].Equals(0x47) || Datas[1].Equals(0x85) || Datas[1].Equals(0xC3))) ||
+               (Datas[0].Equals(0x68) && (Datas[1].Equals(0x05) || Datas[1].Equals(0x43) || Datas[1].Equals(0x81) || Datas[1].Equals(0xDE))) ||
+               (Datas[0].Equals(0x78) && (Datas[1].Equals(0x01) || Datas[1].Equals(0x5E) || Datas[1].Equals(0x9C) || Datas[1].Equals(0xDA)));
         public static bool Identify(byte[] Data)
         {
-            if (Data.Length < IdentifyHeaderSize)
+            if (Data.Length < IdentifierSize)
                 return false;
 
             return Data[0].Equals(0x89) &&
@@ -516,61 +614,69 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         [Conditional("DEBUG")]
-        public static void Parse(string FilePath, bool ShowIDAT = true)
+        public static void Parse(string Path, bool ShowIDAT = true)
         {
-            FileStream FS = new FileStream(FilePath, FileMode.Open, FileAccess.Read);
+            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
 
-            byte[] Datas = new byte[IdentifyHeaderSize];
-            FS.Read(Datas, 0, Datas.Length);
-
-            if (!Identify(Datas))
+            // Header
+            if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
+                !Identify(Identifier))
             {
                 Debug.WriteLine("This is not Png file.");
                 return;
             }
 
-            MemoryStream DataStream = new MemoryStream();
-            DeflateStream Decompressor = new DeflateStream(DataStream, CompressionMode.Decompress);
-            string Result;
+            MemoryStream DataStream = new();
+            DeflateStream Decompressor = new(DataStream, CompressionMode.Decompress);
+
             do
             {
-                Datas = new byte[sizeof(int)];
-                FS.Read(Datas, 0, Datas.Length);
-                int Length = Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3];
-                FS.Read(Datas, 0, Datas.Length);
-                string TypeCode = Encoding.Default.GetString(Datas);
+                if (!Stream.TryReverseRead(out int Length) ||
+                    !Stream.TryReadString(4, Encoding.ASCII, out string TypeCode))
+                {
+                    Debug.WriteLine("Reads chunk error.");
+                    return;
+                }
 
-                Result = "========================\r\n" +
-                         $"          {TypeCode} ({string.Join(", ", Datas.Select(i => $"0x{i.ToString("X2")}"))})\r\n" +
-                         "========================\r\n" +
-                         $"Length : {Length}\r\n";
+                Debug.WriteLine($"==========================================");
+                Debug.WriteLine($"                  {TypeCode}              ");
+                Debug.WriteLine($"==========================================");
+                Debug.WriteLine($"Length             : {Length}");
+
                 switch (TypeCode)
                 {
                     case "IHDR":
                         {
-                            Datas = new byte[sizeof(int)];
-                            FS.Read(Datas, 0, Datas.Length);
-                            Result += $"Width       : {Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3]}\r\n";
-                            FS.Read(Datas, 0, Datas.Length);
-                            Result += $"Height      : {Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3]}\r\n";
-                            Datas = new byte[5];
-                            FS.Read(Datas, 0, Datas.Length);
-                            Result += $"Depth       : {Datas[0]}\r\n";
-                            Result += $"ColorType   : {Datas[1]}\r\n";
-                            Result += $"Compression : {Datas[2]}\r\n";
-                            Result += $"Filter      : {Datas[3]}\r\n";
-                            Result += $"Interlace   : {Datas[4]}\r\n";
+                            if (!Stream.TryReverseRead(out int Width) ||
+                                !Stream.TryReverseRead(out int Height) ||
+                                !Stream.TryRead(out byte BitsPerPixel) ||
+                                !Stream.TryRead(out byte ColorType) ||
+                                !Stream.TryRead(out byte Compression) ||
+                                !Stream.TryRead(out byte FilterMethod) ||
+                                !Stream.TryRead(out byte InterlaceMethod))
+                            {
+                                Debug.WriteLine("Reads chunk error.");
+                                return;
+                            }
+
+                            Debug.WriteLine($"Width              : {Width}");
+                            Debug.WriteLine($"Height             : {Height}");
+                            Debug.WriteLine($"BitsPerPixel       : {BitsPerPixel}");
+                            Debug.WriteLine($"ColorType          : {ColorType}");
+                            Debug.WriteLine($"Compression        : {Compression}");
+                            Debug.WriteLine($"FilterMethod       : {FilterMethod}");
+                            Debug.WriteLine($"InterlaceMethod    : {InterlaceMethod}");
                             break;
                         }
                     case "IDAT":
                         {
-                            Datas = new byte[Length];
-                            FS.Read(Datas, 0, Datas.Length);
+                            byte[] Datas = new byte[Length];
+                            Stream.Read(Datas, 0, Datas.Length);
 
                             if (!ShowIDAT)
                                 break;
 
-                            Result += $"Data   : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}\r\n";
+                            Debug.WriteLine($"Data               : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
 
                             bool IsRFC1950Header = IdentifyRFC1950(Datas);
 
@@ -581,7 +687,7 @@ namespace MenthaAssembly.Media.Imaging
                                 DataStream.Write(Datas, 0, Datas.Length);
                             DataStream.Position = 0;
 
-                            List<byte> DecodeDatas = new List<byte>();
+                            List<byte> DecodeDatas = new();
                             Datas = new byte[1024];
 
                             int ReadLength;
@@ -591,50 +697,242 @@ namespace MenthaAssembly.Media.Imaging
                                 DecodeDatas.AddRange(Datas.Take(ReadLength));
                             } while (ReadLength.Equals(Datas.Length));
 
-                            Result += $"Size   : {DecodeDatas.Count}\r\n";
-                            Result += $"Decode : {string.Join(", ", DecodeDatas.Select(i => i.ToString("X2")))}\r\n";
+                            Debug.WriteLine($"DecodeLength       : {DecodeDatas.Count}");
+                            Debug.WriteLine($"Decode             : {string.Join(", ", DecodeDatas.Select(i => i.ToString("X2")))}");
+                            break;
+                        }
+                    case "cHRM":
+                        {
+                            if (!Stream.TryReverseRead(out int Wx) ||
+                                !Stream.TryReverseRead(out int Wy) ||
+                                !Stream.TryReverseRead(out int Rx) ||
+                                !Stream.TryReverseRead(out int Ry) ||
+                                !Stream.TryReverseRead(out int Gx) ||
+                                !Stream.TryReverseRead(out int Gy) ||
+                                !Stream.TryReverseRead(out int Bx) ||
+                                !Stream.TryReverseRead(out int By))
+                            {
+                                Debug.WriteLine("Reads chunk error.");
+                                return;
+                            }
+
+                            Debug.WriteLine($"White Point X      : {Wx / 100000d}");
+                            Debug.WriteLine($"White Point Y      : {Wy / 100000d}");
+                            Debug.WriteLine($"Red X              : {Rx / 100000d}");
+                            Debug.WriteLine($"Red Y              : {Ry / 100000d}");
+                            Debug.WriteLine($"Green X            : {Gx / 100000d}");
+                            Debug.WriteLine($"Green Y            : {Gy / 100000d}");
+                            Debug.WriteLine($"Blue X             : {Bx / 100000d}");
+                            Debug.WriteLine($"Blue Y             : {By / 100000d}");
+                            break;
+                        }
+                    case "gAMA":
+                        {
+                            if (!Stream.TryReverseRead(out int Gamma))
+                            {
+                                Debug.WriteLine("Reads chunk error.");
+                                return;
+                            }
+
+                            Debug.WriteLine($"Gamma              : {Gamma / 100000d}");
+                            break;
+                        }
+                    case "sBIT":
+                        {
+                            // 位元深度資訊
+                            // 實際要透過 IHDR.ColorType 來判斷
+                            // ColorType == 0      : Grayscale Bits         1 bytes
+                            // ColorType == 2 or 3 : RGB Bits               3 bytes
+                            // ColorType == 4      : Grayscale + Alpha Bits 2 bytes
+                            // ColorType == 6      : RGBA Bits              4 bytes
+
+                            switch (Length)
+                            {
+                                case 1:
+                                    {
+                                        if (!Stream.TryRead(out byte Bits))
+                                        {
+                                            Debug.WriteLine("Reads chunk error.");
+                                            return;
+                                        }
+
+                                        Debug.WriteLine($"Grayscale Bits     : {Bits}");
+                                        break;
+                                    }
+                                case 2:
+                                    {
+                                        if (!Stream.TryRead(out byte GrayBits) ||
+                                            !Stream.TryRead(out byte ABits))
+                                        {
+                                            Debug.WriteLine("Reads chunk error.");
+                                            return;
+                                        }
+
+                                        Debug.WriteLine($"Grayscale Bits     : {GrayBits}");
+                                        Debug.WriteLine($"Alpha     Bits     : {ABits}");
+                                        break;
+                                    }
+                                case 3:
+                                    {
+                                        if (!Stream.TryRead(out byte RBits) ||
+                                            !Stream.TryRead(out byte GBits) ||
+                                            !Stream.TryRead(out byte BBits))
+                                        {
+                                            Debug.WriteLine("Reads chunk error.");
+                                            return;
+                                        }
+
+                                        Debug.WriteLine($"R Bits             : {RBits}");
+                                        Debug.WriteLine($"G Bits             : {GBits}");
+                                        Debug.WriteLine($"B Bits             : {BBits}");
+                                        break;
+                                    }
+                                case 4:
+                                    {
+                                        if (!Stream.TryRead(out byte RBits) ||
+                                            !Stream.TryRead(out byte GBits) ||
+                                            !Stream.TryRead(out byte BBits) ||
+                                            !Stream.TryRead(out byte ABits))
+                                        {
+                                            Debug.WriteLine("Reads chunk error.");
+                                            return;
+                                        }
+
+                                        Debug.WriteLine($"R     Bits         : {RBits}");
+                                        Debug.WriteLine($"G     Bits         : {GBits}");
+                                        Debug.WriteLine($"B     Bits         : {BBits}");
+                                        Debug.WriteLine($"Alpha Bits         : {ABits}");
+                                        break;
+                                    }
+                                default:
+                                    Debug.WriteLine("Reads chunk error.");
+                                    return;
+                            }
+                            break;
+                        }
+                    case "bKGD":
+                        {
+                            // 畫布的背景顏色
+                            // 實際要透過 IHDR.ColorType 來判斷
+                            // ColorType == 0 or 4 : Grayscale      2 bytes
+                            // ColorType == 2 or 6 : RGB            6 bytes
+                            // ColorType == 3      : Palette Index  1 bytes
+
+                            switch (Length)
+                            {
+                                case 1:
+                                    {
+                                        if (!Stream.TryRead(out byte Index))
+                                        {
+                                            Debug.WriteLine("Reads chunk error.");
+                                            return;
+                                        }
+
+                                        Debug.WriteLine($"Palette Index      : {Index}");
+                                        break;
+                                    }
+                                case 2:
+                                    {
+                                        if (!Stream.TryReverseRead(out short Gray))
+                                        {
+                                            Debug.WriteLine("Reads chunk error.");
+                                            return;
+                                        }
+
+                                        Debug.WriteLine($"Grayscale          : {Gray}");
+                                        break;
+                                    }
+                                case 6:
+                                    {
+                                        if (!Stream.TryReverseRead(out short R) ||
+                                            !Stream.TryReverseRead(out short G) ||
+                                            !Stream.TryReverseRead(out short B))
+                                        {
+                                            Debug.WriteLine("Reads chunk error.");
+                                            return;
+                                        }
+
+                                        Debug.WriteLine($"R                  : {R}");
+                                        Debug.WriteLine($"G                  : {G}");
+                                        Debug.WriteLine($"B                  : {B}");
+                                        break;
+                                    }
+                                default:
+                                    Debug.WriteLine("Reads chunk error.");
+                                    return;
+                            }
+                            break;
+                        }
+                    case "tIME":
+                        {
+                            if (!Stream.TryReverseRead(out short Year) ||
+                                !Stream.TryRead(out byte Month) ||
+                                !Stream.TryRead(out byte Day) ||
+                                !Stream.TryRead(out byte Hour) ||
+                                !Stream.TryRead(out byte Minute) ||
+                                !Stream.TryRead(out byte Second))
+                            {
+                                Debug.WriteLine("Reads chunk error.");
+                                return;
+                            }
+
+                            Debug.WriteLine($"Last Modify        : {Year}/{Month}/{Day} {Hour}:{Minute}:{Second}");
                             break;
                         }
                     case "tEXt":
                         {
-                            Datas = new byte[Length];
-                            FS.Read(Datas, 0, Datas.Length);
+                            byte[] Datas = ArrayPool<byte>.Shared.Rent(Length);
+                            try
+                            {
+                                if (!Stream.ReadBuffer(Datas, 0, Length))
+                                {
+                                    Debug.WriteLine("Reads chunk error.");
+                                    return;
+                                }
 
-                            int SeparatorIndex = Datas.IndexOf(i => i.Equals(0x00));
-                            if (SeparatorIndex > 0)
-                                Result += $"{Encoding.Default.GetString(Datas, 0, SeparatorIndex)} : {Encoding.Default.GetString(Datas, SeparatorIndex + 1, Datas.Length - SeparatorIndex - 1)}\r\n";
+                                int Index = Datas.IndexOf(i => i.Equals(0x00));
+                                if (Index > 0)
+                                {
+                                    Encoding Encoding = Encoding.GetEncoding(28591);  // Latin-1 (ISO-8859-1)
+                                    string Property = Encoding.GetString(Datas, 0, Index),
+                                           Value = Encoding.GetString(Datas, Index, Length - Index);
+
+                                    // 由於 Console 無法顯示控制字符，故將控制字符移除
+                                    Property = new(Property.Where(c => !char.IsControl(c)).ToArray());
+                                    Value = new(Value.Where(c => !char.IsControl(c)).ToArray());
+                                    Debug.WriteLine($"{Property} : {Value}");
+                                }
+                            }
+                            finally
+                            {
+                                ArrayPool<byte>.Shared.Return(Datas);
+                            }
                             break;
                         }
                     default:
                         if (Length > 0)
                         {
-                            Datas = new byte[Length];
-                            FS.Read(Datas, 0, Datas.Length);
-                            Result += $"Data   : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}\r\n";
+                            byte[] Datas = new byte[Length];
+                            Stream.Read(Datas, 0, Datas.Length);
+                            Debug.WriteLine($"Data               : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
                         }
                         break;
                 }
 
-                Datas = new byte[sizeof(int)];
-                FS.Read(Datas, 0, Datas.Length);
-                Result += $"CRC    : {Datas[0] << 24 | Datas[1] << 16 | Datas[2] << 8 | Datas[3]}";
+                if (!Stream.TryReverseRead(out int CRC32Code))
+                {
+                    Debug.WriteLine("Reads chunk error.");
+                    return;
+                }
 
-                Debug.WriteLine(Result);
-            } while (FS.Position < FS.Length);
+                Debug.WriteLine($"CRC32              : {CRC32Code}");
+
+            } while (Stream.Position < Stream.Length);
 
             Decompressor.Dispose();
             DataStream.Dispose();
-            FS.Close();
+            Stream.Close();
         }
 
-        private static bool IdentifyRFC1950(byte[] Datas)
-            => (Datas[0].Equals(0x08) && (Datas[1].Equals(0x1D) || Datas[1].Equals(0x5B) || Datas[1].Equals(0x99) || Datas[1].Equals(0xD7))) ||
-               (Datas[0].Equals(0x18) && (Datas[1].Equals(0x19) || Datas[1].Equals(0x57) || Datas[1].Equals(0x95) || Datas[1].Equals(0xD3))) ||
-               (Datas[0].Equals(0x28) && (Datas[1].Equals(0x15) || Datas[1].Equals(0x53) || Datas[1].Equals(0x91) || Datas[1].Equals(0xCF))) ||
-               (Datas[0].Equals(0x38) && (Datas[1].Equals(0x11) || Datas[1].Equals(0x4F) || Datas[1].Equals(0x8D) || Datas[1].Equals(0xCB))) ||
-               (Datas[0].Equals(0x48) && (Datas[1].Equals(0x0D) || Datas[1].Equals(0x4B) || Datas[1].Equals(0x89) || Datas[1].Equals(0xC7))) ||
-               (Datas[0].Equals(0x58) && (Datas[1].Equals(0x09) || Datas[1].Equals(0x47) || Datas[1].Equals(0x85) || Datas[1].Equals(0xC3))) ||
-               (Datas[0].Equals(0x68) && (Datas[1].Equals(0x05) || Datas[1].Equals(0x43) || Datas[1].Equals(0x81) || Datas[1].Equals(0xDE))) ||
-               (Datas[0].Equals(0x78) && (Datas[1].Equals(0x01) || Datas[1].Equals(0x5E) || Datas[1].Equals(0x9C) || Datas[1].Equals(0xDA)));
     }
 }
