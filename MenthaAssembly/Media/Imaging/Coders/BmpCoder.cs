@@ -317,10 +317,8 @@ namespace MenthaAssembly.Media.Imaging
                Identifier is "BM" or "BA" or "CI" or "CP" or "IC" or "PT";
 
         [Conditional("DEBUG")]
-        public static void Parse(string Path)
+        public static void Parse(Stream Stream)
         {
-            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
-
             // Identifier
             if (!Stream.TryReadString(2, Encoding.ASCII, out string Identifier) ||
                 !Identify(Identifier))

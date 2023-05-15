@@ -42,6 +42,14 @@ namespace MenthaAssembly
             }
         }
 
+        public static void Calculate(byte Data, out uint NewRegister, uint Register = 0xFFFFFFFFU)
+            => NewRegister = (Register >> 8) ^ Table[(Register & 0x000000FF) ^ Data];
+        public static void Calculate(byte Data, out int CRCResult, uint Register = 0xFFFFFFFFU)
+        {
+            Register = (Register >> 8) ^ Table[(Register & 0x000000FF) ^ Data];
+            CRCResult = unchecked((int)~Register);
+        }
+
         public static void Calculate(IEnumerable<byte> Datas, out uint NewRegister, uint Register = 0xFFFFFFFFU)
         {
             if (Datas is null ||

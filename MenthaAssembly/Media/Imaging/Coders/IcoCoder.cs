@@ -230,10 +230,8 @@ namespace MenthaAssembly.Media.Imaging
                Identifier == "\0\0\u0001\0";
 
         [Conditional("DEBUG")]
-        public static void Parse(string Path)
+        public static void Parse(Stream Stream)
         {
-            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
-
             // Identifier
             if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
                 !Identify(Identifier))

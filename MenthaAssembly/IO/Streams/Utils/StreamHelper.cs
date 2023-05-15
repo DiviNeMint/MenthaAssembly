@@ -244,7 +244,7 @@ namespace System.IO
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
             try
             {
-                if (!This.ReadBuffer(Buffer, Size))
+                if (!This.ReadBuffer(Buffer, 0, Size))
                 {
                     Result = default;
                     return false;
@@ -297,7 +297,7 @@ namespace System.IO
         public static bool TryRead(this Stream This, int Length, out byte[] Buffer)
         {
             Buffer = new byte[Length];
-            if (!ReadBuffer(This, Buffer))
+            if (!ReadBuffer(This, Buffer, 0, Length))
             {
                 Buffer = null;
                 return false;
@@ -318,7 +318,7 @@ namespace System.IO
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
             try
             {
-                if (!This.ReadBuffer(Buffer, Size))
+                if (!This.ReadBuffer(Buffer, 0, Size))
                 {
                     Result = default;
                     return false;
@@ -336,6 +336,32 @@ namespace System.IO
             {
                 ArrayPool<byte>.Shared.Return(Buffer);
             }
+        }
+        /// <summary>
+        /// Reads a reversed data of the specified type from the stream.
+        /// </summary>
+        /// <typeparam name="T">The sepecial type of data.</typeparam>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Buffer">The buffer to be filled by the stream.</param>
+        /// <param name="Offset">The zero-based byte offset in buffer at which to begin storing the data read from the current stream.</param>
+        /// <param name="Result">The object read from the stream.</param>
+        public static bool TryReverseRead<T>(this Stream This, byte[] Buffer, int Offset, out T Result)
+            where T : struct
+        {
+            int Size = Marshal.SizeOf<T>();
+            if (!This.ReadBuffer(Buffer, Offset, Size))
+            {
+                Result = default;
+                return false;
+            }
+
+            Array.Reverse(Buffer, 0, Size);
+            fixed (byte* pBuffer = Buffer)
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
+                Result = *(T*)pBuffer;
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
+
+            return true;
         }
 
         /// <summary>
@@ -374,7 +400,7 @@ namespace System.IO
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(BytesLength);
             try
             {
-                if (!This.ReadBuffer(Buffer, BytesLength))
+                if (!This.ReadBuffer(Buffer, 0, BytesLength))
                 {
                     Result = string.Empty;
                     return false;
