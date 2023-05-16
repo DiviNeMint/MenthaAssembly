@@ -1,4 +1,5 @@
 ﻿using MenthaAssembly.IO;
+using MenthaAssembly.Media.Imaging.Utils;
 using MenthaAssembly.Utils;
 using System;
 using System.Buffers;
@@ -15,7 +16,7 @@ namespace MenthaAssembly.Media.Imaging
     /// <summary>
     /// Represents an encoder for Png file format.
     /// </summary>
-    public unsafe static class PngCoder
+    public static unsafe class PngCoder
     {
         // PNG File Struct
         // https://www.w3.org/TR/PNG/
@@ -83,6 +84,7 @@ namespace MenthaAssembly.Media.Imaging
 
             byte[] ImageData = null;
             List<BGRA> Palette = null;
+            bool HasIHDR = false;
             int Iw = -1,
                 Ih = -1,
                 Bits = -1,
@@ -92,6 +94,7 @@ namespace MenthaAssembly.Media.Imaging
             CRC32Stream CRCStream = new(Stream, StreamAccess.Read);
             MemoryStream IDATContent = new();
             DeflateStream DecodeStream = new(IDATContent, CompressionMode.Decompress);
+
             byte[] DecodeBuffer = null;
             int IDAT_Offset = 0,
                 IDAT_Dl = -1,
@@ -201,6 +204,8 @@ namespace MenthaAssembly.Media.Imaging
                             {
                                 ArrayPool<byte>.Shared.Return(Datas);
                             }
+
+                            HasIHDR = true;
                         }
 
                         // PLTE
@@ -306,7 +311,7 @@ namespace MenthaAssembly.Media.Imaging
                         // Reset CRC32 Code.
                         CRCStream.ResetCode();
                     }
-                } while (true);
+                } while (!Stream.CanSeek || Stream.Position < Stream.Length);
             }
             finally
             {
@@ -316,6 +321,12 @@ namespace MenthaAssembly.Media.Imaging
 
                 if (DecodeLength != -1)
                     ArrayPool<byte>.Shared.Return(DecodeBuffer);
+            }
+
+            if (!HasIHDR)
+            {
+                Image = null;
+                return false;
             }
 
             switch (Bits)
@@ -481,8 +492,7 @@ namespace MenthaAssembly.Media.Imaging
         public static void Encode(IImageContext Image, Stream Stream)
         {
             // IdentifyHeader
-            byte[] Datas = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
-            Stream.Write(Datas, 0, Datas.Length);
+            Stream.WriteBytes(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A);
 
             int Iw = Image.Width,
                 Ih = Image.Height,
@@ -508,26 +518,15 @@ namespace MenthaAssembly.Media.Imaging
                                          0);                            // Interlace Method
                     Stream.ReverseWrite(CRCStream.CRC32Code);           // CRC32
                     CRCStream.ResetCode();
-
-                    //WriteChunk(Stream,
-                    //           0x49, 0x48, 0x44, 0x52,
-                    //           (byte)(Iw >> 24), (byte)(Iw >> 16), (byte)(Iw >> 8), (byte)Iw,       // Width     , 4 Bytes
-                    //           (byte)(Image.Height >> 24), (byte)(Image.Height >> 16), (byte)(Image.Height >> 8), (byte)Image.Height,   // Height    , 4 Bytes
-                    //           Bits <= 8 ? (byte)Bits : (byte)0x08,                                         // Bit Depth , 1 Bytes
-                    //           Bits <= 8 ? (byte)0x03 : (Bits.Equals(24) ? (byte)0x02 : (byte)0x06),        // ColorType
-                    //           0x00,                                                                                                    // Compression
-                    //           0x00,                                                                                                    // Filter
-                    //           0x00);                                                                                                   // Interlace
                 }
                 #endregion
 
                 #region PLTE
                 if (Bits <= 8)
                 {
+                    byte[] Datas = ArrayPool<byte>.Shared.Rent(3);
                     try
                     {
-                        Datas = ArrayPool<byte>.Shared.Rent(3);
-
                         if (Image is IImageIndexedContext IndexedContext)
                         {
                             IImagePalette Palette = IndexedContext.Palette;
@@ -567,34 +566,201 @@ namespace MenthaAssembly.Media.Imaging
 
                     Stream.ReverseWrite(CRCStream.CRC32Code);                   // CRC32
                     CRCStream.ResetCode();
+                }
+                #endregion
 
-                    //if (Image is IImageIndexedContext IndexedContext)
-                    //{
-                    //    IImagePalette Palette = IndexedContext.Palette;
-                    //    Datas = new byte[Palette.Count * 3];
-                    //    for (int i = 0; i < Palette.Count; i++)
-                    //    {
-                    //        IReadOnlyPixel Value = Palette[i];
-                    //        Datas[i * 3] = Value.R;
-                    //        Datas[i * 3 + 1] = Value.G;
-                    //        Datas[i * 3 + 2] = Value.B;
-                    //    }
-                    //}
-                    //else
-                    //{
-                    //    Datas = new byte[3 << Bits];
-                    //    int ColorStep = byte.MaxValue / ((1 << Bits) - 1);
-                    //    for (int i = 0; i < 256; i += ColorStep)
-                    //    {
-                    //        Datas[i * 3] = (byte)i;
-                    //        Datas[i * 3 + 1] = Datas[0];
-                    //        Datas[i * 3 + 2] = Datas[0];
-                    //    }
-                    //}
+                #region IDAT
+                {
+                    const int MaxChunkLength = 32768;
+                    int Stride = (Iw * Bits + 7) >> 3,
+                        ScanLineSize = Stride + 1;
 
-                    //WriteChunk(Stream,
-                    //           new byte[] { 0x50, 0x4C, 0x54, 0x45 },
-                    //           Datas);
+                    void WriteImageGenericDatas<T>() where T : unmanaged, IPixel
+                    {
+                        MemoryStream Buffer = new(MaxChunkLength);
+                        try
+                        {
+                            DeflateStream Compressor = new(Buffer, CompressionLevel.Optimal, true);
+                            byte[] ScanLine = ArrayPool<byte>.Shared.Rent(ScanLineSize);
+                            try
+                            {
+                                // Mark LZ77 Compress
+                                Buffer.WriteBytes(0x78, 0xDA);
+
+                                // Filter Method 0
+                                ScanLine[0] = 0;
+
+                                int Dx = -Iw;
+                                fixed (byte* pScanLine = &ScanLine[1])
+                                {
+                                    T* pData0 = (T*)pScanLine;
+                                    PixelAdapter<T> Adapter = Image.GetAdapter<T>(0, 0);
+                                    for (int j = 0; j < Ih; j++, Adapter.DangerousMoveNextY())
+                                    {
+                                        T* pData = pData0;
+                                        for (int i = 0; i < Iw; i++, Adapter.DangerousMoveNextX())
+                                            Adapter.OverrideTo(pData++);
+
+                                        Adapter.DangerousOffsetX(Dx);
+                                        Compressor.Write(ScanLine, 0, ScanLineSize);
+                                    }
+                                }
+                            }
+                            finally
+                            {
+                                ArrayPool<byte>.Shared.Return(ScanLine);
+                                Compressor.Dispose();
+                                Buffer.Position = 0;
+                            }
+
+                            // Chunk
+                            long Position = Buffer.Length;
+                            if (Position > MaxChunkLength)
+                            {
+                                byte[] ChunkDatas = ArrayPool<byte>.Shared.Rent(MaxChunkLength);
+                                try
+                                {
+                                    do
+                                    {
+                                        Position -= MaxChunkLength;
+                                        Buffer.Read(ChunkDatas, 0, MaxChunkLength);
+
+                                        Stream.ReverseWrite(MaxChunkLength);                // Length
+                                        CRCStream.WriteBytes(0x49, 0x44, 0x41, 0x54);       // CodeType
+                                        CRCStream.Write(ChunkDatas, 0, MaxChunkLength);     // Datas
+                                        Stream.ReverseWrite(CRCStream.CRC32Code);           // CRC32
+                                        CRCStream.ResetCode();
+                                    } while (Position > MaxChunkLength);
+                                }
+                                finally
+                                {
+                                    ArrayPool<byte>.Shared.Return(ChunkDatas);
+                                }
+                            }
+
+                            if (Position > 0)
+                            {
+                                int Length = (int)Position;
+                                byte[] ChunkDatas = ArrayPool<byte>.Shared.Rent(Length);
+                                try
+                                {
+                                    Buffer.Read(ChunkDatas, 0, Length);
+                                    Stream.ReverseWrite(Length);                        // Length
+                                    CRCStream.WriteBytes(0x49, 0x44, 0x41, 0x54);       // CodeType
+                                    CRCStream.Write(ChunkDatas, 0, Length);             // Datas
+                                    Stream.ReverseWrite(CRCStream.CRC32Code);           // CRC32
+                                    CRCStream.ResetCode();
+                                }
+                                finally
+                                {
+                                    ArrayPool<byte>.Shared.Return(ChunkDatas);
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            Buffer.Dispose();
+                        }
+                    }
+
+                    Action WriteImageDatas = Bits switch
+                    {
+                        8 => WriteImageGenericDatas<Gray8>,
+                        32 => WriteImageGenericDatas<RGBA>,
+                        _ => WriteImageGenericDatas<RGB>,
+                    };
+
+                    WriteImageDatas();
+                }
+                #endregion
+
+                #region IEND
+                {
+                    Stream.WriteBytes(0x00, 0x00, 0x00, 0x00,       // Length
+                                      0x49, 0x45, 0x4E, 0x44,       // TypeCode
+                                      0xAE, 0x42, 0x60, 0x82);      // CRC32
+                }
+                #endregion
+
+            }
+            finally
+            {
+                CRCStream.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Encodes the specified image to the specified path.
+        /// </summary>
+        /// <param name="Image">The specified image.</param>
+        /// <param name="Path">The specified path.</param>
+        public static void Encode2(IImageContext Image, string Path)
+        {
+            using FileStream Stream = new(Path, FileMode.CreateNew, FileAccess.Write);
+            Encode2(Image, Stream);
+        }
+        /// <summary>
+        /// Encodes the specified image to the specified stream.
+        /// </summary>
+        /// <param name="Image">The specified image.</param>
+        /// <param name="Stream">The specified stream.</param>
+        public static void Encode2(IImageContext Image, Stream Stream)
+        {
+            // IdentifyHeader
+            byte[] Datas = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+            Stream.Write(Datas, 0, Datas.Length);
+
+            int Iw = Image.Width,
+                Ih = Image.Height,
+                Bits = Image.BitsPerPixel;
+
+            CRC32Stream CRCStream = new(Stream, StreamAccess.Write, true);
+            try
+            {
+                #region IHDR
+                {
+                    WriteChunk(Stream,
+                               0x49, 0x48, 0x44, 0x52,
+                               (byte)(Iw >> 24), (byte)(Iw >> 16), (byte)(Iw >> 8), (byte)Iw,       // Width     , 4 Bytes
+                               (byte)(Ih >> 24), (byte)(Ih >> 16), (byte)(Ih >> 8), (byte)Ih,   // Height    , 4 Bytes
+                               Bits <= 8 ? (byte)Bits : (byte)0x08,                                         // Bit Depth , 1 Bytes
+                               Bits <= 8 ? (byte)0x03 : (Bits.Equals(24) ? (byte)0x02 : (byte)0x06),        // ColorType
+                               0x00,                                                                                                    // Compression
+                               0x00,                                                                                                    // Filter
+                               0x00);                                                                                                   // Interlace
+                }
+                #endregion
+
+                #region PLTE
+                if (Bits <= 8)
+                {
+                    if (Image is IImageIndexedContext IndexedContext)
+                    {
+                        IImagePalette Palette = IndexedContext.Palette;
+                        Datas = new byte[Palette.Count * 3];
+                        for (int i = 0; i < Palette.Count; i++)
+                        {
+                            IReadOnlyPixel Value = Palette[i];
+                            Datas[i * 3] = Value.R;
+                            Datas[i * 3 + 1] = Value.G;
+                            Datas[i * 3 + 2] = Value.B;
+                        }
+                    }
+                    else
+                    {
+                        Datas = new byte[3 << Bits];
+                        int ColorStep = byte.MaxValue / ((1 << Bits) - 1);
+                        for (int i = 0; i < 256; i += ColorStep)
+                        {
+                            Datas[i * 3] = (byte)i;
+                            Datas[i * 3 + 1] = Datas[0];
+                            Datas[i * 3 + 2] = Datas[0];
+                        }
+                    }
+
+                    WriteChunk(Stream,
+                               new byte[] { 0x50, 0x4C, 0x54, 0x45 },
+                               Datas);
                 }
 
                 #endregion
@@ -613,7 +779,7 @@ namespace MenthaAssembly.Media.Imaging
                 byte* pImageDatas = ImageDatas.ToPointer(1);
                 Action<int> DataCopyAction = Bits == 32 ? y => Image.ScanLineCopy<RGBA>(0, y, Iw, pImageDatas) :
                                                           y => Image.ScanLineCopy<RGB>(0, y, Iw, pImageDatas);
-                for (int j = 0; j < Image.Height; j++)
+                for (int j = 0; j < Ih; j++)
                 {
                     DataCopyAction(j);
                     Compressor.Write(ImageDatas, 0, ImageDatas.Length);
@@ -626,17 +792,13 @@ namespace MenthaAssembly.Media.Imaging
                 #endregion
 
                 #region IEND
-                Stream.WriteBytes(0x00, 0x00, 0x00, 0x00,       // Length
-                                  0x49, 0x45, 0x4E, 0x44,       // TypeCode
-                                  0xAE, 0x42, 0x60, 0x82);      // CRC32
-
-                //byte[] IENDChunk =
-                //{
-                //    0x00, 0x00, 0x00, 0x00,
-                //    0x49, 0x45, 0x4E, 0x44,
-                //    0xAE, 0x42, 0x60, 0x82
-                //};
-                //Stream.Write(IENDChunk, 0, IENDChunk.Length);
+                byte[] IENDChunk =
+                {
+                    0x00, 0x00, 0x00, 0x00,
+                    0x49, 0x45, 0x4E, 0x44,
+                    0xAE, 0x42, 0x60, 0x82
+                };
+                Stream.Write(IENDChunk, 0, IENDChunk.Length);
 
                 #endregion
 
@@ -685,13 +847,7 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         /// <summary>
-        /// Indicates whether the specified Identifier is bitmap Identifier.<para/>
-        /// BM – Windows 3.1x, 95, NT, ... etc.<para/>
-        /// BA – OS / 2 struct Bitmap Array<para/>
-        /// CI – OS / 2 struct Color Icon<para/>
-        /// CP – OS / 2 const Color Pointer<para/>
-        /// IC – OS / 2 struct Icon<para/>
-        /// PT – OS / 2 Pointer<para/>
+        /// Indicates whether the specified Identifier is Png Identifier.<para/>
         /// </summary>
         /// <param name="Identifier">The specified Identifier.</param>
         public static bool Identify(string Identifier)
