@@ -87,12 +87,19 @@ namespace System.IO
             }
         }
         /// <summary>
+        /// Writes a sequence of bytes to the current stream and advances the current position within this stream by the number of bytes written.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Datas">Tn array of bytes to write to the stream.</param>
+        public static void Write(this Stream This, params byte[] Datas)
+            => This.Write(Datas, 0, Datas.Length);
+        /// <summary>
         /// Writes an array of specified type to the stream.
         /// </summary>
         /// <typeparam name="T">The specified type of array.</typeparam>
         /// <param name="This">The current stream.</param>
         /// <param name="Datas">The array of specified type to write to the stream.</param>
-        public static void Write<T>(this Stream This, T[] Datas) where T : unmanaged
+        public static void Write<T>(this Stream This, params T[] Datas) where T : unmanaged
             => Write(This, Datas, 0, Datas.Length);
         /// <summary>
         /// Writes an array of specified type to the stream.
@@ -149,7 +156,7 @@ namespace System.IO
         /// <typeparam name="T">The specified type of data.</typeparam>
         /// <param name="This">The current stream.</param>
         /// <param name="Data">The specified type of data to write to the stream.</param>
-        public static void ReaverseWrite<T>(this Stream This, T Data)
+        public static void ReverseWrite<T>(this Stream This, T Data)
             where T : unmanaged
         {
             int Size = sizeof(T);
