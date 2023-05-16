@@ -3,14 +3,12 @@ using MenthaAssembly.Utils;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -63,33 +61,14 @@ namespace MenthaAssembly.Media.Imaging
         public static bool TryDecode(string Path, out IImageContext Image)
         {
             using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
-            return TryDecode(Stream, false, out Image);
+            return TryDecode(Stream, out Image);
         }
-        /// <summary>
-        /// Decodes a png file from the specified path.
-        /// </summary>
-        /// <param name="Path">The specified path.</param>
-        /// <param name="VerifyDatas">Determine whether to verify the data.</param>
-        /// <param name="Image">The decoded image.</param>
-        public static bool TryDecode(string Path, bool VerifyDatas, out IImageContext Image)
-        {
-            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
-            return TryDecode(Stream, VerifyDatas, out Image);
-        }
-        /// <summary>
-        /// Decodes a png file from the specified stream without verifying the datas.
-        /// </summary>
-        /// <param name="Stream">The specified stream.</param>
-        /// <param name="Image">The decoded image.</param>
-        public static bool TryDecode(Stream Stream, out IImageContext Image)
-            => TryDecode(Stream, false, out Image);
         /// <summary>
         /// Decodes a png file from the specified stream.
         /// </summary>
         /// <param name="Stream">The specified stream.</param>
-        /// <param name="VerifyDatas">Determine whether to verify the data.</param>
         /// <param name="Image">The decoded image.</param>
-        public static bool TryDecode(Stream Stream, bool VerifyDatas, out IImageContext Image)
+        public static bool TryDecode(Stream Stream, out IImageContext Image)
         {
             Image = null;
             long Begin = Stream.CanSeek ? Stream.Position : 0L;
@@ -102,29 +81,22 @@ namespace MenthaAssembly.Media.Imaging
                 return false;
             }
 
+            byte[] ImageData = null;
+            List<BGRA> Palette = null;
             int Iw = -1,
                 Ih = -1,
                 Bits = -1,
-                Channels = 0,
-                Stride = 0;
-
-            //byte BitDepth,
-            //     ColorType,
-            //     Compression,
-            //     FilterMethod,
-            //     InterlaceMethod;
-
-            byte[][] ImageDatas = null;
-
-            List<BGRA> Palette = null;
+                PixelSize = 0,
+                Stride = -1;
 
             CRC32Stream CRCStream = new(Stream, StreamAccess.Read);
-            MemoryStream DataStream = new();
-            DeflateStream Decompressor = new(DataStream, CompressionMode.Decompress);
+            MemoryStream IDATContent = new();
+            DeflateStream DecodeStream = new(IDATContent, CompressionMode.Decompress);
+            byte[] DecodeBuffer = null;
             int IDAT_Offset = 0,
-                IDAT_DecodeLength = 0,
-                IDAT_DecodeHeight = 0;
-            byte[] DecodeDatas = null;
+                IDAT_Dl = -1,
+                IDAT_Dh = 0,
+                DecodeLength = -1;
             try
             {
                 do
@@ -156,25 +128,74 @@ namespace MenthaAssembly.Media.Imaging
                                     Stream.TrySeek(Begin, SeekOrigin.Begin);
                                     return false;
                                 }
-
-                                //BitDepth = Datas[0];
-                                //ColorType = Datas[1];
-                                //Compression = Datas[2];
-                                //FilterMethod = Datas[3];
-                                //InterlaceMethod = Datas[4];
-
-                                Bits = Datas[1] switch
+                                // Bit Depth
+                                // Only less than or equal to 8 bit depths are implemented in this graphics system.
+                                if (Datas[0] == 16)
                                 {
-                                    0 => Datas[0],  // Grayscale
-                                    2 => 24,        // Indexed Color
-                                    3 => Datas[0],  // RGB
-                                    4 => 32,        // Grayscale + Alpha
-                                    6 => 32,        // RGBA
+                                    Debug.WriteLine($"Not implement Bit Depth : 16.");
+                                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                    return false;
+                                }
+
+                                // BitsPerPixel
+                                byte ColorType = Datas[1];
+                                if (ColorType == 4)
+                                {
+                                    Debug.WriteLine($"Not implement ColorType 4 : Grayscale + Alpha.");
+                                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                    return false;
+                                }
+
+                                Bits = ColorType switch
+                                {
+                                    0 => Datas[0],          // Grayscale
+                                    2 => Datas[0] * 3,      // RGB
+                                    3 => Datas[0],          // Indexed Color
+                                    4 => Datas[0] << 1,     // Grayscale + Alpha
+                                    6 => Datas[0] << 2,     // RGBA
                                     _ => -1,
                                 };
 
-                                Channels = (Bits + 7) >> 3;
+                                if (Bits == -1)
+                                {
+                                    Debug.WriteLine($"Unknown ColorType {ColorType}.");
+                                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                    return false;
+                                }
+
+                                // Compression Method
+                                // Only compression method 0 is defined in specification.
+                                if (Datas[2] != 0)
+                                {
+                                    Debug.WriteLine($"Unknown compression method {Datas[2]}.");
+                                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                    return false;
+                                }
+
+                                // Filter Method
+                                // Only filter method 0 is defined in specification.
+                                if (Datas[3] != 0)
+                                {
+                                    Debug.WriteLine($"Unknown filter method {Datas[3]}.");
+                                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                    return false;
+                                }
+
+                                // Interlace Method
+                                // Only interlace method 0 is implemented in this coder.
+                                byte InterlaceMethod = Datas[4];
+                                if (InterlaceMethod != 0)
+                                {
+                                    Debug.WriteLine($"Not implement interlace method {InterlaceMethod}.");
+                                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                    return false;
+                                }
+
+                                PixelSize = (Bits + 7) >> 3;
                                 Stride = (Iw * Bits + 7) >> 3; //(((Width * Bits) >> 3) + 3) >> 2 << 2;
+                                ImageData = new byte[Stride * Ih];
+                                DecodeLength = Stride + 1;
+                                DecodeBuffer = ArrayPool<byte>.Shared.Rent(DecodeLength);
                             }
                             finally
                             {
@@ -222,133 +243,39 @@ namespace MenthaAssembly.Media.Imaging
                                     return false;
                                 }
 
-                                DataStream.Position = 0;
-#if NETSTANDARD2_1
-                                DataStream.Write(Datas.AsSpan(IdentifyRFC1950(Datas) ? 2 : 0));
-#else
-                                if (IdentifyRFC1950(Datas))
-                                    DataStream.Write(Datas, 2, Length - 2);
+                                // IDATContent
+                                IDATContent.Position = 0;
+
+                                if (IDAT_Dl == -1 && IdentifyRFC1950(Datas))
+                                    IDATContent.Write(Datas, 2, Length - 2);
                                 else
-                                    DataStream.Write(Datas, 0, Length);
-#endif
-                                DataStream.Position = 0;
+                                    IDATContent.Write(Datas, 0, Length);
+
+                                IDATContent.Position = 0;
 
                                 // ImageDatas
-                                int ChannelStride = Channels > 1 ? Iw : Stride,
-                                    ChannelSize = ChannelStride * Ih;
-                                ImageDatas ??= new byte[Channels][];
-                                DecodeDatas ??= new byte[Stride + 1];
-
-                                for (int j = IDAT_DecodeHeight; j < Ih; j++)
+                                for (int j = IDAT_Dh; j < Ih; j++)
                                 {
-                                    // Check First IDAT Chunks
-                                    if (IDAT_DecodeLength.Equals(0) ||
-                                        IDAT_DecodeLength.Equals(DecodeDatas.Length))
-                                    {
-                                        IDAT_DecodeLength = Decompressor.Read(DecodeDatas, 0, DecodeDatas.Length);
-                                    }
+                                    // Decode
+                                    if (IDAT_Dl > 0)
+                                        IDAT_Dl += DecodeStream.Read(DecodeBuffer, IDAT_Dl, DecodeLength - IDAT_Dl);
                                     else
-                                    {
-                                        IDAT_DecodeLength = Decompressor.Read(DecodeDatas, IDAT_DecodeLength, DecodeDatas.Length - IDAT_DecodeLength);
-                                        IDAT_DecodeLength = DecodeDatas.Length;
-                                    }
-                                    if (IDAT_DecodeLength < DecodeDatas.Length)
+                                        IDAT_Dl = DecodeStream.Read(DecodeBuffer, 0, DecodeLength);
+
+                                    if (IDAT_Dl < DecodeLength)
                                         break;
 
-                                    // IDAT Filter
-                                    //https://www.w3.org/TR/2003/REC-PNG-20031110/#7Filtering
-                                    switch (DecodeDatas[0])
+                                    // Reconstruction
+                                    if (!ReconstructionDatas(ImageData, IDAT_Offset, DecodeBuffer, Stride, PixelSize))
                                     {
-                                        case 1:     // Sub
-                                            {
-                                                Parallel.For(0, ImageDatas.Length,
-                                                    (c) =>
-                                                    {
-                                                        if (ImageDatas[c] is null)
-                                                            ImageDatas[c] = new byte[ChannelSize];
-
-                                                        ImageDatas[c][IDAT_Offset] = DecodeDatas[c + 1];
-                                                        for (int i = 1; i < ChannelStride; i++)
-                                                            ImageDatas[c][IDAT_Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] +
-                                                                                                    ImageDatas[c][IDAT_Offset + i - 1]);
-                                                    });
-                                                break;
-                                            }
-                                        case 2:     // LastLine
-                                            {
-                                                Parallel.For(0, ImageDatas.Length,
-                                                    (c) =>
-                                                    {
-                                                        if (ImageDatas[c] is null)
-                                                            ImageDatas[c] = new byte[ChannelSize];
-                                                        for (int i = 0; i < ChannelStride; i++)
-                                                            ImageDatas[c][IDAT_Offset + i] = (byte)(DecodeDatas[i * Channels + c + 1] +
-                                                                                                    ImageDatas[c][IDAT_Offset - ChannelStride + i]);
-                                                    });
-                                                break;
-                                            }
-                                        case 3:     // Average
-                                            {
-                                                Parallel.For(0, ImageDatas.Length,
-                                                    (c) =>
-                                                    {
-                                                        if (ImageDatas[c] is null)
-                                                            ImageDatas[c] = new byte[ChannelSize];
-
-                                                        // FirstData (no last data)
-                                                        ImageDatas[c][IDAT_Offset] = (byte)(DecodeDatas[c + 1] +
-                                                                                            Math.Floor(ImageDatas[c][IDAT_Offset - ChannelStride] / 2d));
-                                                        for (int i = 1; i < ChannelStride; i++)
-                                                        {
-                                                            int Index = IDAT_Offset + i;
-                                                            ImageDatas[c][Index] = (byte)(DecodeDatas[i * Channels + c + 1] +
-                                                                                          Math.Floor((ImageDatas[c][Index - ChannelStride] + ImageDatas[c][Index - 1]) / 2d));
-
-                                                        }
-                                                    });
-                                                break;
-                                            }
-                                        case 4:     // Paeth
-                                            {
-                                                Parallel.For(0, ImageDatas.Length,
-                                                    (c) =>
-                                                    {
-                                                        if (ImageDatas[c] is null)
-                                                            ImageDatas[c] = new byte[ChannelSize];
-
-                                                        // FirstData (no last data)
-                                                        ImageDatas[c][IDAT_Offset] = (byte)(DecodeDatas[c + 1] + ImageDatas[c][IDAT_Offset - ChannelStride]);
-                                                        for (int i = 1; i < ChannelStride; i++)
-                                                        {
-                                                            int Index = IDAT_Offset + i;
-                                                            byte Last = ImageDatas[c][Index - 1];
-                                                            byte PreviousLine = ImageDatas[c][Index - ChannelStride];
-                                                            byte PreviousLineLast = ImageDatas[c][Index - ChannelStride - 1];
-
-                                                            ImageDatas[c][Index] = (byte)(DecodeDatas[i * Channels + c + 1] +
-                                                                                          CalculatePaeth(ImageDatas[c][Index - 1], ImageDatas[c][Index - ChannelStride], ImageDatas[c][Index - ChannelStride - 1]));
-                                                        }
-                                                    });
-                                                break;
-                                            }
-                                        case 0:     // None
-                                        default:
-                                            {
-                                                Parallel.For(0, ImageDatas.Length,
-                                                    (c) =>
-                                                    {
-                                                        if (ImageDatas[c] is null)
-                                                            ImageDatas[c] = new byte[ChannelSize];
-                                                        for (int i = 0; i < ChannelStride; i++)
-                                                            ImageDatas[c][IDAT_Offset + i] = DecodeDatas[i * Channels + c + 1];
-                                                    });
-                                                break;
-                                            }
+                                        Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                        return false;
                                     }
-                                    IDAT_Offset += ChannelStride;
-                                    IDAT_DecodeHeight++;
-                                }
 
+                                    IDAT_Offset += Stride;
+                                    IDAT_Dl = 0;
+                                    IDAT_Dh++;
+                                }
                             }
                             finally
                             {
@@ -379,31 +306,161 @@ namespace MenthaAssembly.Media.Imaging
                         // Reset CRC32 Code.
                         CRCStream.ResetCode();
                     }
-
                 } while (true);
             }
             finally
             {
                 CRCStream.Dispose();
-                Decompressor.Dispose();
-                DataStream.Dispose();
+                DecodeStream.Dispose();
+                IDATContent.Dispose();
+
+                if (DecodeLength != -1)
+                    ArrayPool<byte>.Shared.Return(DecodeBuffer);
             }
 
-            switch (ImageDatas.Length)
+            switch (Bits)
             {
                 case 1:
-                    Image = new ImageContext<Gray8>(Iw, Ih, ImageDatas[0]);
-                    //Image = new ImageContext<Gray8>(Width, Height, ImageDatas[0], Palette?.Cast<Gray8>().ToList());
-                    return true;
-                case 3:
-                    Image = new ImageContext<BGR>(Iw, Ih, ImageDatas[0], ImageDatas[1], ImageDatas[2]);
-                    return true;
+                    {
+                        Image = new ImageContext<BGRA, Indexed1>(Iw, Ih, ImageData, new ImagePalette<BGRA>(Bits, Palette));
+                        return true;
+                    }
                 case 4:
-                    Image = new ImageContext<BGRA>(Iw, Ih, ImageDatas[3], ImageDatas[0], ImageDatas[1], ImageDatas[2]);
-                    return true;
+                    {
+                        Image = new ImageContext<BGRA, Indexed4>(Iw, Ih, ImageData, new ImagePalette<BGRA>(Bits, Palette));
+                        return true;
+                    }
+                case 8:
+                    {
+                        Image = new ImageContext<Gray8>(Iw, Ih, ImageData);
+                        return true;
+                    }
+                case 24:
+                    {
+                        Image = new ImageContext<RGB>(Iw, Ih, ImageData);
+                        return true;
+                    }
+                case 32:
+                    {
+                        Image = new ImageContext<RGBA>(Iw, Ih, ImageData);
+                        return true;
+                    }
+                default:
+                    {
+                        Image = null;
+                        return false;
+                    }
             }
-            Image = null;
+        }
+
+        // IDAT Filter
+        //https://www.w3.org/TR/2003/REC-PNG-20031110/#7Filtering
+        private static bool ReconstructionDatas(byte[] ImageBuffer, int Offset, byte[] DecodeBuffer, int Stride, int PixelSize)
+        {
+            switch (DecodeBuffer[0])
+            {
+                // None
+                case 0:
+                    {
+                        Array.Copy(DecodeBuffer, 1, ImageBuffer, Offset, Stride);
+                        return true;
+                    }
+                // Sub
+                case 1:
+                    {
+                        Array.Copy(DecodeBuffer, 1, ImageBuffer, Offset, PixelSize);
+                        for (int c = 0; c < PixelSize; c++)
+                        {
+                            int i = Offset + c,
+                                Di = c + PixelSize + 1;
+
+                            byte Prev = ImageBuffer[i];
+                            for (i += PixelSize; Di <= Stride; i += PixelSize, Di += PixelSize)
+                            {
+                                Prev = (byte)(DecodeBuffer[Di] + Prev);
+                                ImageBuffer[i] = Prev;
+                            }
+                        }
+                        return true;
+                    }
+                // LastLine
+                case 2:
+                    {
+                        for (int c = 0; c < PixelSize; c++)
+                        {
+                            int i = Offset + c,
+                                Ui = i - Stride,
+                                Di = c + 1;
+
+                            for (; Di <= Stride; Di += PixelSize, i += PixelSize, Ui += PixelSize)
+                                ImageBuffer[i] = (byte)(DecodeBuffer[Di] + ImageBuffer[Ui]);
+                        }
+                        return true;
+                    }
+                // Average
+                case 3:
+                    {
+                        for (int c = 0; c < PixelSize; c++)
+                        {
+                            int i = Offset + c,
+                                Ui = i - Stride,
+                                Di = c + 1;
+
+                            // First Pixel
+                            byte Prev = (byte)(DecodeBuffer[Di] + (ImageBuffer[Ui] >> 1));
+                            ImageBuffer[i] = Prev;
+
+                            for (Di += PixelSize, i += PixelSize, Ui += PixelSize; Di <= Stride; Di += PixelSize, i += PixelSize, Ui += PixelSize)
+                            {
+                                Prev = (byte)(DecodeBuffer[Di] + ((ImageBuffer[Ui] + Prev) >> 1));
+                                ImageBuffer[i] = Prev;
+                            }
+                        }
+                        return true;
+                    }
+                // Paeth
+                case 4:
+                    {
+                        for (int c = 0; c < PixelSize; c++)
+                        {
+                            int i = Offset + c,
+                                Ui = i - Stride,
+                                Di = c + 1;
+
+                            // First Pixel
+                            byte Prev = (byte)(DecodeBuffer[Di] + ImageBuffer[Ui]),
+                                 PrevUp = ImageBuffer[Ui];
+                            ImageBuffer[i] = Prev;
+
+                            for (Di += PixelSize, i += PixelSize, Ui += PixelSize; Di <= Stride; Di += PixelSize, i += PixelSize, Ui += PixelSize)
+                            {
+                                byte Up = ImageBuffer[Ui];
+                                Prev = ReconstructionPaeth(DecodeBuffer[Di], Prev, Up, PrevUp);
+                                PrevUp = Up;
+                                ImageBuffer[i] = Prev;
+                            }
+                        }
+                        return true;
+                    }
+            }
+
             return false;
+        }
+        /// <summary>
+        /// ∥c∥b∥
+        /// <para></para>
+        /// ∥a∥x∥
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <param name="c"></param>
+        private static byte ReconstructionPaeth(byte Fx, byte a, byte b, byte c)
+        {
+            int pa = Math.Abs(b - c),
+                pb = Math.Abs(a - c),
+                pc = Math.Abs(a + b - 2 * c);
+
+            return (byte)(Fx + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c));
         }
 
         /// <summary>
@@ -427,105 +484,167 @@ namespace MenthaAssembly.Media.Imaging
             byte[] Datas = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
             Stream.Write(Datas, 0, Datas.Length);
 
-            #region IHDR
-            WriteChunk(Stream,
-                       0x49, 0x48, 0x44, 0x52,
-                       (byte)(Image.Width >> 24), (byte)(Image.Width >> 16), (byte)(Image.Width >> 8), (byte)Image.Width,       // Width     , 4 Bytes
-                       (byte)(Image.Height >> 24), (byte)(Image.Height >> 16), (byte)(Image.Height >> 8), (byte)Image.Height,   // Height    , 4 Bytes
-                       Image.BitsPerPixel <= 8 ? (byte)Image.BitsPerPixel : (byte)0x08,                                         // Bit Depth , 1 Bytes
-                       Image.BitsPerPixel <= 8 ? (byte)0x03 : (Image.BitsPerPixel.Equals(24) ? (byte)0x02 : (byte)0x06),        // ColorType
-                       0x00,                                                                                                    // Compression
-                       0x00,                                                                                                    // Filter
-                       0x00);                                                                                                   // Interlace
+            int Iw = Image.Width,
+                Ih = Image.Height,
+                Bits = Image.BitsPerPixel;
 
-            #endregion
-
-            #region PLTE
-            if (Image.BitsPerPixel <= 8)
+            CRC32Stream CRCStream = new(Stream, StreamAccess.Write, true);
+            try
             {
-                if (Image is IImageIndexedContext IndexedContext)
+                #region IHDR
                 {
-                    IImagePalette Palette = IndexedContext.Palette;
-                    Datas = new byte[Palette.Count * 3];
-                    for (int i = 0; i < Palette.Count; i++)
-                    {
-                        IReadOnlyPixel Value = Palette[i];
-                        Datas[i * 3] = Value.R;
-                        Datas[i * 3 + 1] = Value.G;
-                        Datas[i * 3 + 2] = Value.B;
-                    }
+                    Type PixelType = Image.PixelType;
+                    byte BitDepth = (byte)Math.Min(Bits, 8),    // TODO : Checks 16 Bit depth.
+                         ColorType = (byte)(PixelType == typeof(Gray8) ? 0 : Bits <= 8 ? 3 : Bits == 24 ? 2 : 6);
+
+                    Stream.ReverseWrite(13);                            // Chunk Length
+                    CRCStream.WriteBytes(0x49, 0x48, 0x44, 0x52);       // CodeType
+                    CRCStream.ReverseWrite(Iw);                         // Width
+                    CRCStream.ReverseWrite(Ih);                         // Height
+                    CRCStream.WriteBytes(BitDepth,                      // BitDepth
+                                         ColorType,                     // ColorType
+                                         0,                             // Compression
+                                         0,                             // Filter Method
+                                         0);                            // Interlace Method
+                    Stream.ReverseWrite(CRCStream.CRC32Code);           // CRC32
+                    CRCStream.ResetCode();
+
+                    //WriteChunk(Stream,
+                    //           0x49, 0x48, 0x44, 0x52,
+                    //           (byte)(Iw >> 24), (byte)(Iw >> 16), (byte)(Iw >> 8), (byte)Iw,       // Width     , 4 Bytes
+                    //           (byte)(Image.Height >> 24), (byte)(Image.Height >> 16), (byte)(Image.Height >> 8), (byte)Image.Height,   // Height    , 4 Bytes
+                    //           Bits <= 8 ? (byte)Bits : (byte)0x08,                                         // Bit Depth , 1 Bytes
+                    //           Bits <= 8 ? (byte)0x03 : (Bits.Equals(24) ? (byte)0x02 : (byte)0x06),        // ColorType
+                    //           0x00,                                                                                                    // Compression
+                    //           0x00,                                                                                                    // Filter
+                    //           0x00);                                                                                                   // Interlace
                 }
-                else
+                #endregion
+
+                #region PLTE
+                if (Bits <= 8)
                 {
-                    Datas = new byte[3 << Image.BitsPerPixel];
-                    int ColorStep = byte.MaxValue / ((1 << Image.BitsPerPixel) - 1);
-                    for (int i = 0; i < 256; i += ColorStep)
+                    try
                     {
-                        Datas[i * 3] = (byte)i;
-                        Datas[i * 3 + 1] = Datas[0];
-                        Datas[i * 3 + 2] = Datas[0];
+                        Datas = ArrayPool<byte>.Shared.Rent(3);
+
+                        if (Image is IImageIndexedContext IndexedContext)
+                        {
+                            IImagePalette Palette = IndexedContext.Palette;
+                            int Count = Palette.Count;
+
+                            Stream.ReverseWrite(Count * 3);                     // Chunk Length
+                            CRCStream.WriteBytes(0x50, 0x4C, 0x54, 0x45);       // CodeType
+
+                            for (int i = 0; i < Count; i++)
+                            {
+                                IReadOnlyPixel Value = Palette[i];
+                                Datas[0] = Value.R;
+                                Datas[1] = Value.G;
+                                Datas[2] = Value.B;
+                                CRCStream.Write(Datas, 0, 3);                   // Color
+                            }
+                        }
+                        else
+                        {
+                            int Count = 3 << Bits;
+
+                            Stream.ReverseWrite(Count * 3);                     // Chunk Length
+                            CRCStream.WriteBytes(0x50, 0x4C, 0x54, 0x45);       // CodeType
+
+                            int ColorStep = byte.MaxValue / ((1 << Bits) - 1);
+                            for (int i = 0; i < 256; i += ColorStep)
+                            {
+                                Datas[0] = Datas[1] = Datas[2] = (byte)i;
+                                CRCStream.Write(Datas, 0, 3);                   // Color
+                            }
+                        }
                     }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(Datas);
+                    }
+
+                    Stream.ReverseWrite(CRCStream.CRC32Code);                   // CRC32
+                    CRCStream.ResetCode();
+
+                    //if (Image is IImageIndexedContext IndexedContext)
+                    //{
+                    //    IImagePalette Palette = IndexedContext.Palette;
+                    //    Datas = new byte[Palette.Count * 3];
+                    //    for (int i = 0; i < Palette.Count; i++)
+                    //    {
+                    //        IReadOnlyPixel Value = Palette[i];
+                    //        Datas[i * 3] = Value.R;
+                    //        Datas[i * 3 + 1] = Value.G;
+                    //        Datas[i * 3 + 2] = Value.B;
+                    //    }
+                    //}
+                    //else
+                    //{
+                    //    Datas = new byte[3 << Bits];
+                    //    int ColorStep = byte.MaxValue / ((1 << Bits) - 1);
+                    //    for (int i = 0; i < 256; i += ColorStep)
+                    //    {
+                    //        Datas[i * 3] = (byte)i;
+                    //        Datas[i * 3 + 1] = Datas[0];
+                    //        Datas[i * 3 + 2] = Datas[0];
+                    //    }
+                    //}
+
+                    //WriteChunk(Stream,
+                    //           new byte[] { 0x50, 0x4C, 0x54, 0x45 },
+                    //           Datas);
                 }
 
+                #endregion
+
+                #region IDAT
+                // ImageDatas
+                int Stride = (Iw * Bits + 7) >> 3;
+                byte[] ImageDatas = new byte[Stride + 1];
+
+                using MemoryStream DataStream = new();
+                // Mark LZ77 Compress
+                DataStream.Write(new byte[] { 0x78, 0xDA }, 0, 2);
+
+                Stream Compressor = new DeflateStream(DataStream, CompressionLevel.Optimal, true);
+
+                byte* pImageDatas = ImageDatas.ToPointer(1);
+                Action<int> DataCopyAction = Bits == 32 ? y => Image.ScanLineCopy<RGBA>(0, y, Iw, pImageDatas) :
+                                                          y => Image.ScanLineCopy<RGB>(0, y, Iw, pImageDatas);
+                for (int j = 0; j < Image.Height; j++)
+                {
+                    DataCopyAction(j);
+                    Compressor.Write(ImageDatas, 0, ImageDatas.Length);
+                }
+
+                Compressor.Dispose();
                 WriteChunk(Stream,
-                           new byte[] { 0x50, 0x4C, 0x54, 0x45 },
-                           Datas);
+                           new byte[] { 0x49, 0x44, 0x41, 0x54 },
+                           DataStream.ToArray());
+                #endregion
+
+                #region IEND
+                Stream.WriteBytes(0x00, 0x00, 0x00, 0x00,       // Length
+                                  0x49, 0x45, 0x4E, 0x44,       // TypeCode
+                                  0xAE, 0x42, 0x60, 0x82);      // CRC32
+
+                //byte[] IENDChunk =
+                //{
+                //    0x00, 0x00, 0x00, 0x00,
+                //    0x49, 0x45, 0x4E, 0x44,
+                //    0xAE, 0x42, 0x60, 0x82
+                //};
+                //Stream.Write(IENDChunk, 0, IENDChunk.Length);
+
+                #endregion
+
             }
-
-            #endregion
-
-            #region IDAT
-            // ImageDatas
-            int Stride = (Image.Width * Image.BitsPerPixel + 7) >> 3;
-            byte[] ImageDatas = new byte[Stride + 1];
-
-            using MemoryStream DataStream = new MemoryStream();
-            // Mark LZ77 Compress
-            DataStream.Write(new byte[] { 0x78, 0xDA }, 0, 2);
-
-            Stream Compressor = new DeflateStream(DataStream, CompressionLevel.Optimal, true);
-
-            byte* pImageDatas = ImageDatas.ToPointer(1);
-            Action<int> DataCopyAction = Image.BitsPerPixel == 32 ? y => Image.ScanLineCopy<RGBA>(0, y, Image.Width, pImageDatas) :
-                                                                    y => Image.ScanLineCopy<RGB>(0, y, Image.Width, pImageDatas);
-            for (int j = 0; j < Image.Height; j++)
+            finally
             {
-                DataCopyAction(j);
-                Compressor.Write(ImageDatas, 0, ImageDatas.Length);
+                CRCStream.Dispose();
             }
-
-            Compressor.Dispose();
-            WriteChunk(Stream,
-                       new byte[] { 0x49, 0x44, 0x41, 0x54 },
-                       DataStream.ToArray());
-            #endregion
-
-            #region tEXt
-            //bool HasDescription = false;
-            //if (HasDescription)
-            //{
-            //    List<byte> TextDatas = new List<byte>();
-            //    TextDatas.AddRange(Encoding.Default.GetBytes("Property"));
-            //    TextDatas.Add(0x00);
-            //    TextDatas.AddRange(Encoding.Default.GetBytes("Content)"));
-            //    WriteChunk(Stream,
-            //               new byte[] { 0x74, 0x45, 0x58, 0x74 },
-            //               TextDatas.ToArray());
-            //}
-
-            #endregion
-
-            #region IEND
-            byte[] IENDChunk =
-            {
-                0x00, 0x00, 0x00, 0x00,
-                0x49, 0x45, 0x4E, 0x44,
-                0xAE, 0x42, 0x60, 0x82
-            };
-            Stream.Write(IENDChunk, 0, IENDChunk.Length);
-
-            #endregion
-
         }
 
         /// <summary>
@@ -566,29 +685,6 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         /// <summary>
-        /// ∥c∥b∥
-        /// <para></para>
-        /// ∥a∥x∥
-        /// </summary>
-        /// <param name="a"></param>
-        /// <param name="b"></param>
-        /// <param name="c"></param>
-        private static byte CalculatePaeth(byte a, byte b, byte c)
-        {
-            int pa = (b - c).Abs();
-            int pb = (a - c).Abs();
-            int pc = (a + b - 2 * c).Abs();
-
-            if (pa <= pb && pa <= pc)
-                return a;
-
-            if (pb <= pc)
-                return b;
-
-            return c;
-        }
-
-        /// <summary>
         /// Indicates whether the specified Identifier is bitmap Identifier.<para/>
         /// BM – Windows 3.1x, 95, NT, ... etc.<para/>
         /// BA – OS / 2 struct Bitmap Array<para/>
@@ -611,20 +707,6 @@ namespace MenthaAssembly.Media.Imaging
                (Datas[0].Equals(0x58) && (Datas[1].Equals(0x09) || Datas[1].Equals(0x47) || Datas[1].Equals(0x85) || Datas[1].Equals(0xC3))) ||
                (Datas[0].Equals(0x68) && (Datas[1].Equals(0x05) || Datas[1].Equals(0x43) || Datas[1].Equals(0x81) || Datas[1].Equals(0xDE))) ||
                (Datas[0].Equals(0x78) && (Datas[1].Equals(0x01) || Datas[1].Equals(0x5E) || Datas[1].Equals(0x9C) || Datas[1].Equals(0xDA)));
-        public static bool Identify(byte[] Data)
-        {
-            if (Data.Length < IdentifierSize)
-                return false;
-
-            return Data[0].Equals(0x89) &&
-                   Data[1].Equals(0x50) &&
-                   Data[2].Equals(0x4E) &&
-                   Data[3].Equals(0x47) &&
-                   Data[4].Equals(0x0D) &&
-                   Data[5].Equals(0x0A) &&
-                   Data[6].Equals(0x1A) &&
-                   Data[7].Equals(0x0A);
-        }
 
         [Conditional("DEBUG")]
         public static void Parse(Stream Stream, bool ShowIDAT = true)

@@ -103,7 +103,7 @@ namespace MenthaAssembly.Media.Imaging
 
                     Identifier = Encoding.ASCII.GetString(Buffer, 0, MaxIdentifierSize);
                     IImageContext Image;
-                    if (PngCoder.Identify(Buffer))
+                    if (PngCoder.Identify(Identifier))
                     {
                         using ConcatStream Concat = new(Buffer, 0, MaxIdentifierSize, Segment);
                         if (!PngCoder.TryDecode(Concat, out Image))
