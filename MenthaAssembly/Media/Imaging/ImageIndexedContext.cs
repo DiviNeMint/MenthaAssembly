@@ -153,16 +153,48 @@ namespace MenthaAssembly.Media.Imaging
         #region Line Rendering
 
         #region Line
+        public void DrawLine(Point<int> P0, Point<int> P1, IImageContext Pen)
+            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Pen, BlendMode.Overlay);
+        public void DrawLine(Point<int> P0, Point<int> P1, IImageContext Pen, BlendMode Blend)
+            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Pen, Blend);
+        public void DrawLine(int X0, int Y0, int X1, int Y1, IImageContext Pen)
+            => DrawLine(X0, Y0, X1, Y1, Pen, BlendMode.Overlay);
+        public void DrawLine(int X0, int Y0, int X1, int Y1, IImageContext Pen, BlendMode Blend)
+        {
+            int X = X0 - (Pen.Width >> 1),
+                Y = Y0 - (Pen.Height >> 1);
+
+            int DeltaX = X1 - X0,
+                DeltaY = Y1 - Y0;
+
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, Math.Abs(DeltaX), Math.Abs(DeltaY), (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen, Blend));
+        }
+
         public void DrawLine<T>(Point<int> P0, Point<int> P1, T Color) where T : unmanaged, IPixel
-            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Color);
-        public void DrawLine<T>(int X0, int Y0, int X1, int Y1, T Color)
+            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Color, BlendMode.Overlay);
+        public void DrawLine<T>(Point<int> P0, Point<int> P1, T Color, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Color, Blend);
+        public void DrawLine<T>(int X0, int Y0, int X1, int Y1, T Color) where T : unmanaged, IPixel
+            => DrawLine(X0, Y0, X1, Y1, Color, BlendMode.Overlay);
+        public void DrawLine<T>(int X0, int Y0, int X1, int Y1, T Color, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Color.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
 
-            Action<PixelAdapter<T>> Handler = Color.A == byte.MaxValue ? a => a.Override(Color) :
-                                                                         a => a.Overlay(Color);
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Color),
+                BlendMode.Overlay => a => a.Overlay(Color),
+                _ => throw new NotSupportedException(),
+            };
 
             if (X1 < X0)
             {
@@ -244,16 +276,32 @@ namespace MenthaAssembly.Media.Imaging
 
             #endregion
         }
+
         public void DrawLine<T>(Point<int> P0, Point<int> P1, ImageContour Contour, T Fill) where T : unmanaged, IPixel
-            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, Fill);
-        public void DrawLine<T>(int X0, int Y0, int X1, int Y1, ImageContour Contour, T Fill)
+            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, Fill, BlendMode.Overlay);
+        public void DrawLine<T>(Point<int> P0, Point<int> P1, ImageContour Contour, T Fill, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Contour, Fill, Blend);
+        public void DrawLine<T>(int X0, int Y0, int X1, int Y1, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawLine(X0, Y0, X1, Y1, Contour, Fill, BlendMode.Overlay);
+        public void DrawLine<T>(int X0, int Y0, int X1, int Y1, ImageContour Contour, T Fill, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
 
-            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
-                                                                        a => a.Overlay(Fill);
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Fill),
+                BlendMode.Overlay => a => a.Overlay(Fill),
+                _ => throw new NotSupportedException(),
+            };
 
             Bound<int> Bound = Contour.Bound;
             if (Bound.IsEmpty)
@@ -493,32 +541,51 @@ namespace MenthaAssembly.Media.Imaging
                 #endregion
             }
         }
-        public void DrawLine(Point<int> P0, Point<int> P1, IImageContext Pen)
-            => DrawLine(P0.X, P0.Y, P1.X, P1.Y, Pen);
-        public void DrawLine(int X0, int Y0, int X1, int Y1, IImageContext Pen)
-        {
-            int X = X0 - (Pen.Width >> 1),
-                Y = Y0 - (Pen.Height >> 1);
-
-            int DeltaX = X1 - X0,
-                DeltaY = Y1 - Y0;
-
-            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, Math.Abs(DeltaX), Math.Abs(DeltaY), (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen));
-        }
 
         #endregion
 
         #region Arc
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen, BlendMode.Overlay);
+        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen, BlendMode Blend)
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen, Blend);
+        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
+            => DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Pen, BlendMode.Overlay);
+        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen, BlendMode Blend)
+        {
+            int X = Cx - (Pen.Width >> 1),
+                Y = Cy - (Pen.Height >> 1);
+
+            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise, false,
+                (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen, Blend));
+        }
+
         public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, T Color) where T : unmanaged, IPixel
-            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Color);
-        public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, T Color)
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Color, BlendMode.Overlay);
+        public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, T Color, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Color, Blend);
+        public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, T Color) where T : unmanaged, IPixel
+            => DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Color, BlendMode.Overlay);
+        public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, T Color, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Color.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
 
-            Action<PixelAdapter<T>> Handler = Color.A == byte.MaxValue ? a => a.Override(Color) :
-                                                                         a => a.Overlay(Color);
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Color),
+                BlendMode.Overlay => a => a.Overlay(Color),
+                _ => throw new NotSupportedException(),
+            };
+
             int Tx, Ty;
             PixelAdapter<T> Adapter = GetAdapter<T>(0, 0);
             GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy,
@@ -540,18 +607,34 @@ namespace MenthaAssembly.Media.Imaging
                                                        Handler(Adapter);
                                                    });
         }
+
         public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill) where T : unmanaged, IPixel
-            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, Fill);
-        public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill)
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, Fill, BlendMode.Overlay);
+        public void DrawArc<T>(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Contour, Fill, Blend);
+        public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawArc(Sx, Sy, Ex, Ey, Cx, Cy, Rx, Ry, Clockwise, Contour, Fill, BlendMode.Overlay);
+        public void DrawArc<T>(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Contour, T Fill, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
 
-            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
-                                                                        a => a.Overlay(Fill);
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
 
-            ImageContour ArcContour = new ImageContour();
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Fill),
+                BlendMode.Overlay => a => a.Overlay(Fill),
+                _ => throw new NotSupportedException(),
+            };
+
+            ImageContour ArcContour = new();
             Bound<int> Bound = Contour.Bound;
 
             if (Bound.IsEmpty)
@@ -589,10 +672,10 @@ namespace MenthaAssembly.Media.Imaging
             }
             else
             {
-                Dictionary<int, int> LargeLeftBound = new Dictionary<int, int>(),
-                                     LargeRightBound = new Dictionary<int, int>(),
-                                     SmallLeftBound = new Dictionary<int, int>(),
-                                     SmallRightBound = new Dictionary<int, int>();
+                Dictionary<int, int> LargeLeftBound = new(),
+                                     LargeRightBound = new(),
+                                     SmallLeftBound = new(),
+                                     SmallRightBound = new();
 
                 GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, false,
                     (Dx, Dy) =>
@@ -683,162 +766,16 @@ namespace MenthaAssembly.Media.Imaging
 
             this.Contour(ArcContour, 0d, 0d, Handler);
         }
-        public void DrawArc(Point<int> Start, Point<int> End, Point<int> Center, int Rx, int Ry, bool Clockwise, IImageContext Pen)
-            => DrawArc(Start.X, Start.Y, End.X, End.Y, Center.X, Center.Y, Rx, Ry, Clockwise, Pen);
-        public void DrawArc(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, IImageContext Pen)
-        {
-            int X = Cx - (Pen.Width >> 1),
-                Y = Cy - (Pen.Height >> 1);
-
-            GraphicAlgorithm.CalculateBresenhamArc(Sx - Cx, Sy - Cy, Ex - Cx, Ey - Cy, Rx, Ry, Clockwise, false,
-                (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen));
-        }
-
 
         #endregion
 
         #region Curve
-        public void DrawCurve<T>(IList<int> Points, float Tension, T Color)
-            where T : unmanaged, IPixel
-        {
-            if (Color.A == byte.MinValue)
-                return;
-
-            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Color);
-
-            // First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[0], Points[1],
-                                                   Points[0], Points[1],
-                                                   Points[2], Points[3],
-                                                   Points[4], Points[5],
-                                                   Tension,
-                                                   DrawHandler);
-
-            // Middle segments
-            int i;
-            for (i = 2; i < Points.Count - 4; i += 2)
-                GraphicAlgorithm.CalculateCurveSegment(Points[i - 2], Points[i - 1],
-                                                       Points[i], Points[i + 1],
-                                                       Points[i + 2], Points[i + 3],
-                                                       Points[i + 4], Points[i + 5],
-                                                       Tension,
-                                                       DrawHandler);
-
-            // Last segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i - 2], Points[i - 1],
-                                                   Points[i], Points[i + 1],
-                                                   Points[i + 2], Points[i + 3],
-                                                   Points[i + 2], Points[i + 3],
-                                                   Tension,
-                                                   DrawHandler);
-        }
-        public void DrawCurve<T>(IList<Point<int>> Points, float Tension, T Color)
-            where T : unmanaged, IPixel
-        {
-            if (Color.A == byte.MinValue)
-                return;
-
-            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Color);
-
-            // First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[0].X, Points[0].Y,
-                                                   Points[0].X, Points[0].Y,
-                                                   Points[1].X, Points[1].Y,
-                                                   Points[2].X, Points[2].Y,
-                                                   Tension,
-                                                   DrawHandler);
-
-            // Middle segments
-            int i;
-            for (i = 1; i < Points.Count - 2; i++)
-                GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
-                                                       Points[i].X, Points[i].Y,
-                                                       Points[i + 1].X, Points[i + 1].Y,
-                                                       Points[i + 2].X, Points[i + 2].Y,
-                                                       Tension,
-                                                       DrawHandler);
-
-            // Last segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
-                                                   Points[i].X, Points[i].Y,
-                                                   Points[i + 1].X, Points[i + 1].Y,
-                                                   Points[i + 1].X, Points[i + 1].Y,
-                                                   Tension,
-                                                   DrawHandler);
-        }
-        public void DrawCurve<T>(IList<int> Points, float Tension, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
-        {
-            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
-
-            // First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[0], Points[1],
-                                                   Points[0], Points[1],
-                                                   Points[2], Points[3],
-                                                   Points[4], Points[5],
-                                                   Tension,
-                                                   DrawHandler);
-
-            // Middle segments
-            int i;
-            for (i = 2; i < Points.Count - 4; i += 2)
-                GraphicAlgorithm.CalculateCurveSegment(Points[i - 2], Points[i - 1],
-                                                       Points[i], Points[i + 1],
-                                                       Points[i + 2], Points[i + 3],
-                                                       Points[i + 4], Points[i + 5],
-                                                       Tension,
-                                                       DrawHandler);
-
-            // Last segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i - 2], Points[i - 1],
-                                                   Points[i], Points[i + 1],
-                                                   Points[i + 2], Points[i + 3],
-                                                   Points[i + 2], Points[i + 3],
-                                                   Tension,
-                                                   DrawHandler);
-        }
-        public void DrawCurve<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
-        {
-            if (Fill.A == byte.MinValue)
-                return;
-
-            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
-
-            // First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[0].X, Points[0].Y,
-                                                   Points[0].X, Points[0].Y,
-                                                   Points[1].X, Points[1].Y,
-                                                   Points[2].X, Points[2].Y,
-                                                   Tension,
-                                                   DrawHandler);
-
-            // Middle segments
-            int i;
-            for (i = 1; i < Points.Count - 2; i++)
-                GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
-                                                       Points[i].X, Points[i].Y,
-                                                       Points[i + 1].X, Points[i + 1].Y,
-                                                       Points[i + 2].X, Points[i + 2].Y,
-                                                       Tension,
-                                                       DrawHandler);
-
-            // Last segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
-                                                   Points[i].X, Points[i].Y,
-                                                   Points[i + 1].X, Points[i + 1].Y,
-                                                   Points[i + 1].X, Points[i + 1].Y,
-                                                   Tension,
-                                                   DrawHandler);
-        }
         public void DrawCurve(IList<int> Points, float Tension, IImageContext Pen)
+            => DrawCurve(Points, Tension, Pen, BlendMode.Overlay);
+        public void DrawCurve(IList<int> Points, float Tension, IImageContext Pen, BlendMode Blend)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Pen);
+                => DrawLine(Px1, Py1, Px2, Py2, Pen, Blend);
 
             // First segment
             GraphicAlgorithm.CalculateCurveSegment(Points[0], Points[1],
@@ -866,10 +803,13 @@ namespace MenthaAssembly.Media.Imaging
                                                    Tension,
                                                    DrawHandler);
         }
+
         public void DrawCurve(IList<Point<int>> Points, float Tension, IImageContext Pen)
+            => DrawCurve(Points, Tension, Pen, BlendMode.Overlay);
+        public void DrawCurve(IList<Point<int>> Points, float Tension, IImageContext Pen, BlendMode Blend)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Pen);
+                => DrawLine(Px1, Py1, Px2, Py2, Pen, Blend);
 
             // First segment
             GraphicAlgorithm.CalculateCurveSegment(Points[0].X, Points[0].Y,
@@ -898,19 +838,26 @@ namespace MenthaAssembly.Media.Imaging
                                                    DrawHandler);
         }
 
-        public void DrawCurveClosed<T>(IList<int> Points, float Tension, T Color)
+        public void DrawCurve<T>(IList<int> Points, float Tension, T Color) where T : unmanaged, IPixel
+            => DrawCurve(Points, Tension, Color, BlendMode.Overlay);
+        public void DrawCurve<T>(IList<int> Points, float Tension, T Color, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Color.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
 
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Color);
-
-            int pn = Points.Count;
+                => DrawLine(Px1, Py1, Px2, Py2, Color, Blend);
 
             // First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[pn - 2], Points[pn - 1],
+            GraphicAlgorithm.CalculateCurveSegment(Points[0], Points[1],
                                                    Points[0], Points[1],
                                                    Points[2], Points[3],
                                                    Points[4], Points[5],
@@ -919,45 +866,43 @@ namespace MenthaAssembly.Media.Imaging
 
             // Middle segments
             int i;
-            for (i = 2; i < pn - 4; i += 2)
-                GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
-                                                       Points[i - 1], Points[i],
-                                                       Points[i + 1], Points[i + 2],
-                                                       Points[i + 3], Points[i + 4],
-                                                       Points[i + 5],
+            for (i = 2; i < Points.Count - 4; i += 2)
+                GraphicAlgorithm.CalculateCurveSegment(Points[i - 2], Points[i - 1],
+                                                       Points[i], Points[i + 1],
+                                                       Points[i + 2], Points[i + 3],
+                                                       Points[i + 4], Points[i + 5],
                                                        Tension,
                                                        DrawHandler);
 
             // Last segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
-                                                   Points[i - 1], Points[i],
-                                                   Points[i + 1], Points[i + 2],
-                                                   Points[i + 3], Points[0],
-                                                   Points[1],
-                                                   Tension,
-                                                   DrawHandler);
-
-            // Last-to-First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i], Points[i + 1],
+            GraphicAlgorithm.CalculateCurveSegment(Points[i - 2], Points[i - 1],
+                                                   Points[i], Points[i + 1],
                                                    Points[i + 2], Points[i + 3],
-                                                   Points[0], Points[1],
-                                                   Points[2], Points[3],
+                                                   Points[i + 2], Points[i + 3],
                                                    Tension,
                                                    DrawHandler);
         }
-        public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, T Color)
+
+        public void DrawCurve<T>(IList<Point<int>> Points, float Tension, T Color) where T : unmanaged, IPixel
+            => DrawCurve(Points, Tension, Color, BlendMode.Overlay);
+        public void DrawCurve<T>(IList<Point<int>> Points, float Tension, T Color, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Color.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
 
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Color);
-
-            int pn = Points.Count;
+                => DrawLine(Px1, Py1, Px2, Py2, Color, Blend);
 
             // First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[pn - 1].X, Points[pn - 1].Y,
+            GraphicAlgorithm.CalculateCurveSegment(Points[0].X, Points[0].Y,
                                                    Points[0].X, Points[0].Y,
                                                    Points[1].X, Points[1].Y,
                                                    Points[2].X, Points[2].Y,
@@ -966,7 +911,7 @@ namespace MenthaAssembly.Media.Imaging
 
             // Middle segments
             int i;
-            for (i = 1; i < pn - 2; i++)
+            for (i = 1; i < Points.Count - 2; i++)
                 GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
                                                        Points[i].X, Points[i].Y,
                                                        Points[i + 1].X, Points[i + 1].Y,
@@ -975,35 +920,34 @@ namespace MenthaAssembly.Media.Imaging
                                                        DrawHandler);
 
             // Last segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X,
-                                                   Points[i - 1].Y, Points[i].X,
-                                                   Points[i].Y, Points[i + 1].X,
-                                                   Points[i + 1].Y, Points[0].X,
-                                                   Points[0].Y,
-                                                   Tension,
-                                                   DrawHandler);
-
-            // Last-to-First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i].X, Points[i].Y,
+            GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
+                                                   Points[i].X, Points[i].Y,
                                                    Points[i + 1].X, Points[i + 1].Y,
-                                                   Points[0].X, Points[0].Y,
-                                                   Points[1].X, Points[1].Y,
+                                                   Points[i + 1].X, Points[i + 1].Y,
                                                    Tension,
                                                    DrawHandler);
         }
-        public void DrawCurveClosed<T>(IList<int> Points, float Tension, ImageContour Contour, T Fill)
+
+        public void DrawCurve<T>(IList<int> Points, float Tension, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawCurve(Points, Tension, Contour, Fill, BlendMode.Overlay);
+        public void DrawCurve<T>(IList<int> Points, float Tension, ImageContour Contour, T Fill, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
 
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
-
-            int pn = Points.Count;
+                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill, Blend);
 
             // First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[pn - 2], Points[pn - 1],
+            GraphicAlgorithm.CalculateCurveSegment(Points[0], Points[1],
                                                    Points[0], Points[1],
                                                    Points[2], Points[3],
                                                    Points[4], Points[5],
@@ -1012,45 +956,43 @@ namespace MenthaAssembly.Media.Imaging
 
             // Middle segments
             int i;
-            for (i = 2; i < pn - 4; i += 2)
-                GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
-                                                       Points[i - 1], Points[i],
-                                                       Points[i + 1], Points[i + 2],
-                                                       Points[i + 3], Points[i + 4],
-                                                       Points[i + 5],
+            for (i = 2; i < Points.Count - 4; i += 2)
+                GraphicAlgorithm.CalculateCurveSegment(Points[i - 2], Points[i - 1],
+                                                       Points[i], Points[i + 1],
+                                                       Points[i + 2], Points[i + 3],
+                                                       Points[i + 4], Points[i + 5],
                                                        Tension,
                                                        DrawHandler);
 
             // Last segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
-                                                   Points[i - 1], Points[i],
-                                                   Points[i + 1], Points[i + 2],
-                                                   Points[i + 3], Points[0],
-                                                   Points[1],
-                                                   Tension,
-                                                   DrawHandler);
-
-            // Last-to-First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i], Points[i + 1],
+            GraphicAlgorithm.CalculateCurveSegment(Points[i - 2], Points[i - 1],
+                                                   Points[i], Points[i + 1],
                                                    Points[i + 2], Points[i + 3],
-                                                   Points[0], Points[1],
-                                                   Points[2], Points[3],
+                                                   Points[i + 2], Points[i + 3],
                                                    Tension,
                                                    DrawHandler);
         }
-        public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill)
+
+        public void DrawCurve<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawCurve(Points, Tension, Contour, Fill, BlendMode.Overlay);
+        public void DrawCurve<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
 
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
-
-            int pn = Points.Count;
+                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill, Blend);
 
             // First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[pn - 1].X, Points[pn - 1].Y,
+            GraphicAlgorithm.CalculateCurveSegment(Points[0].X, Points[0].Y,
                                                    Points[0].X, Points[0].Y,
                                                    Points[1].X, Points[1].Y,
                                                    Points[2].X, Points[2].Y,
@@ -1059,7 +1001,7 @@ namespace MenthaAssembly.Media.Imaging
 
             // Middle segments
             int i;
-            for (i = 1; i < pn - 2; i++)
+            for (i = 1; i < Points.Count - 2; i++)
                 GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
                                                        Points[i].X, Points[i].Y,
                                                        Points[i + 1].X, Points[i + 1].Y,
@@ -1068,26 +1010,20 @@ namespace MenthaAssembly.Media.Imaging
                                                        DrawHandler);
 
             // Last segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X,
-                                                   Points[i - 1].Y, Points[i].X,
-                                                   Points[i].Y, Points[i + 1].X,
-                                                   Points[i + 1].Y, Points[0].X,
-                                                   Points[0].Y,
-                                                   Tension,
-                                                   DrawHandler);
-
-            // Last-to-First segment
-            GraphicAlgorithm.CalculateCurveSegment(Points[i].X, Points[i].Y,
+            GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
+                                                   Points[i].X, Points[i].Y,
                                                    Points[i + 1].X, Points[i + 1].Y,
-                                                   Points[0].X, Points[0].Y,
-                                                   Points[1].X, Points[1].Y,
+                                                   Points[i + 1].X, Points[i + 1].Y,
                                                    Tension,
                                                    DrawHandler);
         }
+
         public void DrawCurveClosed(IList<int> Points, float Tension, IImageContext Pen)
+            => DrawCurveClosed(Points, Tension, Pen, BlendMode.Overlay);
+        public void DrawCurveClosed(IList<int> Points, float Tension, IImageContext Pen, BlendMode Blend)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Pen);
+                => DrawLine(Px1, Py1, Px2, Py2, Pen, Blend);
 
             int pn = Points.Count;
 
@@ -1127,10 +1063,13 @@ namespace MenthaAssembly.Media.Imaging
                                                    Tension,
                                                    DrawHandler);
         }
+
         public void DrawCurveClosed(IList<Point<int>> Points, float Tension, IImageContext Pen)
+            => DrawCurveClosed(Points, Tension, Pen, BlendMode.Overlay);
+        public void DrawCurveClosed(IList<Point<int>> Points, float Tension, IImageContext Pen, BlendMode Blend)
         {
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Pen);
+                => DrawLine(Px1, Py1, Px2, Py2, Pen, Blend);
 
             int pn = Points.Count;
 
@@ -1169,99 +1108,375 @@ namespace MenthaAssembly.Media.Imaging
                                                    Tension,
                                                    DrawHandler);
         }
+
+        public void DrawCurveClosed<T>(IList<int> Points, float Tension, T Color) where T : unmanaged, IPixel
+            => DrawCurveClosed(Points, Tension, Color, BlendMode.Overlay);
+        public void DrawCurveClosed<T>(IList<int> Points, float Tension, T Color, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
+                => DrawLine(Px1, Py1, Px2, Py2, Color, Blend);
+
+            int pn = Points.Count;
+
+            // First segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[pn - 2], Points[pn - 1],
+                                                   Points[0], Points[1],
+                                                   Points[2], Points[3],
+                                                   Points[4], Points[5],
+                                                   Tension,
+                                                   DrawHandler);
+
+            // Middle segments
+            int i;
+            for (i = 2; i < pn - 4; i += 2)
+                GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
+                                                       Points[i - 1], Points[i],
+                                                       Points[i + 1], Points[i + 2],
+                                                       Points[i + 3], Points[i + 4],
+                                                       Points[i + 5],
+                                                       Tension,
+                                                       DrawHandler);
+
+            // Last segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
+                                                   Points[i - 1], Points[i],
+                                                   Points[i + 1], Points[i + 2],
+                                                   Points[i + 3], Points[0],
+                                                   Points[1],
+                                                   Tension,
+                                                   DrawHandler);
+
+            // Last-to-First segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[i], Points[i + 1],
+                                                   Points[i + 2], Points[i + 3],
+                                                   Points[0], Points[1],
+                                                   Points[2], Points[3],
+                                                   Tension,
+                                                   DrawHandler);
+        }
+
+        public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, T Color) where T : unmanaged, IPixel
+            => DrawCurveClosed(Points, Tension, Color, BlendMode.Overlay);
+        public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, T Color, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
+                => DrawLine(Px1, Py1, Px2, Py2, Color, Blend);
+
+            int pn = Points.Count;
+
+            // First segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[pn - 1].X, Points[pn - 1].Y,
+                                                   Points[0].X, Points[0].Y,
+                                                   Points[1].X, Points[1].Y,
+                                                   Points[2].X, Points[2].Y,
+                                                   Tension,
+                                                   DrawHandler);
+
+            // Middle segments
+            int i;
+            for (i = 1; i < pn - 2; i++)
+                GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
+                                                       Points[i].X, Points[i].Y,
+                                                       Points[i + 1].X, Points[i + 1].Y,
+                                                       Points[i + 2].X, Points[i + 2].Y,
+                                                       Tension,
+                                                       DrawHandler);
+
+            // Last segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X,
+                                                   Points[i - 1].Y, Points[i].X,
+                                                   Points[i].Y, Points[i + 1].X,
+                                                   Points[i + 1].Y, Points[0].X,
+                                                   Points[0].Y,
+                                                   Tension,
+                                                   DrawHandler);
+
+            // Last-to-First segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[i].X, Points[i].Y,
+                                                   Points[i + 1].X, Points[i + 1].Y,
+                                                   Points[0].X, Points[0].Y,
+                                                   Points[1].X, Points[1].Y,
+                                                   Tension,
+                                                   DrawHandler);
+        }
+
+        public void DrawCurveClosed<T>(IList<int> Points, float Tension, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawCurveClosed(Points, Tension, Contour, Fill, BlendMode.Overlay);
+        public void DrawCurveClosed<T>(IList<int> Points, float Tension, ImageContour Contour, T Fill, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
+                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill, Blend);
+
+            int pn = Points.Count;
+
+            // First segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[pn - 2], Points[pn - 1],
+                                                   Points[0], Points[1],
+                                                   Points[2], Points[3],
+                                                   Points[4], Points[5],
+                                                   Tension,
+                                                   DrawHandler);
+
+            // Middle segments
+            int i;
+            for (i = 2; i < pn - 4; i += 2)
+                GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
+                                                       Points[i - 1], Points[i],
+                                                       Points[i + 1], Points[i + 2],
+                                                       Points[i + 3], Points[i + 4],
+                                                       Points[i + 5],
+                                                       Tension,
+                                                       DrawHandler);
+
+            // Last segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[i - 2],
+                                                   Points[i - 1], Points[i],
+                                                   Points[i + 1], Points[i + 2],
+                                                   Points[i + 3], Points[0],
+                                                   Points[1],
+                                                   Tension,
+                                                   DrawHandler);
+
+            // Last-to-First segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[i], Points[i + 1],
+                                                   Points[i + 2], Points[i + 3],
+                                                   Points[0], Points[1],
+                                                   Points[2], Points[3],
+                                                   Tension,
+                                                   DrawHandler);
+        }
+
+        public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawCurveClosed(Points, Tension, Contour, Fill, BlendMode.Overlay);
+        public void DrawCurveClosed<T>(IList<Point<int>> Points, float Tension, ImageContour Contour, T Fill, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
+                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill, Blend);
+
+            int pn = Points.Count;
+
+            // First segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[pn - 1].X, Points[pn - 1].Y,
+                                                   Points[0].X, Points[0].Y,
+                                                   Points[1].X, Points[1].Y,
+                                                   Points[2].X, Points[2].Y,
+                                                   Tension,
+                                                   DrawHandler);
+
+            // Middle segments
+            int i;
+            for (i = 1; i < pn - 2; i++)
+                GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X, Points[i - 1].Y,
+                                                       Points[i].X, Points[i].Y,
+                                                       Points[i + 1].X, Points[i + 1].Y,
+                                                       Points[i + 2].X, Points[i + 2].Y,
+                                                       Tension,
+                                                       DrawHandler);
+
+            // Last segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[i - 1].X,
+                                                   Points[i - 1].Y, Points[i].X,
+                                                   Points[i].Y, Points[i + 1].X,
+                                                   Points[i + 1].Y, Points[0].X,
+                                                   Points[0].Y,
+                                                   Tension,
+                                                   DrawHandler);
+
+            // Last-to-First segment
+            GraphicAlgorithm.CalculateCurveSegment(Points[i].X, Points[i].Y,
+                                                   Points[i + 1].X, Points[i + 1].Y,
+                                                   Points[0].X, Points[0].Y,
+                                                   Points[1].X, Points[1].Y,
+                                                   Tension,
+                                                   DrawHandler);
+        }
+
 
         #endregion
 
         #region Bezier
-        public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, T Color)
+
+        public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, T Color) where T : unmanaged, IPixel
+            => DrawBezier(X1, Y1, Cx1, Cy1, Cx2, Cy2, X2, Y2, Color, BlendMode.Overlay);
+        public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, T Color, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Color.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
 
             GraphicAlgorithm.CalculateBezierLinePoints(X1, Y1,
                                                        Cx1, Cy1,
                                                        Cx2, Cy2,
                                                        X2, Y2,
-                                                       (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Color));
+                                                       (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Color, Blend));
         }
 
-        public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, ImageContour Contour, T Fill)
+        public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawBezier(X1, Y1, Cx1, Cy1, Cx2, Cy2, X2, Y2, Contour, Fill, BlendMode.Overlay);
+        public void DrawBezier<T>(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, ImageContour Contour, T Fill, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
 
             GraphicAlgorithm.CalculateBezierLinePoints(X1, Y1,
                                                        Cx1, Cy1,
                                                        Cx2, Cy2,
                                                        X2, Y2,
-                                                       (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill));
+                                                       (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill, Blend));
         }
 
         public void DrawBezier(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, IImageContext Pen)
+            => DrawBezier(X1, Y1, Cx1, Cy1, Cx2, Cy2, X2, Y2, Pen, BlendMode.Overlay);
+        public void DrawBezier(int X1, int Y1, int Cx1, int Cy1, int Cx2, int Cy2, int X2, int Y2, IImageContext Pen, BlendMode Blend)
             => GraphicAlgorithm.CalculateBezierLinePoints(X1, Y1,
                                                           Cx1, Cy1,
                                                           Cx2, Cy2,
                                                           X2, Y2,
-                                                          (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Pen));
+                                                          (Px1, Py1, Px2, Py2) => DrawLine(Px1, Py1, Px2, Py2, Pen, Blend));
 
-        public void DrawBeziers<T>(IList<int> Points, T Color)
-            where T : unmanaged, IPixel
-        {
-            int x1 = Points[0],
-                y1 = Points[1],
-                x2, y2;
-
-            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Color);
-
-            for (int i = 2; i + 5 < Points.Count; i += 6)
-            {
-                x2 = Points[i + 4];
-                y2 = Points[i + 5];
-                GraphicAlgorithm.CalculateBezierLinePoints(x1, y1,
-                                                           Points[i], Points[i + 1],
-                                                           Points[i + 2], Points[i + 3],
-                                                           x2, y2,
-                                                           DrawHandler);
-
-                x1 = x2;
-                y1 = y2;
-            }
-        }
-        public void DrawBeziers<T>(IList<int> Points, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
-        {
-            int x1 = Points[0],
-                y1 = Points[1],
-                x2, y2;
-
-            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill);
-
-            for (int i = 2; i + 5 < Points.Count; i += 6)
-            {
-                x2 = Points[i + 4];
-                y2 = Points[i + 5];
-                GraphicAlgorithm.CalculateBezierLinePoints(x1, y1,
-                                                           Points[i], Points[i + 1],
-                                                           Points[i + 2], Points[i + 3],
-                                                           x2, y2,
-                                                           DrawHandler);
-
-                x1 = x2;
-                y1 = y2;
-            }
-        }
         public void DrawBeziers(IList<int> Points, IImageContext Pen)
+            => DrawBeziers(Points, Pen, BlendMode.Overlay);
+        public void DrawBeziers(IList<int> Points, IImageContext Pen, BlendMode Blend)
         {
             int x1 = Points[0],
                 y1 = Points[1],
                 x2, y2;
 
             void DrawHandler(int Px1, int Py1, int Px2, int Py2)
-                => DrawLine(Px1, Py1, Px2, Py2, Pen);
+                => DrawLine(Px1, Py1, Px2, Py2, Pen, Blend);
+
+            for (int i = 2; i + 5 < Points.Count; i += 6)
+            {
+                x2 = Points[i + 4];
+                y2 = Points[i + 5];
+                GraphicAlgorithm.CalculateBezierLinePoints(x1, y1,
+                                                           Points[i], Points[i + 1],
+                                                           Points[i + 2], Points[i + 3],
+                                                           x2, y2,
+                                                           DrawHandler);
+
+                x1 = x2;
+                y1 = y2;
+            }
+        }
+
+        public void DrawBeziers<T>(IList<int> Points, T Color) where T : unmanaged, IPixel
+            => DrawBeziers(Points, Color, BlendMode.Overlay);
+        public void DrawBeziers<T>(IList<int> Points, T Color, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            int x1 = Points[0],
+                y1 = Points[1],
+                x2, y2;
+
+            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
+                => DrawLine(Px1, Py1, Px2, Py2, Color, Blend);
+
+            for (int i = 2; i + 5 < Points.Count; i += 6)
+            {
+                x2 = Points[i + 4];
+                y2 = Points[i + 5];
+                GraphicAlgorithm.CalculateBezierLinePoints(x1, y1,
+                                                           Points[i], Points[i + 1],
+                                                           Points[i + 2], Points[i + 3],
+                                                           x2, y2,
+                                                           DrawHandler);
+
+                x1 = x2;
+                y1 = y2;
+            }
+        }
+
+        public void DrawBeziers<T>(IList<int> Points, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawBeziers(Points, Contour, Fill, BlendMode.Overlay);
+        public void DrawBeziers<T>(IList<int> Points, ImageContour Contour, T Fill, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            int x1 = Points[0],
+                y1 = Points[1],
+                x2, y2;
+
+            void DrawHandler(int Px1, int Py1, int Px2, int Py2)
+                => DrawLine(Px1, Py1, Px2, Py2, Contour, Fill, Blend);
 
             for (int i = 2; i + 5 < Points.Count; i += 6)
             {
@@ -1414,107 +1629,81 @@ namespace MenthaAssembly.Media.Imaging
         #region Shape Rendering
 
         #region Triangle
-        public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, T Color)
-            where T : unmanaged, IPixel
-        {
-            DrawLine(P1.X, P1.Y, P2.X, P2.Y, Color);
-            DrawLine(P2.X, P2.Y, P3.X, P3.Y, Color);
-            DrawLine(P3.X, P3.Y, P1.X, P1.Y, Color);
-        }
-        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, T Color)
-            where T : unmanaged, IPixel
-        {
-            if (Color.A == byte.MinValue)
-                return;
-
-            DrawLine(X1, Y1, X2, Y2, Color);
-            DrawLine(X2, Y2, X3, Y3, Color);
-            DrawLine(X3, Y3, X1, Y1, Color);
-        }
-        public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
-        {
-            DrawLine(P1.X, P1.Y, P2.X, P2.Y, Contour, Fill);
-            DrawLine(P2.X, P2.Y, P3.X, P3.Y, Contour, Fill);
-            DrawLine(P3.X, P3.Y, P1.X, P1.Y, Contour, Fill);
-        }
-        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
-        {
-            if (Fill.A == byte.MinValue)
-                return;
-
-            DrawLine(X1, Y1, X2, Y2, Contour, Fill);
-            DrawLine(X2, Y2, X3, Y3, Contour, Fill);
-            DrawLine(X3, Y3, X1, Y1, Contour, Fill);
-        }
         public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, IImageContext Pen)
-        {
-            DrawLine(P1.X, P1.Y, P2.X, P2.Y, Pen);
-            DrawLine(P2.X, P2.Y, P3.X, P3.Y, Pen);
-            DrawLine(P3.X, P3.Y, P1.X, P1.Y, Pen);
-        }
+            => DrawTriangle(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, Pen, BlendMode.Overlay);
+        public void DrawTriangle(Point<int> P1, Point<int> P2, Point<int> P3, IImageContext Pen, BlendMode Blend)
+            => DrawTriangle(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, Pen, Blend);
+
         public void DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, IImageContext Pen)
+            => DrawTriangle(X1, Y1, X2, Y2, X3, Y3, Pen, BlendMode.Overlay);
+        public void DrawTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, IImageContext Pen, BlendMode Blend)
         {
-            DrawLine(X1, Y1, X2, Y2, Pen);
-            DrawLine(X2, Y2, X3, Y3, Pen);
-            DrawLine(X3, Y3, X1, Y1, Pen);
+            DrawLine(X1, Y1, X2, Y2, Pen, Blend);
+            DrawLine(X2, Y2, X3, Y3, Pen, Blend);
+            DrawLine(X3, Y3, X1, Y1, Pen, Blend);
+        }
+
+        public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, T Color) where T : unmanaged, IPixel
+            => DrawTriangle(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, Color, BlendMode.Overlay);
+        public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, T Color, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawTriangle(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, Color, Blend);
+
+        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, T Color) where T : unmanaged, IPixel
+            => DrawTriangle(X1, Y1, X2, Y2, X3, Y3, Color, BlendMode.Overlay);
+        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, T Color, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            DrawLine(X1, Y1, X2, Y2, Color, Blend);
+            DrawLine(X2, Y2, X3, Y3, Color, Blend);
+            DrawLine(X3, Y3, X1, Y1, Color, Blend);
+        }
+
+        public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawTriangle(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, Contour, Fill, BlendMode.Overlay);
+        public void DrawTriangle<T>(Point<int> P1, Point<int> P2, Point<int> P3, ImageContour Contour, T Fill, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawTriangle(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, Contour, Fill, Blend);
+
+        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawTriangle(X1, Y1, X2, Y2, X3, Y3, Contour, Fill, BlendMode.Overlay);
+        public void DrawTriangle<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, ImageContour Contour, T Fill, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            DrawLine(X1, Y1, X2, Y2, Contour, Fill, Blend);
+            DrawLine(X2, Y2, X3, Y3, Contour, Fill, Blend);
+            DrawLine(X3, Y3, X1, Y1, Contour, Fill, Blend);
         }
 
         #endregion
 
         #region Rectangle
-        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, T Color) where T : unmanaged, IPixel
-            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Color);
-        public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, T Color)
-            where T : unmanaged, IPixel
-        {
-            // Check boundaries
-            if ((X1 < 0 && X2 < 0) ||
-                (Y1 < 0 && Y2 < 0) ||
-                (X1 >= Width && X2 >= Width) ||
-                (Y1 >= Height && Y2 >= Height))
-                return;
-
-            if (Color.A == byte.MinValue)
-                return;
-
-            // Clamp boundaries
-            MathHelper.MinAndMax(out int L, out int R, X1, X2);
-            MathHelper.MinAndMax(out int Ty, out int By, Y1, Y2);
-
-            DrawLine(L, Ty, R, Ty, Color);
-            DrawLine(L, By, R, By, Color);
-            DrawLine(L, Ty, L, By, Color);
-            DrawLine(R, Ty, R, By, Color);
-        }
-        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, ImageContour Contour, T Fill) where T : unmanaged, IPixel
-            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Contour, Fill);
-        public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
-        {
-            // Check boundaries
-            if ((X1 < 0 && X2 < 0) ||
-                (Y1 < 0 && Y2 < 0) ||
-                (X1 >= Width && X2 >= Width) ||
-                (Y1 >= Height && Y2 >= Height))
-                return;
-
-            if (Fill.A == byte.MinValue)
-                return;
-
-            // Clamp boundaries
-            MathHelper.MinAndMax(out int L, out int R, X1, X2);
-            MathHelper.MinAndMax(out int Ty, out int By, Y1, Y2);
-
-            DrawLine(L, Ty, R, Ty, Contour, Fill);
-            DrawLine(L, By, R, By, Contour, Fill);
-            DrawLine(L, Ty, L, By, Contour, Fill);
-            DrawLine(R, Ty, R, By, Contour, Fill);
-        }
         public void DrawRectangle(Point<int> P1, Point<int> P2, IImageContext Pen)
-            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Pen);
+            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Pen, BlendMode.Overlay);
+        public void DrawRectangle(Point<int> P1, Point<int> P2, IImageContext Pen, BlendMode Blend)
+            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Pen, Blend);
+
         public void DrawRectangle(int X1, int Y1, int X2, int Y2, IImageContext Pen)
+            => DrawRectangle(X1, Y1, X2, Y2, Pen, BlendMode.Overlay);
+        public void DrawRectangle(int X1, int Y1, int X2, int Y2, IImageContext Pen, BlendMode Blend)
         {
             // Check boundaries
             if ((X1 < 0 && X2 < 0) ||
@@ -1527,72 +1716,232 @@ namespace MenthaAssembly.Media.Imaging
             MathHelper.MinAndMax(out int L, out int R, X1, X2);
             MathHelper.MinAndMax(out int T, out int B, Y1, Y2);
 
-            DrawLine(L, T, R, T, Pen);
-            DrawLine(L, B, R, B, Pen);
-            DrawLine(L, T, L, B, Pen);
-            DrawLine(R, T, R, B, Pen);
+            DrawLine(L, T, R, T, Pen, Blend);
+            DrawLine(L, B, R, B, Pen, Blend);
+            DrawLine(L, T, L, B, Pen, Blend);
+            DrawLine(R, T, R, B, Pen, Blend);
+        }
+
+        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, T Color) where T : unmanaged, IPixel
+            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Color, BlendMode.Overlay);
+        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, T Color, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Color, Blend);
+
+        public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, T Color) where T : unmanaged, IPixel
+            => DrawRectangle(X1, Y1, X2, Y2, Color, BlendMode.Overlay);
+        public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, T Color, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            // Check boundaries
+            if ((X1 < 0 && X2 < 0) ||
+                (Y1 < 0 && Y2 < 0) ||
+                (X1 >= Width && X2 >= Width) ||
+                (Y1 >= Height && Y2 >= Height))
+                return;
+
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            // Clamp boundaries
+            MathHelper.MinAndMax(out int L, out int R, X1, X2);
+            MathHelper.MinAndMax(out int Ty, out int By, Y1, Y2);
+
+            DrawLine(L, Ty, R, Ty, Color, Blend);
+            DrawLine(L, By, R, By, Color, Blend);
+            DrawLine(L, Ty, L, By, Color, Blend);
+            DrawLine(R, Ty, R, By, Color, Blend);
+        }
+
+        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Contour, Fill, BlendMode.Overlay);
+        public void DrawRectangle<T>(Point<int> P1, Point<int> P2, ImageContour Contour, T Fill, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawRectangle(P1.X, P1.Y, P2.X, P2.Y, Contour, Fill, Blend);
+
+        public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawRectangle(X1, Y1, X2, Y2, Contour, Fill, BlendMode.Overlay);
+        public void DrawRectangle<T>(int X1, int Y1, int X2, int Y2, ImageContour Contour, T Fill, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            // Check boundaries
+            if ((X1 < 0 && X2 < 0) ||
+                (Y1 < 0 && Y2 < 0) ||
+                (X1 >= Width && X2 >= Width) ||
+                (Y1 >= Height && Y2 >= Height))
+                return;
+
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            // Clamp boundaries
+            MathHelper.MinAndMax(out int L, out int R, X1, X2);
+            MathHelper.MinAndMax(out int Ty, out int By, Y1, Y2);
+
+            DrawLine(L, Ty, R, Ty, Contour, Fill, Blend);
+            DrawLine(L, By, R, By, Contour, Fill, Blend);
+            DrawLine(L, Ty, L, By, Contour, Fill, Blend);
+            DrawLine(R, Ty, R, By, Contour, Fill, Blend);
         }
 
         #endregion
 
         #region Quad
-        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, T Color) where T : unmanaged, IPixel
-            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Color);
-        public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, T Color)
-            where T : unmanaged, IPixel
-        {
-            if (Color.A == byte.MinValue)
-                return;
-
-            DrawLine(X1, Y1, X2, Y2, Color);
-            DrawLine(X2, Y2, X3, Y3, Color);
-            DrawLine(X3, Y3, X4, Y4, Color);
-            DrawLine(X4, Y4, X1, Y1, Color);
-        }
-        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, T Fill) where T : unmanaged, IPixel
-            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Contour, Fill);
-        public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, ImageContour Contour, T Fill)
-            where T : unmanaged, IPixel
-        {
-            if (Fill.A == byte.MinValue)
-                return;
-
-            DrawLine(X1, Y1, X2, Y2, Contour, Fill);
-            DrawLine(X2, Y2, X3, Y3, Contour, Fill);
-            DrawLine(X3, Y3, X4, Y4, Contour, Fill);
-            DrawLine(X4, Y4, X1, Y1, Contour, Fill);
-        }
         public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IImageContext Pen)
-            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Pen);
+            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Pen, BlendMode.Overlay);
+        public void DrawQuad(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, IImageContext Pen, BlendMode Blend)
+            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Pen, Blend);
+
         public void DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, IImageContext Pen)
+            => DrawQuad(X1, Y1, X2, Y2, X3, Y3, X4, Y4, Pen, BlendMode.Overlay);
+        public void DrawQuad(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, IImageContext Pen, BlendMode Blend)
         {
-            DrawLine(X1, Y1, X2, Y2, Pen);
-            DrawLine(X2, Y2, X3, Y3, Pen);
-            DrawLine(X3, Y3, X4, Y4, Pen);
-            DrawLine(X4, Y4, X1, Y1, Pen);
+            DrawLine(X1, Y1, X2, Y2, Pen, Blend);
+            DrawLine(X2, Y2, X3, Y3, Pen, Blend);
+            DrawLine(X3, Y3, X4, Y4, Pen, Blend);
+            DrawLine(X4, Y4, X1, Y1, Pen, Blend);
+        }
+
+        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, T Color) where T : unmanaged, IPixel
+            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Color, BlendMode.Overlay);
+        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, T Color, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Color, Blend);
+
+        public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, T Color) where T : unmanaged, IPixel
+            => DrawQuad(X1, Y1, X2, Y2, X3, Y3, X4, Y4, Color, BlendMode.Overlay);
+        public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, T Color, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            DrawLine(X1, Y1, X2, Y2, Color, Blend);
+            DrawLine(X2, Y2, X3, Y3, Color, Blend);
+            DrawLine(X3, Y3, X4, Y4, Color, Blend);
+            DrawLine(X4, Y4, X1, Y1, Color, Blend);
+        }
+
+        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Contour, Fill, BlendMode.Overlay);
+        public void DrawQuad<T>(Point<int> P1, Point<int> P2, Point<int> P3, Point<int> P4, ImageContour Contour, T Fill, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawQuad(P1.X, P1.Y, P2.X, P2.Y, P3.X, P3.Y, P4.X, P4.Y, Contour, Fill, Blend);
+
+        public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawQuad(X1, Y1, X2, Y2, X3, Y3, X4, Y4, Contour, Fill, BlendMode.Overlay);
+        public void DrawQuad<T>(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4, ImageContour Contour, T Fill, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            DrawLine(X1, Y1, X2, Y2, Contour, Fill, Blend);
+            DrawLine(X2, Y2, X3, Y3, Contour, Fill, Blend);
+            DrawLine(X3, Y3, X4, Y4, Contour, Fill, Blend);
+            DrawLine(X4, Y4, X1, Y1, Contour, Fill, Blend);
         }
 
         #endregion
 
         #region Ellipse
+        public void DrawEllipse(Bound<int> Bound, IImageContext Pen)
+        {
+            int Rx = Bound.Width >> 1,
+                Ry = Bound.Height >> 1;
+
+            DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Pen, BlendMode.Overlay);
+        }
+        public void DrawEllipse(Bound<int> Bound, IImageContext Pen, BlendMode Blend)
+        {
+            int Rx = Bound.Width >> 1,
+                Ry = Bound.Height >> 1;
+
+            DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Pen, Blend);
+        }
+
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, IImageContext Pen)
+            => DrawEllipse(Center.X, Center.Y, Rx, Ry, Pen, BlendMode.Overlay);
+        public void DrawEllipse(Point<int> Center, int Rx, int Ry, IImageContext Pen, BlendMode Blend)
+            => DrawEllipse(Center.X, Center.Y, Rx, Ry, Pen, Blend);
+
+        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen)
+            => DrawEllipse(Cx, Cy, Rx, Ry, Pen, BlendMode.Overlay);
+        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen, BlendMode Blend)
+        {
+            int X = Cx - (Pen.Width >> 1),
+                Y = Cy - (Pen.Height >> 1);
+
+            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen, Blend));
+        }
+
         public void DrawEllipse<T>(Bound<int> Bound, T Color)
             where T : unmanaged, IPixel
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
-            DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Color);
+            DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Color, BlendMode.Overlay);
         }
-        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, T Color) where T : unmanaged, IPixel
-            => DrawEllipse(Center.X, Center.Y, Rx, Ry, Color);
-        public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Color)
+        public void DrawEllipse<T>(Bound<int> Bound, T Color, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Color.A == byte.MinValue)
-                return;
+            int Rx = Bound.Width >> 1,
+                Ry = Bound.Height >> 1;
 
-            Action<PixelAdapter<T>> Handler = Color.A == byte.MaxValue ? a => a.Override(Color) :
-                                                                         a => a.Overlay(Color);
+            DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Color, Blend);
+        }
+
+        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, T Color) where T : unmanaged, IPixel
+            => DrawEllipse(Center.X, Center.Y, Rx, Ry, Color, BlendMode.Overlay);
+        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, T Color, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawEllipse(Center.X, Center.Y, Rx, Ry, Color, Blend);
+
+        public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Color) where T : unmanaged, IPixel
+            => DrawEllipse(Cx, Cy, Rx, Ry, Color, BlendMode.Overlay);
+        public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Color, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Color),
+                BlendMode.Overlay => a => a.Overlay(Color),
+                _ => throw new NotSupportedException(),
+            };
 
             int Tx, Ty;
             PixelAdapter<T> Adapter = GetAdapter<T>(0, 0);
@@ -1611,26 +1960,52 @@ namespace MenthaAssembly.Media.Imaging
                     Handler(Adapter);
                 });
         }
+
         public void DrawEllipse<T>(Bound<int> Bound, ImageContour Contour, T Fill)
             where T : unmanaged, IPixel
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
-            DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Contour, Fill);
+            DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Contour, Fill, BlendMode.Overlay);
         }
-        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, ImageContour Contour, T Fill) where T : unmanaged, IPixel
-            => DrawEllipse(Center.X, Center.Y, Rx, Ry, Contour, Fill);
-        public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, T Fill)
+        public void DrawEllipse<T>(Bound<int> Bound, ImageContour Contour, T Fill, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            int Rx = Bound.Width >> 1,
+                Ry = Bound.Height >> 1;
 
-            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
-                                                                        a => a.Overlay(Fill);
+            DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Contour, Fill, Blend);
+        }
 
-            ImageContour EllipseContour = new ImageContour();
+        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawEllipse(Center.X, Center.Y, Rx, Ry, Contour, Fill, BlendMode.Overlay);
+        public void DrawEllipse<T>(Point<int> Center, int Rx, int Ry, ImageContour Contour, T Fill, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawEllipse(Center.X, Center.Y, Rx, Ry, Contour, Fill, Blend);
+
+        public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, T Fill) where T : unmanaged, IPixel
+            => DrawEllipse(Cx, Cy, Rx, Ry, Contour, Fill, BlendMode.Overlay);
+        public void DrawEllipse<T>(int Cx, int Cy, int Rx, int Ry, ImageContour Contour, T Fill, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Fill),
+                BlendMode.Overlay => a => a.Overlay(Fill),
+                _ => throw new NotSupportedException(),
+            };
+
+            ImageContour EllipseContour = new();
 
             Bound<int> Bound = Contour.Bound;
             ImageContour Stroke = ImageContour.Offset(Contour, Cx - (Bound.Width >> 1), Cy - (Bound.Height >> 1));
@@ -1649,268 +2024,60 @@ namespace MenthaAssembly.Media.Imaging
 
             this.Contour(EllipseContour, 0d, 0d, Handler);
         }
-        public void DrawEllipse(Bound<int> Bound, IImageContext Pen)
-        {
-            int Rx = Bound.Width >> 1,
-                Ry = Bound.Height >> 1;
 
-            DrawEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Pen);
-        }
-        public void DrawEllipse(Point<int> Center, int Rx, int Ry, IImageContext Pen)
-            => DrawEllipse(Center.X, Center.Y, Rx, Ry, Pen);
-        public void DrawEllipse(int Cx, int Cy, int Rx, int Ry, IImageContext Pen)
-        {
-            int X = Cx - (Pen.Width >> 1),
-                Y = Cy - (Pen.Height >> 1);
-
-            GraphicAlgorithm.CalculateBresenhamEllipse(Rx, Ry, (Dx, Dy) => DrawStamp(X + Dx, Y + Dy, Pen));
-        }
-
-        public void FillEllipse<T>(Bound<int> Bound, T Fill)
+        public void FillEllipse<T>(Bound<int> Bound, T Fill) where T : unmanaged, IPixel
+            => FillEllipse(Bound, Fill, BlendMode.Overlay);
+        public void FillEllipse<T>(Bound<int> Bound, T Fill, BlendMode Blend)
             where T : unmanaged, IPixel
         {
             int Rx = Bound.Width >> 1,
                 Ry = Bound.Height >> 1;
 
-            FillEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Fill);
+            FillEllipse(Bound.Left + Rx, Bound.Top + Ry, Rx, Ry, Fill, Blend);
         }
+
         public void FillEllipse<T>(Point<int> Center, int Rx, int Ry, T Fill) where T : unmanaged, IPixel
-            => FillEllipse(Center.X, Center.Y, Rx, Ry, Fill);
-        public void FillEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Fill)
+            => FillEllipse(Center.X, Center.Y, Rx, Ry, Fill, BlendMode.Overlay);
+        public void FillEllipse<T>(Point<int> Center, int Rx, int Ry, T Fill, BlendMode Blend) where T : unmanaged, IPixel
+            => FillEllipse(Center.X, Center.Y, Rx, Ry, Fill, Blend);
+
+        public void FillEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Fill) where T : unmanaged, IPixel
+            => FillEllipse(Cx, Cy, Rx, Ry, Fill, BlendMode.Overlay);
+        public void FillEllipse<T>(int Cx, int Cy, int Rx, int Ry, T Fill, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            // Avoid endless loop
-            if (Rx < 1 || Ry < 1)
-                return;
-
-            // Skip completly outside objects
-            if (Cx - Rx >= Width ||
-                Cx + Rx < 0 ||
-                Cy - Ry >= Height ||
-                Cy + Ry < 0)
-                return;
-
-            if (Fill.A == byte.MinValue)
-                return;
-
-            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
-                                                                        a => a.Overlay(Fill);
-
-            checked
+            if (Blend == BlendMode.Overlay)
             {
-                // Init vars
-                int uy, ly, lx, rx,
-                    x = Rx,
-                    y = 0;
-                long LRx = Rx,
-                     LRy = Ry,
-                     xrSqTwo = (LRx * LRx) << 1,
-                     yrSqTwo = (LRy * LRy) << 1,
-                     xChg = LRy * LRy * (1 - (LRx << 1)),
-                     yChg = LRx * LRx,
-                     err = 0,
-                     xStopping = yrSqTwo * LRx,
-                     yStopping = 0;
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
 
-                // Draw first set of points counter clockwise where tangent line slope > -1.
-                while (xStopping >= yStopping)
-                {
-                    // Draw 4 quadrant points at once
-                    // Upper half
-                    uy = Cy + y;
-                    // Lower half
-                    ly = Cy - y - 1;
-
-                    // Clip
-                    if (uy < 0)
-                        uy = 0;
-
-                    if (uy >= Height)
-                        uy = Height - 1;
-
-                    if (ly < 0)
-                        ly = 0;
-
-                    if (ly >= Height)
-                        ly = Height - 1;
-
-                    rx = Cx + x;
-                    lx = Cx - x;
-
-                    // Clip
-                    if (rx < 0)
-                        rx = 0;
-                    if (rx >= Width)
-                        rx = Width - 1;
-                    if (lx < 0)
-                        lx = 0;
-                    if (lx >= Width)
-                        lx = Width - 1;
-
-                    int Length = rx - lx + 1;
-                    this.ScanLine(lx, uy, Length, Handler);
-                    this.ScanLine(lx, ly, Length, Handler);
-
-                    y++;
-                    yStopping += xrSqTwo;
-                    err += yChg;
-                    yChg += xrSqTwo;
-                    if ((xChg + (err << 1)) > 0)
-                    {
-                        x--;
-                        xStopping -= yrSqTwo;
-                        err += xChg;
-                        xChg += yrSqTwo;
-                    }
-                }
-
-                // ReInit vars
-                x = 0;
-                y = Ry;
-
-                // Upper half
-                uy = Cy + y;
-                // Lower half
-                ly = Cy - y;
-
-                // Clip
-                if (uy < 0)
-                    uy = 0;
-
-                if (uy >= Height)
-                    uy = Height - 1;
-
-                if (ly < 0)
-                    ly = 0;
-
-                if (ly >= Height)
-                    ly = Height - 1;
-
-                xChg = LRy * LRy;
-                yChg = LRx * LRx * (1 - (LRy << 1));
-                err = 0;
-                xStopping = 0;
-                yStopping = xrSqTwo * LRy;
-
-                // Draw second set of points clockwise where tangent line slope < -1.
-                while (xStopping <= yStopping)
-                {
-                    // Draw 4 quadrant points at once
-                    rx = Cx + x;
-                    lx = Cx - x;
-
-                    // Clip
-                    if (rx < 0)
-                        rx = 0;
-                    if (rx >= Width)
-                        rx = Width - 1;
-                    if (lx < 0)
-                        lx = 0;
-                    if (lx >= Width)
-                        lx = Width - 1;
-
-                    // Draw line
-                    int Length = rx - lx + 1;
-                    this.ScanLine(lx, uy, Length, Handler);
-                    this.ScanLine(lx, ly, Length, Handler);
-
-                    x++;
-                    xStopping += yrSqTwo;
-                    err += xChg;
-                    xChg += yrSqTwo;
-                    if ((yChg + (err << 1)) > 0)
-                    {
-                        y--;
-                        uy = Cy + y; // Upper half
-                        ly = Cy - y; // Lower half
-                        if (uy < 0)
-                            uy = 0; // Clip
-                        if (uy >= Height)
-                            uy = Height - 1; // ...
-                        if (ly < 0)
-                            ly = 0;
-                        if (ly >= Height)
-                            ly = Height - 1;
-                        yStopping -= xrSqTwo;
-                        err += yChg;
-                        yChg += xrSqTwo;
-                    }
-                }
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
             }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Fill),
+                BlendMode.Overlay => a => a.Overlay(Fill),
+                _ => throw new NotSupportedException(),
+            };
+
+            ImageContour.CreateFillEllipse(Cx, Cy, Rx, Ry);
+            this.Contour(ImageContour.CreateFillEllipse(Cx, Cy, Rx, Ry), 0, 0, Handler);
         }
 
         #endregion
 
         #region Polygon
-        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, T Color, double StartAngle = 0d) where T : unmanaged, IPixel
-            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Color, StartAngle);
-        public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, T Color, double StartAngle = 0d)
-            where T : unmanaged, IPixel
-        {
-            if (VertexNum < 3)
-                throw new ArgumentException($"VertexNum must more than or equal 3.");
-
-            if (Color.A == byte.MinValue)
-                return;
-
-            double DeltaTheta = 360d / VertexNum,
-                   LastAngle = StartAngle;
-
-            int P0x = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
-                P0y = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta)),
-                LastPx = P0x,
-                LastPy = P0y;
-
-            for (int i = 1; i < VertexNum; i++)
-            {
-                LastAngle += DeltaTheta;
-                int Px = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
-                    Py = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta));
-
-                DrawLine(LastPx, LastPy, Px, Py, Color);
-
-                LastPx = Px;
-                LastPy = Py;
-            }
-
-            DrawLine(LastPx, LastPy, P0x, P0y, Color);
-        }
-        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, T Fill, double StartAngle = 0d) where T : unmanaged, IPixel
-            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Contour, Fill, StartAngle);
-        public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, T Fill, double StartAngle = 0d)
-            where T : unmanaged, IPixel
-        {
-            if (VertexNum < 3)
-                throw new ArgumentException($"VertexNum must more than or equal 3.");
-
-            if (Fill.A == byte.MinValue)
-                return;
-
-            double DeltaTheta = 360d / VertexNum,
-                   LastAngle = StartAngle;
-
-            int P0x = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
-                P0y = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta)),
-                LastPx = P0x,
-                LastPy = P0y;
-
-            for (int i = 1; i < VertexNum; i++)
-            {
-                LastAngle += DeltaTheta;
-                int Px = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
-                    Py = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta));
-
-                DrawLine(LastPx, LastPy, Px, Py, Contour, Fill);
-
-                LastPx = Px;
-                LastPy = Py;
-            }
-
-            DrawLine(LastPx, LastPy, P0x, P0y, Contour, Fill);
-        }
         public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, IImageContext Pen, double StartAngle = 0d)
-            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Pen, StartAngle);
+            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Pen, BlendMode.Overlay, StartAngle);
+        public void DrawRegularPolygon(Point<int> Center, double Radius, int VertexNum, IImageContext Pen, BlendMode Blend, double StartAngle = 0d)
+            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Pen, Blend, StartAngle);
+
         public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IImageContext Pen, double StartAngle = 0d)
+            => DrawRegularPolygon(Cx, Cy, Radius, VertexNum, Pen, BlendMode.Overlay, StartAngle);
+        public void DrawRegularPolygon(int Cx, int Cy, double Radius, int VertexNum, IImageContext Pen, BlendMode Blend, double StartAngle = 0d)
         {
             if (VertexNum < 3)
                 throw new ArgumentException($"VertexNum must more than or equal 3.");
@@ -1929,23 +2096,128 @@ namespace MenthaAssembly.Media.Imaging
                 int Px = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
                     Py = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta));
 
-                DrawLine(LastPx, LastPy, Px, Py, Pen);
+                DrawLine(LastPx, LastPy, Px, Py, Pen, Blend);
 
                 LastPx = Px;
                 LastPy = Py;
             }
 
-            DrawLine(LastPx, LastPy, P0x, P0y, Pen);
+            DrawLine(LastPx, LastPy, P0x, P0y, Pen, Blend);
         }
 
-        public void FillPolygon<T>(IEnumerable<Point<int>> Vertices, T Fill, int OffsetX, int OffsetY)
+        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, T Color, double StartAngle = 0d) where T : unmanaged, IPixel
+            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Color, BlendMode.Overlay, StartAngle);
+        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, T Color, BlendMode Blend, double StartAngle = 0d) where T : unmanaged, IPixel
+            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Color, Blend, StartAngle);
+
+        public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, T Color, double StartAngle = 0d) where T : unmanaged, IPixel
+            => DrawRegularPolygon(Cx, Cy, Radius, VertexNum, Color, BlendMode.Overlay, StartAngle);
+        public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, T Color, BlendMode Blend, double StartAngle = 0d)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (VertexNum < 3)
+                throw new ArgumentException($"VertexNum must more than or equal 3.");
 
-            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
-                                                                        a => a.Overlay(Fill);
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Color.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            double DeltaTheta = 360d / VertexNum,
+                   LastAngle = StartAngle;
+
+            int P0x = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                P0y = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta)),
+                LastPx = P0x,
+                LastPy = P0y;
+
+            for (int i = 1; i < VertexNum; i++)
+            {
+                LastAngle += DeltaTheta;
+                int Px = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                    Py = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta));
+
+                DrawLine(LastPx, LastPy, Px, Py, Color, Blend);
+
+                LastPx = Px;
+                LastPy = Py;
+            }
+
+            DrawLine(LastPx, LastPy, P0x, P0y, Color, Blend);
+        }
+
+        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, T Fill, double StartAngle = 0d) where T : unmanaged, IPixel
+            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Contour, Fill, BlendMode.Overlay, StartAngle);
+        public void DrawRegularPolygon<T>(Point<int> Center, double Radius, int VertexNum, ImageContour Contour, T Fill, BlendMode Blend, double StartAngle = 0d) where T : unmanaged, IPixel
+            => DrawRegularPolygon(Center.X, Center.Y, Radius, VertexNum, Contour, Fill, Blend, StartAngle);
+
+        public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, T Fill, double StartAngle = 0d) where T : unmanaged, IPixel
+            => DrawRegularPolygon(Cx, Cy, Radius, VertexNum, Contour, Fill, BlendMode.Overlay, StartAngle);
+        public void DrawRegularPolygon<T>(int Cx, int Cy, double Radius, int VertexNum, ImageContour Contour, T Fill, BlendMode Blend, double StartAngle = 0d)
+            where T : unmanaged, IPixel
+        {
+            if (VertexNum < 3)
+                throw new ArgumentException($"VertexNum must more than or equal 3.");
+
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            double DeltaTheta = 360d / VertexNum,
+                   LastAngle = StartAngle;
+
+            int P0x = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                P0y = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta)),
+                LastPx = P0x,
+                LastPy = P0y;
+
+            for (int i = 1; i < VertexNum; i++)
+            {
+                LastAngle += DeltaTheta;
+                int Px = Cx + (int)Math.Ceiling(Radius * Math.Cos(LastAngle * MathHelper.UnitTheta)),
+                    Py = Cy + (int)Math.Ceiling(Radius * Math.Sin(LastAngle * MathHelper.UnitTheta));
+
+                DrawLine(LastPx, LastPy, Px, Py, Contour, Fill, Blend);
+
+                LastPx = Px;
+                LastPy = Py;
+            }
+
+            DrawLine(LastPx, LastPy, P0x, P0y, Contour, Fill, Blend);
+        }
+
+        public void FillPolygon<T>(IEnumerable<Point<int>> Vertices, T Fill, int OffsetX, int OffsetY) where T : unmanaged, IPixel
+            => FillPolygon(Vertices, Fill, OffsetX, OffsetY, BlendMode.Overlay);
+        public void FillPolygon<T>(IEnumerable<Point<int>> Vertices, T Fill, int OffsetX, int OffsetY, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Fill),
+                BlendMode.Overlay => a => a.Overlay(Fill),
+                _ => throw new NotSupportedException(),
+            };
 
             Point<int>[] Datas = GraphicAlgorithm.CropPolygon(Vertices, -OffsetX - 1, -OffsetY - 1, Width - OffsetX, Height - OffsetY);
 
@@ -2070,14 +2342,28 @@ namespace MenthaAssembly.Media.Imaging
                 }
             }
         }
-        public void FillPolygon<T>(IEnumerable<int> VerticeDatas, T Fill, int OffsetX, int OffsetY)
+
+        public void FillPolygon<T>(IEnumerable<int> VerticeDatas, T Fill, int OffsetX, int OffsetY) where T : unmanaged, IPixel
+            => FillPolygon(VerticeDatas, Fill, OffsetX, OffsetY, BlendMode.Overlay);
+        public void FillPolygon<T>(IEnumerable<int> VerticeDatas, T Fill, int OffsetX, int OffsetY, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
 
-            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
-                                                                        a => a.Overlay(Fill);
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Fill),
+                BlendMode.Overlay => a => a.Overlay(Fill),
+                _ => throw new NotSupportedException(),
+            };
 
             int[] Datas = GraphicAlgorithm.CropPolygon(VerticeDatas, -OffsetX - 1, -OffsetY - 1, Width - OffsetX, Height - OffsetY);
 
@@ -2206,8 +2492,12 @@ namespace MenthaAssembly.Media.Imaging
 
         #region Other
         public void DrawStamp(Point<int> Position, IImageContext Stamp)
-            => DrawStamp(Position.X, Position.Y, Stamp);
+            => DrawStamp(Position.X, Position.Y, Stamp, BlendMode.Overlay);
         public void DrawStamp(int X, int Y, IImageContext Stamp)
+            => DrawStamp(X, Y, Stamp, BlendMode.Overlay);
+        public void DrawStamp(Point<int> Position, IImageContext Stamp, BlendMode Blend)
+            => DrawStamp(Position.X, Position.Y, Stamp, Blend);
+        public void DrawStamp(int X, int Y, IImageContext Stamp, BlendMode Blend)
         {
             int Width = Stamp.Width,
                 Height = Stamp.Height,
@@ -2244,14 +2534,21 @@ namespace MenthaAssembly.Media.Imaging
             {
                 for (int i = 0; i < Width; i++, Sorc.DangerousMoveNextX(), Dest.DangerousMoveNextX())
                 {
-                    if (Sorc.A == byte.MinValue)
-                        continue;
+                    if (Blend == BlendMode.Overlay)
+                    {
+                        byte Alpha = Sorc.A;
+                        if (Alpha == byte.MinValue)
+                            continue;
 
-                    else if (Sorc.A == byte.MaxValue)
-                        Dest.Overlay(Sorc);
-
+                        if (Alpha == byte.MaxValue)
+                            Dest.Override(Sorc);
+                        else
+                            Dest.Overlay(Sorc);
+                    }
                     else
-                        Dest.Overlay(Sorc);
+                    {
+                        Dest.Override(Sorc);
+                    }
                 }
 
                 Sorc.OffsetX(-Width);
@@ -2259,29 +2556,59 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        public void FillContour<T>(IImageContour Contour, T Fill, double OffsetX, double OffsetY)
+        public void FillContour<T>(IImageContour Contour, T Fill, double OffsetX, double OffsetY) where T : unmanaged, IPixel
+            => FillContour(Contour, Fill, OffsetX, OffsetY, BlendMode.Overlay);
+        public void FillContour<T>(IImageContour Contour, T Fill, double OffsetX, double OffsetY, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
 
-            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
-                                                                        a => a.Overlay(Fill);
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Fill),
+                BlendMode.Overlay => a => a.Overlay(Fill),
+                _ => throw new NotSupportedException(),
+            };
+
             this.Contour(Contour, OffsetX, OffsetY, Handler);
         }
 
         public void SeedFill<T>(Point<int> SeedPoint, T Fill, ImagePredicate Predicate) where T : unmanaged, IPixel
-            => SeedFill(SeedPoint.X, SeedPoint.Y, Fill, Predicate);
-        public void SeedFill<T>(int SeedX, int SeedY, T Fill, ImagePredicate Predicate)
+            => SeedFill(SeedPoint.X, SeedPoint.Y, Fill, BlendMode.Overlay, Predicate);
+        public void SeedFill<T>(int SeedX, int SeedY, T Fill, ImagePredicate Predicate) where T : unmanaged, IPixel
+            => SeedFill(SeedX, SeedY, Fill, BlendMode.Overlay, Predicate);
+        public void SeedFill<T>(Point<int> SeedPoint, T Fill, BlendMode Blend, ImagePredicate Predicate) where T : unmanaged, IPixel
+            => SeedFill(SeedPoint.X, SeedPoint.Y, Fill, Blend, Predicate);
+        public void SeedFill<T>(int SeedX, int SeedY, T Fill, BlendMode Blend, ImagePredicate Predicate)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
+
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Fill),
+                BlendMode.Overlay => a => a.Overlay(Fill),
+                _ => throw new NotSupportedException(),
+            };
 
             if (this.FindBound(SeedX, SeedY, Predicate) is ImageContour Contour)
             {
-                Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
-                                                                            a => a.Overlay(Fill);
                 this.Contour(Contour, 0d, 0d, Handler);
                 Contour.Clear();
             }
@@ -2292,24 +2619,40 @@ namespace MenthaAssembly.Media.Imaging
         #endregion
 
         #region Text Rendering
-        public void DrawText<T>(int X, int Y, string Text, int CharSize, T Fill)
-            where T : unmanaged, IPixel
-            => DrawText(X, Y, Text, null, CharSize, Fill, 0d, FontWeightType.Normal, false);
-        public void DrawText<T>(int X, int Y, string Text, int CharSize, T Fill, double Angle, FontWeightType Weight, bool Italic)
-            where T : unmanaged, IPixel
-            => DrawText(X, Y, Text, null, CharSize, Fill, Angle, Weight, Italic);
-        public void DrawText<T>(int X, int Y, string Text, string FontName, int CharSize, T Fill)
-            where T : unmanaged, IPixel
-            => DrawText(X, Y, Text, FontName, CharSize, Fill, 0d, FontWeightType.Normal, false);
-        public void DrawText<T>(int X, int Y, string Text, string FontName, int CharSize, T Fill, double Angle, FontWeightType Weight, bool Italic)
+        public void DrawText<T>(int X, int Y, string Text, int CharSize, T Fill) where T : unmanaged, IPixel
+            => DrawText(X, Y, Text, null, CharSize, Fill, BlendMode.Overlay, 0d, FontWeightType.Normal, false);
+        public void DrawText<T>(int X, int Y, string Text, int CharSize, T Fill, double Angle, FontWeightType Weight, bool Italic) where T : unmanaged, IPixel
+            => DrawText(X, Y, Text, null, CharSize, Fill, BlendMode.Overlay, Angle, Weight, Italic);
+        public void DrawText<T>(int X, int Y, string Text, int CharSize, T Fill, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawText(X, Y, Text, null, CharSize, Fill, Blend, 0d, FontWeightType.Normal, false);
+        public void DrawText<T>(int X, int Y, string Text, int CharSize, T Fill, BlendMode Blend, double Angle, FontWeightType Weight, bool Italic) where T : unmanaged, IPixel
+            => DrawText(X, Y, Text, null, CharSize, Fill, Blend, Angle, Weight, Italic);
+        public void DrawText<T>(int X, int Y, string Text, string FontName, int CharSize, T Fill) where T : unmanaged, IPixel
+            => DrawText(X, Y, Text, FontName, CharSize, Fill, BlendMode.Overlay, 0d, FontWeightType.Normal, false);
+        public void DrawText<T>(int X, int Y, string Text, string FontName, int CharSize, T Fill, double Angle, FontWeightType Weight, bool Italic) where T : unmanaged, IPixel
+            => DrawText(X, Y, Text, FontName, CharSize, Fill, BlendMode.Overlay, Angle, Weight, Italic);
+        public void DrawText<T>(int X, int Y, string Text, string FontName, int CharSize, T Fill, BlendMode Blend) where T : unmanaged, IPixel
+            => DrawText(X, Y, Text, FontName, CharSize, Fill, Blend, 0d, FontWeightType.Normal, false);
+        public void DrawText<T>(int X, int Y, string Text, string FontName, int CharSize, T Fill, BlendMode Blend, double Angle, FontWeightType Weight, bool Italic)
             where T : unmanaged, IPixel
         {
-            if (Fill.A == byte.MinValue)
-                return;
+            if (Blend == BlendMode.Overlay)
+            {
+                byte Alpha = Fill.A;
+                if (Alpha == byte.MinValue)
+                    return;
+
+                if (Alpha == byte.MaxValue)
+                    Blend = BlendMode.Overlay;
+            }
 
             ImageContour Contour = ImageContour.CreateTextContour(X, Y, Text, FontName, CharSize, Angle, Weight, Italic);
-            Action<PixelAdapter<T>> Handler = Fill.A == byte.MaxValue ? a => a.Override(Fill) :
-                                                                        a => a.Overlay(Fill);
+            Action<PixelAdapter<T>> Handler = Blend switch
+            {
+                BlendMode.Override => a => a.Override(Fill),
+                BlendMode.Overlay => a => a.Overlay(Fill),
+                _ => throw new NotSupportedException(),
+            };
 
             this.Contour<T>(Contour, 0d, 0d, Handler);
         }
@@ -3140,37 +3483,49 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[0])
+            {
                 BlockCopy<T>(X, Y, Width, Height, (byte*)pDest, Width * sizeof(T));
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[0])
+            {
                 BlockCopy<T>(X, Y, Width, Height, (byte*)pDest, Width * sizeof(T), Options);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, long DestStride)
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[0])
+            {
                 BlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, long DestStride, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[0])
+            {
                 BlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride, Options);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestOffset, long DestStride)
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[DestOffset])
+            {
                 BlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, T[] Dest0, int DestOffset, long DestStride, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[DestOffset])
+            {
                 BlockCopy<T>(X, Y, Width, Height, (byte*)pDest, DestStride, Options);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, T* Dest0) where T : unmanaged, IPixel
             => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
@@ -3184,37 +3539,49 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[0])
+            {
                 BlockCopy<T>(X, Y, Width, Height, pDest, Width * sizeof(T));
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[0])
+            {
                 BlockCopy<T>(X, Y, Width, Height, pDest, Width * sizeof(T), Options);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride)
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[0])
+            {
                 BlockCopy<T>(X, Y, Width, Height, pDest, DestStride);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, long DestStride, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[0])
+            {
                 BlockCopy<T>(X, Y, Width, Height, pDest, DestStride, Options);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride)
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[DestOffset])
+            {
                 BlockCopy<T>(X, Y, Width, Height, pDest, DestStride);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte[] Dest0, int DestOffset, long DestStride, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[DestOffset])
+            {
                 BlockCopy<T>(X, Y, Width, Height, pDest, DestStride, Options);
+            }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, IntPtr Dest0) where T : unmanaged, IPixel
             => BlockCopy<T>(X, Y, Width, Height, (byte*)Dest0, Width * sizeof(T));
@@ -3231,19 +3598,61 @@ namespace MenthaAssembly.Media.Imaging
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride)
             where T : unmanaged, IPixel
         {
-            for (int j = 0; j < Height; j++)
+            int Iw = this.Width;
+            if (X < 0 || Iw <= X)
+                throw new ArgumentOutOfRangeException(nameof(X));
+
+            if (Width < 0 ||
+                Iw < X + Width)
+                throw new ArgumentOutOfRangeException(nameof(Width));
+
+            int Ih = this.Height;
+            if (Y < 0 || Ih <= Y)
+                throw new ArgumentOutOfRangeException(nameof(Y));
+
+            if (Height < 0 ||
+                Ih < Y + Height)
+                throw new ArgumentOutOfRangeException(nameof(Height));
+
+            PixelAdapter<T> Adapter = GetAdapter<T>(X, Y);
+            int Dx = -Iw;
+            for (int j = 0; j < Height; j++, Adapter.DangerousMoveNextY(), Dest0 += DestStride)
             {
-                T* pDest = (T*)(Dest0 + DestStride * j);
-                this.ScanLine<T>(X, Y + j, Width, a => a.OverrideTo(pDest++));
+                T* pDest = (T*)Dest0;
+                for (int i = 0; i < Width; i++, Adapter.DangerousMoveNextX())
+                    Adapter.OverrideTo(pDest++);
+
+                Adapter.DangerousOffsetX(Dx);
             }
         }
         public void BlockCopy<T>(int X, int Y, int Width, int Height, byte* Dest0, long DestStride, ParallelOptions Options)
             where T : unmanaged, IPixel
         {
-            Parallel.For(0, Height, Options ?? DefaultParallelOptions, (j) =>
+            int Iw = this.Width;
+            if (X < 0 || Iw <= X)
+                throw new ArgumentOutOfRangeException(nameof(X));
+
+            if (Width < 0 ||
+                Iw < X + Width)
+                throw new ArgumentOutOfRangeException(nameof(Width));
+
+            int Ih = this.Height;
+            if (Y < 0 || Ih <= Y)
+                throw new ArgumentOutOfRangeException(nameof(Y));
+
+            if (Height < 0 ||
+                Ih < Y + Height)
+                throw new ArgumentOutOfRangeException(nameof(Height));
+
+            PixelAdapter<T> Adapter = GetAdapter<T>(X, Y);
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
+                PixelAdapter<T> Src = Adapter.Clone();
+                Src.DangerousMove(X, Y + j);
+
                 T* pDest = (T*)(Dest0 + DestStride * j);
-                this.ScanLine<T>(X, Y + j, Width, a => a.OverrideTo(pDest++));
+                for (int i = 0; i < Width; i++, Src.DangerousMoveNextX())
+                    Src.OverrideTo(pDest++);
             });
         }
 
@@ -3252,42 +3661,54 @@ namespace MenthaAssembly.Media.Imaging
             fixed (byte* pDestR = &DestR[0],
                          pDestG = &DestG[0],
                          pDestB = &DestB[0])
+            {
                 BlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, Width);
+            }
         }
         public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, ParallelOptions Options)
         {
             fixed (byte* pDestR = &DestR[0],
                          pDestG = &DestG[0],
                          pDestB = &DestB[0])
+            {
                 BlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, Width, Options);
+            }
         }
         public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride)
         {
             fixed (byte* pDestR = &DestR[0],
                          pDestG = &DestG[0],
                          pDestB = &DestB[0])
+            {
                 BlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, DestStride);
+            }
         }
         public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride, ParallelOptions Options)
         {
             fixed (byte* pDestR = &DestR[0],
                          pDestG = &DestG[0],
                          pDestB = &DestB[0])
+            {
                 BlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, DestStride, Options);
+            }
         }
         public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride)
         {
             fixed (byte* pDestR = &DestR[DestOffset],
                          pDestG = &DestG[DestOffset],
                          pDestB = &DestB[DestOffset])
+            {
                 BlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, DestStride);
+            }
         }
         public void BlockCopy3(int X, int Y, int Width, int Height, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride, ParallelOptions Options)
         {
             fixed (byte* pDestR = &DestR[DestOffset],
                          pDestG = &DestG[DestOffset],
                          pDestB = &DestB[DestOffset])
+            {
                 BlockCopy3(X, Y, Width, Height, pDestR, pDestG, pDestB, DestStride, Options);
+            }
         }
         public void BlockCopy3(int X, int Y, int Width, int Height, IntPtr DestR, IntPtr DestG, IntPtr DestB)
             => BlockCopy3(X, Y, Width, Height, (byte*)DestR, (byte*)DestG, (byte*)DestB, Width);
@@ -3303,26 +3724,67 @@ namespace MenthaAssembly.Media.Imaging
             => BlockCopy3(X, Y, Width, Height, DestR, DestG, DestB, Width, Options);
         public void BlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride)
         {
-            for (int j = 0; j < Height; j++)
-            {
-                long Offset = DestStride * j;
-                byte* pDestR = DestR + Offset,
-                      pDestG = DestG + Offset,
-                      pDestB = DestB + Offset;
+            int Iw = this.Width;
+            if (X < 0 || Iw <= X)
+                throw new ArgumentOutOfRangeException(nameof(X));
 
-                this.ScanLine<Pixel>(X, Y + j, Width, a => a.OverrideTo(pDestR++, pDestG++, pDestB++));
+            if (Width < 0 ||
+                Iw < X + Width)
+                throw new ArgumentOutOfRangeException(nameof(Width));
+
+            int Ih = this.Height;
+            if (Y < 0 || Ih <= Y)
+                throw new ArgumentOutOfRangeException(nameof(Y));
+
+            if (Height < 0 ||
+                Ih < Y + Height)
+                throw new ArgumentOutOfRangeException(nameof(Height));
+
+            PixelAdapter<Pixel> Adapter = GetAdapter<Pixel>(X, Y);
+            int Dx = -Iw;
+            for (int j = 0; j < Height; j++, Adapter.DangerousMoveNextY(), DestR += DestStride, DestG += DestStride, DestB += DestStride)
+            {
+                byte* pDestR = DestR,
+                      pDestG = DestG,
+                      pDestB = DestB;
+                for (int i = 0; i < Width; i++, Adapter.DangerousMoveNextX())
+                    Adapter.OverrideTo(pDestR++, pDestG++, pDestB++);
+
+                Adapter.DangerousOffsetX(Dx);
             }
         }
         public void BlockCopy3(int X, int Y, int Width, int Height, byte* DestR, byte* DestG, byte* DestB, long DestStride, ParallelOptions Options)
-            => Parallel.For(0, Height, Options ?? DefaultParallelOptions, (j) =>
+        {
+            int Iw = this.Width;
+            if (X < 0 || Iw <= X)
+                throw new ArgumentOutOfRangeException(nameof(X));
+
+            if (Width < 0 ||
+                Iw < X + Width)
+                throw new ArgumentOutOfRangeException(nameof(Width));
+
+            int Ih = this.Height;
+            if (Y < 0 || Ih <= Y)
+                throw new ArgumentOutOfRangeException(nameof(Y));
+
+            if (Height < 0 ||
+                Ih < Y + Height)
+                throw new ArgumentOutOfRangeException(nameof(Height));
+
+            PixelAdapter<Pixel> Adapter = GetAdapter<Pixel>(X, Y);
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
+                PixelAdapter<Pixel> Src = Adapter.Clone();
+                Src.DangerousMove(X, Y + j);
+
                 long Offset = DestStride * j;
                 byte* pDestR = DestR + Offset,
                       pDestG = DestG + Offset,
                       pDestB = DestB + Offset;
-
-                this.ScanLine<Pixel>(X, Y + j, Width, a => a.OverrideTo(pDestR++, pDestG++, pDestB++));
+                for (int i = 0; i < Width; i++, Src.DangerousMoveNextX())
+                    Src.OverrideTo(pDestR++, pDestG++, pDestB++);
             });
+        }
 
         public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB)
         {
@@ -3330,7 +3792,9 @@ namespace MenthaAssembly.Media.Imaging
                          pDestR = &DestR[0],
                          pDestG = &DestG[0],
                          pDestB = &DestB[0])
+            {
                 BlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, Width);
+            }
         }
         public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, ParallelOptions Options)
         {
@@ -3338,7 +3802,9 @@ namespace MenthaAssembly.Media.Imaging
                          pDestR = &DestR[0],
                          pDestG = &DestG[0],
                          pDestB = &DestB[0])
+            {
                 BlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, Width, Options);
+            }
         }
         public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride)
         {
@@ -3346,7 +3812,9 @@ namespace MenthaAssembly.Media.Imaging
                          pDestR = &DestR[0],
                          pDestG = &DestG[0],
                          pDestB = &DestB[0])
+            {
                 BlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, DestStride);
+            }
         }
         public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, long DestStride, ParallelOptions Options)
         {
@@ -3354,7 +3822,9 @@ namespace MenthaAssembly.Media.Imaging
                          pDestR = &DestR[0],
                          pDestG = &DestG[0],
                          pDestB = &DestB[0])
+            {
                 BlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, DestStride, Options);
+            }
         }
         public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride)
         {
@@ -3362,7 +3832,9 @@ namespace MenthaAssembly.Media.Imaging
                          pDestR = &DestR[DestOffset],
                          pDestG = &DestG[DestOffset],
                          pDestB = &DestB[DestOffset])
+            {
                 BlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, DestStride);
+            }
         }
         public void BlockCopy4(int X, int Y, int Width, int Height, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB, int DestOffset, long DestStride, ParallelOptions Options)
         {
@@ -3370,7 +3842,9 @@ namespace MenthaAssembly.Media.Imaging
                          pDestR = &DestR[DestOffset],
                          pDestG = &DestG[DestOffset],
                          pDestB = &DestB[DestOffset])
+            {
                 BlockCopy4(X, Y, Width, Height, pDestA, pDestR, pDestG, pDestB, DestStride, Options);
+            }
         }
         public void BlockCopy4(int X, int Y, int Width, int Height, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB)
             => BlockCopy4(X, Y, Width, Height, (byte*)DestA, (byte*)DestR, (byte*)DestG, (byte*)DestB, Width);
@@ -3386,28 +3860,69 @@ namespace MenthaAssembly.Media.Imaging
             => BlockCopy4(X, Y, Width, Height, DestA, DestR, DestG, DestB, Width, Options);
         public void BlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride)
         {
-            for (int j = 0; j < Height; j++)
-            {
-                long Offset = DestStride * j;
-                byte* pDestA = DestA + Offset,
-                      pDestR = DestR + Offset,
-                      pDestG = DestG + Offset,
-                      pDestB = DestB + Offset;
+            int Iw = this.Width;
+            if (X < 0 || Iw <= X)
+                throw new ArgumentOutOfRangeException(nameof(X));
 
-                this.ScanLine<Pixel>(X, Y + j, Width, a => a.OverrideTo(pDestA++, pDestR++, pDestG++, pDestB++));
+            if (Width < 0 ||
+                Iw < X + Width)
+                throw new ArgumentOutOfRangeException(nameof(Width));
+
+            int Ih = this.Height;
+            if (Y < 0 || Ih <= Y)
+                throw new ArgumentOutOfRangeException(nameof(Y));
+
+            if (Height < 0 ||
+                Ih < Y + Height)
+                throw new ArgumentOutOfRangeException(nameof(Height));
+
+            PixelAdapter<Pixel> Adapter = GetAdapter<Pixel>(X, Y);
+            int Dx = -Iw;
+            for (int j = 0; j < Height; j++, Adapter.DangerousMoveNextY(), DestA += DestStride, DestR += DestStride, DestG += DestStride, DestB += DestStride)
+            {
+                byte* pDestA = DestA,
+                      pDestR = DestR,
+                      pDestG = DestG,
+                      pDestB = DestB;
+                for (int i = 0; i < Width; i++, Adapter.DangerousMoveNextX())
+                    Adapter.OverrideTo(pDestA++, pDestR++, pDestG++, pDestB++);
+
+                Adapter.DangerousOffsetX(Dx);
             }
         }
         public void BlockCopy4(int X, int Y, int Width, int Height, byte* DestA, byte* DestR, byte* DestG, byte* DestB, long DestStride, ParallelOptions Options)
-            => Parallel.For(0, Height, Options ?? DefaultParallelOptions, (j) =>
+        {
+            int Iw = this.Width;
+            if (X < 0 || Iw <= X)
+                throw new ArgumentOutOfRangeException(nameof(X));
+
+            if (Width < 0 ||
+                Iw < X + Width)
+                throw new ArgumentOutOfRangeException(nameof(Width));
+
+            int Ih = this.Height;
+            if (Y < 0 || Ih <= Y)
+                throw new ArgumentOutOfRangeException(nameof(Y));
+
+            if (Height < 0 ||
+                Ih < Y + Height)
+                throw new ArgumentOutOfRangeException(nameof(Height));
+
+            PixelAdapter<Pixel> Adapter = GetAdapter<Pixel>(X, Y);
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, j =>
             {
+                PixelAdapter<Pixel> Src = Adapter.Clone();
+                Src.DangerousMove(X, Y + j);
+
                 long Offset = DestStride * j;
                 byte* pDestA = DestA + Offset,
                       pDestR = DestR + Offset,
                       pDestG = DestG + Offset,
                       pDestB = DestB + Offset;
-
-                this.ScanLine<Pixel>(X, Y + j, Width, a => a.OverrideTo(pDestA++, pDestR++, pDestG++, pDestB++));
+                for (int i = 0; i < Width; i++, Src.DangerousMoveNextX())
+                    Src.OverrideTo(pDestA++, pDestR++, pDestG++, pDestB++);
             });
+        }
 
         #endregion
 
@@ -3418,33 +3933,53 @@ namespace MenthaAssembly.Media.Imaging
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[0])
+            {
                 ScanLineCopy<T>(OffsetX, Y, Length, (byte*)pDest);
+            }
         }
         public void ScanLineCopy<T>(int OffsetX, int Y, int Length, T[] Dest0, int DestOffset)
             where T : unmanaged, IPixel
         {
             fixed (T* pDest = &Dest0[DestOffset])
+            {
                 ScanLineCopy<T>(OffsetX, Y, Length, (byte*)pDest);
+            }
         }
         public void ScanLineCopy<T>(int OffsetX, int Y, int Length, byte[] Dest0)
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[0])
+            {
                 ScanLineCopy<T>(OffsetX, Y, Length, pDest);
+            }
         }
         public void ScanLineCopy<T>(int OffsetX, int Y, int Length, byte[] Dest0, int DestOffset)
             where T : unmanaged, IPixel
         {
             fixed (byte* pDest = &Dest0[DestOffset])
+            {
                 ScanLineCopy<T>(OffsetX, Y, Length, pDest);
+            }
         }
         public void ScanLineCopy<T>(int OffsetX, int Y, int Length, IntPtr Dest0) where T : unmanaged, IPixel
             => ScanLineCopy<T>(OffsetX, Y, Length, (byte*)Dest0);
         public void ScanLineCopy<T>(int OffsetX, int Y, int Length, byte* Dest0)
             where T : unmanaged, IPixel
         {
+            if (OffsetX < 0 || Width <= OffsetX)
+                throw new ArgumentOutOfRangeException(nameof(OffsetX));
+
+            if (Y < 0 || Height <= Y)
+                throw new ArgumentOutOfRangeException(nameof(Y));
+
+            if (Length < 0 ||
+                Width < OffsetX + Length)
+                throw new ArgumentOutOfRangeException(nameof(Length));
+
             T* pDest = (T*)Dest0;
-            this.ScanLine<T>(OffsetX, Y, Length, a => a.OverrideTo(pDest++));
+            PixelAdapter<T> Adapter = GetAdapter<T>(OffsetX, Y);
+            for (int i = 0; i < Length; i++, Adapter.DangerousMoveNextX())
+                Adapter.OverrideTo(pDest++);
         }
 
         public void ScanLineCopy3(int OffsetX, int Y, int Length, byte[] DestR, byte[] DestG, byte[] DestB)
@@ -3464,7 +3999,21 @@ namespace MenthaAssembly.Media.Imaging
         public void ScanLineCopy3(int OffsetX, int Y, int Length, IntPtr DestR, IntPtr DestG, IntPtr DestB)
             => ScanLineCopy3(OffsetX, Y, Length, (byte*)DestR, (byte*)DestG, (byte*)DestB);
         public void ScanLineCopy3(int OffsetX, int Y, int Length, byte* DestR, byte* DestG, byte* DestB)
-            => this.ScanLine<Pixel>(OffsetX, Y, Length, a => a.OverrideTo(DestR++, DestG++, DestB++));
+        {
+            if (OffsetX < 0 || Width <= OffsetX)
+                throw new ArgumentOutOfRangeException(nameof(OffsetX));
+
+            if (Y < 0 || Height <= Y)
+                throw new ArgumentOutOfRangeException(nameof(Y));
+
+            if (Length < 0 ||
+                Width < OffsetX + Length)
+                throw new ArgumentOutOfRangeException(nameof(Length));
+
+            PixelAdapter<Pixel> Adapter = GetAdapter<Pixel>(OffsetX, Y);
+            for (int i = 0; i < Length; i++, Adapter.DangerousMoveNextX())
+                Adapter.OverrideTo(DestR++, DestG++, DestB++);
+        }
 
         public void ScanLineCopy4(int OffsetX, int Y, int Length, byte[] DestA, byte[] DestR, byte[] DestG, byte[] DestB)
         {
@@ -3485,7 +4034,21 @@ namespace MenthaAssembly.Media.Imaging
         public void ScanLineCopy4(int OffsetX, int Y, int Length, IntPtr DestA, IntPtr DestR, IntPtr DestG, IntPtr DestB)
             => ScanLineCopy4(OffsetX, Y, Length, (byte*)DestA, (byte*)DestR, (byte*)DestG, (byte*)DestB);
         public void ScanLineCopy4(int OffsetX, int Y, int Length, byte* DestA, byte* DestR, byte* DestG, byte* DestB)
-            => this.ScanLine<Pixel>(OffsetX, Y, Length, a => a.OverrideTo(DestA++, DestR++, DestG++, DestB++));
+        {
+            if (OffsetX < 0 || Width <= OffsetX)
+                throw new ArgumentOutOfRangeException(nameof(OffsetX));
+
+            if (Y < 0 || Height <= Y)
+                throw new ArgumentOutOfRangeException(nameof(Y));
+
+            if (Length < 0 ||
+                Width < OffsetX + Length)
+                throw new ArgumentOutOfRangeException(nameof(Length));
+
+            PixelAdapter<Pixel> Adapter = GetAdapter<Pixel>(OffsetX, Y);
+            for (int i = 0; i < Length; i++, Adapter.DangerousMoveNextX())
+                Adapter.OverrideTo(DestA++, DestR++, DestG++, DestB++);
+        }
 
         #endregion
 

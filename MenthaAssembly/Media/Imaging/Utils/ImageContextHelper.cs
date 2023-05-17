@@ -14,7 +14,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             where T : unmanaged, IPixel
         {
             PixelAdapter<T> Adapter = Context.GetAdapter<T>(X, Y);
-            for (int i = 0; i < Length; i++, Adapter.MoveNextX())
+            for (int i = 0; i < Length; i++, Adapter.DangerousMoveNextX())
                 Handler(Adapter);
         }
 
