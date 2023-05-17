@@ -70,6 +70,16 @@ namespace MenthaAssembly.Utils
             return Length;
         }
 
+        public override void WriteByte(byte Value)
+        {
+            CheckDispose();
+            if (!CanWrite)
+                throw new NotSupportedException();
+
+            CRC32.Calculate(Value, out _Code, _Code);
+            Stream.WriteByte(Value);
+        }
+
         public override void Write(byte[] Buffer, int Offset, int Count)
         {
             CheckDispose();

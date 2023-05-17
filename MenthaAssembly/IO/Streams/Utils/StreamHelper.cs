@@ -87,13 +87,6 @@ namespace System.IO
             }
         }
         /// <summary>
-        /// Writes a sequence of bytes to the current stream and advances the current position within this stream by the number of bytes written.
-        /// </summary>
-        /// <param name="This">The current stream.</param>
-        /// <param name="Datas">Tn array of bytes to write to the stream.</param>
-        public static void WriteBytes(this Stream This, params byte[] Datas)
-            => This.Write(Datas, 0, Datas.Length);
-        /// <summary>
         /// Writes an array of specified type to the stream.
         /// </summary>
         /// <typeparam name="T">The specified type of array.</typeparam>
@@ -150,6 +143,13 @@ namespace System.IO
                 ArrayPool<byte>.Shared.Return(Buffer);
             }
         }
+        /// <summary>
+        /// Writes a sequence of bytes to the current stream and advances the current position within this stream by the number of bytes written.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Datas">Tn array of bytes to write to the stream.</param>
+        public static void WriteBytes(this Stream This, params byte[] Datas)
+            => This.Write(Datas, 0, Datas.Length);
         /// <summary>
         /// Writes a reaverse data of specified type to the stream.
         /// </summary>
