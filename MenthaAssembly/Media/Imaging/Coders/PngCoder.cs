@@ -52,6 +52,9 @@ namespace MenthaAssembly.Media.Imaging
         // CRC32                , 4 Bytes
         // ============================================================
 
+        /// <summary>
+        /// The length in bytes of the png file format identifier.
+        /// </summary>
         public const int IdentifierSize = 8;
 
         /// <summary>
@@ -597,7 +600,7 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         /// <summary>
-        /// Indicates whether the specified Identifier is Png Identifier.<para/>
+        /// Indicates whether the specified Identifier is Png Identifier.
         /// </summary>
         /// <param name="Identifier">The specified Identifier.</param>
         public static bool Identify(string Identifier)

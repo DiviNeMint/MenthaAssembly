@@ -1,69 +1,445 @@
-﻿using System.IO;
+﻿using System;
+using System.Buffers;
+using System.Data;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
 {
     // https://github.com/corkami/formats/blob/master/image/JPEGRGB_dissected.png
     public static unsafe class JpgCoder
     {
-        public const int IdentifyHeaderSize = 2;
+        /// <summary>
+        /// The length in bytes of the jpg file format identifier.
+        /// </summary>
+        public const int IdentifierSize = 5;
+        private const int TagSize = 2;
 
-        public static bool TryGetImageSize(string FilePath, out int Width, out int Height)
+        /// <summary>
+        /// Only decode the image size of the jpg file at the specified path.
+        /// </summary>
+        /// <param name="Path">The specified path.</param>
+        /// <param name="Width">The width of image.</param>
+        /// <param name="Height">The height of image.</param>
+        public static bool TryGetImageSize(string Path, out int Width, out int Height)
         {
-            using Stream Stream = new FileStream(FilePath, FileMode.Open, FileAccess.Read);
+            using FileStream Stream = new(Path, FileMode.Open, FileAccess.Read);
             return TryGetImageSize(Stream, out Width, out Height);
         }
+        /// <summary>
+        /// Only decode the image size of the jpg file at the specified stream.
+        /// </summary>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Width">The width of image.</param>
+        /// <param name="Height">The height of image.</param>
         public static bool TryGetImageSize(Stream Stream, out int Width, out int Height)
         {
-            byte[] Datas = new byte[IdentifyHeaderSize];
+            Width = 0;
+            Height = 0;
+            long Begin = Stream.CanSeek ? Stream.Position : 0L;
 
-            Stream.Read(Datas, 0, Datas.Length);
-
-            // Identify
-            if (!Identify(Datas))
+            byte[] TagBuffer = ArrayPool<byte>.Shared.Rent(TagSize);
+            try
             {
-                Width = 0;
-                Height = 0;
-                return false;
-            }
-
-            byte[] LengthData = new byte[2];
-            while (Stream.Position < Stream.Length)
-            {
-                Stream.Read(Datas, 0, Datas.Length);
-                if (Datas[0] != 0xFF)
+                // Header
+                if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||            // SOI 
+                    !(TagBuffer[0] != 0xFF || TagBuffer[0] != 0xD8) ||      // 0xFF 0xD8
+                    !Stream.ReadBuffer(TagBuffer, 0, TagSize) ||            // APP0
+                    !(TagBuffer[0] != 0xFF || TagBuffer[0] != 0xE0) ||      // 0xFF 0xE0
+                    !Stream.TryReverseRead(out ushort Length) ||            // Length
+                    !Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
+                    !Identify(Identifier))
                 {
-                    Width = 0;
-                    Height = 0;
+                    Stream.TrySeek(Begin, SeekOrigin.Begin);
                     return false;
                 }
 
-                // Length
-                Stream.Read(LengthData, 0, LengthData.Length);
-                int Length = LengthData[0] << 8 | LengthData[1];
+                if (!Stream.TrySeek(Length - 2 - IdentifierSize, SeekOrigin.Current))
+                    return false;
 
-                // Check Start of Frame
-                if (Datas[1] != 0xC0)
+                while (Stream.Position < Stream.Length)
                 {
-                    Stream.Seek(Length - LengthData.Length, SeekOrigin.Current);
-                    continue;
+                    if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||    // Tag
+                        TagBuffer[0] != 0xFF ||                         // 0xFF _
+                        !Stream.TryReverseRead(out Length))             // Length
+
+                    {
+                        Stream.TrySeek(Begin, SeekOrigin.Begin);
+                        return false;
+                    }
+
+                    // Check Start of Frame
+                    if (TagBuffer[1] != 0xC0)
+                    {
+                        if (!Stream.TrySeek(Length - 2, SeekOrigin.Current))
+                            return false;
+
+                        continue;
+                    }
+
+
+                    if (!Stream.TrySeek(1, SeekOrigin.Current) ||
+                        !Stream.TryReverseRead(out ushort Iw) ||
+                        !Stream.TryReverseRead(out ushort Ih))
+                        return false;
+
+                    Height = Iw;
+                    Width = Ih;
+                    return true;
                 }
 
-                Datas = new byte[5];
-                Stream.Read(Datas, 0, Datas.Length);
-
-                Height = Datas[1] << 8 | Datas[2];
-                Width = Datas[3] << 8 | Datas[4];
-
-                return true;
+                return false;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(TagBuffer);
             }
 
-            Width = 0;
-            Height = 0;
-            return false;
         }
 
-        public static bool Identify(byte[] Data)
-            => Data.Length >= IdentifyHeaderSize && Data[0].Equals(0xFF) && Data[1].Equals(0xD8);
+        /// <summary>
+        /// Indicates whether the specified Identifier is jpg Identifier.
+        /// </summary>
+        /// <param name="Identifier">The specified Identifier.</param>
+        public static bool Identify(string Identifier)
+            => Identifier.Length == IdentifierSize &&
+               Identifier == "JFIF\0";
+
+        [Conditional("DEBUG")]
+        public static void Parse(Stream Stream)
+        {
+            byte[] TagBuffer = ArrayPool<byte>.Shared.Rent(TagSize);
+            try
+            {
+                // SOI
+                if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||
+                    !(TagBuffer[0] != 0xFF || TagBuffer[0] != 0xD8))
+                {
+                    Debug.WriteLine("This is not Ico file.");
+                    return;
+                }
+
+                Debug.WriteLine($"==========================================");
+                Debug.WriteLine($"                   SOI                    ");
+                Debug.WriteLine($"==========================================");
+
+                #region APP0
+                if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||
+                    !(TagBuffer[0] != 0xFF || TagBuffer[0] != 0xE0))
+                {
+                    Debug.WriteLine("This is not Ico file.");
+                    return;
+                }
+
+                Debug.WriteLine($"================== APP0 ==================");
+
+                if (!Stream.TryReverseRead(out ushort Length) ||
+                    !Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
+                    !Identify(Identifier))
+                {
+                    Debug.WriteLine("This is not Ico file.");
+                    return;
+                }
+
+                {
+                    if (!Stream.TryRead(out byte Version1) ||
+                        !Stream.TryRead(out byte Version2) ||
+                        !Stream.TryRead(out byte Units) ||
+                        !Stream.TryReverseRead(out ushort DensityX) ||
+                        !Stream.TryReverseRead(out ushort DensityY) ||
+                        !Stream.TryRead(out byte ThumbnailWidth) ||
+                        !Stream.TryRead(out byte ThumbnailHeight))
+                        return;
+
+                    string Version = $"{Version1}.{Version2}",
+                           Unit = Units switch
+                           {
+                               0 => "None",
+                               1 => "Dpi",
+                               2 => "Dpcm",
+                               _ => "Unknown",
+                           };
+
+                    Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+                    Debug.WriteLine($"Identifier        : {Identifier}");       // 5 Bytes
+                    Debug.WriteLine($"Verstion          : {Version}");          // 2 Bytes
+                    Debug.WriteLine($"Unit              : {Unit}");             // 1 Bytes
+                    Debug.WriteLine($"DensityX          : {DensityX}");         // 2 Bytes
+                    Debug.WriteLine($"DensityY          : {DensityY}");         // 2 Bytes
+                    Debug.WriteLine($"Thumbnail Width   : {ThumbnailWidth}");   // 1 Bytes
+                    Debug.WriteLine($"Thumbnail Height  : {ThumbnailHeight}");  // 1 Bytes
+
+                    int ThumbnailLength = Length - 16;
+                    if (ThumbnailLength > 0)
+                    {
+                        byte[] ThumbnailDatas = Stream.Read(ThumbnailLength);
+                        Debug.WriteLine($"Thumbnail Data    : {string.Join(", ", ThumbnailDatas.Select(i => i.ToString("X2")))}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"Thumbnail Data    :");
+                    }
+                }
+                #endregion
+
+                while (Stream.Position < Stream.Length)
+                {
+                    if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||
+                        TagBuffer[0] != 0xFF ||
+                        !Stream.TryReverseRead(out Length))
+                        return;
+
+                    switch (TagBuffer[1])
+                    {
+                        #region APPn (Application)
+                        case 0xE1:
+                        case 0xE2:
+                        case 0xE3:
+                        case 0xE4:
+                        case 0xE5:
+                        case 0xE6:
+                        case 0xE7:
+                        case 0xE8:
+                        case 0xE9:
+                        case 0xEA:
+                        case 0xEB:
+                        case 0xEC:
+                        case 0xED:
+                        case 0xEE:
+                        case 0xEF:
+                            {
+                                Debug.WriteLine($"================== APP{TagBuffer[1] - 0xE0} ==================");
+                                Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+
+                                int DataLength = Length - 2;
+                                if (DataLength > 0)
+                                {
+                                    byte[] Datas = Stream.Read(DataLength);
+                                    Debug.WriteLine($"Data              : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
+                                }
+                                else
+                                {
+                                    Debug.WriteLine($"Data              :");
+                                }
+                                break;
+                            }
+                        #endregion
+
+                        #region DQT (Define Quantization Table)
+                        case 0xDB:
+                            {
+                                Debug.WriteLine($"================== DQT ===================");
+                                Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+                                int DataLength = Length - 2;
+                                while (DataLength > 0)
+                                {
+                                    // Info
+                                    DataLength--;
+                                    if (!Stream.TryRead(out byte Info))
+                                        return;
+
+                                    // Table
+                                    int Precision = Info >> 4,
+                                        ID = Info & 0x0F,
+                                        TableLength = (Precision + 1) << 6;
+
+                                    Debug.WriteLine($"Precision         : {Precision}");
+
+                                    byte[] Datas = Stream.Read(TableLength);
+                                    Debug.WriteLine($"Quantization {ID}    : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
+
+                                    DataLength -= TableLength;
+                                    if (DataLength < 0)
+                                        return;
+                                }
+                                break;
+                            }
+                        #endregion
+
+                        #region SOF0 (Start of Frame)
+                        case 0xC0:
+                            {
+                                Debug.WriteLine($"================== SOF0 ==================");
+                                Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+                                Length -= 2;
+
+
+                                Length -= 6;
+                                if (!Stream.TryRead(out byte Precision) ||
+                                    !Stream.TryReverseRead(out ushort Iw) ||
+                                    !Stream.TryReverseRead(out ushort Ih) ||
+                                    !Stream.TryRead(out byte Components))
+                                    return;
+
+                                Debug.WriteLine($"Precision         : {Precision}");        // 1 Bytes
+                                Debug.WriteLine($"Width             : {Iw}");               // 2 Bytes
+                                Debug.WriteLine($"Height            : {Ih}");               // 2 Bytes
+                                Debug.WriteLine($"Components        : {Components}");       // 1 Bytes
+
+                                for (int i = 0; i < Components; i++)
+                                {
+                                    // Component Info
+                                    Length -= 3;
+                                    if (!Stream.TryRead(out byte ID) ||
+                                        !Stream.TryRead(out byte Info) ||
+                                        !Stream.TryRead(out byte TableID))
+                                        return;
+
+                                    int HorizontalFactor = Info >> 4,
+                                        VerticalFactor = Info & 0x0F;
+                                    Debug.WriteLine($"ComponentID       : {ID}");
+                                    Debug.WriteLine($"Horizontal Factor : {HorizontalFactor}");
+                                    Debug.WriteLine($"Vertical Factor   : {VerticalFactor}");
+                                    Debug.WriteLine($"Quantization ID   : {TableID}");
+                                }
+
+                                if (Length != 0)
+                                    return;
+
+                                break;
+                            }
+                        #endregion
+
+                        #region DHT (Define Huffman Table)
+                        //case 0xC4:
+                        //    {
+                        //        Debug.WriteLine($"================== DHT ===================");
+                        //        Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+
+                        //        int DataLength = Length - 2;
+                        //        byte[] Datas = ArrayPool<byte>.Shared.Rent(16);
+                        //        try
+                        //        {
+                        //            DataLength -= 17;
+                        //            if (!Stream.TryRead(out byte Info) ||
+                        //                !Stream.ReadBuffer(Datas, 0, 16))
+                        //                return;
+
+                        //            int HuffmanID = Info & 0x0F;
+                        //            string Type = (Info >> 4) switch
+                        //            {
+                        //                0 => "DC",
+                        //                1 => "AC",
+                        //                _ => "Unknown"
+                        //            };
+
+                        //            Debug.WriteLine($"HuffmanID         : {HuffmanID}");
+                        //            Debug.WriteLine($"Type              : {Type}");
+                        //            Debug.WriteLine($"CodeLengths       : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
+
+                        //            for (int i = 0; i < 16; i++)
+                        //            {
+                        //                if (Datas[i] > 0)
+                        //                {
+                        //                    byte[] CodeDatas = Stream.Read(Datas[i]);
+                        //                    Debug.WriteLine($"Code{i}             : {string.Join(", ", CodeDatas.Select(i => i.ToString("X2")))}");
+                        //                }
+                        //            }
+
+
+                        //            if (DataLength != 0)
+                        //                return;
+                        //        }
+                        //        finally
+                        //        {
+                        //            ArrayPool<byte>.Shared.Return(Datas);
+                        //        }
+
+                        //        break;
+                        //    }
+                        #endregion
+
+                        #region DRI (Define Restart Interval) 
+                        case 0xDD:
+                            {
+                                Debug.WriteLine($"================== DRI ===================");
+                                Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+
+                                if (!Stream.TryRead(out ushort RestartInterval))
+                                    return;
+
+                                // 每 n 個 MCU 塊就有一個 RSTn 標記。
+                                // 第一個標記是 RST0，第二個是 RST1 ……，RST7 後再從 RST0 重複。
+                                Debug.WriteLine($"Restart Interval  : {RestartInterval}");  // 2 Bytes
+
+                                break;
+                            }
+                        #endregion
+
+                        #region SOS (Start of Scan)
+                        case 0xDA:
+                            {
+                                Debug.WriteLine($"================== SOS ===================");
+                                Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+
+                                int DataLength = Length - 2;
+
+                                // Components;
+                                Length--;
+                                if (!Stream.TryRead(out byte Components))
+                                    return;
+
+                                Debug.WriteLine($"Component         : {Components}");
+                                for (int i = 0; i < Components; i++)
+                                {
+                                    // Component Info
+                                    Length -= 2;
+                                    if (!Stream.TryRead(out byte ID) ||
+                                        !Stream.TryRead(out byte Info))
+                                        return;
+
+                                    int DC = Info >> 4,
+                                        AC = Info & 0x0F;
+                                    Debug.WriteLine($"ComponentID       : {ID}");
+                                    Debug.WriteLine($"DC                : {DC}");
+                                    Debug.WriteLine($"AC                : {AC}");
+                                }
+
+                                //Spectral
+                                Length -= 3;
+                                if (!Stream.TryRead(out byte SpectralSelectStart) ||
+                                    !Stream.TryRead(out byte SpectralSelectEnd) ||
+                                    !Stream.TryRead(out byte SuccessiveApprox) ||
+                                    DataLength < 0)
+                                    return;
+
+                                Debug.WriteLine($"SpectralStart     : {SpectralSelectStart}");
+                                Debug.WriteLine($"SpectralEnd       : {SpectralSelectEnd}");
+                                Debug.WriteLine($"Successive Approx : {SuccessiveApprox}");
+
+
+                                break;
+                            }
+                        #endregion
+
+                        #region EOI (End of Image)
+                        case 0xD9:
+                            return;
+                        #endregion
+
+                        default:
+                            {
+                                Debug.WriteLine($"================== 0x{TagBuffer[1]:X2} ==================");
+                                Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+
+                                if (!Stream.TrySeek(Length - 2, SeekOrigin.Current))
+                                    return;
+
+
+                                break;
+                            }
+                    }
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(TagBuffer);
+                Debug.WriteLine($"==========================================");
+            }
+        }
 
     }
 }
