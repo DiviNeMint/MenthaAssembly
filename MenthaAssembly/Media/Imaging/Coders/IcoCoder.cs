@@ -33,9 +33,9 @@ namespace MenthaAssembly.Media.Imaging
         // ============================================================
         //                            Context
         // ============================================================
-        // ImageDatas[1]        , Entry[0].ImageSize Bytes
+        // ImageDatas[1]        , n Bytes
         // ...
-        // ImageDatas[n]        , Entry[n].ImageSize Bytes
+        // ImageDatas[n]        , n Bytes
         // ============================================================
 
         public const int IdentifierSize = 4;
@@ -139,8 +139,6 @@ namespace MenthaAssembly.Media.Imaging
             return true;
         }
 
-        private const int IconEnrtyLength = 16;
-
         /// <summary>
         /// Encodes the specified images to the specified path.
         /// </summary>
@@ -148,7 +146,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Images">The specified image.</param>
         public static void Encode(string Path, params IImageContext[] Images)
         {
-            using FileStream Stream = new FileStream(Path, FileMode.CreateNew, FileAccess.Write);
+            using FileStream Stream = new(Path, FileMode.CreateNew, FileAccess.Write);
             Encode(Stream, Images);
         }
         /// <summary>
@@ -161,63 +159,59 @@ namespace MenthaAssembly.Media.Imaging
             int NumImages = Images.Length;
 
             // Ico File Header
-            IcoFileHeader Header = new() { NumImages = (ushort)NumImages };
+            IconFileHeader Header = new() { NumImages = (ushort)NumImages };
             Stream.Write(Header);
 
-
-            byte[] Buffer = new byte[IconEnrtyLength];
-            byte* pBuffer = Buffer.ToPointer();
-
-            int NextImageOffset = 6 + 16 * NumImages;
-            for (int i = 0; i < NumImages; i++)
+            MemoryStream Data = new(32768);
+            try
             {
-                IImageContext Image = Images[i];
-
-                int Width = Image.Width,
-                    Height = Image.Height;
-                if (Width > 256 || Height > 256)
+                long DataOffset0 = sizeof(IconFileHeader) + sizeof(IconEntry) * NumImages;
+                for (int i = 0; i < NumImages; i++)
                 {
-                    double Scale = 256 / Math.Max(Width, Height);
-                    Width = (int)(Width * Scale);
-                    Height = (int)(Height * Scale);
+                    IImageContext Image = Images[i];
 
-                    Image = Image.Resize<RGBA>(Width, Height, InterpolationTypes.Nearest);
+                    // Checks Image size.
+                    int Iw = Image.Width,
+                        Ih = Image.Height;
+                    if (Iw > 256 || Ih > 256)
+                    {
+                        if (Iw > Ih)
+                        {
+                            Ih = Ih * 256 / Iw;
+                            Iw = 256;
+                        }
+                        else
+                        {
+                            Iw = Iw * 256 / Ih;
+                            Ih = 256;
+                        }
+
+                        Image = Image.Resize<RGBA>(Iw, Ih, InterpolationTypes.Nearest);
+                    }
+
+                    // Encodes ImageDatas
+                    long Position = Data.Position;
+                    PngCoder.Encode(Image, Data);
+
+                    // Entry
+                    IconEntry Entry = new()
+                    {
+                        Width = (byte)Iw,
+                        Height = (byte)Ih,
+                        NumPaletteColors = (byte)(Image is IImageIndexedContext IndexedImage ? IndexedImage.Palette.Count : 0),
+                        BitsPerPixel = (short)Image.BitsPerPixel,
+                        ImageSize = (int)(Data.Position - Position),
+                        DataOffset = (int)(DataOffset0 + Position)
+                    };
+                    Stream.Write(Entry);
                 }
 
-                // Write Entry
-                byte* pBytes = pBuffer;
-                *pBytes++ = (byte)(Width == 256 ? 0 : Width);       // ImageWidth  , 1 Bytes
-                *pBytes++ = (byte)(Height == 256 ? 0 : Height);     // ImageHeight , 1 Bytes
-
-                int PaletteCount = Image is IImageIndexedContext IndexedImage ? IndexedImage.Palette.Count : 0;
-                *pBytes++ = (byte)PaletteCount;                     // Palette     , 1 Bytes
-                pBytes++;                                           // Reserved    , 1 Bytes
-
-                ushort* pUShorts = (ushort*)pBytes;
-                *pUShorts++ = 0;                                    // ColorPlanes  , 2 Bytes ; Should be 0 or 1.
-                *pUShorts++ = (ushort)Image.BitsPerPixel;           // BitsPerPixel , 2 Bytes
-
-                int* pInt = (int*)pUShorts;
-                *pInt++ = 0;                                        // ImageSize    , 4 Bytes
-                *pInt = NextImageOffset;                            // Offset       , 4 Bytes
-
-                Stream.Write(Buffer, 0, IconEnrtyLength);
-
-                Stream.Seek(NextImageOffset, SeekOrigin.Begin);
-
-                // Write Image Datas
-                if (Image.BitsPerPixel == 32)
-                    PngCoder.Encode(Image, Stream);
-                else
-                    BmpCoder.Encode(Image, Stream);
-
-                // Going back Write ImageSize
-                int ImageSize = (int)(Stream.Position - NextImageOffset);
-                Stream.Seek(14 + IconEnrtyLength * i, SeekOrigin.Begin);
-                Stream.Write(ImageSize);
-                Stream.Seek(4, SeekOrigin.Current);
-
-                NextImageOffset += ImageSize;
+                Data.Position = 0;
+                Data.CopyTo(Stream);
+            }
+            finally
+            {
+                Data.Dispose();
             }
         }
 
@@ -262,7 +256,7 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         [StructLayout(LayoutKind.Explicit, Size = 6)]
-        private struct IcoFileHeader
+        private struct IconFileHeader
         {
             [FieldOffset(0)]
             private fixed byte Reserved[2];
@@ -276,7 +270,7 @@ namespace MenthaAssembly.Media.Imaging
             [FieldOffset(4)]
             public ushort NumImages;
 
-            public IcoFileHeader()
+            public IconFileHeader()
             {
             }
 
