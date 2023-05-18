@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MenthaAssembly.Utils;
+using System;
 using System.Buffers;
 using System.Data;
 using System.Diagnostics;
@@ -111,7 +112,10 @@ namespace MenthaAssembly.Media.Imaging
         [Conditional("DEBUG")]
         public static void Parse(Stream Stream)
         {
-            byte[] TagBuffer = ArrayPool<byte>.Shared.Rent(TagSize);
+            const int ReadBufferSize = 8192;
+            byte[] TagBuffer = ArrayPool<byte>.Shared.Rent(TagSize),
+                   ImageReadBuffer = ArrayPool<byte>.Shared.Rent(ReadBufferSize);
+            MemoryStream ImageBuffer = new(ReadBufferSize);
             try
             {
                 // SOI
@@ -154,6 +158,7 @@ namespace MenthaAssembly.Media.Imaging
                         !Stream.TryRead(out byte ThumbnailHeight))
                         return;
 
+                    Identifier = new(Identifier.Where(c => !char.IsControl(c)).ToArray());
                     string Version = $"{Version1}.{Version2}",
                            Unit = Units switch
                            {
@@ -185,11 +190,39 @@ namespace MenthaAssembly.Media.Imaging
                 }
                 #endregion
 
+                bool StartImageDatas = false;
                 while (Stream.Position < Stream.Length)
                 {
+                    #region ImageDatas
+                    if (StartImageDatas)
+                    {
+                        do
+                        {
+                            int ReadLength = Stream.Read(ImageReadBuffer, 0, ReadBufferSize),
+                                i = 0;
+
+                            for (; i < ReadLength; i++)
+                                if (ImageReadBuffer[i] == 0xFF)
+                                    break;
+
+                            ImageBuffer.Write(ImageReadBuffer, 0, i);
+                            if (i < ReadLength)
+                            {
+                                Stream = new ConcatStream(ImageReadBuffer, i, ReadLength - i, Stream);
+                                StartImageDatas = false;
+
+                                Debug.WriteLine($"=============== Image Data ===============");
+                                Debug.WriteLine(string.Join(", ", ImageReadBuffer.Select(i => i.ToString("X2"))));
+                                break;
+                            }
+
+                        } while (Stream.Position < Stream.Length);
+                    }
+                    #endregion
+
                     if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||
                         TagBuffer[0] != 0xFF ||
-                        !Stream.TryReverseRead(out Length))
+                        (TagBuffer[1] != 0xD9 && !Stream.TryReverseRead(out Length)))
                         return;
 
                     switch (TagBuffer[1])
@@ -249,7 +282,9 @@ namespace MenthaAssembly.Media.Imaging
                                     Debug.WriteLine($"Precision         : {Precision}");
 
                                     byte[] Datas = Stream.Read(TableLength);
-                                    Debug.WriteLine($"Quantization {ID}    : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
+                                    Debug.WriteLine($"------------- Quantization{ID} --------------");
+                                    for (int i = 0; i < TableLength; i += 8)
+                                        Debug.WriteLine(string.Join(", ", Datas.Skip(i).Take(8).Select(i => i.ToString("X2"))));
 
                                     DataLength -= TableLength;
                                     if (DataLength < 0)
@@ -259,10 +294,13 @@ namespace MenthaAssembly.Media.Imaging
                             }
                         #endregion
 
-                        #region SOF0 (Start of Frame)
+                        #region SOF (Start of Frame)
                         case 0xC0:
+                        case 0xC1:
+                        case 0xC2:
+                        case 0xC3:
                             {
-                                Debug.WriteLine($"================== SOF0 ==================");
+                                Debug.WriteLine($"================== SOF{TagBuffer[1] - 0xC0} ==================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
                                 Length -= 2;
 
@@ -290,7 +328,7 @@ namespace MenthaAssembly.Media.Imaging
 
                                     int HorizontalFactor = Info >> 4,
                                         VerticalFactor = Info & 0x0F;
-                                    Debug.WriteLine($"ComponentID       : {ID}");
+                                    Debug.WriteLine($"--------------- Component{ID} ---------------");
                                     Debug.WriteLine($"Horizontal Factor : {HorizontalFactor}");
                                     Debug.WriteLine($"Vertical Factor   : {VerticalFactor}");
                                     Debug.WriteLine($"Quantization ID   : {TableID}");
@@ -304,52 +342,57 @@ namespace MenthaAssembly.Media.Imaging
                         #endregion
 
                         #region DHT (Define Huffman Table)
-                        //case 0xC4:
-                        //    {
-                        //        Debug.WriteLine($"================== DHT ===================");
-                        //        Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+                        case 0xC4:
+                            {
+                                Debug.WriteLine($"================== DHT ===================");
+                                Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
 
-                        //        int DataLength = Length - 2;
-                        //        byte[] Datas = ArrayPool<byte>.Shared.Rent(16);
-                        //        try
-                        //        {
-                        //            DataLength -= 17;
-                        //            if (!Stream.TryRead(out byte Info) ||
-                        //                !Stream.ReadBuffer(Datas, 0, 16))
-                        //                return;
+                                int DataLength = Length - 2;
+                                byte[] Datas = ArrayPool<byte>.Shared.Rent(16);
+                                try
+                                {
+                                    do
+                                    {
+                                        DataLength -= 17;
+                                        if (!Stream.TryRead(out byte Info) ||
+                                            !Stream.ReadBuffer(Datas, 0, 16))
+                                            return;
 
-                        //            int HuffmanID = Info & 0x0F;
-                        //            string Type = (Info >> 4) switch
-                        //            {
-                        //                0 => "DC",
-                        //                1 => "AC",
-                        //                _ => "Unknown"
-                        //            };
+                                        int TableIndex = Info & 0x0F;
+                                        string Type = (Info >> 4) switch
+                                        {
+                                            0 => "DC",
+                                            1 => "AC",
+                                            _ => "Unknown"
+                                        };
 
-                        //            Debug.WriteLine($"HuffmanID         : {HuffmanID}");
-                        //            Debug.WriteLine($"Type              : {Type}");
-                        //            Debug.WriteLine($"CodeLengths       : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
+                                        Debug.WriteLine($"Index             : {TableIndex}");
+                                        Debug.WriteLine($"Class             : {Type}");
+                                        Debug.WriteLine($"CodeLength Table  : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
 
-                        //            for (int i = 0; i < 16; i++)
-                        //            {
-                        //                if (Datas[i] > 0)
-                        //                {
-                        //                    byte[] CodeDatas = Stream.Read(Datas[i]);
-                        //                    Debug.WriteLine($"Code{i}             : {string.Join(", ", CodeDatas.Select(i => i.ToString("X2")))}");
-                        //                }
-                        //            }
+                                        for (int i = 0; i < 16; i++)
+                                        {
+                                            int CodeLength = Datas[i];
+                                            if (CodeLength > 0)
+                                            {
+                                                byte[] CodeDatas = Stream.Read(CodeLength);
+                                                DataLength -= CodeLength;
+                                                Debug.WriteLine($"{CodeLength} code of {i + 1} bits  : {string.Join(", ", CodeDatas.Select(i => i.ToString("X2")))}");
+                                            }
+                                        }
 
+                                        if (DataLength != 0)
+                                            return;
 
-                        //            if (DataLength != 0)
-                        //                return;
-                        //        }
-                        //        finally
-                        //        {
-                        //            ArrayPool<byte>.Shared.Return(Datas);
-                        //        }
+                                    } while (DataLength > 0);
+                                }
+                                finally
+                                {
+                                    ArrayPool<byte>.Shared.Return(Datas);
+                                }
 
-                        //        break;
-                        //    }
+                                break;
+                            }
                         #endregion
 
                         #region DRI (Define Restart Interval) 
@@ -365,6 +408,29 @@ namespace MenthaAssembly.Media.Imaging
                                 // 第一個標記是 RST0，第二個是 RST1 ……，RST7 後再從 RST0 重複。
                                 Debug.WriteLine($"Restart Interval  : {RestartInterval}");  // 2 Bytes
 
+                                break;
+                            }
+                        #endregion
+
+                        #region COM (Comment)
+                        case 0xFE:
+                            {
+                                Debug.WriteLine($"================== COM ===================");
+                                Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
+
+                                int DatasLength = Length - 2;
+                                byte[] Datas = ArrayPool<byte>.Shared.Rent(DatasLength);
+                                try
+                                {
+                                    if (!Stream.ReadBuffer(Datas, 0, DatasLength))
+                                        return;
+
+                                    Debug.WriteLine($"Content           : {Encoding.ASCII.GetString(Datas)}");
+                                }
+                                finally
+                                {
+                                    ArrayPool<byte>.Shared.Return(Datas);
+                                }
                                 break;
                             }
                         #endregion
@@ -393,9 +459,10 @@ namespace MenthaAssembly.Media.Imaging
 
                                     int DC = Info >> 4,
                                         AC = Info & 0x0F;
-                                    Debug.WriteLine($"ComponentID       : {ID}");
-                                    Debug.WriteLine($"DC                : {DC}");
-                                    Debug.WriteLine($"AC                : {AC}");
+
+                                    Debug.WriteLine($"--------------- Component{ID} ---------------");
+                                    Debug.WriteLine($"DC Table          : {DC}");
+                                    Debug.WriteLine($"AC Table          : {AC}");
                                 }
 
                                 //Spectral
@@ -406,18 +473,23 @@ namespace MenthaAssembly.Media.Imaging
                                     DataLength < 0)
                                     return;
 
+                                Debug.WriteLine($"------------------------------------------");
                                 Debug.WriteLine($"SpectralStart     : {SpectralSelectStart}");
                                 Debug.WriteLine($"SpectralEnd       : {SpectralSelectEnd}");
                                 Debug.WriteLine($"Successive Approx : {SuccessiveApprox}");
 
-
+                                StartImageDatas = true;
                                 break;
                             }
                         #endregion
 
                         #region EOI (End of Image)
                         case 0xD9:
-                            return;
+                            {
+                                Debug.WriteLine($"==========================================");
+                                Debug.WriteLine($"                   EOI                    ");
+                                return;
+                            }
                         #endregion
 
                         default:
@@ -428,7 +500,6 @@ namespace MenthaAssembly.Media.Imaging
                                 if (!Stream.TrySeek(Length - 2, SeekOrigin.Current))
                                     return;
 
-
                                 break;
                             }
                     }
@@ -437,6 +508,8 @@ namespace MenthaAssembly.Media.Imaging
             finally
             {
                 ArrayPool<byte>.Shared.Return(TagBuffer);
+                ArrayPool<byte>.Shared.Return(ImageReadBuffer);
+                ImageBuffer.Dispose();
                 Debug.WriteLine($"==========================================");
             }
         }
