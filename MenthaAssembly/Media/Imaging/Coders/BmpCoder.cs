@@ -46,6 +46,9 @@ namespace MenthaAssembly.Media.Imaging
         // ImageDatas           , ImageSize Bytes
         // ============================================================
 
+        /// <summary>
+        /// The length in bytes of the bitmap file format identifier.
+        /// </summary>
         public const int IdentifierSize = 2;
 
         /// <summary>

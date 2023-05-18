@@ -38,6 +38,9 @@ namespace MenthaAssembly.Media.Imaging
         // ImageDatas[n]        , n Bytes
         // ============================================================
 
+        /// <summary>
+        /// The length in bytes of the ico file format identifier.
+        /// </summary>
         public const int IdentifierSize = 4;
 
         /// <summary>
@@ -216,7 +219,7 @@ namespace MenthaAssembly.Media.Imaging
         }
 
         /// <summary>
-        /// Indicates whether the specified Identifier is Icon Identifier.<para/>
+        /// Indicates whether the specified Identifier is Icon Identifier.
         /// </summary>
         /// <param name="Identifier">The specified Identifier.</param>
         public static bool Identify(string Identifier)
