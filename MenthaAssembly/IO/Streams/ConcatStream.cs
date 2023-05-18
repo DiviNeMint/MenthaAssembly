@@ -112,7 +112,7 @@ namespace MenthaAssembly.Utils
                 {
                     ReadLength = Math.Min((int)(Length1 - Current), Count);
                     if (ReadLength > 0)
-                        Buffer.BlockCopy(Datas, (int)Current, Buffers, Offset, ReadLength);
+                        Buffer.BlockCopy(Datas, (int)(Begin1 + Current), Buffers, Offset, ReadLength);
                 }
 
                 if (ReadLength < Count)
