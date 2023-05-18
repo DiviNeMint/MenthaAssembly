@@ -77,12 +77,20 @@ namespace MenthaAssembly.Media.Imaging
             Image = null;
             long Begin = Stream.CanSeek ? Stream.Position : 0L;
 
-            // Header
-            if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
-                !Identify(Identifier))
+            // Identifier
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
+            try
             {
-                Stream.TrySeek(Begin, SeekOrigin.Begin);
-                return false;
+                if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
+                    !Identify(Identifier))
+                {
+                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                    return false;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Identifier);
             }
 
             byte[] ImageData = null;
@@ -603,9 +611,16 @@ namespace MenthaAssembly.Media.Imaging
         /// Indicates whether the specified Identifier is Png Identifier.
         /// </summary>
         /// <param name="Identifier">The specified Identifier.</param>
-        public static bool Identify(string Identifier)
-            => Identifier.Length == IdentifierSize &&
-               Identifier is "?PNG\r\n\u001a\n";
+        public static bool Identify(byte[] Identifier)
+            => Identifier.Length >= IdentifierSize &&
+               Identifier[0] == 0x89 &&
+               Identifier[1] == 0x50 &&
+               Identifier[2] == 0x4E &&
+               Identifier[3] == 0x47 &&
+               Identifier[4] == 0x0D &&
+               Identifier[5] == 0x0A &&
+               Identifier[6] == 0x1A &&
+               Identifier[7] == 0x0A;
 
         private static bool IdentifyRFC1950(byte[] Datas)
             => (Datas[0].Equals(0x08) && (Datas[1].Equals(0x1D) || Datas[1].Equals(0x5B) || Datas[1].Equals(0x99) || Datas[1].Equals(0xD7))) ||
@@ -730,12 +745,20 @@ namespace MenthaAssembly.Media.Imaging
         [Conditional("DEBUG")]
         public static void Parse(Stream Stream, bool ShowIDAT = true)
         {
-            // Header
-            if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
-                !Identify(Identifier))
+            // Identifier
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
+            try
             {
-                Debug.WriteLine("This is not Png file.");
-                return;
+                if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
+                    !Identify(Identifier))
+                {
+                    Debug.WriteLine("This is not Png file.");
+                    return;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Identifier);
             }
 
             MemoryStream DataStream = new();

@@ -71,10 +71,24 @@ namespace MenthaAssembly.Media.Imaging
             Image = null;
             long Begin = Stream.CanSeek ? Stream.Position : 0L;
 
+            // Identifier
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
+            try
+            {
+                if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
+                    !Identify(Identifier))
+                {
+                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                    return false;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Identifier);
+            }
+
             // Header
-            if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
-                !Identify(Identifier) ||
-                !Stream.TrySeek(8, SeekOrigin.Current) ||
+            if (!Stream.TrySeek(8, SeekOrigin.Current) ||
                 !Stream.TryRead(out int DataOffset) ||
                 !Stream.TryRead(out int HeaderSize) ||
                 !Stream.TryRead(out int Width) ||
@@ -307,27 +321,35 @@ namespace MenthaAssembly.Media.Imaging
 
         /// <summary>
         /// Indicates whether the specified Identifier is bitmap Identifier.<para/>
-        /// BM – Windows 3.1x, 95, NT, ... etc.<para/>
-        /// BA – OS / 2 struct Bitmap Array<para/>
-        /// CI – OS / 2 struct Color Icon<para/>
-        /// CP – OS / 2 const Color Pointer<para/>
-        /// IC – OS / 2 struct Icon<para/>
-        /// PT – OS / 2 Pointer<para/>
+        /// BM ( 0x42 , 0x4D ) – Windows 3.1x, 95, NT, ... etc.<para/>
+        /// BA ( 0x42 , 0x41 ) – OS / 2 struct Bitmap Array<para/>
+        /// CI ( 0x43 , 0x49 ) – OS / 2 struct Color Icon<para/>
+        /// CP ( 0x43 , 0x50 ) – OS / 2 const Color Pointer<para/>
+        /// IC ( 0x49 , 0x43 ) – OS / 2 struct Icon<para/>
+        /// PT ( 0x50 , 0x54 ) – OS / 2 Pointer<para/>
         /// </summary>
         /// <param name="Identifier">The specified Identifier.</param>
-        public static bool Identify(string Identifier)
-            => Identifier.Length == IdentifierSize &&
-               Identifier is "BM" or "BA" or "CI" or "CP" or "IC" or "PT";
+        public static bool Identify(byte[] Identifier)
+            => Identifier.Length >= IdentifierSize &&
+               Identifier[0] == 0x42 && Identifier[1] == 0x4D;
 
         [Conditional("DEBUG")]
         public static void Parse(Stream Stream)
         {
             // Identifier
-            if (!Stream.TryReadString(2, Encoding.ASCII, out string Identifier) ||
-                !Identify(Identifier))
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
+            try
             {
-                Debug.WriteLine("This is not Bmp file.");
-                return;
+                if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
+                    !Identify(Identifier))
+                {
+                    Debug.WriteLine("This is not Bmp file.");
+                    return;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Identifier);
             }
 
             // FileSize

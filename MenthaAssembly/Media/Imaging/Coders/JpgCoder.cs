@@ -16,8 +16,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <summary>
         /// The length in bytes of the jpg file format identifier.
         /// </summary>
-        public const int IdentifierSize = 5;
-        private const int TagSize = 2;
+        public const int IdentifierSize = 2;
 
         /// <summary>
         /// Only decode the image size of the jpg file at the specified path.
@@ -42,30 +41,36 @@ namespace MenthaAssembly.Media.Imaging
             Height = 0;
             long Begin = Stream.CanSeek ? Stream.Position : 0L;
 
-            byte[] TagBuffer = ArrayPool<byte>.Shared.Rent(TagSize);
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
             try
             {
-                // Header
-                if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||            // SOI 
-                    !(TagBuffer[0] != 0xFF || TagBuffer[0] != 0xD8) ||      // 0xFF 0xD8
-                    !Stream.ReadBuffer(TagBuffer, 0, TagSize) ||            // APP0
-                    !(TagBuffer[0] != 0xFF || TagBuffer[0] != 0xE0) ||      // 0xFF 0xE0
-                    !Stream.TryReverseRead(out ushort Length) ||            // Length
-                    !Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
+                // Identifier
+                if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||    // SOI 
                     !Identify(Identifier))
                 {
                     Stream.TrySeek(Begin, SeekOrigin.Begin);
                     return false;
                 }
 
-                if (!Stream.TrySeek(Length - 2 - IdentifierSize, SeekOrigin.Current))
-                    return false;
+                //// Header
+                //if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||            // APP0
+                //    !(Identifier[0] != 0xFF || Identifier[0] != 0xE0) ||            // 0xFF 0xE0
+                //    !Stream.TryReverseRead(out ushort Length) ||                    // Length
+                //    !Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string JFIFIdentifier) ||
+                //    JFIFIdentifier != "JFIF\0")
+                //{
+                //    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                //    return false;
+                //}
+
+                //if (!Stream.TrySeek(Length - 2 - IdentifierSize, SeekOrigin.Current))
+                //    return false;
 
                 while (Stream.Position < Stream.Length)
                 {
-                    if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||    // Tag
-                        TagBuffer[0] != 0xFF ||                         // 0xFF _
-                        !Stream.TryReverseRead(out Length))             // Length
+                    if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||    // Identifier
+                        Identifier[0] != 0xFF ||                                // 0xFF _
+                        !Stream.TryReverseRead(out ushort Length))              // Length
 
                     {
                         Stream.TrySeek(Begin, SeekOrigin.Begin);
@@ -73,7 +78,7 @@ namespace MenthaAssembly.Media.Imaging
                     }
 
                     // Check Start of Frame
-                    if (TagBuffer[1] != 0xC0)
+                    if (Identifier[1] != 0xC0)
                     {
                         if (!Stream.TrySeek(Length - 2, SeekOrigin.Current))
                             return false;
@@ -96,7 +101,7 @@ namespace MenthaAssembly.Media.Imaging
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(TagBuffer);
+                ArrayPool<byte>.Shared.Return(Identifier);
             }
 
         }
@@ -105,22 +110,23 @@ namespace MenthaAssembly.Media.Imaging
         /// Indicates whether the specified Identifier is jpg Identifier.
         /// </summary>
         /// <param name="Identifier">The specified Identifier.</param>
-        public static bool Identify(string Identifier)
-            => Identifier.Length == IdentifierSize &&
-               Identifier == "JFIF\0";
+        public static bool Identify(byte[] Identifier)
+            => Identifier.Length >= IdentifierSize &&
+               Identifier[0] == 0xFF &&
+               Identifier[1] == 0xD8;
 
         [Conditional("DEBUG")]
         public static void Parse(Stream Stream)
         {
             const int ReadBufferSize = 8192;
-            byte[] TagBuffer = ArrayPool<byte>.Shared.Rent(TagSize),
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize),
                    ImageReadBuffer = ArrayPool<byte>.Shared.Rent(ReadBufferSize);
             MemoryStream ImageBuffer = new(ReadBufferSize);
             try
             {
                 // SOI
-                if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||
-                    !(TagBuffer[0] != 0xFF || TagBuffer[0] != 0xD8))
+                if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
+                    !(Identifier[0] != 0xFF || Identifier[0] != 0xD8))
                 {
                     Debug.WriteLine("This is not Ico file.");
                     return;
@@ -131,20 +137,20 @@ namespace MenthaAssembly.Media.Imaging
                 Debug.WriteLine($"==========================================");
 
                 #region APP0
-                if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||
-                    !(TagBuffer[0] != 0xFF || TagBuffer[0] != 0xE0))
+                if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
+                    !(Identifier[0] != 0xFF || Identifier[0] != 0xE0))
                 {
-                    Debug.WriteLine("This is not Ico file.");
+                    Debug.WriteLine("This is not jpg file.");
                     return;
                 }
 
                 Debug.WriteLine($"================== APP0 ==================");
 
                 if (!Stream.TryReverseRead(out ushort Length) ||
-                    !Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
-                    !Identify(Identifier))
+                    !Stream.TryReadString(5, Encoding.ASCII, out string JFIFIdentifier) ||
+                    JFIFIdentifier != "JFIF\0")
                 {
-                    Debug.WriteLine("This is not Ico file.");
+                    Debug.WriteLine("This is not jpg file.");
                     return;
                 }
 
@@ -158,7 +164,7 @@ namespace MenthaAssembly.Media.Imaging
                         !Stream.TryRead(out byte ThumbnailHeight))
                         return;
 
-                    Identifier = new(Identifier.Where(c => !char.IsControl(c)).ToArray());
+                    JFIFIdentifier = new(JFIFIdentifier.Where(c => !char.IsControl(c)).ToArray());
                     string Version = $"{Version1}.{Version2}",
                            Unit = Units switch
                            {
@@ -169,7 +175,7 @@ namespace MenthaAssembly.Media.Imaging
                            };
 
                     Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
-                    Debug.WriteLine($"Identifier        : {Identifier}");       // 5 Bytes
+                    Debug.WriteLine($"Identifier        : {JFIFIdentifier}");       // 5 Bytes
                     Debug.WriteLine($"Verstion          : {Version}");          // 2 Bytes
                     Debug.WriteLine($"Unit              : {Unit}");             // 1 Bytes
                     Debug.WriteLine($"DensityX          : {DensityX}");         // 2 Bytes
@@ -220,12 +226,12 @@ namespace MenthaAssembly.Media.Imaging
                     }
                     #endregion
 
-                    if (!Stream.ReadBuffer(TagBuffer, 0, TagSize) ||
-                        TagBuffer[0] != 0xFF ||
-                        (TagBuffer[1] != 0xD9 && !Stream.TryReverseRead(out Length)))
+                    if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
+                        Identifier[0] != 0xFF ||
+                        (Identifier[1] != 0xD9 && !Stream.TryReverseRead(out Length)))
                         return;
 
-                    switch (TagBuffer[1])
+                    switch (Identifier[1])
                     {
                         #region APPn (Application)
                         case 0xE1:
@@ -244,7 +250,7 @@ namespace MenthaAssembly.Media.Imaging
                         case 0xEE:
                         case 0xEF:
                             {
-                                Debug.WriteLine($"================== APP{TagBuffer[1] - 0xE0} ==================");
+                                Debug.WriteLine($"================== APP{Identifier[1] - 0xE0} ==================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
 
                                 int DataLength = Length - 2;
@@ -300,7 +306,7 @@ namespace MenthaAssembly.Media.Imaging
                         case 0xC2:
                         case 0xC3:
                             {
-                                Debug.WriteLine($"================== SOF{TagBuffer[1] - 0xC0} ==================");
+                                Debug.WriteLine($"================== SOF{Identifier[1] - 0xC0} ==================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
                                 Length -= 2;
 
@@ -494,7 +500,7 @@ namespace MenthaAssembly.Media.Imaging
 
                         default:
                             {
-                                Debug.WriteLine($"================== 0x{TagBuffer[1]:X2} ==================");
+                                Debug.WriteLine($"================== 0x{Identifier[1]:X2} ==================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
 
                                 if (!Stream.TrySeek(Length - 2, SeekOrigin.Current))
@@ -507,7 +513,7 @@ namespace MenthaAssembly.Media.Imaging
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(TagBuffer);
+                ArrayPool<byte>.Shared.Return(Identifier);
                 ArrayPool<byte>.Shared.Return(ImageReadBuffer);
                 ImageBuffer.Dispose();
                 Debug.WriteLine($"==========================================");

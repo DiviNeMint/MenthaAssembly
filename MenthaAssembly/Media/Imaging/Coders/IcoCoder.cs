@@ -63,10 +63,24 @@ namespace MenthaAssembly.Media.Imaging
             Images = null;
             long Begin = Stream.CanSeek ? Stream.Position : 0L;
 
+            // Identifier
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
+            try
+            {
+                if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
+                    !Identify(Identifier))
+                {
+                    Stream.TrySeek(Begin, SeekOrigin.Begin);
+                    return false;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Identifier);
+            }
+
             // Header
-            if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
-                !Identify(Identifier) ||
-                !Stream.TryRead(out ushort NumImages))
+            if (!Stream.TryRead(out ushort NumImages))
             {
                 Stream.TrySeek(Begin, SeekOrigin.Begin);
                 return false;
@@ -104,9 +118,8 @@ namespace MenthaAssembly.Media.Imaging
 
                     using SegmentStream Segment = new(Stream, ImageSize - MaxIdentifierSize, true);
 
-                    Identifier = Encoding.ASCII.GetString(Buffer, 0, MaxIdentifierSize);
                     IImageContext Image;
-                    if (PngCoder.Identify(Identifier))
+                    if (PngCoder.Identify(Buffer))
                     {
                         using ConcatStream Concat = new(Buffer, 0, MaxIdentifierSize, Segment);
                         if (!PngCoder.TryDecode(Concat, out Image))
@@ -115,7 +128,7 @@ namespace MenthaAssembly.Media.Imaging
                             return false;
                         }
                     }
-                    else if (BmpCoder.Identify(Identifier))
+                    else if (BmpCoder.Identify(Buffer))
                     {
                         using ConcatStream Concat = new(Buffer, 0, MaxIdentifierSize, Segment);
                         if (!BmpCoder.TryDecode(Stream, out Image))
@@ -222,19 +235,30 @@ namespace MenthaAssembly.Media.Imaging
         /// Indicates whether the specified Identifier is Icon Identifier.
         /// </summary>
         /// <param name="Identifier">The specified Identifier.</param>
-        public static bool Identify(string Identifier)
-            => Identifier.Length == IdentifierSize &&
-               Identifier == "\0\0\u0001\0";
+        public static bool Identify(byte[] Identifier)
+            => Identifier.Length >= IdentifierSize &&
+               Identifier[0] == 0x00 &&
+               Identifier[1] == 0x00 &&
+               Identifier[2] == 0x01 &&
+               Identifier[3] == 0x00;
 
         [Conditional("DEBUG")]
         public static void Parse(Stream Stream)
         {
             // Identifier
-            if (!Stream.TryReadString(IdentifierSize, Encoding.ASCII, out string Identifier) ||
-                !Identify(Identifier))
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
+            try
             {
-                Debug.WriteLine("This is not Ico file.");
-                return;
+                if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
+                    !Identify(Identifier))
+                {
+                    Debug.WriteLine("This is not Ico file.");
+                    return;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Identifier);
             }
 
             // NumImages
