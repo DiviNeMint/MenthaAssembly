@@ -5,12 +5,12 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Numerics;
 using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
 {
     // https://github.com/corkami/formats/blob/master/image/JPEGRGB_dissected.png
+    // https://blog.csdn.net/u010192735/article/details/120860826
     public static unsafe class JpgCoder
     {
         /// <summary>
@@ -115,6 +115,97 @@ namespace MenthaAssembly.Media.Imaging
                Identifier[0] == 0xFF &&
                Identifier[1] == 0xD8;
 
+        private static bool IdentifyMark(byte Mark)
+            => Mark is 0x01 or  // TEM
+               0x0A or  // JXL
+               0x51 or  // SIZ
+               0x52 or  // COD
+               0x53 or  // COC
+               0x55 or  // TLM
+               0x57 or  // PLM
+               0x58 or  // PLT
+               0x5C or  // QCD
+               0x5D or  // QCC
+               0x5E or  // RGN
+               0x5F or  // POC
+               0x60 or  // PPM
+               0x61 or  // PPT
+               0x63 or  // CRG
+               0x64 or  // COM
+               0x65 or  // SEC
+               0x66 or  // EPB
+               0x67 or  // ESD
+               0x68 or  // EPC
+               0x69 or  // RED
+               0x90 or  // SOT
+               0x91 or  // SOP
+               0x92 or  // EPH
+               0x93 or  // SOD
+               0x94 or  // INSEC
+               0xC0 or  // SOF0
+               0xC1 or  // SOF1
+               0xC2 or  // SOF2
+               0xC3 or  // SOF3
+               0xC4 or  // DHT
+               0xC5 or  // SOF5
+               0xC6 or  // SOF6
+               0xC7 or  // SOF7
+               0xC8 or  // JPG
+               0xC9 or  // SOF9
+               0xCA or  // SOF10
+               0xCB or  // SOF11
+               0xCC or  // DAC
+               0xCD or  // SOF13
+               0xCE or  // SOF14
+               0xCF or  // SOF15
+               0xD0 or  // RST0
+               0xD1 or  // RST1
+               0xD2 or  // RST2
+               0xD3 or  // RST3
+               0xD4 or  // RST4
+               0xD5 or  // RST5
+               0xD6 or  // RST6
+               0xD7 or  // RST7
+               0xD8 or  // SOI
+               0xD9 or  // EOI/EOC
+               0xDA or  // SOS
+               0xDB or  // DQT
+               0xDC or  // DNL
+               0xDD or  // DRI
+               0xDE or  // DHP
+               0xDF or  // EXP
+               0xE0 or  // APP0
+               0xE1 or  // APP1
+               0xE2 or  // APP2
+               0xE3 or  // APP3
+               0xE4 or  // APP4
+               0xE5 or  // APP5
+               0xE6 or  // APP6
+               0xE7 or  // APP7
+               0xE8 or  // APP8
+               0xE9 or  // APP9
+               0xEA or  // APP10
+               0xEB or  // APP11
+               0xEC or  // APP12
+               0xED or  // APP13
+               0xEE or  // APP14
+               0xEF or  // APP15
+               0xF0 or  // JPG0
+               0xF1 or  // JPG1
+               0xF2 or  // JPG2
+               0xF3 or  // JPG3
+               0xF4 or  // JPG4
+               0xF5 or  // JPG5
+               0xF6 or  // JPG6
+               0xF7 or  // SOF48
+               0xF8 or  // LSE
+               0xF9 or  // JPG9
+               0xFA or  // JPG10
+               0xFB or  // JPG11
+               0xFC or  // JPG12
+               0xFD or  // JPG13
+               0xFE;    // COM
+
         [Conditional("DEBUG")]
         public static void Parse(Stream Stream)
         {
@@ -208,8 +299,44 @@ namespace MenthaAssembly.Media.Imaging
                                 i = 0;
 
                             for (; i < ReadLength; i++)
+                            {
                                 if (ImageReadBuffer[i] == 0xFF)
-                                    break;
+                                {
+                                    int Next = i + 1;
+                                    if (Next < ReadLength)
+                                    {
+                                        byte Mark = ImageReadBuffer[Next];
+                                        if (IdentifyMark(Mark) &&
+                                            Mark != 0xD0 &&  // RST0
+                                            Mark != 0xD1 &&  // RST1
+                                            Mark != 0xD2 &&  // RST2
+                                            Mark != 0xD3 &&  // RST3
+                                            Mark != 0xD4 &&  // RST4
+                                            Mark != 0xD5 &&  // RST5
+                                            Mark != 0xD6 &&  // RST6
+                                            Mark != 0xD7)    // RST7
+                                            break;
+                                    }
+                                    else
+                                    {
+                                        ImageBuffer.Write(ImageReadBuffer, 0, i);
+                                        ReadLength = Stream.Read(ImageReadBuffer, 0, ReadBufferSize);
+                                        i = 0;
+
+                                        byte Mark = ImageReadBuffer[Next];
+                                        if (IdentifyMark(Mark) &&
+                                            Mark != 0xD0 &&  // RST0
+                                            Mark != 0xD1 &&  // RST1
+                                            Mark != 0xD2 &&  // RST2
+                                            Mark != 0xD3 &&  // RST3
+                                            Mark != 0xD4 &&  // RST4
+                                            Mark != 0xD5 &&  // RST5
+                                            Mark != 0xD6 &&  // RST6
+                                            Mark != 0xD7)    // RST7
+                                            break;
+                                    }
+                                }
+                            }
 
                             ImageBuffer.Write(ImageReadBuffer, 0, i);
                             if (i < ReadLength)
@@ -217,7 +344,9 @@ namespace MenthaAssembly.Media.Imaging
                                 Stream = new ConcatStream(ImageReadBuffer, i, ReadLength - i, Stream);
                                 StartImageDatas = false;
 
-                                Debug.WriteLine($"=============== Image Data ===============");
+                                Debug.WriteLine($"==========================================");
+                                Debug.WriteLine($"                Image Data                ");
+                                Debug.WriteLine($"==========================================");
                                 Debug.WriteLine(string.Join(", ", ImageReadBuffer.Select(i => i.ToString("X2"))));
                                 break;
                             }
@@ -250,7 +379,9 @@ namespace MenthaAssembly.Media.Imaging
                         case 0xEE:
                         case 0xEF:
                             {
-                                Debug.WriteLine($"================== APP{Identifier[1] - 0xE0} ==================");
+                                Debug.WriteLine($"==========================================");
+                                Debug.WriteLine($"                   APP{Identifier[1] - 0xE0}                   ");
+                                Debug.WriteLine($"==========================================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
 
                                 int DataLength = Length - 2;
@@ -270,7 +401,9 @@ namespace MenthaAssembly.Media.Imaging
                         #region DQT (Define Quantization Table)
                         case 0xDB:
                             {
-                                Debug.WriteLine($"================== DQT ===================");
+                                Debug.WriteLine($"==========================================");
+                                Debug.WriteLine($"                   DQT                    ");
+                                Debug.WriteLine($"==========================================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
                                 int DataLength = Length - 2;
                                 while (DataLength > 0)
@@ -306,7 +439,9 @@ namespace MenthaAssembly.Media.Imaging
                         case 0xC2:
                         case 0xC3:
                             {
-                                Debug.WriteLine($"================== SOF{Identifier[1] - 0xC0} ==================");
+                                Debug.WriteLine($"==========================================");
+                                Debug.WriteLine($"                   SOF{Identifier[1] - 0xC0}                   ");
+                                Debug.WriteLine($"==========================================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
                                 Length -= 2;
 
@@ -350,7 +485,9 @@ namespace MenthaAssembly.Media.Imaging
                         #region DHT (Define Huffman Table)
                         case 0xC4:
                             {
-                                Debug.WriteLine($"================== DHT ===================");
+                                Debug.WriteLine($"==========================================");
+                                Debug.WriteLine($"                   DHT                    ");
+                                Debug.WriteLine($"==========================================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
 
                                 int DataLength = Length - 2;
@@ -364,6 +501,7 @@ namespace MenthaAssembly.Media.Imaging
                                             !Stream.ReadBuffer(Datas, 0, 16))
                                             return;
 
+
                                         int TableIndex = Info & 0x0F;
                                         string Type = (Info >> 4) switch
                                         {
@@ -374,16 +512,41 @@ namespace MenthaAssembly.Media.Imaging
 
                                         Debug.WriteLine($"Index             : {TableIndex}");
                                         Debug.WriteLine($"Class             : {Type}");
-                                        Debug.WriteLine($"CodeLength Table  : {string.Join(", ", Datas.Select(i => i.ToString("X2")))}");
+                                        Debug.WriteLine($"------------- Huffman Table --------------");
+
+                                        int LastCode = -1,
+                                            LastBits = 0;
 
                                         for (int i = 0; i < 16; i++)
                                         {
                                             int CodeLength = Datas[i];
                                             if (CodeLength > 0)
                                             {
-                                                byte[] CodeDatas = Stream.Read(CodeLength);
+                                                int Bits = i + 1;
+
                                                 DataLength -= CodeLength;
-                                                Debug.WriteLine($"{CodeLength} code of {i + 1} bits  : {string.Join(", ", CodeDatas.Select(i => i.ToString("X2")))}");
+                                                byte[] CodeDatas = Stream.Read(CodeLength);
+
+                                                Debug.WriteLine($"-------------- {i + 1} Bits ({CodeLength}) ----------------");
+                                                for (int j = 0; j < CodeLength; j++)
+                                                {
+                                                    LastCode++;
+                                                    byte Key = CodeDatas[j];
+
+                                                    string Value = Convert.ToString(LastCode, 2);
+                                                    Value = Value.PadLeft(LastBits, '0');
+
+                                                    if (Value.Length < Bits)
+                                                    {
+                                                        LastCode <<= Bits - LastBits;
+                                                        Value = Value.PadRight(Bits, '0');
+                                                    }
+
+                                                    LastBits = Bits;
+                                                    Debug.WriteLine($"{Key:X2}                : {Value}");
+                                                }
+
+
                                             }
                                         }
 
@@ -404,7 +567,9 @@ namespace MenthaAssembly.Media.Imaging
                         #region DRI (Define Restart Interval) 
                         case 0xDD:
                             {
-                                Debug.WriteLine($"================== DRI ===================");
+                                Debug.WriteLine($"==========================================");
+                                Debug.WriteLine($"                   DRI                    ");
+                                Debug.WriteLine($"==========================================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
 
                                 if (!Stream.TryRead(out ushort RestartInterval))
@@ -421,7 +586,9 @@ namespace MenthaAssembly.Media.Imaging
                         #region COM (Comment)
                         case 0xFE:
                             {
-                                Debug.WriteLine($"================== COM ===================");
+                                Debug.WriteLine($"==========================================");
+                                Debug.WriteLine($"                   COM                    ");
+                                Debug.WriteLine($"==========================================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
 
                                 int DatasLength = Length - 2;
@@ -444,7 +611,9 @@ namespace MenthaAssembly.Media.Imaging
                         #region SOS (Start of Scan)
                         case 0xDA:
                             {
-                                Debug.WriteLine($"================== SOS ===================");
+                                Debug.WriteLine($"==========================================");
+                                Debug.WriteLine($"                   SOS                    ");
+                                Debug.WriteLine($"==========================================");
                                 Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
 
                                 int DataLength = Length - 2;
