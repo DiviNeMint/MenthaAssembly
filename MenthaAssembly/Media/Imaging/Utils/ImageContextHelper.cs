@@ -10,24 +10,410 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
     internal static unsafe class ImageContextHelper
     {
-        public static void ScanLine<T>(this IImageContext Context, int X, int Y, int Length, Action<PixelAdapter<T>> Handler)
+        public static void DrawLine<T>(PixelAdapter<T> Context, int X0, int Y0, int X1, int Y1, PixelAdapter<T> Pen, BlendMode Blend)
             where T : unmanaged, IPixel
         {
-            PixelAdapter<T> Adapter = Context.GetAdapter<T>(X, Y);
-            for (int i = 0; i < Length; i++, Adapter.DangerousMoveNextX())
-                Handler(Adapter);
+            int X = X0 - (Pen.XLength >> 1),
+                Y = Y0 - (Pen.YLength >> 1),
+                DeltaX = X1 - X0,
+                DeltaY = Y1 - Y0;
+
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, Math.Abs(DeltaX), Math.Abs(DeltaY),
+                                                    (Dx, Dy) => DrawStamp(Context, X + Dx, Y + Dy, Pen, Blend));
+        }
+        public static void DrawLine<T>(PixelAdapter<T> Context, int X0, int Y0, int X1, int Y1, Action<PixelAdapter<T>> Handler)
+            where T : unmanaged, IPixel
+        {
+            if (X1 < X0)
+            {
+                MathHelper.Swap(ref X0, ref X1);
+                MathHelper.Swap(ref Y0, ref Y1);
+            }
+            int DeltaX = X1 - X0,
+                DeltaY = Y1 - Y0,
+                AbsDeltaY = Math.Abs(DeltaY);
+
+            Dictionary<int, int> LeftBound = new(),
+                                 RightBound = new();
+            #region Line Body Bound
+            int Iw = Context.XLength,
+                Ih = Context.YLength,
+                MaxX = Iw - 1,
+                RTx,
+                RTy;
+
+            GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, (Dx, Dy) =>
+            {
+                RTy = Y0 + Dy;
+                if (-1 < RTy && RTy < Ih)
+                {
+                    RTx = Math.Min(Math.Max(X0 + Dx, 0), MaxX);
+
+                    // Left
+                    if (LeftBound.TryGetValue(RTy, out int LastRx))
+                    {
+                        if (LastRx > RTx)
+                            LeftBound[RTy] = RTx;
+                    }
+                    else
+                    {
+                        LeftBound[RTy] = RTx;
+                    }
+
+                    // Right
+                    if (RightBound.TryGetValue(RTy, out LastRx))
+                    {
+                        if (LastRx < RTx)
+                            RightBound[RTy] = RTx;
+                    }
+                    else
+                    {
+                        RightBound[RTy] = RTx;
+                    }
+                }
+            });
+
+            #endregion
+            #region Fill
+            foreach (KeyValuePair<int, int> Data in RightBound)
+            {
+                int Y = Data.Key,
+                    TRx = Data.Value;
+                if (LeftBound.TryGetValue(Y, out int TLx))
+                {
+                    LeftBound.Remove(Y);
+
+                    Context.DangerousMove(TLx, Y);
+                    for (; TLx <= TRx; TLx++, Context.DangerousMoveNextX())
+                        Handler(Context);
+                }
+                else
+                {
+                    Context.DangerousMove(TRx, Y);
+                    Handler(Context);
+                }
+            }
+            RightBound.Clear();
+
+            foreach (KeyValuePair<int, int> Data in LeftBound)
+            {
+                Context.DangerousMove(Data.Value, Data.Key);
+                Handler(Context);
+            }
+
+            LeftBound.Clear();
+
+            #endregion
+        }
+        public static void DrawLine<T>(PixelAdapter<T> Context, int X0, int Y0, int X1, int Y1, ImageContour Contour, int ContourCx, int ContourCy, Action<PixelAdapter<T>> Handler)
+            where T : unmanaged, IPixel
+        {
+            int Iw = Context.XLength,
+                Ih = Context.YLength;
+
+            if (X1 < X0)
+            {
+                MathHelper.Swap(ref X0, ref X1);
+                MathHelper.Swap(ref Y0, ref Y1);
+            }
+            int DeltaX = X1 - X0,
+                DeltaY = Y1 - Y0,
+                AbsDeltaY = Math.Abs(DeltaY);
+
+            bool IsHollow = false;
+            Dictionary<int, int> LeftBound = new(),
+                                 RightBound = new();
+            #region Pen Bound
+            int MaxX = Iw - 1,
+                DUx = 0,
+                DUy = 0,
+                DLx = 0,
+                DLy = 0,
+                UpperDistance = 0,
+                LowerDistance = 0;
+
+            foreach (KeyValuePair<int, ImageContourScanLine> Item in Contour)
+            {
+                int j = Item.Key;
+                ImageContourScanLine Data = Item.Value;
+
+                int DataLength = Data.Length;
+                if (DataLength > 2)
+                {
+                    IsHollow = true;
+                    LeftBound.Clear();
+                    RightBound.Clear();
+                    break;
+                }
+
+                int Ty = j - ContourCy;
+                // Found Left Bound
+                {
+                    int Tx = Data[0] - ContourCx,
+                        Predict = DeltaX * Ty - DeltaY * Tx,
+                        Distance = Math.Abs(Predict);
+
+                    // UpperLine
+                    if (Predict > 0)
+                    {
+                        if (UpperDistance < Distance)
+                        {
+                            UpperDistance = Distance;
+                            DUx = Tx;
+                            DUy = Ty;
+                        }
+                    }
+
+                    // LowerLine
+                    else
+                    {
+                        if (LowerDistance < Distance)
+                        {
+                            LowerDistance = Distance;
+                            DLx = Tx;
+                            DLy = Ty;
+                        }
+                    }
+
+                    // StartPoint
+                    int Rx = Math.Min(Math.Max(Tx + X0, 0), MaxX),
+                        Ry = Ty + Y0;
+                    if (-1 < Ry && Ry < Ih &&
+                        (!LeftBound.TryGetValue(Ry, out int LastRx) || LastRx > Rx))
+                        LeftBound[Ry] = Rx;
+
+                    // EndPoint
+                    Rx = Math.Min(Math.Max(Tx + X1, 0), MaxX);
+                    Ry = Ty + Y1;
+                    if (-1 < Ry && Ry < Ih &&
+                        (!LeftBound.TryGetValue(Ry, out LastRx) || LastRx > Rx))
+                        LeftBound[Ry] = Rx;
+                }
+
+                // Found Right Bound
+                {
+                    int Tx = Data[DataLength - 1] - ContourCx,
+                        Predict = DeltaX * Ty - DeltaY * Tx,
+                        Distance = Math.Abs(Predict);
+
+                    // UpperLine
+                    if (Predict > 0)
+                    {
+                        if (UpperDistance < Distance)
+                        {
+                            UpperDistance = Distance;
+                            DUx = Tx;
+                            DUy = Ty;
+                        }
+                    }
+
+                    // LowerLine
+                    else
+                    {
+                        if (LowerDistance < Distance)
+                        {
+                            LowerDistance = Distance;
+                            DLx = Tx;
+                            DLy = Ty;
+                        }
+                    }
+
+                    // StartPoint
+                    int Rx = Math.Min(Math.Max(Tx + X0, 0), MaxX),
+                        Ry = Ty + Y0;
+
+                    if (-1 < Ry && Ry < Ih &&
+                        (!RightBound.TryGetValue(Ry, out int LastRx) || LastRx < Rx))
+                        RightBound[Ry] = Rx;
+
+                    // EndPoint
+                    Rx = Math.Min(Math.Max(Tx + X1, 0), MaxX);
+                    Ry = Ty + Y1;
+
+                    if (-1 < Ry && Ry < Ih &&
+                        (!RightBound.TryGetValue(Ry, out LastRx) || LastRx < Rx))
+                        RightBound[Ry] = Rx;
+                }
+            }
+
+            #endregion
+
+            if (IsHollow)
+            {
+                #region Line Body Bound
+                ImageContour LineContour = new(),
+                             Stroke = ImageContour.Offset(Contour, X0 - ContourCx, Y0 - ContourCy);
+
+                int LastDx = 0,
+                    LastDy = 0;
+
+                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, (Dx, Dy) =>
+                {
+                    Stroke.Offset(Dx - LastDx, Dy - LastDy);
+                    LineContour.Union(Stroke);
+
+                    LastDx = Dx;
+                    LastDy = Dy;
+                });
+                #endregion
+
+                ImageContextHelper.FillContour(Context, Contour, 0d, 0d, Handler);
+            }
+            else
+            {
+                #region Line Body Bound
+                int Ux = X0 + DUx,
+                    Uy = Y0 + DUy,
+                    Lx = X0 + DLx,
+                    Ly = Y0 + DLy,
+                    RTx, RTy;
+
+                if (DeltaX == 0 && DeltaY < 0)
+                {
+                    MathHelper.Swap(ref Ux, ref Lx);
+                    MathHelper.Swap(ref Uy, ref Ly);
+                }
+
+                GraphicDeltaHandler FoundLineBodyBound = DeltaX * DeltaY < 0 ?
+                    new GraphicDeltaHandler(
+                        (Dx, Dy) =>
+                        {
+                            // Right
+                            RTx = Math.Min(Math.Max(Ux + Dx, 0), MaxX);
+                            RTy = Uy + Dy;
+                            if (-1 < RTy && RTy < Ih &&
+                                (!RightBound.TryGetValue(RTy, out int LastRx) || LastRx < RTx))
+                                RightBound[RTy] = RTx;
+
+                            // Left
+                            RTx = Math.Min(Math.Max(Lx + Dx, 0), MaxX);
+                            RTy = Ly + Dy;
+                            if (-1 < RTy && RTy < Ih &&
+                                (!LeftBound.TryGetValue(RTy, out LastRx) || LastRx > RTx))
+                                LeftBound[RTy] = RTx;
+                        }) :
+                        (Dx, Dy) =>
+                        {
+                            // Left
+                            RTx = Math.Min(Math.Max(Ux + Dx, 0), MaxX);
+                            RTy = Uy + Dy;
+                            if (-1 < RTy && RTy < Ih &&
+                                (!LeftBound.TryGetValue(RTy, out int LastRx) || LastRx > RTx))
+                                LeftBound[RTy] = RTx;
+
+                            // Right
+                            RTx = Math.Min(Math.Max(Lx + Dx, 0), MaxX);
+                            RTy = Ly + Dy;
+                            if (-1 < RTy && RTy < Ih &&
+                                (!RightBound.TryGetValue(RTy, out LastRx) || LastRx < RTx))
+                                RightBound[RTy] = RTx;
+                        };
+
+                GraphicAlgorithm.CalculateBresenhamLine(DeltaX, DeltaY, DeltaX, AbsDeltaY, FoundLineBodyBound);
+
+                #endregion
+                #region Fill
+                foreach (KeyValuePair<int, int> Data in RightBound)
+                {
+                    int Y = Data.Key,
+                        TRx = Data.Value;
+                    if (LeftBound.TryGetValue(Y, out int TLx))
+                    {
+                        LeftBound.Remove(Y);
+
+                        Context.DangerousMove(TLx, Y);
+                        for (; TLx <= TRx; TLx++, Context.DangerousMoveNextX())
+                            Handler(Context);
+                    }
+                    else
+                    {
+                        Context.DangerousMove(TRx, Y);
+                        Handler(Context);
+                    }
+                }
+                RightBound.Clear();
+
+                foreach (KeyValuePair<int, int> Data in LeftBound)
+                {
+                    Context.DangerousMove(Data.Value, Data.Key);
+                    Handler(Context);
+                }
+
+                LeftBound.Clear();
+
+                #endregion
+            }
         }
 
-        public static void Contour<T>(this IImageContext Context, IImageContour Contour, double OffsetX, double OffsetY, Action<PixelAdapter<T>> Handler)
+        public static void DrawStamp<T>(PixelAdapter<T> Context, int X, int Y, PixelAdapter<T> Stamp, BlendMode Blend)
+            where T : unmanaged, IPixel
+        {
+            int Pw = Stamp.XLength,
+                Ph = Stamp.YLength,
+                Sx = X - (Pw >> 1),
+                Sy = Y - (Ph >> 1),
+                Ex = Sx + Pw,
+                Ey = Sy + Ph,
+                SourceX = 0,
+                SourceY = 0;
+
+            if (Sx < 0)
+            {
+                SourceX -= Sx;
+                Sx = 0;
+            }
+
+            if (Sy < 0)
+            {
+                SourceY -= Sy;
+                Sy = 0;
+            }
+
+            Pw = Math.Min(Ex, Context.XLength - 1) - Sx;
+            if (Pw < 1)
+                return;
+
+            Ph = Math.Min(Ey, Context.YLength - 1) - Sy;
+            if (Ph < 1)
+                return;
+
+            Stamp.DangerousMove(SourceX, SourceY);
+            Context.DangerousMove(Sx, Sy);
+            for (int j = 0; j < Ph; j++, Stamp.DangerousMoveNextY(), Context.DangerousMoveNextY())
+            {
+                for (int i = 0; i < Pw; i++, Stamp.DangerousMoveNextX(), Context.DangerousMoveNextX())
+                {
+                    if (Blend == BlendMode.Overlay)
+                    {
+                        byte Alpha = Stamp.A;
+                        if (Alpha == byte.MinValue)
+                            continue;
+
+                        if (Alpha == byte.MaxValue)
+                            Context.Override(Stamp);
+                        else
+                            Context.Overlay(Stamp);
+                    }
+                    else
+                    {
+                        Context.Override(Stamp);
+                    }
+                }
+
+                Stamp.DangerousOffsetX(-Pw);
+                Context.DangerousOffsetX(-Pw);
+            }
+        }
+
+        public static void FillContour<T>(PixelAdapter<T> Context, IImageContour Contour, double OffsetX, double OffsetY, Action<PixelAdapter<T>> Handler)
             where T : unmanaged, IPixel
         {
             Contour.EnsureContents();
             int Dx = (int)Math.Round(Contour.OffsetX + OffsetX),
                 Dy = (int)Math.Round(Contour.OffsetY + OffsetY);
 
-            PixelAdapter<T> Adapter = Context.GetAdapter<T>(0, 0);
-            int MaxX = Adapter.XLength - 1,
-                MaxY = Adapter.YLength - 1,
+            int MaxX = Context.XLength - 1,
+                MaxY = Context.YLength - 1,
                 Ty;
             foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
             {
@@ -35,7 +421,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 if (Ty < 0 || MaxY < Ty)
                     continue;
 
-                Adapter.DangerousMove(0, Ty);
+                Context.DangerousMove(0, Ty);
 
                 int CurrentX = 0;
                 List<int> Data = Content.Value.Datas;
@@ -52,9 +438,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     Sx = Math.Max(Sx, 0);
                     Ex = Math.Min(Ex, MaxX);
 
-                    Adapter.DangerousOffsetX(Sx - CurrentX);
-                    for (int j = Sx; j <= Ex; j++, Adapter.DangerousMoveNextX())
-                        Handler(Adapter);
+                    Context.DangerousOffsetX(Sx - CurrentX);
+                    for (int j = Sx; j <= Ex; j++, Context.DangerousMoveNextX())
+                        Handler(Context);
 
                     CurrentX = Ex + 1;
                 }
