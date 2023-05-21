@@ -1,10 +1,14 @@
 ﻿using MenthaAssembly.Utils;
 using System;
 using System.Buffers;
+using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
@@ -687,6 +691,287 @@ namespace MenthaAssembly.Media.Imaging
                 ImageBuffer.Dispose();
                 Debug.WriteLine($"==========================================");
             }
+        }
+
+
+        public class HuffmanStream : Stream
+        {
+            private const int BufferSize = 8192;
+
+            public override bool CanRead { get; }
+
+            public override bool CanWrite { get; }
+
+            public override bool CanSeek
+                => false;
+
+            public override long Length
+                => throw new NotSupportedException();
+
+            public override long Position
+            {
+                get => throw new NotSupportedException();
+                set => throw new NotSupportedException();
+            }
+
+            private byte[] CoderBuffer;
+            private readonly Stream Stream;
+            private readonly bool LeaveOpen;
+            public HuffmanStream(Stream Stream, HuffmanDecodeTable Table) : this(Stream, Table, false)
+            {
+
+            }
+            public HuffmanStream(Stream Stream, HuffmanDecodeTable Table, bool LeaveOpen)
+            {
+                CanRead = true;
+
+                DecodeTable = Table;
+
+                ReadBitIndex = 0;
+                ReadValue = 0;
+                MaxBits = Table.Bits.Max();
+                CoderBufferLength = CoderBufferIndex = BufferSize;
+                CoderBuffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+
+                this.Stream = Stream;
+                this.LeaveOpen = LeaveOpen;
+            }
+
+            private byte[] LastData;
+            private int LastIndex;
+            private readonly int MaxBits;
+            private readonly HuffmanDecodeTable DecodeTable;
+            public override int Read(byte[] Buffer, int Offset, int Count)
+            {
+                CheckDispose();
+
+                if (!CanRead)
+                    throw new NotImplementedException();
+
+                int Read = 0,
+                    Index = Offset,
+                    Bit = 0,
+                    Code = 0;
+
+                if (LastData != null)
+                {
+                    int DataLength = LastData.Length - LastIndex;
+                    if (DataLength < Count)
+                    {
+                        Array.Copy(LastData, LastIndex, Buffer, Index, DataLength);
+                        Index += DataLength;
+                        Read = DataLength;
+                        LastData = null;
+                    }
+                    else
+                    {
+                        LastIndex += Count;
+                        Array.Copy(LastData, LastIndex, Buffer, Index, Count);
+                        return Read;
+                    }
+                }
+
+                while (TryReadBit(out int BitCode))
+                {
+                    Bit++;
+                    if (MaxBits < Bit)
+                        throw new IOException("Invalid decodetable.");
+
+                    Code |= BitCode;
+
+                    if (DecodeTable[Bit, Code] is byte[] Data)
+                    {
+                        Bit = 0;
+                        Code = 0;
+
+                        int DataLength = Data.Length,
+                            NewRead = Read + DataLength;
+                        if (NewRead < Count)
+                        {
+                            Array.Copy(Data, 0, Buffer, Index, DataLength);
+                            Index += DataLength;
+                            Read = NewRead;
+                            continue;
+                        }
+                        else
+                        {
+                            LastIndex = Count - Read;
+                            LastData = Data;
+                            Array.Copy(Data, 0, Buffer, Index, LastIndex);
+                            return Count;
+                        }
+                    }
+
+                    Code <<= 1;
+                }
+
+                return Read;
+            }
+
+            private int CoderBufferLength, CoderBufferIndex, ReadBitIndex, ReadValue;
+            private bool TryReadBit(out int Bit)
+            {
+                if (ReadBitIndex == 8)
+                {
+                    CoderBufferIndex++;
+                    if (CoderBufferIndex < CoderBufferLength)
+                    {
+                        ReadValue = CoderBuffer[CoderBufferIndex];
+                        ReadBitIndex = 0;
+                    }
+                    else
+                    {
+                        CoderBufferLength = Stream.Read(CoderBuffer, 0, BufferSize);
+                        if (CoderBufferLength == 0)
+                        {
+                            Bit = 0;
+                            return false;
+                        }
+
+                        ReadBitIndex = 0;
+                        CoderBufferIndex = 0;
+                        ReadValue = CoderBuffer[0];
+                    }
+                }
+
+                else if (CoderBufferLength <= CoderBufferIndex)
+                {
+                    CoderBufferLength = Stream.Read(CoderBuffer, 0, BufferSize);
+                    if (CoderBufferLength == 0)
+                    {
+                        Bit = 0;
+                        return false;
+                    }
+
+                    ReadBitIndex = 0;
+                    CoderBufferIndex = 0;
+                    ReadValue = CoderBuffer[0];
+                }
+
+                Bit = (ReadValue >> (7 - ReadBitIndex)) & 1;
+                ReadBitIndex++;
+                return true;
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                CheckDispose();
+
+                if (!CanWrite)
+                    throw new NotSupportedException();
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+                => throw new NotSupportedException();
+
+            public override void SetLength(long value)
+                => throw new NotSupportedException();
+
+            public override void Flush()
+            {
+                if (!CanWrite)
+                    throw new NotSupportedException();
+
+            }
+
+            public override void Close()
+            {
+                if (IsDisposed)
+                    return;
+
+                base.Close();
+            }
+
+            private void CheckDispose()
+            {
+                if (IsDisposed)
+                    throw new ObjectDisposedException(nameof(ConcatStream));
+            }
+
+            private bool IsDisposed = false;
+            protected override void Dispose(bool disposing)
+            {
+                if (IsDisposed)
+                    return;
+
+                try
+                {
+                    ArrayPool<byte>.Shared.Return(CoderBuffer);
+
+                    if (!LeaveOpen)
+                        Stream.Dispose();
+
+                    base.Dispose(disposing);
+                }
+                finally
+                {
+                    IsDisposed = true;
+                }
+            }
+
+            public class HuffmanDecodeTable : IEnumerable<KeyValuePair<int, Dictionary<int, byte[]>>>
+            {
+                private readonly Dictionary<int, Dictionary<int, byte[]>> Context = new();
+
+                public IEnumerable<int> Bits
+                    => Context.Keys;
+
+                public IEnumerable<int> Codes
+                    => Context.SelectMany(i => i.Value.Keys);
+
+                public Dictionary<int, byte[]> this[int Bit]
+                {
+                    get => Bit <= 32 ? Context.TryGetValue(Bit, out Dictionary<int, byte[]> Content) ? Content : null :
+                           throw new NotSupportedException();
+                    set => Context[Bit] = value;
+                }
+
+                public byte[] this[int Bit, int Code]
+                {
+                    get => Bit <= 32 ? (Context.TryGetValue(Bit, out Dictionary<int, byte[]> Content) &&
+                                        Content.TryGetValue(Code, out byte[] Values) ? Values : null) :
+                           throw new NotSupportedException();
+                    set
+                    {
+                        if (!Context.TryGetValue(Bit, out Dictionary<int, byte[]> Content))
+                        {
+                            Content = new Dictionary<int, byte[]>();
+                            Context.Add(Bit, Content);
+                        }
+
+                        Content.Add(Code, value);
+                    }
+                }
+
+                public void Add(int Bit, int Code, params byte[] Values)
+                {
+                    if (!Context.TryGetValue(Bit, out Dictionary<int, byte[]> Content))
+                    {
+                        Content = new Dictionary<int, byte[]>();
+                        Context.Add(Bit, Content);
+                    }
+
+                    Content.Add(Code, Values);
+                }
+
+                public void Remove(int Bit)
+                    => Context.Remove(Bit);
+                public void Remove(int Bit, int Code)
+                {
+                    if (Context.TryGetValue(Bit, out Dictionary<int, byte[]> Content))
+                        Content.Remove(Code);
+                }
+
+                public void Clear()
+                    => Context.Clear();
+
+                public IEnumerator<KeyValuePair<int, Dictionary<int, byte[]>>> GetEnumerator()
+                    => Context.GetEnumerator();
+                IEnumerator IEnumerable.GetEnumerator()
+                    => Context.GetEnumerator();
+
+            }
+
         }
 
     }
