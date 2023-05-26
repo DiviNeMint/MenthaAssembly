@@ -2,10 +2,8 @@
 using MenthaAssembly.Utils;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace MenthaAssembly.Media.Imaging
@@ -28,7 +26,8 @@ namespace MenthaAssembly.Media.Imaging
 
         public int BitsPerPixel { get; }
 
-        Type IImageContext.PixelType => PixelType;
+        Type IImageContext.PixelType
+            => PixelType;
 
         public Pixel this[int X, int Y]
         {
@@ -4283,5 +4282,4 @@ namespace MenthaAssembly.Media.Imaging
         }
 
     }
-
 }

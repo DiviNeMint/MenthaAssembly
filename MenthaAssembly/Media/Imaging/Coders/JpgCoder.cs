@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 
@@ -15,6 +16,9 @@ namespace MenthaAssembly.Media.Imaging
 {
     // https://github.com/corkami/formats/blob/master/image/JPEGRGB_dissected.png
     // https://blog.csdn.net/u010192735/article/details/120860826
+    // https://blog.csdn.net/menglongbor/article/details/89742771
+    // https://blog.csdn.net/u010192735/article/details/120869528
+    // https://blog.csdn.net/weixin_58208902/article/details/125560863
     public static unsafe class JpgCoder
     {
         /// <summary>
@@ -44,15 +48,15 @@ namespace MenthaAssembly.Media.Imaging
 
             int Iw = -1,
                 Ih = -1;
-            byte BitDepth;
 
-            Dictionary<int, HuffmanDecodeTable> ACTable = new(),
-                                                DCTable = new();
+            Dictionary<byte, int> HorizontalSamplingFactor = new(),     // Component ID, Factor
+                                  VerticalSamplingFactor = new(),       // Component ID, Factor
+                                  QuantizationTableSelectors = new();   // Component ID, Quantization Table ID
+            Dictionary<int, byte[]> QuantizationTables = new();         // Table ID, Table Content
+            Dictionary<int, HuffmanDecodeTable> ACTables = new(),       // Table ID, Table Content
+                                                DCTables = new();       // Table ID, Table Content
 
-            const int ReadBufferSize = 8192;
-            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize),
-                   ImageReadBuffer = ArrayPool<byte>.Shared.Rent(ReadBufferSize);
-            MemoryStream ImageBuffer = new(ReadBufferSize);
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
             try
             {
                 // SOI (Start of Image)
@@ -63,74 +67,8 @@ namespace MenthaAssembly.Media.Imaging
                     return false;
                 }
 
-                bool StartImageDatas = false;
-                while (Stream.Position < Stream.Length)
+                do
                 {
-                    #region ImageDatas
-                    if (StartImageDatas)
-                    {
-                        do
-                        {
-                            int ReadLength = Stream.Read(ImageReadBuffer, 0, ReadBufferSize),
-                                i = 0;
-
-                            for (; i < ReadLength; i++)
-                            {
-                                if (ImageReadBuffer[i] == 0xFF)
-                                {
-                                    int Next = i + 1;
-                                    if (Next < ReadLength)
-                                    {
-                                        byte Mark = ImageReadBuffer[Next];
-                                        if (IdentifyMark(Mark) &&
-                                            Mark != 0xD0 &&  // RST0
-                                            Mark != 0xD1 &&  // RST1
-                                            Mark != 0xD2 &&  // RST2
-                                            Mark != 0xD3 &&  // RST3
-                                            Mark != 0xD4 &&  // RST4
-                                            Mark != 0xD5 &&  // RST5
-                                            Mark != 0xD6 &&  // RST6
-                                            Mark != 0xD7)    // RST7
-                                            break;
-                                    }
-                                    else
-                                    {
-                                        ImageBuffer.Write(ImageReadBuffer, 0, i);
-                                        ReadLength = Stream.Read(ImageReadBuffer, 0, ReadBufferSize);
-                                        i = 0;
-
-                                        byte Mark = ImageReadBuffer[Next];
-                                        if (IdentifyMark(Mark) &&
-                                            Mark != 0xD0 &&  // RST0
-                                            Mark != 0xD1 &&  // RST1
-                                            Mark != 0xD2 &&  // RST2
-                                            Mark != 0xD3 &&  // RST3
-                                            Mark != 0xD4 &&  // RST4
-                                            Mark != 0xD5 &&  // RST5
-                                            Mark != 0xD6 &&  // RST6
-                                            Mark != 0xD7)    // RST7
-                                            break;
-                                    }
-                                }
-                            }
-
-                            ImageBuffer.Write(ImageReadBuffer, 0, i);
-                            if (i < ReadLength)
-                            {
-                                Stream = new ConcatStream(ImageReadBuffer, i, ReadLength - i, Stream);
-                                StartImageDatas = false;
-
-                                Debug.WriteLine($"==========================================");
-                                Debug.WriteLine($"                Image Data                ");
-                                Debug.WriteLine($"==========================================");
-                                Debug.WriteLine(string.Join(", ", ImageReadBuffer.Select(i => i.ToString("X2"))));
-                                break;
-                            }
-
-                        } while (Stream.Position < Stream.Length);
-                    }
-                    #endregion
-
                     // Tags
                     if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
                         Identifier[0] != 0xFF)
@@ -164,90 +102,78 @@ namespace MenthaAssembly.Media.Imaging
                     #endregion
 
                     #region DQT (Define Quantization Table)
-                    //else if (Identifier[1] == 0xDB)
-                    //{
-                    //    //Debug.WriteLine($"==========================================");
-                    //    //Debug.WriteLine($"                   DQT                    ");
-                    //    //Debug.WriteLine($"==========================================");
-                    //    //Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
-                    //    //int DataLength = Length - 2;
-                    //    //while (DataLength > 0)
-                    //    //{
-                    //    //    // Info
-                    //    //    DataLength--;
-                    //    //    if (!Stream.TryRead(out byte Info))
-                    //    //        return;
+                    else if (Identifier[1] == 0xDB)
+                    {
+                        int DataLength = Length - 2;
+                        while (DataLength > 0)
+                        {
+                            // Info
+                            if (!Stream.TryRead(out byte Info))
+                            {
+                                Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                return false;
+                            }
 
-                    //    //    // Table
-                    //    //    int Precision = Info >> 4,
-                    //    //        ID = Info & 0x0F,
-                    //    //        TableLength = (Precision + 1) << 6;
+                            // Table
+                            int ID = Info & 0x0F,
+                                TableLength = ((Info >> 4) + 1) << 6;
+                            byte[] TableDatas = new byte[TableLength];
 
-                    //    //    Debug.WriteLine($"Precision         : {Precision}");
+                            DataLength -= TableLength + 1;
+                            if (DataLength < 0 ||
+                                !Stream.ReadBuffer(TableDatas, 0, TableLength))
+                            {
+                                Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                return false;
+                            }
 
-                    //    //    byte[] Datas = Stream.Read(TableLength);
-                    //    //    Debug.WriteLine($"------------- Quantization{ID} --------------");
-                    //    //    for (int i = 0; i < TableLength; i += 8)
-                    //    //        Debug.WriteLine(string.Join(", ", Datas.Skip(i).Take(8).Select(i => i.ToString("X2"))));
-
-                    //    //    DataLength -= TableLength;
-                    //    //    if (DataLength < 0)
-                    //    //        return;
-                    //    //}
-                    //}
+                            QuantizationTables.Add(ID, TableDatas);
+                        }
+                    }
                     #endregion
 
                     #region SOF (Start of Frame)
-                    //else if (Identifier[1] == 0xC0 ||
-                    //         Identifier[1] == 0xC1 ||
-                    //         Identifier[1] == 0xC2 ||
-                    //         Identifier[1] == 0xC3)
-                    //{
-                    //    //Debug.WriteLine($"==========================================");
-                    //    //Debug.WriteLine($"                   SOF{Identifier[1] - 0xC0}                   ");
-                    //    //Debug.WriteLine($"==========================================");
-                    //    //Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
-                    //    //Length -= 2;
+                    else if (Identifier[1] == 0xC0 ||
+                             Identifier[1] == 0xC1 ||
+                             Identifier[1] == 0xC2 ||
+                             Identifier[1] == 0xC3)
+                    {
+                        if (!Stream.TrySeek(1, SeekOrigin.Current) ||               // !Stream.TryRead(out byte BitDepth) ||
+                            !Stream.TryReverseRead(out ushort Width) ||
+                            !Stream.TryReverseRead(out ushort Height) ||
+                            !Stream.TryRead(out byte Components))
+                        {
+                            Stream.TrySeek(Begin, SeekOrigin.Begin);
+                            return false;
+                        }
 
+                        Iw = Width;
+                        Ih = Height;
 
-                    //    //Length -= 6;
-                    //    if (!Stream.TryRead(out BitDepth) ||
-                    //        !Stream.TryReverseRead(out ushort Width) ||
-                    //        !Stream.TryReverseRead(out ushort Height) ||
-                    //        !Stream.TryRead(out byte Components))
-                    //    {
-                    //        Stream.TrySeek(Begin, SeekOrigin.Begin);
-                    //        return false;
-                    //    }
+                        Length -= 8;
+                        for (int i = 0; i < Components; i++)
+                        {
+                            // Component Info
+                            if (!Stream.TryRead(out byte ID) ||
+                                !Stream.TryRead(out byte Info) ||
+                                !Stream.TryRead(out byte TableID))
+                            {
+                                Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                return false;
+                            }
 
-                    //    Iw = Width;
-                    //    Ih = Height;
+                            Length -= 3;
+                            HorizontalSamplingFactor.Add(ID, Info >> 4);
+                            VerticalSamplingFactor.Add(ID, Info & 0x0F);
+                            QuantizationTableSelectors.Add(ID, TableID);
+                        }
 
-                    //    //Debug.WriteLine($"Precision         : {Precision}");        // 1 Bytes
-                    //    //Debug.WriteLine($"Width             : {Iw}");               // 2 Bytes
-                    //    //Debug.WriteLine($"Height            : {Ih}");               // 2 Bytes
-                    //    //Debug.WriteLine($"Components        : {Components}");       // 1 Bytes
-
-                    //    //for (int i = 0; i < Components; i++)
-                    //    //{
-                    //    //    // Component Info
-                    //    //    Length -= 3;
-                    //    //    if (!Stream.TryRead(out byte ID) ||
-                    //    //        !Stream.TryRead(out byte Info) ||
-                    //    //        !Stream.TryRead(out byte TableID))
-                    //    //        return;
-
-                    //    //    int HorizontalFactor = Info >> 4,
-                    //    //        VerticalFactor = Info & 0x0F;
-                    //    //    Debug.WriteLine($"--------------- Component{ID} ---------------");
-                    //    //    Debug.WriteLine($"Horizontal Factor : {HorizontalFactor}");
-                    //    //    Debug.WriteLine($"Vertical Factor   : {VerticalFactor}");
-                    //    //    Debug.WriteLine($"Quantization ID   : {TableID}");
-                    //    //}
-
-                    //    //if (Length != 0)
-                    //    //    return;
-                    //}
+                        if (Length != 0)
+                        {
+                            Stream.TrySeek(Begin, SeekOrigin.Begin);
+                            return false;
+                        }
+                    }
                     #endregion
 
                     #region DHT (Define Huffman Table)
@@ -274,12 +200,12 @@ namespace MenthaAssembly.Media.Imaging
                                 {
                                     case 0:
                                         {
-                                            DCTable.Add(Info & 0x0F, Table);
+                                            DCTables.Add(Info & 0x0F, Table);
                                             break;
                                         }
                                     case 1:
                                         {
-                                            ACTable.Add(Info & 0x0F, Table);
+                                            ACTables.Add(Info & 0x0F, Table);
                                             break;
                                         }
                                     default:
@@ -304,19 +230,17 @@ namespace MenthaAssembly.Media.Imaging
                                         for (int j = 0; j < CodeLength; j++)
                                         {
                                             LastCode++;
-                                            byte Key = CodeDatas[j];
 
-                                            string Value = Convert.ToString(LastCode, 2);
-                                            Value = Value.PadLeft(LastBits, '0');
+                                            // Check LastBits
+                                            if (((LastCode >> LastBits) & 1) > 0)
+                                                LastBits++;
 
-                                            if (Value.Length < Bits)
-                                            {
+                                            // Check Bits
+                                            if (LastBits < Bits)
                                                 LastCode <<= Bits - LastBits;
-                                                Value = Value.PadRight(Bits, '0');
-                                            }
 
                                             LastBits = Bits;
-                                            Table.Add(Bits, LastCode, Key);
+                                            Table.Add(Bits, LastCode, CodeDatas[j]);
                                         }
                                     }
                                 }
@@ -336,44 +260,25 @@ namespace MenthaAssembly.Media.Imaging
                     }
                     #endregion
 
-                    #region DRI (Define Restart Interval) 
-                    //else if (Identifier[1] == 0xDD)
-                    //{
-                    //    if (!Stream.TryRead(out ushort RestartInterval))
-                    //    {
-                    //        Stream.TrySeek(Begin, SeekOrigin.Begin);
-                    //        return false;
-                    //    }
-
-                    //    // 每 n 個 MCU 塊就有一個 RSTn 標記。
-                    //    // 第一個標記是 RST0，第二個是 RST1 ……，RST7 後再從 RST0 重複。
-                    //    Debug.WriteLine($"Restart Interval  : {RestartInterval}");  // 2 Bytes
-                    //}
-                    #endregion
-
                     #region SOS (Start of Scan)
                     else if (Identifier[1] == 0xDA)
                     {
-                        Debug.WriteLine($"==========================================");
-                        Debug.WriteLine($"                   SOS                    ");
-                        Debug.WriteLine($"==========================================");
-                        Debug.WriteLine($"Length            : {Length}");           // 2 Bytes
-
-                        int DataLength = Length - 2;
-
                         // Components;
-                        Length--;
+                        int DataLength = Length - 3;                    // Length 2 Bytes & Components 1 Byte
                         if (!Stream.TryRead(out byte Components))
                         {
                             Stream.TrySeek(Begin, SeekOrigin.Begin);
                             return false;
                         }
 
-                        Debug.WriteLine($"Component         : {Components}");
+                        List<byte> ComponentsOrder = new();
+                        Dictionary<byte, int> ACTableSelectors = new(),     // Component ID, AC Table ID
+                                              DCTableSelectors = new();     // Component ID, DC Table ID
+
+                        // Components
                         for (int i = 0; i < Components; i++)
                         {
-                            // Component Info
-                            Length -= 2;
+                            DataLength -= 2;
                             if (!Stream.TryRead(out byte ID) ||
                                 !Stream.TryRead(out byte Info))
                             {
@@ -381,31 +286,162 @@ namespace MenthaAssembly.Media.Imaging
                                 return false;
                             }
 
-                            int DC = Info >> 4,
-                                AC = Info & 0x0F;
-
-                            Debug.WriteLine($"--------------- Component{ID} ---------------");
-                            Debug.WriteLine($"DC Table          : {DC}");
-                            Debug.WriteLine($"AC Table          : {AC}");
+                            ComponentsOrder.Add(ID);
+                            ACTableSelectors.Add(ID, Info & 0x0F);
+                            DCTableSelectors.Add(ID, Info >> 4);
                         }
 
-                        //Spectral
-                        Length -= 3;
-                        if (!Stream.TryRead(out byte SpectralSelectStart) ||
-                            !Stream.TryRead(out byte SpectralSelectEnd) ||
-                            !Stream.TryRead(out byte SuccessiveApprox) ||
+                        DataLength -= 3;
+                        if (!Stream.TrySeek(3, SeekOrigin.Current) ||       // Skips SpectralSelectStart、SpectralSelectEnd、SuccessiveApprox
                             DataLength < 0)
                         {
                             Stream.TrySeek(Begin, SeekOrigin.Begin);
                             return false;
                         }
 
-                        Debug.WriteLine($"------------------------------------------");
-                        Debug.WriteLine($"SpectralStart     : {SpectralSelectStart}");
-                        Debug.WriteLine($"SpectralEnd       : {SpectralSelectEnd}");
-                        Debug.WriteLine($"Successive Approx : {SuccessiveApprox}");
+                        #region ImageDatas
+                        const int ReadBufferSize = 8192;
+                        byte[] ImageReadBuffer = ArrayPool<byte>.Shared.Rent(ReadBufferSize);
+                        try
+                        {
+                            int BufferLength = 0,
+                                BufferIndex = 0,
+                                ReadValue = 0,
+                                ReadBitIndex = 8;
+                            bool TryReadBit(out int Value, out bool Reset)
+                            {
+                                Reset = false;
+                                if (ReadBitIndex == 8)
+                                {
+                                    if (BufferIndex < BufferLength)
+                                    {
+                                        ReadValue = ImageReadBuffer[BufferIndex++];
+                                        ReadBitIndex = 0;
+                                    }
+                                    else
+                                    {
+                                        BufferLength = Stream.Read(ImageReadBuffer, 0, ReadBufferSize);
+                                        if (BufferLength == 0)
+                                        {
+                                            Value = 0;
+                                            return false;
+                                        }
 
-                        StartImageDatas = true;
+                                        ReadBitIndex = 0;
+                                        BufferIndex = 1;
+                                        ReadValue = ImageReadBuffer[0];
+                                    }
+
+                                    if (ReadValue == 0xFF)
+                                    {
+                                        byte Mark;
+                                        if (BufferIndex < BufferLength)
+                                            Mark = ImageReadBuffer[BufferIndex++];
+
+                                        else
+                                        {
+                                            BufferLength = Stream.Read(ImageReadBuffer, 0, ReadBufferSize);
+                                            if (BufferLength == 0)
+                                            {
+                                                Value = 0;
+                                                return false;
+                                            }
+
+                                            BufferIndex = 1;
+                                            Mark = ImageReadBuffer[0];
+                                        }
+
+                                        if (Mark is 0xD0 or 0xD1 or 0xD2 or 0xD3 or 0xD4 or 0xD5 or 0xD6 or 0xD7)
+                                        {
+                                            Reset = true;
+                                            ReadBitIndex = 8;
+                                            return TryReadBit(out Value, out _);
+                                        }
+
+                                        else if (Mark is not 0x00)
+                                        {
+                                            Value = 0;
+                                            return false;
+                                        }
+                                    }
+
+                                    Debug.WriteLine($"{ReadValue:X2}");
+                                }
+
+                                Value = (ReadValue >> (7 - ReadBitIndex)) & 1;
+                                ReadBitIndex++;
+                                return true;
+                            }
+
+                            if (Iw < 0 ||
+                                Ih < 0)
+                            {
+                                Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                return false;
+                            }
+
+                            int XCount = (Iw + 7) >> 3,
+                                YCount = (Ih + 7) >> 3;
+
+                            for (int j = 0; j < YCount; j++)
+                            {
+                                for (int i = 0; i < XCount; i++)
+                                {
+                                    foreach (byte ComponentID in ComponentsOrder)
+                                    {
+                                        if (!DCTableSelectors.TryGetValue(ComponentID, out int TableID) ||
+                                            !DCTables.TryGetValue(TableID, out HuffmanDecodeTable DCTable) ||
+                                            !ACTableSelectors.TryGetValue(ComponentID, out TableID) ||
+                                            !ACTables.TryGetValue(TableID, out HuffmanDecodeTable ACTable) ||
+                                            !QuantizationTableSelectors.TryGetValue(ComponentID, out TableID) ||
+                                            !QuantizationTables.TryGetValue(TableID, out byte[] QuantizationTable))
+                                        {
+                                            Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                            return false;
+                                        }
+
+                                        int DCMaxBits = DCTable.Bits.Max(),
+                                            ACMaxBits = ACTable.Bits.Max(),
+                                            Code, Bit, DCLength;
+
+                                        Code = 0;
+                                        Bit = 0;
+                                        DCLength = 0;
+                                        while (TryReadBit(out int BitCode, out bool Reset))
+                                        {
+                                            Bit++;
+                                            if (DCMaxBits < Bit)
+                                            {
+                                                Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                                return false;
+                                            }
+
+                                            Code |= BitCode;
+                                            if (DCTable[Bit, Code] is byte[] Data)
+                                            {
+                                                DCLength = Data[0];
+                                                break;
+                                            }
+
+                                            Code <<= 1;
+                                        }
+
+
+
+
+
+
+                                    }
+                                }
+                            }
+
+                        }
+                        finally
+                        {
+                            ArrayPool<byte>.Shared.Return(ImageReadBuffer);
+                        }
+                        #endregion
+
                     }
                     #endregion
 
@@ -415,13 +451,12 @@ namespace MenthaAssembly.Media.Imaging
                         Stream.TrySeek(Begin, SeekOrigin.Begin);
                         return false;
                     }
-                }
+
+                } while (!Stream.CanSeek || Stream.Position < Stream.Length);
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(Identifier);
-                ArrayPool<byte>.Shared.Return(ImageReadBuffer);
-                ImageBuffer.Dispose();
             }
 
             return true;
@@ -526,102 +561,100 @@ namespace MenthaAssembly.Media.Imaging
 
         private static bool IdentifyMark(byte Mark)
             => Mark is 0x01 or  // TEM
-               0x0A or  // JXL
-               0x51 or  // SIZ
-               0x52 or  // COD
-               0x53 or  // COC
-               0x55 or  // TLM
-               0x57 or  // PLM
-               0x58 or  // PLT
-               0x5C or  // QCD
-               0x5D or  // QCC
-               0x5E or  // RGN
-               0x5F or  // POC
-               0x60 or  // PPM
-               0x61 or  // PPT
-               0x63 or  // CRG
-               0x64 or  // COM
-               0x65 or  // SEC
-               0x66 or  // EPB
-               0x67 or  // ESD
-               0x68 or  // EPC
-               0x69 or  // RED
-               0x90 or  // SOT
-               0x91 or  // SOP
-               0x92 or  // EPH
-               0x93 or  // SOD
-               0x94 or  // INSEC
-               0xC0 or  // SOF0
-               0xC1 or  // SOF1
-               0xC2 or  // SOF2
-               0xC3 or  // SOF3
-               0xC4 or  // DHT
-               0xC5 or  // SOF5
-               0xC6 or  // SOF6
-               0xC7 or  // SOF7
-               0xC8 or  // JPG
-               0xC9 or  // SOF9
-               0xCA or  // SOF10
-               0xCB or  // SOF11
-               0xCC or  // DAC
-               0xCD or  // SOF13
-               0xCE or  // SOF14
-               0xCF or  // SOF15
-               0xD0 or  // RST0
-               0xD1 or  // RST1
-               0xD2 or  // RST2
-               0xD3 or  // RST3
-               0xD4 or  // RST4
-               0xD5 or  // RST5
-               0xD6 or  // RST6
-               0xD7 or  // RST7
-               0xD8 or  // SOI
-               0xD9 or  // EOI/EOC
-               0xDA or  // SOS
-               0xDB or  // DQT
-               0xDC or  // DNL
-               0xDD or  // DRI
-               0xDE or  // DHP
-               0xDF or  // EXP
-               0xE0 or  // APP0
-               0xE1 or  // APP1
-               0xE2 or  // APP2
-               0xE3 or  // APP3
-               0xE4 or  // APP4
-               0xE5 or  // APP5
-               0xE6 or  // APP6
-               0xE7 or  // APP7
-               0xE8 or  // APP8
-               0xE9 or  // APP9
-               0xEA or  // APP10
-               0xEB or  // APP11
-               0xEC or  // APP12
-               0xED or  // APP13
-               0xEE or  // APP14
-               0xEF or  // APP15
-               0xF0 or  // JPG0
-               0xF1 or  // JPG1
-               0xF2 or  // JPG2
-               0xF3 or  // JPG3
-               0xF4 or  // JPG4
-               0xF5 or  // JPG5
-               0xF6 or  // JPG6
-               0xF7 or  // SOF48
-               0xF8 or  // LSE
-               0xF9 or  // JPG9
-               0xFA or  // JPG10
-               0xFB or  // JPG11
-               0xFC or  // JPG12
-               0xFD or  // JPG13
-               0xFE;    // COM
+                       0x0A or  // JXL
+                       0x51 or  // SIZ
+                       0x52 or  // COD
+                       0x53 or  // COC
+                       0x55 or  // TLM
+                       0x57 or  // PLM
+                       0x58 or  // PLT
+                       0x5C or  // QCD
+                       0x5D or  // QCC
+                       0x5E or  // RGN
+                       0x5F or  // POC
+                       0x60 or  // PPM
+                       0x61 or  // PPT
+                       0x63 or  // CRG
+                       0x64 or  // COM
+                       0x65 or  // SEC
+                       0x66 or  // EPB
+                       0x67 or  // ESD
+                       0x68 or  // EPC
+                       0x69 or  // RED
+                       0x90 or  // SOT
+                       0x91 or  // SOP
+                       0x92 or  // EPH
+                       0x93 or  // SOD
+                       0x94 or  // INSEC
+                       0xC0 or  // SOF0
+                       0xC1 or  // SOF1
+                       0xC2 or  // SOF2
+                       0xC3 or  // SOF3
+                       0xC4 or  // DHT
+                       0xC5 or  // SOF5
+                       0xC6 or  // SOF6
+                       0xC7 or  // SOF7
+                       0xC8 or  // JPG
+                       0xC9 or  // SOF9
+                       0xCA or  // SOF10
+                       0xCB or  // SOF11
+                       0xCC or  // DAC
+                       0xCD or  // SOF13
+                       0xCE or  // SOF14
+                       0xCF or  // SOF15
+                       0xD0 or  // RST0
+                       0xD1 or  // RST1
+                       0xD2 or  // RST2
+                       0xD3 or  // RST3
+                       0xD4 or  // RST4
+                       0xD5 or  // RST5
+                       0xD6 or  // RST6
+                       0xD7 or  // RST7
+                       0xD8 or  // SOI
+                       0xD9 or  // EOI/EOC
+                       0xDA or  // SOS
+                       0xDB or  // DQT
+                       0xDC or  // DNL
+                       0xDD or  // DRI
+                       0xDE or  // DHP
+                       0xDF or  // EXP
+                       0xE0 or  // APP0
+                       0xE1 or  // APP1
+                       0xE2 or  // APP2
+                       0xE3 or  // APP3
+                       0xE4 or  // APP4
+                       0xE5 or  // APP5
+                       0xE6 or  // APP6
+                       0xE7 or  // APP7
+                       0xE8 or  // APP8
+                       0xE9 or  // APP9
+                       0xEA or  // APP10
+                       0xEB or  // APP11
+                       0xEC or  // APP12
+                       0xED or  // APP13
+                       0xEE or  // APP14
+                       0xEF or  // APP15
+                       0xF0 or  // JPG0
+                       0xF1 or  // JPG1
+                       0xF2 or  // JPG2
+                       0xF3 or  // JPG3
+                       0xF4 or  // JPG4
+                       0xF5 or  // JPG5
+                       0xF6 or  // JPG6
+                       0xF7 or  // SOF48
+                       0xF8 or  // LSE
+                       0xF9 or  // JPG9
+                       0xFA or  // JPG10
+                       0xFB or  // JPG11
+                       0xFC or  // JPG12
+                       0xFD or  // JPG13
+                       0xFE;    // COM
 
         [Conditional("DEBUG")]
         public static void Parse(Stream Stream)
         {
-            const int ReadBufferSize = 8192;
-            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize),
-                   ImageReadBuffer = ArrayPool<byte>.Shared.Rent(ReadBufferSize);
-            MemoryStream ImageBuffer = new(ReadBufferSize);
+            MemoryStream ImageBuffer = null;
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
             try
             {
                 // SOI
@@ -696,74 +729,8 @@ namespace MenthaAssembly.Media.Imaging
                 }
                 #endregion
 
-                bool StartImageDatas = false;
                 while (Stream.Position < Stream.Length)
                 {
-                    #region ImageDatas
-                    if (StartImageDatas)
-                    {
-                        do
-                        {
-                            int ReadLength = Stream.Read(ImageReadBuffer, 0, ReadBufferSize),
-                                i = 0;
-
-                            for (; i < ReadLength; i++)
-                            {
-                                if (ImageReadBuffer[i] == 0xFF)
-                                {
-                                    int Next = i + 1;
-                                    if (Next < ReadLength)
-                                    {
-                                        byte Mark = ImageReadBuffer[Next];
-                                        if (IdentifyMark(Mark) &&
-                                            Mark != 0xD0 &&  // RST0
-                                            Mark != 0xD1 &&  // RST1
-                                            Mark != 0xD2 &&  // RST2
-                                            Mark != 0xD3 &&  // RST3
-                                            Mark != 0xD4 &&  // RST4
-                                            Mark != 0xD5 &&  // RST5
-                                            Mark != 0xD6 &&  // RST6
-                                            Mark != 0xD7)    // RST7
-                                            break;
-                                    }
-                                    else
-                                    {
-                                        ImageBuffer.Write(ImageReadBuffer, 0, i);
-                                        ReadLength = Stream.Read(ImageReadBuffer, 0, ReadBufferSize);
-                                        i = 0;
-
-                                        byte Mark = ImageReadBuffer[Next];
-                                        if (IdentifyMark(Mark) &&
-                                            Mark != 0xD0 &&  // RST0
-                                            Mark != 0xD1 &&  // RST1
-                                            Mark != 0xD2 &&  // RST2
-                                            Mark != 0xD3 &&  // RST3
-                                            Mark != 0xD4 &&  // RST4
-                                            Mark != 0xD5 &&  // RST5
-                                            Mark != 0xD6 &&  // RST6
-                                            Mark != 0xD7)    // RST7
-                                            break;
-                                    }
-                                }
-                            }
-
-                            ImageBuffer.Write(ImageReadBuffer, 0, i);
-                            if (i < ReadLength)
-                            {
-                                Stream = new ConcatStream(ImageReadBuffer, i, ReadLength - i, Stream);
-                                StartImageDatas = false;
-
-                                Debug.WriteLine($"==========================================");
-                                Debug.WriteLine($"                Image Data                ");
-                                Debug.WriteLine($"==========================================");
-                                Debug.WriteLine(string.Join(", ", ImageReadBuffer.Select(i => i.ToString("X2"))));
-                                break;
-                            }
-
-                        } while (Stream.Position < Stream.Length);
-                    }
-                    #endregion
-
                     if (!Stream.ReadBuffer(Identifier, 0, IdentifierSize) ||
                         Identifier[0] != 0xFF ||
                         (Identifier[1] != 0xD9 && !Stream.TryReverseRead(out Length)))
@@ -922,6 +889,7 @@ namespace MenthaAssembly.Media.Imaging
                                         Debug.WriteLine($"Index             : {TableIndex}");
                                         Debug.WriteLine($"Class             : {Type}");
                                         Debug.WriteLine($"------------- Huffman Table --------------");
+                                        HuffmanDecodeTable Table = new();
 
                                         int LastCode = -1,
                                             LastBits = 0;
@@ -936,31 +904,29 @@ namespace MenthaAssembly.Media.Imaging
                                                 DataLength -= CodeLength;
                                                 byte[] CodeDatas = Stream.Read(CodeLength);
 
-                                                Debug.WriteLine($"-------------- {i + 1} Bits ({CodeLength}) ----------------");
                                                 for (int j = 0; j < CodeLength; j++)
                                                 {
                                                     LastCode++;
-                                                    byte Key = CodeDatas[j];
+                                                    if (((LastCode >> LastBits) & 1) > 0)
+                                                        LastBits++;
 
-                                                    string Value = Convert.ToString(LastCode, 2);
-                                                    Value = Value.PadLeft(LastBits, '0');
+                                                    //string Value = Convert.ToString(LastCode, 2);
+                                                    //Value = Value.PadLeft(LastBits, '0');
+                                                    //if (Value.Length < Bits)
 
-                                                    if (Value.Length < Bits)
-                                                    {
+                                                    if (LastBits < Bits)
                                                         LastCode <<= Bits - LastBits;
-                                                        Value = Value.PadRight(Bits, '0');
-                                                    }
 
                                                     LastBits = Bits;
-                                                    Debug.WriteLine($"{Key:X2}                : {Value}");
+                                                    Table.Add(Bits, LastCode, CodeDatas[j]);
                                                 }
-
-
                                             }
                                         }
 
                                         if (DataLength != 0)
                                             return;
+
+                                        Debug.Write(Table);
 
                                     } while (DataLength > 0);
                                 }
@@ -1062,7 +1028,101 @@ namespace MenthaAssembly.Media.Imaging
                                 Debug.WriteLine($"SpectralEnd       : {SpectralSelectEnd}");
                                 Debug.WriteLine($"Successive Approx : {SuccessiveApprox}");
 
-                                StartImageDatas = true;
+                                #region ImageDatas
+                                const int ReadBufferSize = 8192;
+                                ImageBuffer = new(ReadBufferSize);
+                                byte[] ImageReadBuffer = ArrayPool<byte>.Shared.Rent(ReadBufferSize);
+                                try
+                                {
+                                    do
+                                    {
+                                        bool End = false;
+                                        int ReadLength = Stream.Read(ImageReadBuffer, 0, ReadBufferSize),
+                                            LastIndex = 0,
+                                            i = 0;
+
+                                        for (; i < ReadLength; i++)
+                                        {
+                                            if (ImageReadBuffer[i] == 0xFF)
+                                            {
+                                                int Next = i + 1;
+                                                if (Next < ReadLength)
+                                                {
+                                                    byte Mark = ImageReadBuffer[Next];
+                                                    if (Mark == 0x00)
+                                                    {
+                                                        ImageBuffer.Write(ImageReadBuffer, LastIndex, Next);
+                                                        LastIndex = Next + 1;
+                                                        i = Next;               // For-Loop will + 1
+                                                    }
+
+                                                    else if (Mark != 0xD0 &&  // RST0
+                                                             Mark != 0xD1 &&  // RST1
+                                                             Mark != 0xD2 &&  // RST2
+                                                             Mark != 0xD3 &&  // RST3
+                                                             Mark != 0xD4 &&  // RST4
+                                                             Mark != 0xD5 &&  // RST5
+                                                             Mark != 0xD6 &&  // RST6
+                                                             Mark != 0xD7)    // RST7
+                                                    {
+                                                        End = true;
+                                                        break;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    ImageBuffer.Write(ImageReadBuffer, LastIndex, i - LastIndex);
+                                                    ReadLength = Stream.Read(ImageReadBuffer, 0, ReadLength);
+                                                    i = 0;
+
+                                                    byte Mark = ImageReadBuffer[Next];
+                                                    if (Mark == 0x00)
+                                                    {
+                                                        ImageBuffer.WriteByte(0xFF);
+                                                        LastIndex = 1;
+                                                        // For-Loop will set i = 1;
+                                                    }
+
+                                                    else if (IdentifyMark(Mark) &&
+                                                             Mark != 0xD0 &&  // RST0
+                                                             Mark != 0xD1 &&  // RST1
+                                                             Mark != 0xD2 &&  // RST2
+                                                             Mark != 0xD3 &&  // RST3
+                                                             Mark != 0xD4 &&  // RST4
+                                                             Mark != 0xD5 &&  // RST5
+                                                             Mark != 0xD6 &&  // RST6
+                                                             Mark != 0xD7)    // RST7
+                                                    {
+                                                        End = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        int L = i - LastIndex;
+                                        if (L > 0)
+                                            ImageBuffer.Write(ImageReadBuffer, LastIndex, L);
+
+                                        if (End)
+                                        {
+                                            Stream = new ConcatStream(ImageReadBuffer, i, ReadLength - i, Stream);
+
+                                            Debug.WriteLine($"==========================================");
+                                            Debug.WriteLine($"                Image Data                ");
+                                            Debug.WriteLine($"==========================================");
+                                            Debug.WriteLine(string.Join(", ", ImageBuffer.ToArray().Select(i => $"{i:X2}")));
+                                            break;
+                                        }
+
+                                    } while (Stream.Position < Stream.Length);
+                                }
+                                finally
+                                {
+                                    ArrayPool<byte>.Shared.Return(ImageReadBuffer);
+                                }
+                                #endregion
+
                                 break;
                             }
                         #endregion
@@ -1091,9 +1151,8 @@ namespace MenthaAssembly.Media.Imaging
             }
             finally
             {
+                ImageBuffer?.Dispose();
                 ArrayPool<byte>.Shared.Return(Identifier);
-                ArrayPool<byte>.Shared.Return(ImageReadBuffer);
-                ImageBuffer.Dispose();
                 Debug.WriteLine($"==========================================");
             }
         }
@@ -1212,15 +1271,14 @@ namespace MenthaAssembly.Media.Imaging
                 return Read;
             }
 
-            private int CoderBufferLength, CoderBufferIndex, ReadBitIndex, ReadValue;
+            private int CoderBufferLength, CoderBufferIndex, ReadValue, ReadBitIndex = 8;
             private bool TryReadBit(out int Bit)
             {
                 if (ReadBitIndex == 8)
                 {
-                    CoderBufferIndex++;
                     if (CoderBufferIndex < CoderBufferLength)
                     {
-                        ReadValue = CoderBuffer[CoderBufferIndex];
+                        ReadValue = CoderBuffer[CoderBufferIndex++];
                         ReadBitIndex = 0;
                     }
                     else
@@ -1233,23 +1291,9 @@ namespace MenthaAssembly.Media.Imaging
                         }
 
                         ReadBitIndex = 0;
-                        CoderBufferIndex = 0;
+                        CoderBufferIndex = 1;
                         ReadValue = CoderBuffer[0];
                     }
-                }
-
-                else if (CoderBufferLength <= CoderBufferIndex)
-                {
-                    CoderBufferLength = Stream.Read(CoderBuffer, 0, BufferSize);
-                    if (CoderBufferLength == 0)
-                    {
-                        Bit = 0;
-                        return false;
-                    }
-
-                    ReadBitIndex = 0;
-                    CoderBufferIndex = 0;
-                    ReadValue = CoderBuffer[0];
                 }
 
                 Bit = (ReadValue >> (7 - ReadBitIndex)) & 1;
@@ -1312,7 +1356,6 @@ namespace MenthaAssembly.Media.Imaging
                     IsDisposed = true;
                 }
             }
-
 
         }
 
@@ -1386,7 +1429,7 @@ namespace MenthaAssembly.Media.Imaging
                     {
                         int Bits = Content.Key;
                         foreach (KeyValuePair<int, byte[]> Data in Content.Value)
-                            Builder.AppendLine($"{string.Join(", ", Data.Value.Select(i=>$"{i:X2}"))} : {Convert.ToString(Data.Key, 2).PadLeft(Bits, '0')}");
+                            Builder.AppendLine($"{string.Join(", ", Data.Value.Select(i => $"{i:X2}"))} : {Convert.ToString(Data.Key, 2).PadLeft(Bits, '0')}");
                     }
 
                     return Builder.ToString();

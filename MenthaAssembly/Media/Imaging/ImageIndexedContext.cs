@@ -17,7 +17,7 @@ namespace MenthaAssembly.Media.Imaging
         where Pixel : unmanaged, IPixel
         where Struct : unmanaged, IPixelIndexed
     {
-        private static readonly ParallelOptions DefaultParallelOptions = new ParallelOptions();
+        private static readonly ParallelOptions DefaultParallelOptions = new();
         private static readonly Type PixelType = typeof(Pixel);
         private static readonly Type StructType = typeof(Struct);
 
@@ -29,9 +29,11 @@ namespace MenthaAssembly.Media.Imaging
 
         public int BitsPerPixel { get; }
 
-        Type IImageContext.PixelType => PixelType;
+        Type IImageContext.PixelType
+            => PixelType;
 
-        Type IImageIndexedContext.StructType => StructType;
+        Type IImageIndexedContext.StructType
+            => StructType;
 
         /// <summary>
         /// Gets/Sets the pixel at the specified location for this image.
