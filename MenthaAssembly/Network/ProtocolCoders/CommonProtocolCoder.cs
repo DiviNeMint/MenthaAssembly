@@ -1,5 +1,5 @@
-﻿using MenthaAssembly.Network.Messages;
-using MenthaAssembly.Utils;
+﻿using MenthaAssembly.IO;
+using MenthaAssembly.Network.Messages;
 using System.IO;
 
 namespace MenthaAssembly.Network

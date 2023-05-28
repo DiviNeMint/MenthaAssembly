@@ -1,8 +1,7 @@
-﻿using MenthaAssembly.IO;
-using System;
+﻿using System;
 using System.IO;
 
-namespace MenthaAssembly.Utils
+namespace MenthaAssembly.IO
 {
     public class CRC32Stream : Stream
     {

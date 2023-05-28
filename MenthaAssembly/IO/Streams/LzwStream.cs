@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace MenthaAssembly.Utils
+namespace MenthaAssembly.IO
 {
     /// <summary>
     /// This filter stream is used to decompress a LZW format stream.

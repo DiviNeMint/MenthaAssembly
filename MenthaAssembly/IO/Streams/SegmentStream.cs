@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace MenthaAssembly.Utils
+namespace MenthaAssembly.IO
 {
     public sealed class SegmentStream : Stream
     {

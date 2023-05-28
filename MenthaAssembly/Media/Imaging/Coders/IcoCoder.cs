@@ -1,18 +1,16 @@
-﻿using MenthaAssembly.Utils;
-using System;
+﻿using MenthaAssembly.IO;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
 {
     /// <summary>
     /// Represents an encoder for ICO file format.
     /// </summary>
-    public unsafe static class IcoCoder
+    public static unsafe class IcoCoder
     {
         // ICO File Struct
         // ============================================================

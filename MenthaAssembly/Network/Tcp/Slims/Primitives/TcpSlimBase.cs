@@ -1,5 +1,5 @@
-﻿using MenthaAssembly.Network.Primitives;
-using MenthaAssembly.Utils;
+﻿using MenthaAssembly.IO;
+using MenthaAssembly.Network.Primitives;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -157,10 +157,10 @@ namespace MenthaAssembly.Network
                 Debug.WriteLine($"[Info][{GetType().Name}]Send {Request.GetType().Name} to [{Token.Address}].");
                 await Token.Stream.WriteAsync(RequestStream, CancelToken.Token);
             }
-            catch(TaskCanceledException)
+            catch (TaskCanceledException)
             {
                 TaskToken.TrySetResult(ErrorMessage.OperationCanceled);
-                
+
                 // Release CancelToken
                 CancelToken.Dispose();
 
@@ -214,7 +214,7 @@ namespace MenthaAssembly.Network
                 if (!(Ex is IOException IOEx &&
                      IOEx.InnerException is ObjectDisposedException ODEx &&
                      ODEx.ObjectName == typeof(Socket).FullName) &&
-                     !(Ex is SocketException))
+                     Ex is not SocketException)
                     Debug.WriteLine($"[Error][{GetType().Name}]Decode exception.");
 
                 Token.Stream?.Dispose();
@@ -222,7 +222,7 @@ namespace MenthaAssembly.Network
             }
 
             if (Message != null)
-                ReplyHandler.BeginInvoke(Token, UID, Message, (ar) => ReplyHandler.EndInvoke(ar), null);
+                ReplyHandler.BeginInvoke(Token, UID, Message, ReplyHandler.EndInvoke, null);
 
             // Loop Receive
             Token.Stream.Receive();
