@@ -381,6 +381,17 @@ namespace MenthaAssembly
         /// </summary>
         public static int LCM(int a, int b)
             => a * b / GCD(a, b);
+        /// <summary>
+        /// Least Common Multiple
+        /// </summary>
+        public static int LCM(params int[] Numbers)
+        {
+            int a = Numbers[0];
+            for (int i = 1; i < Numbers.Length; i++)
+                a = LCM(a, Numbers[i]);
+
+            return a;
+        }
 
         /// <summary>
         /// Returns the absolute value of a specified number.
