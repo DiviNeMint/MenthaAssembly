@@ -1,14 +1,19 @@
 ﻿using MenthaAssembly.Utils;
+using MenthaAssembly.Win32;
 using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 
@@ -19,12 +24,70 @@ namespace MenthaAssembly.Media.Imaging
     // https://blog.csdn.net/menglongbor/article/details/89742771
     // https://blog.csdn.net/u010192735/article/details/120869528
     // https://blog.csdn.net/weixin_58208902/article/details/125560863
+    // https://github.com/MROS/jpeg_tutorial/blob/master/doc/
     public static unsafe class JpgCoder
     {
         /// <summary>
         /// The length in bytes of the jpg file format identifier.
         /// </summary>
         public const int IdentifierSize = 2;
+
+        private static readonly byte[] Zigzag =
+        {
+             0,  1,  5,  6, 14, 15, 27, 28,
+             2,  4,  7, 13, 16, 26, 29, 42,
+             3,  8, 12, 17, 25, 30, 41, 43,
+             9, 11, 18, 24, 31, 40, 44, 53,
+            10, 19, 23, 32, 39, 45, 52, 54,
+            20, 22, 33, 38, 46, 51, 55, 60,
+            21, 34, 37, 47, 50, 56, 59, 61,
+            35, 36, 48, 49, 57, 58, 62, 63,
+        };
+        private static readonly byte[] ReverseZigzag =
+        {
+             0,  1,  8, 16,  9,  2,  3, 10,
+            17, 24, 32, 25, 18, 11,  4,  5,
+            12, 19, 26, 33, 40, 48, 41, 34,
+            27, 20, 13,  6,  7, 14, 21, 28,
+            35, 42, 49, 56, 57, 50, 43, 36,
+            29, 22, 15, 23, 30, 37, 44, 51,
+            58, 59, 52, 45, 38, 31, 39, 46,
+            53, 60, 61, 54, 47, 55, 62, 63,
+        };
+
+        static JpgCoder()
+        {
+            const int BlockSize = 8;
+            const int MatrixSize = BlockSize * BlockSize;
+
+            // DCT
+            DctMatrix = new double[MatrixSize];
+            int i = 0;
+
+            double Factor = Math.Sqrt(0.125d);
+            for (int x = 0; x < BlockSize; x++)
+                DctMatrix[i++] = Factor;
+
+            Factor = Math.PI * 0.0625d;
+            for (int y = 1; y < BlockSize; y++)
+                for (int x = 0; x < BlockSize; x++)
+                    DctMatrix[i++] = 0.5d * Math.Cos(((x << 1) + 1) * y * Factor);
+
+            // DCTT
+            DctTMatrix = new double[MatrixSize];
+            for (int y = 0; y < BlockSize; y++)
+            {
+                int u = y * BlockSize + y,
+                    v = u + BlockSize;
+
+                DctTMatrix[u] = DctMatrix[u++];
+                for (int x = y + 1; x < BlockSize; x++, u++, v += BlockSize)
+                {
+                    DctTMatrix[u] = DctMatrix[v];
+                    DctTMatrix[v] = DctMatrix[u];
+                }
+            }
+        }
 
         /// <summary>
         /// Decodes a jpg file from the specified path.
@@ -263,6 +326,13 @@ namespace MenthaAssembly.Media.Imaging
                     #region SOS (Start of Scan)
                     else if (Identifier[1] == 0xDA)
                     {
+                        // Image Size
+                        if (Iw < 0 || Ih < 0)
+                        {
+                            Stream.TrySeek(Begin, SeekOrigin.Begin);
+                            return false;
+                        }
+
                         // Components;
                         int DataLength = Length - 3;                    // Length 2 Bytes & Components 1 Byte
                         if (!Stream.TryRead(out byte Components))
@@ -272,23 +342,33 @@ namespace MenthaAssembly.Media.Imaging
                         }
 
                         List<byte> ComponentsOrder = new();
-                        Dictionary<byte, int> ACTableSelectors = new(),     // Component ID, AC Table ID
-                                              DCTableSelectors = new();     // Component ID, DC Table ID
+                        Dictionary<byte, byte[]> ComponentQuantizationTables = new();       // Component ID, Table Content
+                        Dictionary<byte, HuffmanDecodeTable> ComponentACTables = new(),     // Component ID, Table Content
+                                                             ComponentDCTables = new();     // Component ID, Table Content
+                        Dictionary<byte, int> ComponentACTableMaxBits = new(),              // Component ID, Max Bits
+                                              ComponentDCTableMaxBits = new();              // Component ID, Max Bits
 
                         // Components
                         for (int i = 0; i < Components; i++)
                         {
                             DataLength -= 2;
                             if (!Stream.TryRead(out byte ID) ||
-                                !Stream.TryRead(out byte Info))
+                                !Stream.TryRead(out byte Info) ||
+                                !ACTables.TryGetValue(Info & 0x0F, out HuffmanDecodeTable ACTable) ||
+                                !DCTables.TryGetValue(Info >> 4, out HuffmanDecodeTable DCTable) ||
+                                !QuantizationTableSelectors.TryGetValue(ID, out int TableID) ||
+                                !QuantizationTables.TryGetValue(TableID, out byte[] QuantizationTable))
                             {
                                 Stream.TrySeek(Begin, SeekOrigin.Begin);
                                 return false;
                             }
 
                             ComponentsOrder.Add(ID);
-                            ACTableSelectors.Add(ID, Info & 0x0F);
-                            DCTableSelectors.Add(ID, Info >> 4);
+                            ComponentACTables.Add(ID, ACTable);
+                            ComponentDCTables.Add(ID, DCTable);
+                            ComponentACTableMaxBits.Add(ID, ACTable.Bits.Max());
+                            ComponentDCTableMaxBits.Add(ID, DCTable.Bits.Max());
+                            ComponentQuantizationTables.Add(ID, QuantizationTable);
                         }
 
                         DataLength -= 3;
@@ -304,6 +384,13 @@ namespace MenthaAssembly.Media.Imaging
                         byte[] ImageReadBuffer = ArrayPool<byte>.Shared.Rent(ReadBufferSize);
                         try
                         {
+                            Dictionary<byte, int> LastDC = ComponentsOrder.ToDictionary(k => k, i => 0);    // Component ID, Last Absolute DC Value
+                            if (!QuantizationTables.TryGetValue(0, out byte[] DCQuantizationTable))
+                            {
+                                Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                return false;
+                            }
+
                             int BufferLength = 0,
                                 BufferIndex = 0,
                                 ReadValue = 0,
@@ -355,7 +442,8 @@ namespace MenthaAssembly.Media.Imaging
                                         {
                                             Reset = true;
                                             ReadBitIndex = 8;
-                                            return TryReadBit(out Value, out _);
+                                            Value = 0;
+                                            return false;
                                         }
 
                                         else if (Mark is not 0x00)
@@ -364,77 +452,397 @@ namespace MenthaAssembly.Media.Imaging
                                             return false;
                                         }
                                     }
-
-                                    Debug.WriteLine($"{ReadValue:X2}");
                                 }
 
                                 Value = (ReadValue >> (7 - ReadBitIndex)) & 1;
                                 ReadBitIndex++;
                                 return true;
                             }
-
-                            if (Iw < 0 ||
-                                Ih < 0)
+                            bool TryRead(HuffmanDecodeTable Table, int MaxBits, out byte[] Value, out bool Reset)
                             {
-                                Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                int Code = 0;
+                                for (int Bit = 1; Bit <= MaxBits; Bit++, Code <<= 1)
+                                {
+                                    if (!TryReadBit(out int BitCode, out Reset))
+                                    {
+                                        Value = null;
+                                        return false;
+                                    }
+
+                                    Code |= BitCode;
+                                    if (Table[Bit, Code] is byte[] Data)
+                                    {
+                                        Value = Data;
+                                        return true;
+                                    }
+                                }
+
+                                Reset = false;
+                                Value = null;
                                 return false;
                             }
-
-                            int XCount = (Iw + 7) >> 3,
-                                YCount = (Ih + 7) >> 3;
-
-                            for (int j = 0; j < YCount; j++)
+                            bool TryDecodeBlocks(byte ComponentID, out List<double[]> Blocks)
                             {
-                                for (int i = 0; i < XCount; i++)
+                                const int BlockLength = 64;
+                                if (!ComponentDCTables.TryGetValue(ComponentID, out HuffmanDecodeTable DCTable) ||
+                                    !ComponentACTables.TryGetValue(ComponentID, out HuffmanDecodeTable ACTable) ||
+                                    !ComponentDCTableMaxBits.TryGetValue(ComponentID, out int DCMaxBits) ||
+                                    !ComponentACTableMaxBits.TryGetValue(ComponentID, out int ACMaxBits) ||
+                                    !ComponentQuantizationTables.TryGetValue(ComponentID, out byte[] QuantizationTable) ||
+                                    !HorizontalSamplingFactor.TryGetValue(ComponentID, out int Bw) ||
+                                    !VerticalSamplingFactor.TryGetValue(ComponentID, out int Bh))
                                 {
+                                    Blocks = null;
+                                    return false;
+                                }
+
+                                Blocks = new List<double[]>();
+                                for (int j = 0; j < Bh; j++)
+                                {
+                                    for (int i = 0; i < Bw; i++)
+                                    {
+                                        // DC Info
+                                        if (!TryRead(DCTable, DCMaxBits, out byte[] DCInfo, out bool Reset))
+                                        {
+                                            ReturnBlocks(Blocks);
+                                            Blocks.Clear();
+                                            Blocks = null;
+
+                                            // RSTn
+                                            if (Reset)
+                                            {
+                                                // Reset Last DC
+                                                foreach (byte Key in LastDC.Keys.ToArray())
+                                                    LastDC[Key] = 0;
+
+                                                return TryDecodeBlocks(ComponentID, out Blocks);
+                                            }
+
+                                            return false;
+                                        }
+
+                                        // Last DC
+                                        if (!LastDC.TryGetValue(ComponentID, out int DC))
+                                        {
+                                            ReturnBlocks(Blocks);
+                                            Blocks.Clear();
+                                            Blocks = null;
+                                            return false;
+                                        }
+
+                                        // Read DC
+                                        int DCLength = DCInfo[0] & 0x0F;
+                                        if (DCLength > 0)
+                                        {
+                                            if (!TryReadBit(out int Code, out Reset))
+                                            {
+                                                ReturnBlocks(Blocks);
+                                                Blocks.Clear();
+                                                Blocks = null;
+
+                                                // RSTn
+                                                if (Reset)
+                                                {
+                                                    // Reset Last DC
+                                                    foreach (byte Key in LastDC.Keys.ToArray())
+                                                        LastDC[Key] = 0;
+
+                                                    return TryDecodeBlocks(ComponentID, out Blocks);
+                                                }
+
+                                                return false;
+                                            }
+
+                                            bool Negative = Code == 0;
+                                            for (int z = 1; z < DCLength; z++)
+                                            {
+                                                if (!TryReadBit(out int NewCode, out Reset) || Reset)
+                                                {
+                                                    ReturnBlocks(Blocks);
+                                                    Blocks.Clear();
+                                                    Blocks = null;
+
+                                                    // RSTn
+                                                    if (Reset)
+                                                    {
+                                                        // Reset Last DC
+                                                        foreach (byte Key in LastDC.Keys.ToArray())
+                                                            LastDC[Key] = 0;
+
+                                                        return TryDecodeBlocks(ComponentID, out Blocks);
+                                                    }
+
+                                                    return false;
+                                                }
+
+                                                Code = (Code << 1) | NewCode;
+                                            }
+
+                                            if (Negative)
+                                                Code -= (1 << DCLength) - 1;
+
+                                            // Dequantization
+                                            Code *= DCQuantizationTable[0];
+
+                                            // Set DC
+                                            DC += Code;
+                                            LastDC[ComponentID] = DC;
+                                        }
+
+                                        double[] Block = ArrayPool<double>.Shared.Rent(BlockLength);
+                                        Block[0] = DC;
+                                        for (int z = 1; z < BlockLength;)
+                                        {
+                                            // AC Info
+                                            if (!TryRead(ACTable, ACMaxBits, out byte[] ACInfo, out Reset))
+                                            {
+                                                ReturnBlocks(Blocks);
+                                                Blocks.Clear();
+                                                Blocks = null;
+
+                                                // RSTn
+                                                if (Reset)
+                                                {
+                                                    // Reset Last DC
+                                                    foreach (byte Key in LastDC.Keys.ToArray())
+                                                        LastDC[Key] = 0;
+
+                                                    return TryDecodeBlocks(ComponentID, out Blocks);
+                                                }
+
+                                                return false;
+                                            }
+
+                                            int Info = ACInfo[0];
+
+                                            // EOB (End of Block)
+                                            if (Info == 0x00)
+                                            {
+                                                for (; z < BlockLength; z++)
+                                                {
+                                                    // Reverse Zigzag
+                                                    int Index = ReverseZigzag[z];
+
+                                                    // Set AC
+                                                    Block[Index] = 0;
+                                                }
+                                                break;
+                                            }
+
+                                            // ZRL (Zero Run Length)
+                                            else if (Info == 0xF0)
+                                            {
+                                                for (int v = 0; v < 16; v++, z++)
+                                                {
+                                                    // Reverse Zigzag
+                                                    int Index = ReverseZigzag[z];
+
+                                                    // Set AC
+                                                    Block[Index] = 0;
+                                                }
+                                            }
+
+                                            else
+                                            {
+                                                int ZeroLength = Info >> 4;
+                                                for (int v = 0; v < ZeroLength; v++, z++)
+                                                {
+                                                    // Reverse Zigzag
+                                                    int Index = ReverseZigzag[z];
+
+                                                    // Set AC
+                                                    Block[Index] = 0;
+                                                }
+
+                                                // Read AC
+                                                int ACLength = Info & 0x0F;
+                                                if (ACLength > 0)
+                                                {
+                                                    if (!TryReadBit(out int AC, out Reset))
+                                                    {
+                                                        ReturnBlocks(Blocks);
+                                                        Blocks.Clear();
+                                                        Blocks = null;
+
+                                                        // RSTn
+                                                        if (Reset)
+                                                        {
+                                                            // Reset Last DC
+                                                            foreach (byte Key in LastDC.Keys.ToArray())
+                                                                LastDC[Key] = 0;
+
+                                                            return TryDecodeBlocks(ComponentID, out Blocks);
+                                                        }
+
+                                                        return false;
+                                                    }
+
+                                                    bool Negative = AC == 0;
+                                                    for (int u = 1; u < ACLength; u++)
+                                                    {
+                                                        if (!TryReadBit(out int NewCode, out Reset))
+                                                        {
+                                                            ReturnBlocks(Blocks);
+                                                            Blocks.Clear();
+                                                            Blocks = null;
+
+                                                            // RSTn
+                                                            if (Reset)
+                                                            {
+                                                                // Reset Last DC
+                                                                foreach (byte Key in LastDC.Keys.ToArray())
+                                                                    LastDC[Key] = 0;
+
+                                                                return TryDecodeBlocks(ComponentID, out Blocks);
+                                                            }
+
+                                                            return false;
+                                                        }
+
+                                                        AC = (AC << 1) | NewCode;
+                                                    }
+
+                                                    if (Negative)
+                                                        AC -= (1 << ACLength) - 1;
+
+                                                    // Dequantization
+                                                    AC *= QuantizationTable[z];
+
+                                                    // Reverse Zigzag
+                                                    int Index = ReverseZigzag[z++];
+
+                                                    // Set AC
+                                                    Block[Index] = AC;
+                                                }
+                                            }
+                                        }
+
+                                        // IDCT
+                                        double[] IDCTBlocks = IDCT(Block);
+                                        ArrayPool<double>.Shared.Return(Block);
+
+                                        Blocks.Add(IDCTBlocks);
+                                    }
+                                }
+
+                                return true;
+                            }
+                            void ReturnBlocks(List<double[]> Blocks)
+                            {
+                                foreach (double[] Block in Blocks)
+                                    ArrayPool<double>.Shared.Return(Block);
+                            }
+
+                            int MCUWidth = HorizontalSamplingFactor.Max(i => i.Value) << 3,
+                                MCUHeight = VerticalSamplingFactor.Max(i => i.Value) << 3,
+                                MCUXCount = (Iw + MCUWidth - 1) / MCUWidth,
+                                MCUYCount = (Ih + MCUHeight - 1) / MCUHeight;
+
+                            int Stride = Iw * 3;
+                            byte[] ImageDatas = new byte[Stride * Ih];
+                            for (int MCUy = 0, Iy0 = 0; MCUy < MCUYCount; MCUy++, Iy0 += MCUHeight)
+                            {
+                                for (int MCUx = 0, Ix0 = 0; MCUx < MCUXCount; MCUx++, Ix0 += MCUWidth)
+                                {
+                                    List<double[]> YBlocks = null,
+                                                   CbBlocks = null,
+                                                   CrBlocks = null;
+
+                                    // Reads Decoded Blocks
                                     foreach (byte ComponentID in ComponentsOrder)
                                     {
-                                        if (!DCTableSelectors.TryGetValue(ComponentID, out int TableID) ||
-                                            !DCTables.TryGetValue(TableID, out HuffmanDecodeTable DCTable) ||
-                                            !ACTableSelectors.TryGetValue(ComponentID, out TableID) ||
-                                            !ACTables.TryGetValue(TableID, out HuffmanDecodeTable ACTable) ||
-                                            !QuantizationTableSelectors.TryGetValue(ComponentID, out TableID) ||
-                                            !QuantizationTables.TryGetValue(TableID, out byte[] QuantizationTable))
+                                        if (!TryDecodeBlocks(ComponentID, out List<double[]> Blocks))
                                         {
+                                            if (YBlocks != null)
+                                                ReturnBlocks(YBlocks);
+
+                                            if (CbBlocks != null)
+                                                ReturnBlocks(CbBlocks);
+
+                                            if (CrBlocks != null)
+                                                ReturnBlocks(CrBlocks);
+
                                             Stream.TrySeek(Begin, SeekOrigin.Begin);
                                             return false;
                                         }
 
-                                        int DCMaxBits = DCTable.Bits.Max(),
-                                            ACMaxBits = ACTable.Bits.Max(),
-                                            Code, Bit, DCLength;
+                                        // Y
+                                        if (ComponentID == 1)
+                                            YBlocks = Blocks;
 
-                                        Code = 0;
-                                        Bit = 0;
-                                        DCLength = 0;
-                                        while (TryReadBit(out int BitCode, out bool Reset))
+                                        // Cb
+                                        else if (ComponentID == 2)
+                                            CbBlocks = Blocks;
+
+                                        // Cr
+                                        else if (ComponentID == 3)
+                                            CrBlocks = Blocks;
+
+                                        // Unknown
+                                        else
                                         {
-                                            Bit++;
-                                            if (DCMaxBits < Bit)
-                                            {
-                                                Stream.TrySeek(Begin, SeekOrigin.Begin);
-                                                return false;
-                                            }
+                                            if (YBlocks != null)
+                                                ReturnBlocks(YBlocks);
 
-                                            Code |= BitCode;
-                                            if (DCTable[Bit, Code] is byte[] Data)
-                                            {
-                                                DCLength = Data[0];
-                                                break;
-                                            }
+                                            if (CbBlocks != null)
+                                                ReturnBlocks(CbBlocks);
 
-                                            Code <<= 1;
+                                            if (CrBlocks != null)
+                                                ReturnBlocks(CrBlocks);
+
+                                            Stream.TrySeek(Begin, SeekOrigin.Begin);
+                                            return false;
                                         }
+                                    }
+
+                                    //YCbCr to RGB
+                                    for (int By = 0; By < 8; By++)
+                                    {
+                                        int Ixy = (Iy0 + By) * Stride + Ix0 * 3;
+                                        for (int Bx = 0; Bx < 8; Bx++)
+                                        {
+                                            int Index = (By << 3) + Bx;
+                                            double Y = YBlocks[0][Index] + 128d,
+                                                   Cb = CbBlocks[0][Index],
+                                                   Cr = CrBlocks[0][Index];
+
+                                            ImageDatas[Ixy++] = (byte)MathHelper.Clamp(Y + 1.402d * Cr, 0d, 255d);
+                                            ImageDatas[Ixy++] = (byte)MathHelper.Clamp(Y - 0.34414d * Cb - 0.71414d * Cr, 0d, 255d);
+                                            ImageDatas[Ixy++] = (byte)MathHelper.Clamp(Y + 1.772d * Cb, 0d, 255d);
 
 
+                                            ////int Ix = Bx << 1,
+                                            ////    Iy = By << 1,
+                                            ////    YBlockIndex = 0;
+                                            ////while (Ix >= 8)
+                                            ////{
+                                            ////    Ix -= 8;
+                                            ////    YBlockIndex++;
+                                            ////}
 
+                                            ////while (Iy >= 8)
+                                            ////{
+                                            ////    Iy -= 8;
+                                            ////    YBlockIndex += 2;
+                                            ////}
 
+                                            ////int Index = (By << 3) + Bx;
+                                            ////double Y = YBlocks[YBlockIndex][(Iy << 3) + Ix] + 128d,
+                                            //int Index = (By << 3) + Bx;
+                                            //double Y = YBlocks[0][Index] + 128d,
+                                            //       Cb = CbBlocks[0][Index],
+                                            //       Cr = CrBlocks[0][Index];
 
-
+                                            //ImageDatas[i++] = (byte)MathHelper.Clamp(Y + 1.402d * Cr, 0d, 255d);
+                                            //ImageDatas[i++] = (byte)MathHelper.Clamp(Y - 0.34414d * Cb - 0.71414d * Cr, 0d, 255d);
+                                            //ImageDatas[i++] = (byte)MathHelper.Clamp(Y + 1.772d * Cb, 0d, 255d);
+                                        }
                                     }
                                 }
                             }
 
+                            Image = new ImageContext<RGB>(Iw, Ih, ImageDatas);
+                            return true;
                         }
                         finally
                         {
@@ -459,7 +867,7 @@ namespace MenthaAssembly.Media.Imaging
                 ArrayPool<byte>.Shared.Return(Identifier);
             }
 
-            return true;
+            return false;
         }
 
         /// <summary>
@@ -548,6 +956,44 @@ namespace MenthaAssembly.Media.Imaging
                 ArrayPool<byte>.Shared.Return(Identifier);
             }
 
+        }
+
+        private static readonly double[] DctMatrix, DctTMatrix;
+        private static double[] DCT(double[] Block)
+            => MatrixMultiply(DctMatrix, Block, DctTMatrix);
+        private static double[] IDCT(double[] Block)
+            => MatrixMultiply(DctTMatrix, Block, DctMatrix);
+        private static double[] MatrixMultiply(double[] m1, double[] m2, double[] m3)
+        {
+            double[] Matrix = MatrixMultiply(m1, m2);
+            try
+            {
+                return MatrixMultiply(Matrix, m3);
+            }
+            finally
+            {
+                ArrayPool<double>.Shared.Return(Matrix);
+            }
+        }
+        private static double[] MatrixMultiply(double[] m1, double[] m2)
+        {
+            const int BlockSize = 8;
+            const int MatrixSize = BlockSize * BlockSize;
+
+            double[] m = ArrayPool<double>.Shared.Rent(MatrixSize);
+            for (int Oy = 0; Oy < MatrixSize; Oy += BlockSize)
+            {
+                for (int x = 0; x < BlockSize; x++)
+                {
+                    double sum = 0d;
+                    for (int k1 = 0, k2 = x; k1 < BlockSize; k1++, k2 += BlockSize)
+                        sum += m1[Oy + k1] * m2[k2];
+
+                    m[Oy + x] = sum;
+                }
+            }
+
+            return m;
         }
 
         /// <summary>
@@ -1051,23 +1497,25 @@ namespace MenthaAssembly.Media.Imaging
                                                     byte Mark = ImageReadBuffer[Next];
                                                     if (Mark == 0x00)
                                                     {
-                                                        ImageBuffer.Write(ImageReadBuffer, LastIndex, Next);
+                                                        ImageBuffer.Write(ImageReadBuffer, LastIndex, Next - LastIndex);
                                                         LastIndex = Next + 1;
                                                         i = Next;               // For-Loop will + 1
                                                     }
 
-                                                    else if (Mark != 0xD0 &&  // RST0
-                                                             Mark != 0xD1 &&  // RST1
-                                                             Mark != 0xD2 &&  // RST2
-                                                             Mark != 0xD3 &&  // RST3
-                                                             Mark != 0xD4 &&  // RST4
-                                                             Mark != 0xD5 &&  // RST5
-                                                             Mark != 0xD6 &&  // RST6
-                                                             Mark != 0xD7)    // RST7
+                                                    // RSTn Mark
+                                                    else if (Mark is 0xD0 or 0xD1 or 0xD2 or 0xD3 or 0xD4 or 0xD5 or 0xD6 or 0xD7)
+                                                    {
+                                                        // Remove
+                                                        //End = true;
+                                                        //break;
+                                                    }
+
+                                                    else if (IdentifyMark(Mark))
                                                     {
                                                         End = true;
                                                         break;
                                                     }
+
                                                 }
                                                 else
                                                 {
@@ -1083,19 +1531,24 @@ namespace MenthaAssembly.Media.Imaging
                                                         // For-Loop will set i = 1;
                                                     }
 
-                                                    else if (IdentifyMark(Mark) &&
-                                                             Mark != 0xD0 &&  // RST0
-                                                             Mark != 0xD1 &&  // RST1
-                                                             Mark != 0xD2 &&  // RST2
-                                                             Mark != 0xD3 &&  // RST3
-                                                             Mark != 0xD4 &&  // RST4
-                                                             Mark != 0xD5 &&  // RST5
-                                                             Mark != 0xD6 &&  // RST6
-                                                             Mark != 0xD7)    // RST7
+                                                    // RSTn Mark
+                                                    else if (Mark is 0xD0 or 0xD1 or 0xD2 or 0xD3 or 0xD4 or 0xD5 or 0xD6 or 0xD7)
+                                                    {
+                                                        // Display
+                                                        ImageBuffer.WriteByte(0xFF);
+                                                        LastIndex = 0;
+
+                                                        //// Remove
+                                                        //End = true;
+                                                        //break;
+                                                    }
+
+                                                    else if (IdentifyMark(Mark))
                                                     {
                                                         End = true;
                                                         break;
                                                     }
+
                                                 }
                                             }
                                         }
