@@ -5,7 +5,7 @@ namespace MenthaAssembly.Utils
 {
     public class Pool<T> : IDisposable
     {
-        private ConcurrentQueue<T> PoolBase = new ConcurrentQueue<T>();
+        private ConcurrentQueue<T> PoolBase = new();
 
         public virtual void Enqueue(T Item)
         {

@@ -15,8 +15,8 @@ namespace MenthaAssembly.Network
     {
         public event EventHandler<IPEndPoint> Connected;
 
-        private ConcurrentObservableCollection<IPEndPoint> ClientKeys = new ConcurrentObservableCollection<IPEndPoint>();
-        private ConcurrentObservableCollection<TcpSlimToken> ClientTokens = new ConcurrentObservableCollection<TcpSlimToken>();
+        private ConcurrentObservableCollection<IPEndPoint> ClientKeys = new();
+        private ConcurrentObservableCollection<TcpSlimToken> ClientTokens = new();
 
         private ReadOnlyCollection<IPEndPoint> _Clients;
         public ReadOnlyCollection<IPEndPoint> Clients
@@ -100,7 +100,7 @@ namespace MenthaAssembly.Network
                 Listener.Listen(MaxListenCount);
 
                 Debug.WriteLine($"[Info][{GetType().Name}]Start at [{IPEndPoint.Address}:{IPEndPoint.Port}].");
-
+                
                 // Start Listen
                 Listen();
             }

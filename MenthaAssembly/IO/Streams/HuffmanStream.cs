@@ -47,6 +47,25 @@ namespace MenthaAssembly.IO
             this.Stream = Stream;
             this.LeaveOpen = LeaveOpen;
         }
+        public HuffmanStream(Stream Stream, HuffmanEncodeTable Table) : this(Stream, Table, false)
+        {
+
+        }
+        public HuffmanStream(Stream Stream, HuffmanEncodeTable Table, bool LeaveOpen)
+        {
+            CanWrite = true;
+
+            EncodeTable = Table;
+
+            //ReadBitIndex = 0;
+            //ReadValue = 0;
+            //MaxBits = Table.Bits.Max();
+            //CoderBufferLength = CoderBufferIndex = BufferSize;
+            //CoderBuffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+
+            this.Stream = Stream;
+            this.LeaveOpen = LeaveOpen;
+        }
 
         private byte[] LastData;
         private int LastIndex;
@@ -149,7 +168,8 @@ namespace MenthaAssembly.IO
             return true;
         }
 
-        public override void Write(byte[] buffer, int offset, int count)
+        private readonly HuffmanEncodeTable EncodeTable;
+        public override void Write(byte[] Buffer, int Offset, int Count)
         {
             CheckDispose();
 
@@ -168,12 +188,16 @@ namespace MenthaAssembly.IO
             if (!CanWrite)
                 throw new NotSupportedException();
 
+            Stream.Flush();
         }
 
         public override void Close()
         {
             if (IsDisposed)
                 return;
+
+            if (!LeaveOpen)
+                Stream.Close();
 
             base.Close();
         }
