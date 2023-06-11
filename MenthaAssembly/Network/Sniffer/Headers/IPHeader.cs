@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Network.Primitives
@@ -55,26 +54,14 @@ namespace MenthaAssembly.Network.Primitives
             => _Checksum; //IP Header checksum
 
         [FieldOffset(12)]
-        private readonly byte SrcAddr1;
-        [FieldOffset(13)]
-        private readonly byte SrcAddr2;
-        [FieldOffset(14)]
-        private readonly byte SrcAddr3;
-        [FieldOffset(15)]
-        private readonly byte SrcAddr4;
-        public IPAddress SrcAddr
-            => new IPAddress(new byte[] { SrcAddr1, SrcAddr2, SrcAddr3, SrcAddr4 });
+        private readonly int _SrcAddress;
+        public int SrcAddress
+            => _SrcAddress;
 
         [FieldOffset(16)]
-        private readonly byte DestAddr1;
-        [FieldOffset(17)]
-        private readonly byte DestAddr2;
-        [FieldOffset(18)]
-        private readonly byte DestAddr3;
-        [FieldOffset(19)]
-        private readonly byte DestAddr4;
-        public IPAddress DestAddr
-            => new IPAddress(new byte[] { DestAddr1, DestAddr2, DestAddr3, DestAddr4 });
+        private readonly int _DestAddress;
+        public int DestAddress
+            => _DestAddress;
 
         [FieldOffset(20)]
         public fixed int Options[10];
@@ -83,5 +70,4 @@ namespace MenthaAssembly.Network.Primitives
             => (Length - 20) >> 2;
 
     }
-
 }

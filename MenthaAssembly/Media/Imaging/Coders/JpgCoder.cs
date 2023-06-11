@@ -16,7 +16,7 @@ namespace MenthaAssembly.Media.Imaging
     // https://blog.csdn.net/u010192735/article/details/120869528
     // https://blog.csdn.net/weixin_58208902/article/details/125560863
     // https://github.com/MROS/jpeg_tutorial/blob/master/doc/
-    public static unsafe partial class JpgCoder
+    public static unsafe class JpgCoder
     {
         /// <summary>
         /// The length in bytes of the jpg file format identifier.

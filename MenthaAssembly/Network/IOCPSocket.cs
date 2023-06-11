@@ -12,8 +12,6 @@ namespace MenthaAssembly.Network
 {
     public sealed class IOCPSocket : IDisposable
     {
-        private const int ReceiveBufferSize = 1024;
-
         public event EventHandler<IOCPSocket> Accepted;
 
         public event EventHandler<Stream> Received;
@@ -34,6 +32,8 @@ namespace MenthaAssembly.Network
 
         public EndPoint RemoteEndPoint
             => Socket.RemoteEndPoint;
+
+        public int BufferSize { set; get; } = 4096;
 
         private readonly Socket Socket;
         private IOCPSocket(Socket Socket)
@@ -123,25 +123,20 @@ namespace MenthaAssembly.Network
             }
         }
 
-        private ReceiveToken ReadToken;
+        private IOCPToken Token;
         public void Receive()
-        {
-            // Checks token.
-            if (ReadToken is not null)
-                return;
-
-            ReadToken = new ReceiveToken();
-            Receive(ReadToken);
-        }
-        private void Receive(ReceiveToken Token)
         {
             // Checks Dispose
             if (IsDisposed)
                 return;
 
-            // Checks Connect Status
-            if (!Socket.Connected)
-                return;
+            // Token
+            IOCPToken Token = Socket.Connected ? this.Token : new();
+            if (Token is null)
+            {
+                Token = new();
+                this.Token = Token;
+            }
 
             // Receives
             if (Token.Buffer is null)
@@ -151,8 +146,9 @@ namespace MenthaAssembly.Network
                 e.UserToken = Token;
 
                 // Buffer
-                byte[] Buffer = ArrayPool<byte>.Shared.Rent(ReceiveBufferSize);
-                e.SetBuffer(Buffer, 0, ReceiveBufferSize);
+                int Length = BufferSize;
+                byte[] Buffer = ArrayPool<byte>.Shared.Rent(Length);
+                e.SetBuffer(Buffer, 0, Length);
 
                 // Receives
                 if (!Socket.ReceiveAsync(e))
@@ -162,7 +158,7 @@ namespace MenthaAssembly.Network
             // Last Receive
             else
             {
-                OnReceived();
+                OnReceived(null);
             }
         }
 
@@ -172,14 +168,11 @@ namespace MenthaAssembly.Network
             if (IsDisposed)
                 return 0;
 
-            // Checks Connect Status
-            if (!Socket.Connected)
-                return 0;
-
-            if (ReadToken?.Buffer is byte[] ReceiveBuffer)
+            if (Socket.Connected &&
+                Token?.Buffer is byte[] ReceiveBuffer)
             {
-                int ReceiveLength = ReadToken.Length,
-                    ReceiveOffset = ReadToken.Offset,
+                int ReceiveLength = Token.Length,
+                    ReceiveOffset = Token.Offset,
                     ReadLength = Math.Min(ReceiveLength - ReceiveOffset, Length);
                 if (ReadLength > 0)
                 {
@@ -189,11 +182,12 @@ namespace MenthaAssembly.Network
                     if (ReceiveLength <= ReceiveOffset)
                     {
                         ArrayPool<byte>.Shared.Return(ReceiveBuffer);
-                        ReadToken.Buffer = null;
+                        Token.Buffer = null;
+                        Token = null;
                     }
                     else
                     {
-                        ReadToken.Offset = ReceiveOffset;
+                        Token.Offset = ReceiveOffset;
                     }
                 }
 
@@ -202,22 +196,22 @@ namespace MenthaAssembly.Network
             else
             {
                 // Token
-                TaskCompletionSource<int> Token = new();
+                TaskCompletionSource<int> TaskToken = new();
 
                 // Operator
                 SocketAsyncEventArgs e = DequeueOperator();
-                e.UserToken = Token;
+                e.UserToken = TaskToken;
                 e.SetBuffer(Buffer, Offset, Length);
 
                 try
                 {
                     // Receives
                     if (Socket.ReceiveAsync(e))
-                        Token.Task.Wait();
+                        TaskToken.Task.Wait();
                     else
                         OnReceiveProcess(e);
 
-                    return Token.Task.Result;
+                    return TaskToken.Task.Result;
                 }
                 finally
                 {
@@ -228,85 +222,85 @@ namespace MenthaAssembly.Network
             }
         }
 
-        private readonly ConcurrentDictionary<EndPoint, ReceiveToken> ReadTokens = new();
         public void ReceiveFrom(EndPoint Remote)
         {
-            // Checks token.
-            if (ReadTokens.ContainsKey(Remote))
-                return;
-
-            ReceiveToken Token = new();
-            ReadTokens.AddOrUpdate(Remote, Token, (k, v) => Token);
-            ReceiveFrom(Remote, Token);
-        }
-        private void ReceiveFrom(EndPoint Remote, ReceiveToken Token)
-        {
             // Checks Dispose
             if (IsDisposed)
                 return;
-
-            // Checks Connect Status
-            if (!Socket.Connected)
-                return;
-
-            // Receives
-            if (Token.Buffer is null)
-            {
-                // Operator
-                SocketAsyncEventArgs e = DequeueOperator();
-                e.RemoteEndPoint = Remote;
-                e.UserToken = Token;
-
-                // Buffer
-                byte[] Buffer = ArrayPool<byte>.Shared.Rent(ReceiveBufferSize);
-                e.SetBuffer(Buffer, 0, ReceiveBufferSize);
-
-                // Receives
-                if (!Socket.ReceiveFromAsync(e))
-                    OnReceiveFromProcess(e);
-            }
-
-            // Last Receive
-            else
-            {
-                OnReceived();
-            }
-        }
-
-        public int ReceiveFrom(byte[] Buffer, int Offset, int Length, EndPoint Remote)
-        {
-            // Checks Dispose
-            if (IsDisposed)
-                return 0;
-
-            // Checks Connect Status
-            if (!Socket.Connected)
-                return 0;
-
-            // Token
-            TaskCompletionSource<int> Token = new();
 
             // Operator
             SocketAsyncEventArgs e = DequeueOperator();
-            e.UserToken = Token;
             e.RemoteEndPoint = Remote;
-            e.SetBuffer(Buffer, Offset, Length);
+            e.UserToken = new IOCPToken() { Remote = Remote };
 
-            try
+            // Buffer
+            int Length = BufferSize;
+            byte[] Buffer = ArrayPool<byte>.Shared.Rent(Length);
+            e.SetBuffer(Buffer, 0, Length);
+
+            // Receives
+            if (!Socket.ReceiveFromAsync(e))
+                OnReceiveProcess(e);
+        }
+
+        public int ReceiveFrom(byte[] Buffer, int Offset, int Length, EndPoint Remote)
+            => InternalReceiveFrom(Buffer, Offset, Length, new(Remote));
+        private int InternalReceiveFrom(byte[] Buffer, int Offset, int Length, IOCPToken Token)
+        {
+            // Checks Dispose
+            if (IsDisposed)
+                return 0;
+
+            if (Token?.Buffer is byte[] ReceiveBuffer)
             {
-                // Receives
-                if (Socket.ReceiveFromAsync(e))
-                    Token.Task.Wait();
-                else
-                    OnReceiveFromProcess(e);
+                int ReceiveLength = Token.Length,
+                    ReceiveOffset = Token.Offset,
+                    ReadLength = Math.Min(ReceiveLength - ReceiveOffset, Length);
+                if (ReadLength > 0)
+                {
+                    Array.Copy(ReceiveBuffer, ReceiveOffset, Buffer, Offset, ReadLength);
 
-                return Token.Task.Result;
+                    ReceiveOffset += ReadLength;
+                    if (ReceiveLength <= ReceiveOffset)
+                    {
+                        ArrayPool<byte>.Shared.Return(ReceiveBuffer);
+                        Token.Buffer = null;
+                    }
+                    else
+                    {
+                        Token.Offset = ReceiveOffset;
+                    }
+                }
+
+                return ReadLength;
             }
-            finally
+            else
             {
-                // Release Operator
-                e.SetBuffer(null, 0, 0);
-                EnqueueOperator(e);
+                // Token
+                TaskCompletionSource<int> TaskToken = new();
+
+                // Operator
+                SocketAsyncEventArgs e = DequeueOperator();
+                e.UserToken = TaskToken;
+                e.RemoteEndPoint = Token.Remote;
+                e.SetBuffer(Buffer, Offset, Length);
+
+                try
+                {
+                    // Receives
+                    if (Socket.ReceiveFromAsync(e))
+                        TaskToken.Task.Wait();
+                    else
+                        OnReceiveProcess(e);
+
+                    return TaskToken.Task.Result;
+                }
+                finally
+                {
+                    // Release Operator
+                    e.SetBuffer(null, 0, 0);
+                    EnqueueOperator(e);
+                }
             }
         }
 
@@ -350,16 +344,12 @@ namespace MenthaAssembly.Network
             if (IsDisposed)
                 return;
 
-            // Checks Connect Status
-            if (!Socket.Connected)
-                return;
-
-            // Token
-            TaskCompletionSource<bool> Token = new();
+            // TaskToken
+            TaskCompletionSource<bool> TaskToken = new();
 
             // Operator
             SocketAsyncEventArgs e = DequeueOperator();
-            e.UserToken = Token;
+            e.UserToken = TaskToken;
             e.RemoteEndPoint = Remote;
             e.SetBuffer(Buffer, Offset, Length);
 
@@ -367,9 +357,9 @@ namespace MenthaAssembly.Network
             {
                 // Send
                 if (Socket.SendToAsync(e))
-                    Token.Task.Wait();
+                    TaskToken.Task.Wait();
                 else
-                    OnSendToProcess(e);
+                    OnSendProcess(e);
             }
             finally
             {
@@ -385,27 +375,14 @@ namespace MenthaAssembly.Network
                 Task.Run(() => Accepted.Invoke(this, e));
         }
 
-        private void OnReceived()
+        private void OnReceived(IOCPToken Token)
         {
             if (Received != null)
             {
-                Stream s = GetStream();
+                Stream s = InternalGetStream(Token);
                 Received.Invoke(this, s);
                 s.Dispose();
             }
-
-            Receive(ReadToken);
-        }
-        private void OnReceived(EndPoint Remote, ReceiveToken Token)
-        {
-            if (Received != null)
-            {
-                Stream s = GetStream(Remote);
-                Received.Invoke(this, s);
-                s.Dispose();
-            }
-
-            ReceiveFrom(Remote, Token);
         }
 
         private void OnDisconnect()
@@ -432,23 +409,15 @@ namespace MenthaAssembly.Network
                         break;
                     }
                 case SocketAsyncOperation.Receive:
+                case SocketAsyncOperation.ReceiveFrom:
                     {
                         OnReceiveProcess(e);
                         break;
                     }
-                case SocketAsyncOperation.ReceiveFrom:
-                    {
-                        OnReceiveFromProcess(e);
-                        break;
-                    }
                 case SocketAsyncOperation.Send:
-                    {
-                        OnSendProcess(e);
-                        break;
-                    }
                 case SocketAsyncOperation.SendTo:
                     {
-                        OnSendToProcess(e);
+                        OnSendProcess(e);
                         break;
                     }
                 default:
@@ -489,7 +458,7 @@ namespace MenthaAssembly.Network
                     OnDisconnect();
                 }
             }
-            else if (e.UserToken is ReceiveToken Token)
+            else if (e.UserToken is IOCPToken Token)
             {
                 if (e.SocketError == SocketError.Success &&
                     e.BytesTransferred > 0)
@@ -497,44 +466,7 @@ namespace MenthaAssembly.Network
                     Token.Buffer = e.Buffer;
                     Token.Offset = 0;
                     Token.Length = e.BytesTransferred;
-                    OnReceived();
-                }
-                else
-                {
-                    ArrayPool<byte>.Shared.Return(e.Buffer);
-                    OnDisconnect();
-                }
-
-                // Release Operator
-                EnqueueOperator(e);
-            }
-        }
-        private void OnReceiveFromProcess(SocketAsyncEventArgs e)
-        {
-            if (e.UserToken is TaskCompletionSource<int> Task)
-            {
-                if (e.SocketError == SocketError.Success &&
-                    e.BytesTransferred > 0)
-                {
-                    Task.TrySetResult(e.BytesTransferred);
-                }
-                else
-                {
-                    Task.TrySetResult(0);
-                    OnDisconnect();
-                }
-            }
-            else if (e.UserToken is ReceiveToken Token)
-            {
-                if (e.SocketError == SocketError.Success &&
-                    e.BytesTransferred > 0)
-                {
-                    EndPoint Remote = e.RemoteEndPoint;
-
-                    Token.Buffer = e.Buffer;
-                    Token.Offset = 0;
-                    Token.Length = e.BytesTransferred;
-                    OnReceived(Remote, Token);
+                    OnReceived(e.LastOperation == SocketAsyncOperation.Receive ? null : Token);
                 }
                 else
                 {
@@ -552,17 +484,13 @@ namespace MenthaAssembly.Network
             if (e.UserToken is TaskCompletionSource<bool> Token)
                 Token.TrySetResult(e.SocketError == SocketError.Success);
         }
-        private void OnSendToProcess(SocketAsyncEventArgs e)
-        {
-            // Result
-            if (e.UserToken is TaskCompletionSource<bool> Token)
-                Token.TrySetResult(e.SocketError == SocketError.Success);
-        }
 
         public Stream GetStream()
-            => new IOCPStream(this);
+            => InternalGetStream(null);
         public Stream GetStream(EndPoint Remote)
-            => new IOCPStream(this, Remote);
+            => InternalGetStream(new(Remote));
+        private Stream InternalGetStream(IOCPToken Token)
+            => new IOCPStream(this, Token);
 
         private void EnqueueOperator(SocketAsyncEventArgs Operator)
         {
@@ -637,27 +565,24 @@ namespace MenthaAssembly.Network
                 set => throw new NotSupportedException();
             }
 
-            private readonly EndPoint Remote;
+            private readonly IOCPToken Token;
             private readonly IOCPSocket Socket;
-            public IOCPStream(IOCPSocket Socket) : this(Socket, null)
-            {
-            }
-            public IOCPStream(IOCPSocket Socket, EndPoint Remote)
+            public IOCPStream(IOCPSocket Socket, IOCPToken Token)
             {
                 this.Socket = Socket;
-                this.Remote = Remote;
+                this.Token = Token;
             }
 
             public override int Read(byte[] Buffer, int Offset, int Count)
-                => Remote is null ? Socket.Receive(Buffer, Offset, Count) :
-                                    Socket.ReceiveFrom(Buffer, Offset, Count, Remote);
+                => Token is null ? Socket.Receive(Buffer, Offset, Count) :
+                                   Socket.InternalReceiveFrom(Buffer, Offset, Count, Token);
 
             public override void Write(byte[] Buffer, int Offset, int Length)
             {
-                if (Remote is null)
+                if (Token is null)
                     Socket.Send(Buffer, Offset, Length);
                 else
-                    Socket.SendTo(Buffer, Offset, Length, Remote);
+                    Socket.SendTo(Buffer, Offset, Length, Token.Remote);
             }
 
             public override long Seek(long offset, SeekOrigin origin)
@@ -697,13 +622,23 @@ namespace MenthaAssembly.Network
 
         }
 
-        private class ReceiveToken
+        private class IOCPToken
         {
+            public EndPoint Remote;
+
             public byte[] Buffer;
 
             public int Offset;
 
             public int Length;
+
+            public IOCPToken()
+            {
+            }
+            public IOCPToken(EndPoint Remote)
+            {
+                this.Remote = Remote;
+            }
 
         }
 

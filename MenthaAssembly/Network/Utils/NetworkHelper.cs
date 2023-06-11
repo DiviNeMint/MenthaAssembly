@@ -46,7 +46,7 @@ namespace System.Net
 
         public static IEnumerable<IPAddress> GetAllInterNetworkAddresses()
         {
-            Dictionary<byte[], List<byte>> Datas = new Dictionary<byte[], List<byte>>();
+            Dictionary<byte[], List<byte>> Datas = new();
             foreach (byte[] LocalBytes in GetLocalhostInterNetworkAddresses().Select(i => i.GetAddressBytes()))
             {
                 byte TempByte = LocalBytes[LocalBytes.Length - 1];
@@ -75,22 +75,29 @@ namespace System.Net
         }
         private static bool AddressBaseEquals(byte[] Address1, byte[] Address2)
         {
-            if (Address1.Length == Address2.Length)
-            {
-                for (int i = 0; i < Address1.Length - 1; i++)
-                    if (Address1[i] != Address2[i])
-                        return false;
+            if (Address1.Length != Address2.Length)
+                return false;
 
-                return true;
-            }
+            for (int i = 0; i < Address1.Length - 1; i++)
+                if (Address1[i] != Address2[i])
+                    return false;
 
-            return false;
+            return true;
         }
 
         public static IEnumerable<IPAddress> GetLocalhostInterNetworkAddresses()
             => Dns.GetHostAddresses(Dns.GetHostName())
                   .Where(i => i.AddressFamily == AddressFamily.InterNetwork);
         //                    i.AddressFamily == AddressFamily.InterNetworkV6);
+
+        public static IEnumerable<int> GetNetorkMTUv4()
+            => NetworkInterface.GetAllNetworkInterfaces()
+                               .Where(i => i.NetworkInterfaceType != NetworkInterfaceType.Loopback && i.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+                               .Select(i => i.GetIPProperties().GetIPv4Properties().Mtu);
+        public static IEnumerable<int> GetNetorkMTUv6()
+            => NetworkInterface.GetAllNetworkInterfaces()
+                               .Where(i => i.NetworkInterfaceType != NetworkInterfaceType.Loopback && i.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+                               .Select(i => i.GetIPProperties().GetIPv6Properties().Mtu);
 
         private static readonly byte[] PingData = new byte[1];
         public static PingReply Ping(IPAddress IPAddress, int Timeout)
@@ -100,7 +107,7 @@ namespace System.Net
         }
         public static async Task<PingReply> PingAsync(IPAddress IPAddress, int Timeout)
         {
-            using Ping p = new Ping();
+            using Ping p = new();
             return await p.SendPingAsync(IPAddress, Timeout, PingData, null);
         }
 

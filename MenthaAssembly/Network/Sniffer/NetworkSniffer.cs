@@ -1,6 +1,7 @@
 ﻿using MenthaAssembly.Network.Primitives;
 using System;
-using System.Diagnostics;
+using System.Buffers;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -8,17 +9,18 @@ using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Network
 {
-    public unsafe class NetworkSniffer : IOCPBase
+    public unsafe class NetworkSniffer : IDisposable
     {
         public event EventHandler<PacketArrivedEventArgs> PacketArrived;
 
+        private readonly int BufferSize;
         public NetworkSniffer()
         {
-            BufferSize = ushort.MaxValue;
+            BufferSize = NetworkHelper.GetNetorkMTUv4().Max();
             Parser = ParsePacket;
         }
 
-        private Socket Listener;
+        private IOCPSocket Listener;
         public void Start()
             => Start(NetworkHelper.GetLocalhostInterNetworkAddresses().FirstOrDefault());
         public void Start(string Address)
@@ -31,77 +33,35 @@ namespace MenthaAssembly.Network
         public void Start(IPAddress Address)
         {
             Stop();
-
-            Listener = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
+            
+            Listener = new IOCPSocket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP) { BufferSize = BufferSize };
             Listener.Bind(new IPEndPoint(Address, 0));
 
             if (!SetSocketOption())
                 throw new NotSupportedException();
 
             // Listen
-            SocketAsyncEventArgs e = Pool.Dequeue();
-            e.Completed += OnIOCompleted;
-
-            byte[] Buffer = Pool.DequeueBuffer();
-            e.SetBuffer(Buffer, 0, BufferSize);
-
-            if (!Listener.ReceiveAsync(e))
-                OnReceiveProcess(e);
+            Listener.Received += OnListenerReceived;
+            for (int i = 0; i < 5; i++)
+                Listener.Receive();
         }
 
-        public void Stop()
+        private void OnListenerReceived(object sender, Stream e)
         {
-            if (Listener != null)
-            {
-                Listener.Dispose();
-                Listener = null;
-            }
-        }
-
-        private bool SetSocketOption()
-        {
-            try
-            {
-                Listener.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, 1);
-                byte[] IN = new byte[4] { 1, 0, 0, 0 },
-                       OUT = new byte[4];
-
-                //低級別操作模式,接受所有的資料包，這一步是關鍵，必須把socket設成raw和IP Level才可用SIO_RCVALL
-                int Code = Listener.IOControl(IOControlCode.ReceiveAll, IN, OUT);
-
-                Code = OUT[0] + OUT[1] + OUT[2] + OUT[3]; //把4個8位元位元組合成一個32位元整數
-
-                return Code == 0;
-            }
-            catch
-            {
-            }
-            return false;
-        }
-
-        private void OnReceiveProcess(SocketAsyncEventArgs e)
-        {
-            if (e.SocketError == SocketError.Success &&
-                e.BytesTransferred > 19)
-            {
-                byte[] Packet = e.Buffer;
-                int Length = e.BytesTransferred;
-                Parser.BeginInvoke(Packet, Length, ar => Parser.EndInvoke(ar), null);
-
-                byte[] Buffer = Pool.DequeueBuffer();
-                e.SetBuffer(Buffer, 0, BufferSize);
-            }
+            // Event
+            Parser.BeginInvoke(e, Parser.EndInvoke, null);
 
             // Loop Receive
-            if (!Listener.ReceiveAsync(e))
-                OnReceiveProcess(e);
+            Listener?.Receive();
         }
 
-        private readonly Action<byte[], int> Parser;
-        protected void ParsePacket(byte[] Packet, int Length)
+        private readonly Action<Stream> Parser;
+        protected void ParsePacket(Stream Stream)
         {
+            byte[] Packet = ArrayPool<byte>.Shared.Rent(BufferSize);
             try
             {
+                int Length = Stream.Read(Packet, 0, Packet.Length);
                 int* pPacket;
 
                 fixed (byte* pDatas = &Packet[0])
@@ -181,30 +141,50 @@ namespace MenthaAssembly.Network
             }
             finally
             {
-                Pool.EnqueueBuffer(Packet);
+                ArrayPool<byte>.Shared.Return(Packet);
             }
         }
 
         protected virtual void OnPacketArrived(PacketArrivedEventArgs e)
             => PacketArrived?.Invoke(this, e);
-
-        protected void OnIOCompleted(object sender, SocketAsyncEventArgs e)
+        private bool SetSocketOption()
         {
-            switch (e.LastOperation)
+            try
             {
-                case SocketAsyncOperation.Receive:
-                    OnReceiveProcess(e);
-                    break;
-                default:
-                    {
-                        Debug.WriteLine($"[Error][{GetType().Name}Not support the operation {e.LastOperation}.");
-                        throw new ArgumentException("The last operation completed on the socket was not Receive");
-                    }
+                // Enable Header Included
+                Listener.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
+
+                // Enable Receive All
+                int Code = Listener.IOControl(IOControlCode.ReceiveAll, BitConverter.GetBytes(1), null);
+
+                return Code == 0;
+            }
+            catch
+            {
+            }
+            return false;
+        }
+
+        private bool IsStopping = false;
+        public void Stop()
+        {
+            if (Listener != null)
+            {
+                try
+                {
+                    IsStopping = true;
+                    Listener.Dispose();
+                    Listener = null;
+                }
+                finally
+                {
+                    IsStopping = false;
+                }
             }
         }
 
         private bool IsDisposed;
-        public override void Dispose()
+        public void Dispose()
         {
             if (IsDisposed)
                 return;
@@ -212,9 +192,7 @@ namespace MenthaAssembly.Network
             try
             {
                 // Listener
-                Listener.Close();
-                Listener.Dispose();
-                Listener = null;
+                Stop();
             }
             finally
             {
