@@ -1,11 +1,9 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 
-namespace MenthaAssembly
+namespace System.Collections.Generic
 {
     public class ObservableRangeCollection<T> : ObservableCollection<T>
     {
@@ -38,9 +36,9 @@ namespace MenthaAssembly
         {
             CheckReentrancy();
 
-            if (Items is not T[] &&
-                Items is not IList &&
-                Items is not ICollection)
+            if (Items is not T[] and
+                not IList and
+                not ICollection)
                 Items = Items.ToArray();
 
             foreach (T Item in Items)
@@ -55,5 +53,4 @@ namespace MenthaAssembly
             => base.OnPropertyChanged(new PropertyChangedEventArgs(PropertyName));
 
     }
-
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -95,10 +96,7 @@ namespace MenthaAssembly.Media.Imaging
                 H = (G - B) * 60d / Delta + 360d;
             else if (Max == G)
                 H = (B - R) * 60d / Delta + 120d;
-            else if (Max == B)
-                H = (R - G) * 60d / Delta + 240d;
-            else
-                H = 0d;
+            else H = Max == B ? (R - G) * 60d / Delta + 240d : 0d;
         }
         public static void GetRGB(double H, double S, double V, out byte R, out byte G, out byte B)
         {

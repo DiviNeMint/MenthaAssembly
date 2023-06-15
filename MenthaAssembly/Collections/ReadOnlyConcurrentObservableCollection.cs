@@ -2,7 +2,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 
-namespace MenthaAssembly
+namespace System.Collections.Generic
 {
     public class ReadOnlyConcurrentObservableCollection<T> : ReadOnlyCollection<T>, INotifyCollectionChanged, INotifyPropertyChanged
     {

@@ -1,12 +1,10 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace MenthaAssembly
+namespace System.Collections.Generic
 {
     public class ConcurrentObservableCollection<T> : ConcurrentCollection<T>, INotifyCollectionChanged, INotifyPropertyChanged
     {
@@ -66,9 +64,9 @@ namespace MenthaAssembly
         public override void Remove(IEnumerable<T> Items)
             => Handle(() =>
             {
-                if (Items is not T[] &&
-                    Items is not IList &&
-                    Items is not ICollection)
+                if (Items is not T[] and
+                    not IList and
+                    not ICollection)
                     Items = Items.ToArray();
 
                 foreach (T item in Items)

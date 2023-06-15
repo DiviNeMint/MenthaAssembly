@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading;
 
-namespace MenthaAssembly
+namespace System.Collections.Generic
 {
     public class ConcurrentCollection<T> : IList<T>, ICollection<T>, IEnumerable<T>, IEnumerable, IList, ICollection, IReadOnlyList<T>, IReadOnlyCollection<T>
     {
-        protected readonly object LockObject = new object();
+        protected readonly object LockObject = new();
 
         public virtual T this[int Index]
         {
@@ -19,7 +16,7 @@ namespace MenthaAssembly
         public int Count
             => Items.Count;
 
-        internal readonly List<T> Items = new List<T>();
+        internal readonly List<T> Items = new();
         public ConcurrentCollection()
         {
             Items = new List<T>();
@@ -47,9 +44,9 @@ namespace MenthaAssembly
         public virtual void Remove(IEnumerable<T> Items)
             => Handle(() =>
             {
-                if (Items is not T[] &&
-                    Items is not IList &&
-                    Items is not ICollection)
+                if (Items is not T[] and
+                    not IList and
+                    not ICollection)
                     Items = Items.ToArray();
 
                 foreach (T Item in Items)
@@ -63,7 +60,7 @@ namespace MenthaAssembly
             => Handle(() => Items.Insert(Index, Item));
 
         public virtual void Clear()
-            => Handle(() => Items.Clear());
+            => Handle(Items.Clear);
 
         public virtual bool Contains(T Item)
             => Handle(() => Items.Contains(Item));
