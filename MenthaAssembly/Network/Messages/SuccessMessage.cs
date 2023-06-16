@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 
 namespace MenthaAssembly.Network
 {
@@ -12,14 +11,10 @@ namespace MenthaAssembly.Network
             this.Success = Success;
         }
 
-        public static Stream Encode(SuccessMessage Message)
+        public virtual void Encode(Stream Stream)
         {
-            MemoryStream EncodeStream = new MemoryStream();
-
             // Data
-            EncodeStream.Write(BitConverter.GetBytes(Message.Success), 0, sizeof(bool));
-
-            return EncodeStream;
+            Stream.Write(Success);
         }
 
         public static SuccessMessage Decode(Stream Stream)

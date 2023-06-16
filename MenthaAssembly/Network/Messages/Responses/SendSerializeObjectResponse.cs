@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace MenthaAssembly.Network.Messages
@@ -15,50 +14,42 @@ namespace MenthaAssembly.Network.Messages
         {
             this.SerializeObject = SerializeObject;
         }
-        private SendSerializeObjectResponse(SuccessMessage Message, object SerializeObject) : this(Message.Success, SerializeObject)
+
+        public override void Encode(Stream Stream)
         {
-
-        }
-
-        public static Stream Encode(SendSerializeObjectResponse Message)
-        {
-            MemoryStream EncodeStream = new MemoryStream();
-
             // Success
-            EncodeStream.Write(BitConverter.GetBytes(Message.Success), 0, sizeof(bool));
+            Stream.Write(Success);
 
             // Datas
-            if (Message.SerializeObject is null)
+            if (SerializeObject is null)
             {
                 // Null
-                EncodeStream.WriteByte(0);
+                Stream.WriteByte(0);
             }
             else
             {
-                EncodeStream.WriteByte(1);
+                Stream.WriteByte(1);
 
                 // Serialize
-                BinaryFormatter BF = new BinaryFormatter();
-                BF.Serialize(EncodeStream, Message.SerializeObject);
-
+                BinaryFormatter BF = new();
+                BF.Serialize(Stream, SerializeObject);
             }
-
-            return EncodeStream;
         }
 
         public static new SendSerializeObjectResponse Decode(Stream Stream)
         {
-            SuccessMessage Message = SuccessMessage.Decode(Stream);
+            // Success
+            bool Success = Stream.Read<bool>();
 
             // Check null
             if (Stream.ReadByte() == 0)
-                return new SendSerializeObjectResponse(Message, null);
+                return new SendSerializeObjectResponse(Success, null);
 
             // Deserialize
-            BinaryFormatter BF = new BinaryFormatter();
+            BinaryFormatter BF = new();
             object SerializeObject = BF.Deserialize(Stream);
 
-            return new SendSerializeObjectResponse(Message, SerializeObject);
+            return new SendSerializeObjectResponse(Success, SerializeObject);
         }
 
     }

@@ -15,23 +15,16 @@ namespace MenthaAssembly.Network.Messages
             this.SendTime = SendTime;
         }
 
-        public static Stream Encode(PingRequest Message)
+        public void Encode(Stream Stream)
         {
-            MemoryStream EncodeStream = new MemoryStream();
-
             // SendTime
-            byte[] Buffer = BitConverter.GetBytes(Message.SendTime.ToBinary());
-            EncodeStream.Write(Buffer, 0, Buffer.Length);
-
-            return EncodeStream;
+            Stream.Write(SendTime);
         }
 
         public static PingRequest Decode(Stream Stream)
         {
             // Decode SendTime
-            long SendTime = Stream.Read<long>();
-
-            return new PingRequest(DateTime.FromBinary(SendTime));
+            return new(Stream.Read<DateTime>());
         }
 
     }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Text;
 
 namespace MenthaAssembly.Network.Messages
@@ -13,42 +12,30 @@ namespace MenthaAssembly.Network.Messages
             this.Message = Message;
         }
 
-        public static Stream Encode(SendMessageResponse Message)
+        public void Encode(Stream Stream)
         {
-            MemoryStream EncodeStream = new MemoryStream();
-
             // Message
-            if (Message.Message is null)
+            if (Message is null)
             {
-                EncodeStream.Write(new byte[] { 0, 0, 0, 0 }, 0, sizeof(int));
+                Stream.Write(0);
             }
             else
             {
-                byte[] Buffer = Encoding.Default.GetBytes(Message.Message);
-                EncodeStream.Write(BitConverter.GetBytes(Buffer.Length), 0, sizeof(int));
-                EncodeStream.Write(Buffer, 0, Buffer.Length);
+                byte[] Buffer = Encoding.Unicode.GetBytes(Message);
+                int Length = Buffer.Length;
+                Stream.Write(Length);
+                Stream.Write(Buffer, 0, Length);
             }
-
-            return EncodeStream;
         }
 
         public static SendMessageResponse Decode(Stream Stream)
-        {            
+        {
             // Decode Size
             int Size = Stream.Read<int>();
 
             // Decode Message
-            string Message = null;
-            if (Size > 0)
-            {
-                byte[] Datas = new byte[Size];
-                Stream.ReadBuffer(Datas);
-                Message = Encoding.Default.GetString(Datas);
-            }
-
-            return new SendMessageResponse(Message);
+            return new(Size > 0 && Stream.TryReadString(Size, Encoding.Unicode, out string Message) ? Message : null);
         }
 
     }
-
 }

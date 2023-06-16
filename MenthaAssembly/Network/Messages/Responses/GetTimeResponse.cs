@@ -12,22 +12,21 @@ namespace MenthaAssembly.Network.Messages
             this.Time = Time;
         }
 
-        public static Stream Encode(GetTimeResponse Message)
+        public void Encode(Stream Stream)
         {
-            MemoryStream EncodeStream = new MemoryStream();
-
-            // Data
-            EncodeStream.Write(BitConverter.GetBytes(Message.Time.ToBinary()), 0, sizeof(long));
-
-            return EncodeStream;
+            // Time
+            //Stream.Write(BitConverter.GetBytes(Time.ToBinary()), 0, sizeof(long));
+            Stream.Write(Time);
         }
 
         public static GetTimeResponse Decode(Stream Stream)
         {
-            // Decode SendTime
-            long SendTime = Stream.Read<long>();
+            // Decode Time
+            return new GetTimeResponse(Stream.Read<DateTime>());
 
-            return new GetTimeResponse(DateTime.FromBinary(SendTime));
+            //long SendTime = Stream.Read<long>();
+            //return new GetTimeResponse(DateTime.FromBinary(SendTime));
         }
+
     }
 }

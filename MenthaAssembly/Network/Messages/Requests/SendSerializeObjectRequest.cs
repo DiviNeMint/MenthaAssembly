@@ -12,39 +12,35 @@ namespace MenthaAssembly.Network.Messages
             this.SerializeObject = SerializeObject;
         }
 
-        public static Stream Encode(SendSerializeObjectRequest Message)
+        public void Encode(Stream Stream)
         {
-            MemoryStream EncodeStream = new MemoryStream();
-
             // SerializeObject
-            if (Message.SerializeObject is null)
+            if (SerializeObject is null)
             {
                 // Null
-                EncodeStream.WriteByte(0);
+                Stream.WriteByte(0);
             }
             else
             {
-                EncodeStream.WriteByte(1);
+                Stream.WriteByte(1);
 
                 // Serialize
-                BinaryFormatter BF = new BinaryFormatter();
-                BF.Serialize(EncodeStream, Message.SerializeObject);
+                BinaryFormatter BF = new();
+                BF.Serialize(Stream, SerializeObject);
             }
-
-            return EncodeStream;
         }
 
         public static SendSerializeObjectRequest Decode(Stream Stream)
         {
             // Check null
             if (Stream.ReadByte() == 0)
-                return new SendSerializeObjectRequest(null) ;
+                return new SendSerializeObjectRequest(null);
 
             // Deserialize
-            BinaryFormatter BF = new BinaryFormatter();
+            BinaryFormatter BF = new();
             object SerializeObject = BF.Deserialize(Stream);
 
-            return new SendSerializeObjectRequest(SerializeObject) ;
+            return new SendSerializeObjectRequest(SerializeObject);
         }
 
     }

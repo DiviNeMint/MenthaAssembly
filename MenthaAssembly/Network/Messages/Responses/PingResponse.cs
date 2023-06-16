@@ -9,28 +9,27 @@ namespace MenthaAssembly.Network.Messages
 
         public DateTime ReceivedTime { get; }
 
+        public PingResponse(PingRequest Request)
+        {
+            SendTime = Request.SendTime;
+            ReceivedTime = DateTime.Now;
+        }
         public PingResponse(DateTime SendTime)
         {
             this.SendTime = SendTime;
-            this.ReceivedTime = DateTime.Now;
+            ReceivedTime = DateTime.Now;
         }
 
-        public static Stream Encode(PingResponse Message)
+        public void Encode(Stream Stream)
         {
-            MemoryStream EncodeStream = new MemoryStream();
-
             // Data
-            EncodeStream.Write(BitConverter.GetBytes(Message.SendTime.ToBinary()), 0, sizeof(long));
-
-            return EncodeStream;
+            Stream.Write(SendTime);
         }
 
         public static PingResponse Decode(Stream Stream)
         {
             // Decode SendTime
-            long SendTime = Stream.Read<long>();
-
-            return new PingResponse(DateTime.FromBinary(SendTime));
+            return new(Stream.Read<DateTime>());
         }
 
     }

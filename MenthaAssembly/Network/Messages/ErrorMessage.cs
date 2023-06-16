@@ -6,23 +6,23 @@ namespace MenthaAssembly.Network
 {
     public class ErrorMessage : IMessage
     {
-        public static ErrorMessage Timeout => new ErrorMessage("Timeout.");
+        public static ErrorMessage Timeout => new("Timeout.");
 
-        public static ErrorMessage NotSupport => new ErrorMessage("Not support.");
+        public static ErrorMessage NotSupport => new("Not support.");
 
-        public static ErrorMessage NotConnected => new ErrorMessage("Not connected.");
+        public static ErrorMessage NotConnected => new("Not connected.");
 
-        public static ErrorMessage Disconnected => new ErrorMessage("Disconnected.");
+        public static ErrorMessage Disconnected => new("Disconnected.");
 
-        public static ErrorMessage OperationCanceled => new ErrorMessage("Operation Canceled.");
+        public static ErrorMessage OperationCanceled => new("Operation Canceled.");
 
-        public static ErrorMessage EncodeException => new ErrorMessage("Happen exception when encode request.");
+        public static ErrorMessage EncodeException => new("Happen exception when encode request.");
 
-        public static ErrorMessage ReceivingNotSupport => new ErrorMessage("The receiving side not support this request.");
+        public static ErrorMessage ReceivingNotSupport => new("The receiving side not support this request.");
 
-        public static ErrorMessage ReceivingEncodeException => new ErrorMessage("The receiving side happen exception when encode response.");
+        public static ErrorMessage ReceivingEncodeException => new("The receiving side happen exception when encode response.");
 
-        public static ErrorMessage ReceivingHandleException => new ErrorMessage("The receiving side happen exception when handle request.");
+        public static ErrorMessage ReceivingHandleException => new("The receiving side happen exception when handle request.");
 
         public string Message { get; }
 
@@ -40,23 +40,19 @@ namespace MenthaAssembly.Network
         public override string ToString()
             => Message;
 
-        public static Stream Encode(ErrorMessage Message)
+        public void Encode(Stream Stream)
         {
-            MemoryStream EncodeStream = new MemoryStream();
-
             // Message
-            if (Message.Message is null)
+            if (Message is null)
             {
-                EncodeStream.Write(new byte[] { 0, 0, 0, 0 }, 0, sizeof(int));
+                Stream.Write(new byte[] { 0, 0, 0, 0 }, 0, sizeof(int));
             }
             else
             {
-                byte[] Buffer = Encoding.Default.GetBytes(Message.Message);
-                EncodeStream.Write(BitConverter.GetBytes(Buffer.Length), 0, sizeof(int));
-                EncodeStream.Write(Buffer, 0, Buffer.Length);
+                byte[] Buffer = Encoding.Unicode.GetBytes(Message);
+                Stream.Write(BitConverter.GetBytes(Buffer.Length), 0, sizeof(int));
+                Stream.Write(Buffer, 0, Buffer.Length);
             }
-
-            return EncodeStream;
         }
 
         public static ErrorMessage Decode(Stream Stream)
@@ -65,15 +61,7 @@ namespace MenthaAssembly.Network
             int Size = Stream.Read<int>();
 
             // Decode Message
-            string Message = null;
-            if (Size > 0)
-            {
-                byte[] Datas = new byte[Size];
-                Stream.ReadBuffer(Datas);
-                Message = Encoding.Default.GetString(Datas);
-            }
-
-            return new ErrorMessage(Message);
+            return new(Size > 0 && Stream.TryReadString(Size, Encoding.Unicode, out string Message) ? Message : null);
         }
 
     }
