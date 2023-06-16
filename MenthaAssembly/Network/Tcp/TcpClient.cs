@@ -173,7 +173,7 @@ namespace MenthaAssembly.Network
 
                 // Message
                 Message = SessionHandler.DecodeMessage(Stream);
-                Debug.WriteLine($"[Info][{GetType().Name}]Receive {Message?.GetType().Name ?? "NullMessage"}.");
+                Debug.WriteLine($"[Info][{GetType().Name}]Receive {Message?.GetType().Name ?? "Unknown Message"} from [{Session.Address}].");
             }
             catch (Exception Ex)
             {

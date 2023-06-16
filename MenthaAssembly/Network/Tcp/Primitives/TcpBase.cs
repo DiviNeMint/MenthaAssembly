@@ -1,71 +1,13 @@
-﻿using MenthaAssembly.Network.Messages;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Net.Sockets;
-using System.Runtime.InteropServices.ComTypes;
 using System.Threading;
 using System.Threading.Tasks;
-using static MenthaAssembly.Network.Primitives.TcpBase;
 
 namespace MenthaAssembly.Network.Primitives
 {
-    public abstract class TcpBase<Token> : IOCPBase
-        where Token : ITcpToken
-    {
-        public event EventHandler<IPEndPoint> Disconnected;
-
-        private ConcurrentQueue<Token> TokenPool = new ConcurrentQueue<Token>();
-
-        protected Token DequeueToken()
-        {
-            return IsDisposed
-                ? throw new ObjectDisposedException(GetType().Name)
-                : TokenPool.TryDequeue(out Token Token) ? Token : CreateToken();
-        }
-        protected void EnqueueToken(Token Token)
-        {
-            if (IsDisposed)
-                return;
-
-            ResetToken(Token);
-            TokenPool.Enqueue(Token);
-        }
-
-        protected abstract Token CreateToken();
-        protected abstract void PrepareToken(Token Token, TcpStream Stream);
-        protected abstract void ResetToken(Token Token);
-
-        protected abstract void OnReceived(Token Token, Stream Stream);
-
-        protected virtual void OnDisconnected(IPEndPoint Address)
-            => Disconnected?.Invoke(this, Address);
-
-        private bool IsDisposed = false;
-        public override void Dispose()
-        {
-            if (IsDisposed)
-                return;
-
-            try
-            {
-                TokenPool = null;
-
-                base.Dispose();
-            }
-            finally
-            {
-                IsDisposed = true;
-            }
-
-        }
-
-    }
-
     public abstract class TcpBase : IDisposable
     {
         protected const int DefaultSendTimeout = 3000;
@@ -74,7 +16,7 @@ namespace MenthaAssembly.Network.Primitives
 
         public event EventHandler<EndPoint> Disconnected;
 
-        public ISessionHandler SessionHandler { get; }
+        protected ISessionHandler SessionHandler { get; }
 
         protected TcpBase(ISessionHandler SessionHandler)
         {
@@ -302,5 +244,4 @@ namespace MenthaAssembly.Network.Primitives
         }
 
     }
-
 }

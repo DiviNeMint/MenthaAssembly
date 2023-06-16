@@ -6,13 +6,13 @@ namespace MenthaAssembly.Network
     public class HttpMessage
     {
         public static HttpMessage NotFound
-            => new HttpMessage(new HttpResponseHeader { StatusCode = HttpStatusCode.NotFound });
+            => new(new HttpResponseHeader { StatusCode = HttpStatusCode.NotFound });
 
         public static HttpMessage BadRequest
-            => new HttpMessage(new HttpResponseHeader { StatusCode = HttpStatusCode.BadRequest });
+            => new(new HttpResponseHeader { StatusCode = HttpStatusCode.BadRequest });
 
         public static HttpMessage RequestTimeout
-            => new HttpMessage(new HttpResponseHeader { StatusCode = HttpStatusCode.RequestTimeout });
+            => new(new HttpResponseHeader { StatusCode = HttpStatusCode.RequestTimeout });
 
         public HttpHeader Header { get; }
 
