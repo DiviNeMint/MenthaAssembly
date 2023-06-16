@@ -219,7 +219,7 @@ namespace System.IO
         /// </summary>
         /// <typeparam name="T">The sepecial type of data.</typeparam>
         /// <param name="This">The current stream.</param>
-        public static T Read<T>(this Stream This) where T : struct
+        public static T Read<T>(this Stream This) where T : unmanaged
             => TryRead(This, out T Result) ? Result : throw new IOException();
         /// <summary>
         /// Reads a data of the specified type from the stream.
@@ -228,7 +228,7 @@ namespace System.IO
         /// <param name="This">The current stream.</param>
         /// <param name="Buffer">The buffer to be filled by the stream.</param>
         /// <param name="Offset">The zero-based byte offset in buffer at which to begin storing the data read from the current stream.</param>
-        public static T Read<T>(this Stream This, byte[] Buffer, int Offset) where T : struct
+        public static T Read<T>(this Stream This, byte[] Buffer, int Offset) where T : unmanaged
             => TryRead(This, Buffer, Offset, out T Result) ? Result : throw new IOException();
         /// <summary>
         /// Reads a  specified length buffer from the stream.
@@ -245,9 +245,9 @@ namespace System.IO
         /// <param name="This">The current stream.</param>
         /// <param name="Result">The object read from the stream.</param>
         public static bool TryRead<T>(this Stream This, out T Result)
-            where T : struct
+            where T : unmanaged
         {
-            int Size = Marshal.SizeOf<T>();
+            int Size = sizeof(T);
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
             try
             {
@@ -258,9 +258,7 @@ namespace System.IO
                 }
 
                 fixed (byte* pBuffer = Buffer)
-#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
                     Result = *(T*)pBuffer;
-#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
                 return true;
             }
@@ -278,9 +276,9 @@ namespace System.IO
         /// <param name="Offset">The zero-based byte offset in buffer at which to begin storing the data read from the current stream.</param>
         /// <param name="Result">The object read from the stream.</param>
         public static bool TryRead<T>(this Stream This, byte[] Buffer, int Offset, out T Result)
-            where T : struct
+            where T : unmanaged
         {
-            int Size = Marshal.SizeOf<T>();
+            int Size = sizeof(T);
             if (Offset + Size > Buffer.Length ||
                 !This.ReadBuffer(Buffer, Offset, Size))
             {
@@ -289,9 +287,7 @@ namespace System.IO
             }
 
             fixed (byte* pBuffer = Buffer)
-#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
                 Result = *(T*)pBuffer;
-#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
             return true;
         }
@@ -319,9 +315,9 @@ namespace System.IO
         /// <param name="This">The current stream.</param>
         /// <param name="Result">The object read from the stream.</param>
         public static bool TryReverseRead<T>(this Stream This, out T Result)
-            where T : struct
+            where T : unmanaged
         {
-            int Size = Marshal.SizeOf<T>();
+            int Size = sizeof(T);
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
             try
             {
@@ -333,9 +329,7 @@ namespace System.IO
 
                 Array.Reverse(Buffer, 0, Size);
                 fixed (byte* pBuffer = Buffer)
-#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
                     Result = *(T*)pBuffer;
-#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
                 return true;
             }
@@ -353,9 +347,9 @@ namespace System.IO
         /// <param name="Offset">The zero-based byte offset in buffer at which to begin storing the data read from the current stream.</param>
         /// <param name="Result">The object read from the stream.</param>
         public static bool TryReverseRead<T>(this Stream This, byte[] Buffer, int Offset, out T Result)
-            where T : struct
+            where T : unmanaged
         {
-            int Size = Marshal.SizeOf<T>();
+            int Size = sizeof(T);
             if (!This.ReadBuffer(Buffer, Offset, Size))
             {
                 Result = default;
@@ -364,9 +358,7 @@ namespace System.IO
 
             Array.Reverse(Buffer, 0, Size);
             fixed (byte* pBuffer = Buffer)
-#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
                 Result = *(T*)pBuffer;
-#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
             return true;
         }
