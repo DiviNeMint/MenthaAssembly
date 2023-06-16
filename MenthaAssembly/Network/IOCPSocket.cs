@@ -573,6 +573,9 @@ namespace MenthaAssembly.Network
                 this.Token = Token;
             }
 
+            public override int ReadByte()
+                => this.Read<byte>();
+
             public override int Read(byte[] Buffer, int Offset, int Count)
                 => Token is null ? Socket.Receive(Buffer, Offset, Count) :
                                    Socket.InternalReceiveFrom(Buffer, Offset, Count, Token);
