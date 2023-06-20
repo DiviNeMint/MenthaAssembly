@@ -1,6 +1,7 @@
 ﻿using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -52,28 +53,39 @@ namespace System.Collections.Generic
         public override bool Remove(T item)
             => Handle(() =>
             {
-                if (Items.Remove(item))
+                if (!Items.Remove(item))
+                    return false;
+
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+                return true;
+            });
+        public override void Remove(Predicate<T> Predict)
+            => Handle(() =>
+            {
+                for (int i = Items.Count - 1; i >= 0; i--)
                 {
-                    OnPropertyChanged(CountName);
-                    OnPropertyChanged(IndexerName);
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
-                    return true;
+                    T RemovedItem = Items[i];
+                    if (Predict(RemovedItem))
+                    {
+                        Items.RemoveAt(i);
+                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, i));
+                    }
                 }
-                return false;
+
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
             });
         public override void Remove(IEnumerable<T> Items)
             => Handle(() =>
             {
-                if (Items is not T[] and
-                    not IList and
-                    not ICollection)
+                if (Items is not T[] and not IList and not ICollection)
                     Items = Items.ToArray();
 
                 foreach (T item in Items)
-                {
                     if (this.Items.Remove(item))
                         OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
-                }
 
                 OnPropertyChanged(CountName);
                 OnPropertyChanged(IndexerName);

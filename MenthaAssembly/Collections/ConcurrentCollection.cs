@@ -5,8 +5,6 @@ namespace System.Collections.Generic
 {
     public class ConcurrentCollection<T> : IList<T>, ICollection<T>, IEnumerable<T>, IEnumerable, IList, ICollection, IReadOnlyList<T>, IReadOnlyCollection<T>
     {
-        protected readonly object LockObject = new();
-
         public virtual T this[int Index]
         {
             get => GetItem(Index);
@@ -41,12 +39,18 @@ namespace System.Collections.Generic
         public virtual bool Remove(T Item)
             => Handle(() => Items.Remove(Item));
 
+        public virtual void Remove(Predicate<T> Predict)
+            => Handle(() =>
+            {
+                for (int i = Items.Count - 1; i >= 0; i--)
+                    if (Predict(Items[i]))
+                        Items.RemoveAt(i);
+            });
+
         public virtual void Remove(IEnumerable<T> Items)
             => Handle(() =>
             {
-                if (Items is not T[] and
-                    not IList and
-                    not ICollection)
+                if (Items is not T[] and not IList and not ICollection)
                     Items = Items.ToArray();
 
                 foreach (T Item in Items)
@@ -88,13 +92,13 @@ namespace System.Collections.Generic
             bool Token = false;
             try
             {
-                Monitor.Enter(LockObject, ref Token);
+                Monitor.Enter(this, ref Token);
                 return Func();
             }
             finally
             {
                 if (Token)
-                    Monitor.Exit(LockObject);
+                    Monitor.Exit(this);
             }
         }
         protected internal void Handle(Action Action)
@@ -102,22 +106,22 @@ namespace System.Collections.Generic
             bool Token = false;
             try
             {
-                Monitor.Enter(LockObject, ref Token);
+                Monitor.Enter(this, ref Token);
                 Action();
             }
             finally
             {
                 if (Token)
-                    Monitor.Exit(LockObject);
+                    Monitor.Exit(this);
             }
         }
 
         public void Lock()
-            => Monitor.Enter(LockObject);
+            => Monitor.Enter(this);
         public void Unlock()
         {
-            if (Monitor.IsEntered(LockObject))
-                Monitor.Exit(LockObject);
+            if (Monitor.IsEntered(this))
+                Monitor.Exit(this);
         }
 
         #region IList

@@ -177,36 +177,37 @@ namespace System.Linq
         public static bool IsEmpty(this IEnumerable Source)
             => !Source.GetEnumerator().MoveNext();
 
-        //#if NETSTANDARD2_0
-        //        /// <summary>
-        //        /// Appends a value to the end of the sequence.
-        //        /// </summary>
-        //        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
-        //        /// <param name="Source">A sequence of values.</param>
-        //        /// <param name="Element">The value to append to source.</param>
-        //        public static IEnumerable<TSource> Append<TSource>(this IEnumerable<TSource> Source, TSource Element)
-        //        {
-        //            foreach (TSource Item in Source)
-        //                yield return Item;
+#if !NETSTANDARD2_1_OR_GREATER
 
-        //            yield return Element;
-        //        }
+        /// <summary>
+        /// Appends a value to the end of the sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
+        /// <param name="Source">A sequence of values.</param>
+        /// <param name="Element">The value to append to source.</param>
+        public static IEnumerable<TSource> Append<TSource>(this IEnumerable<TSource> Source, TSource Element)
+        {
+            foreach (TSource Item in Source)
+                yield return Item;
 
-        //        /// <summary>
-        //        /// Adds a value to the beginning of the sequence.
-        //        /// </summary>
-        //        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
-        //        /// <param name="Source">A sequence of values.</param>
-        //        /// <param name="Element">The value to prepend to source.</param>
-        //        public static IEnumerable<TSource> Prepend<TSource>(this IEnumerable<TSource> Source, TSource Element)
-        //        {
-        //            yield return Element;
+            yield return Element;
+        }
 
-        //            foreach (TSource Item in Source)
-        //                yield return Item;
-        //        }
+        /// <summary>
+        /// Adds a value to the beginning of the sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
+        /// <param name="Source">A sequence of values.</param>
+        /// <param name="Element">The value to prepend to source.</param>
+        public static IEnumerable<TSource> Prepend<TSource>(this IEnumerable<TSource> Source, TSource Element)
+        {
+            yield return Element;
 
-        //#endif
+            foreach (TSource Item in Source)
+                yield return Item;
+        }
+
+#endif
 
         public static IEnumerable<TResult> Select<TResult>(this IEnumerable Source, Func<object, TResult> Selector)
         {
@@ -266,6 +267,8 @@ namespace System.Linq
                     yield return Result;
             }
         }
+
+#if !NET6_0_OR_GREATER
 
         /// <summary>
         /// Invokes a transform function on each element of a generic sequence and returns the maximum resulting element.
@@ -372,6 +375,8 @@ namespace System.Linq
             }
 
         }
+
+#endif
 
     }
 }
