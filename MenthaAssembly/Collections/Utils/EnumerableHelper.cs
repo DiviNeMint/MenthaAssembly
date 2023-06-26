@@ -170,13 +170,6 @@ namespace System.Linq
                     yield return Item;
         }
 
-        /// <summary>
-        /// Checks the sequence has contents.
-        /// </summary>
-        /// <param name="Source">The sequence to be checked.</param>
-        public static bool IsEmpty(this IEnumerable Source)
-            => !Source.GetEnumerator().MoveNext();
-
 #if !NETSTANDARD2_1_OR_GREATER
 
         /// <summary>
