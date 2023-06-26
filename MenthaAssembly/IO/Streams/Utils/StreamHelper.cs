@@ -309,6 +309,16 @@ namespace System.IO
             return true;
         }
         /// <summary>
+        /// Reads a byte from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Result">The byte read from the stream.</param>
+        public static bool TryReadByte(this Stream This, out int Result)
+        {
+            Result = This.ReadByte();
+            return Result != -1;
+        }
+        /// <summary>
         /// Reads a reversed data of the specified type from the stream.
         /// </summary>
         /// <typeparam name="T">The sepecial type of data.</typeparam>

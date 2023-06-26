@@ -92,8 +92,7 @@ namespace MenthaAssembly.Network.Primitives
 
             for (int i = 0; i < 16; i++)
             {
-                int c = Stream.ReadByte();
-                if (c == -1)
+                if (!Stream.TryReadByte(out int c))
                     break;
 
                 if (c == 13)

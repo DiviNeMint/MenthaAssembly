@@ -53,8 +53,9 @@ namespace MenthaAssembly.IO
             if (!CanRead)
                 throw new NotSupportedException();
 
-            int Result = Stream.ReadByte();
-            CRC32.Calculate((byte)Result, out _Code, _Code);
+            if (Stream.TryReadByte(out int Result))
+                CRC32.Calculate((byte)Result, out _Code, _Code);
+
             return Result;
         }
 

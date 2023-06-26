@@ -437,8 +437,7 @@ namespace MenthaAssembly.Network
             {
                 try
                 {
-                    int c = Stream.ReadByte();
-                    while (c > -1)
+                    while (Stream.TryReadByte(out int c))
                     {
                         if (c == 13)
                         {
@@ -452,7 +451,6 @@ namespace MenthaAssembly.Network
                         }
 
                         LineBuilder.Append((char)c);
-                        c = Stream.ReadByte();
                     }
 
                     return LineBuilder.ToString();
