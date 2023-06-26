@@ -52,7 +52,7 @@ namespace MenthaAssembly.Network
 
             // Init
             e.Received += (s, e) => OnReceived(Session, e);
-            e.Disconnect += (s, e) =>
+            e.Disconnected += (s, e) =>
             {
                 // Release Session
                 ServerSession = null;

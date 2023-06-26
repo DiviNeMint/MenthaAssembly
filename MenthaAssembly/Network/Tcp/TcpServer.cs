@@ -252,7 +252,7 @@ namespace MenthaAssembly.Network
 
             // Init
             e.Received += (s, e) => OnReceived(Session, e);
-            e.Disconnect += (s, e) =>
+            e.Disconnected += (s, e) =>
             {
                 // Release Session
                 Sessions.TryRemove(Address, out _);
@@ -286,6 +286,9 @@ namespace MenthaAssembly.Network
             // Connected Event
             Debug.WriteLine($"[Info][{GetType().Name}]Accept client[{(Address is IPEndPoint IPAddress ? $"{IPAddress.Address}:{IPAddress.Port}" : Address)}].");
             OnConnected(Address);
+
+            // Loop Accept
+            Listener.Accept();
         }
 
         protected virtual void OnStart(EndPoint Address)

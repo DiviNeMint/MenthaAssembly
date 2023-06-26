@@ -225,9 +225,10 @@ namespace MenthaAssembly.Network.Primitives
 
             internal Session(IOCPSocket Socket)
             {
+                EndPoint Remote = Socket.RemoteEndPoint;
                 this.Socket = Socket;
-                Address = Socket.RemoteEndPoint;
-                Random = new(Socket.RemoteEndPoint.GetHashCode());
+                Address = Remote;
+                Random = new(Remote.GetHashCode());
             }
 
             private readonly Random Random;

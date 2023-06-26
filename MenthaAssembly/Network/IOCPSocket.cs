@@ -16,7 +16,7 @@ namespace MenthaAssembly.Network
 
         public event EventHandler<Stream> Received;
 
-        public event EventHandler Disconnect;
+        public event EventHandler Disconnected;
 
         public AddressFamily AddressFamily
             => Socket.AddressFamily;
@@ -390,7 +390,7 @@ namespace MenthaAssembly.Network
             if (IsDisposed)
                 return;
 
-            Disconnect?.Invoke(this, EventArgs.Empty);
+            Disconnected?.Invoke(this, EventArgs.Empty);
             Dispose();
         }
 
@@ -433,9 +433,6 @@ namespace MenthaAssembly.Network
                 e.AcceptSocket is Socket s &&
                 s.Connected)
                 OnAccepted(new IOCPSocket(s));
-
-            // Loop Accept
-            InternalAccept(e);
         }
         private void OnConnectProcess(SocketAsyncEventArgs e)
         {
