@@ -89,9 +89,14 @@ namespace MenthaAssembly.Media.Imaging
         /// <param name="Width">The specified width.</param>
         /// <param name="Height">The specified height.</param>
         /// <param name="Scan0">The specified datapointer.</param>
-        public ImageContext(int Width, int Height, IntPtr Scan0) :
-            this(Width, Height, Scan0, Width)
+        public ImageContext(int Width, int Height, IntPtr Scan0) : this()
         {
+            this.Width = Width;
+            this.Height = Height;
+            Stride = (Width * BitsPerPixel + 7) >> 3;
+
+            _Scan0 = new IntPtr[] { Scan0 };
+            AdapterGenerator = PixelAdapterGenerator.Instance1;
         }
         /// <summary>
         /// Initializes a new image.
