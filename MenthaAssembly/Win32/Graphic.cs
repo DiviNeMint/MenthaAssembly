@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Win32
 {
-    public unsafe static class Graphic
+    public static unsafe class Graphic
     {
         #region Windows API
         /// <summary>
@@ -79,6 +79,16 @@ namespace MenthaAssembly.Win32
         internal static extern IntPtr CreateCompatibleBitmap(IntPtr hDC, int Width, int Height);
 
         /// <summary>
+        /// The SetBkMode function sets the background mix mode of the specified device context.
+        /// The background mix mode is used with text, hatched brushes, and pen styles that are not solid lines.
+        /// </summary>
+        /// <param name="hdc">A handle to the device context.</param>
+        /// <param name="iBkMode">TRANSPARENT = 1, OPAQUE = 2</param>
+        /// <returns></returns>
+        [DllImport("Gdi32.dll")]
+        internal static extern int SetBkMode(IntPtr hdc, int iBkMode);
+
+        /// <summary>
         /// Performs a bit-block transfer of the color data corresponding to a
         /// rectangle of pixels from the specified source device context into
         /// a destination device context.
@@ -94,6 +104,12 @@ namespace MenthaAssembly.Win32
         /// <param name="dwRop">A raster-operation code.</param>
         [DllImport("Gdi32.dll")]
         internal static extern bool BitBlt(IntPtr hDCDest, int nXDest, int nYDest, int nWidth, int nHeight, IntPtr hDCSrc, int nXSrc, int nYSrc, TernaryRasterOperations dwRop);
+
+        [DllImport("Gdi32.dll")]
+        internal static extern bool PatBlt(IntPtr hdc, int nXLeft, int nYLeft, int nWidth, int nHeight, TernaryRasterOperations dwRop);
+
+        [DllImport("Gdi32.dll", EntryPoint = "GdiAlphaBlend")]
+        internal static extern bool AlphaBlend(IntPtr hdcDest, int Nx, int Ny, int Nw, int Nh, IntPtr hdcSrc, int Sx, int Sy, int Sw, int Sh, BlendFunction BlendFunction);
 
         #endregion
 
@@ -117,6 +133,12 @@ namespace MenthaAssembly.Win32
 
         [DllImport("Gdi32.dll")]
         internal static extern int GetDIBits(IntPtr hDC, IntPtr hbmp, int uStartScan, int cScanLines, byte* lpvBits, IntPtr lpbi, DIBColorMode uUsage);
+
+        [DllImport("Gdi32.dll")]
+        internal static extern IntPtr CreateDIBSection(IntPtr hdc, BitmapInfoHeader* pbmi, uint iUsage, out IntPtr ppvBits, IntPtr hSection, uint dwOffset);
+
+        [DllImport("Gdi32.dll")]
+        internal static extern IntPtr CreateDIBSection(IntPtr hdc, BitmapV5Header* pbmi, uint iUsage, out IntPtr ppvBits, IntPtr hSection, uint dwOffset);
 
         [DllImport("Gdi32.dll")]
         internal static extern IntPtr CreateBitmap(int Width, int Height, int cPlanes, int cBitsPerPel, IntPtr lpvBits);
@@ -154,6 +176,43 @@ namespace MenthaAssembly.Win32
         /// </returns>
         public static IntPtr CreateHBitmap(this IImageContext This)
             => CreateBitmap(This.Width, This.Height, 1, This.BitsPerPixel, This.Scan0[0]);
+
+        //public static IntPtr CreateHBitmap2(this IImageContext This)
+        //{
+        //    int Iw = This.Width,
+        //        Ih = This.Height;
+
+        //    BitmapInfoHeader Header = new()
+        //    {
+        //        biSize = sizeof(BitmapInfoHeader),
+        //        biWidth = Iw,
+        //        biHeight = Ih,
+        //        biPlanes = 1,
+        //        biBitCount = 32,
+        //        biCompression = BitmapCompressionMode.RGB,
+        //    };
+
+        //    // 創建源和目標 DC
+        //    IntPtr hbmSrc = CreateDIBSection(IntPtr.Zero, &Header, 0, out IntPtr pData, IntPtr.Zero, 0);
+
+        //    //PixelAdapter<BGRA> Adapter = This.GetAdapter<BGRA>(0, 0);
+        //    //byte* pDest = (byte*)pData;
+        //    //for (int y = 0; y < Ih; y++, Adapter.DangerousMoveNextY())
+        //    //{
+        //    //    for (int x = 0; x < Iw; x++, Adapter.DangerousMoveNextX())
+        //    //    {
+        //    //        byte A = Adapter.A;
+        //    //        *pDest++ = Adapter.B ;
+        //    //        *pDest++ = Adapter.G ;
+        //    //        *pDest++ = Adapter.R ;
+        //    //        *pDest++ = 128;
+        //    //    }
+
+        //    //    Adapter.DangerousOffsetX(-Iw);
+        //    //}
+
+        //    return hbmSrc;
+        //}
 
         public static bool TryDecodeHBitmap(IntPtr HBitmap, out IImageContext Bitmap)
         {
@@ -339,7 +398,7 @@ namespace MenthaAssembly.Win32
         {
             try
             {
-                IconInfo Info = new IconInfo
+                IconInfo Info = new()
                 {
                     fIcon = false,
                     xHotspot = xHotSpot,

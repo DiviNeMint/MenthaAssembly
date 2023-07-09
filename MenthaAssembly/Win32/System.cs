@@ -179,6 +179,9 @@ namespace MenthaAssembly.Win32
         [DllImport("msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern IntPtr MemoryCopy(void* pDest, void* pSrc, long Length);
 
+        [DllImport("Kernel32.dll", EntryPoint = "RtlZeroMemory", SetLastError = false)]
+        public static extern void ZeroMemory(IntPtr pDest, IntPtr Size);
+
         #endregion
 
         #region Windows API (System parameter)
