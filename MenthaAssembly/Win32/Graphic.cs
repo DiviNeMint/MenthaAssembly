@@ -1,5 +1,6 @@
 ﻿using MenthaAssembly.Media.Imaging;
 using System;
+using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 
@@ -283,11 +284,6 @@ namespace MenthaAssembly.Win32
                 biPlanes = 1,
                 biBitCount = Data.bmBitsPixel,
                 biCompression = BitmapCompressionMode.RGB,
-                biSizeImage = 0,
-                biXPelsPerMeter = 0,
-                biYPelsPerMeter = 0,
-                biClrUsed = 0,
-                biClrImportant = 0,
             };
 
             try
@@ -368,22 +364,14 @@ namespace MenthaAssembly.Win32
         /// </returns>
         public static IntPtr CreateHIcon(IntPtr HBmpColor, IntPtr HBmpMask)
         {
-            try
+            IconInfo Info = new IconInfo
             {
-                IconInfo Info = new IconInfo
-                {
-                    fIcon = true,
-                    hbmMask = HBmpMask,
-                    hbmColor = HBmpColor
-                };
+                fIcon = true,
+                hbmMask = HBmpMask,
+                hbmColor = HBmpColor
+            };
 
-                return CreateIconIndirect(ref Info);
-            }
-            finally
-            {
-                DeleteObject(HBmpMask);
-                DeleteObject(HBmpColor);
-            }
+            return CreateIconIndirect(ref Info);
         }
         /// <summary>
         /// Creates a bitmap.<para/>
@@ -396,24 +384,16 @@ namespace MenthaAssembly.Win32
         /// </returns>
         public static IntPtr CreateHIcon(IntPtr HBmpColor, IntPtr HBmpMask, int xHotSpot, int yHotSpot)
         {
-            try
+            IconInfo Info = new()
             {
-                IconInfo Info = new()
-                {
-                    fIcon = false,
-                    xHotspot = xHotSpot,
-                    yHotspot = yHotSpot,
-                    hbmMask = HBmpMask,
-                    hbmColor = HBmpColor
-                };
+                fIcon = false,
+                xHotspot = xHotSpot,
+                yHotspot = yHotSpot,
+                hbmMask = HBmpMask,
+                hbmColor = HBmpColor
+            };
 
-                return CreateIconIndirect(ref Info);
-            }
-            finally
-            {
-                DeleteObject(HBmpMask);
-                DeleteObject(HBmpColor);
-            }
+            return CreateIconIndirect(ref Info);
         }
 
         public static bool TryDecodeHIcon(IntPtr HIcon, out ImageContext<BGRA> Icon)
@@ -421,26 +401,11 @@ namespace MenthaAssembly.Win32
             Icon = null;
             GetIconInfo(HIcon, out IconInfo Info);
 
-            if (TryDecodeHBitmap(Info.hbmColor, out IImageContext Color))
+            if (TryDecodeHBitmap(Info.hbmColor, out IImageContext Context))
             {
-                if (Color.PixelType.Equals(typeof(BGRA)))
-                {
-                    Icon = Color.Cast<BGRA>();
-                    return true;
-                }
+                Icon = Context is ImageContext<BGRA> BGRAContext ? BGRAContext : Context.Cast<BGRA>();
+                return true;
             }
-
-            //if (TryDecodeHBitmap(Info.hbmMask, out IImageContext Mask))
-            //{
-            //    if (TryDecodeHBitmap(Info.hbmColor, out IImageContext Color))
-            //    {
-
-            //    }
-            //    else
-            //    {
-
-            //    }
-            //}
 
             return false;
         }
