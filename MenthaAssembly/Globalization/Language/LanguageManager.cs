@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 
 namespace MenthaAssembly
 {
@@ -50,20 +49,18 @@ namespace MenthaAssembly
             }
         }
 
-        private static IList<string> _Languages;
-        public static IList<string> Languages
+        private static ObservableCollection<string> _Languages;
+        public static IReadOnlyList<string> Languages
         {
             get
             {
-                if (_Languages is null)
-                    _Languages = new ObservableCollection<string>();
+                _Languages ??= new ObservableCollection<string>();
 
-                DirectoryInfo Directory = new DirectoryInfo(LanguagesFolder);
+                DirectoryInfo Directory = new(LanguagesFolder);
                 if (Directory.Exists)
                 {
-                    IEnumerable<string> FilesNames = Directory.EnumerateFiles()
-                                                              .Where(i => ExtensionName.Equals(i.Extension))
-                                                              .Select(i => i.Name.Replace(ExtensionName, string.Empty));
+                    IEnumerable<string> FilesNames = Directory.EnumerateFiles($"*{ExtensionName}")
+                                                              .Select(i => Path.GetFileNameWithoutExtension(i.Name));
 
                     IEnumerable<string> TempFilesNames = _Languages.Except(FilesNames);
                     if (TempFilesNames.Count() > 0)
@@ -101,50 +98,23 @@ namespace MenthaAssembly
 
             Current.Load(LanguageName);
         }
-        public static void Load(this LanguagePacketBase Packet, string LanguageName)
-        {
-            string FilePath = Path.Combine(LanguagesFolder, $"{LanguageName}{ExtensionName}");
-            if (File.Exists(FilePath))
-            {
-                foreach (Match item in Regex.Matches(File.ReadAllText(FilePath), @"(?<Property>[^=\s]+)=(?<Value>[^\r\n]+)"))
-                    Packet[item.Groups["Property"].Value] = item.Groups["Value"].Value;
 
-                Packet.LanguageName = LanguageName;
-                Packet.OnPropertyChanged();
-            }
-            else
-            {
-                throw new ArgumentNullException(LanguageName, $"Can't find Language Packet at {FilePath}");
-            }
-        }
-        public static void Save(this LanguagePacketBase Packet, string DirectoryPath)
-            => Save(Packet, Packet.LanguageName, DirectoryPath);
-        public static void Save(this LanguagePacketBase Packet, string LanguageName, string DirectoryPath)
+        public static void Import(string File)
         {
-            if (!Directory.Exists(LanguagesFolder))
-                Directory.CreateDirectory(LanguagesFolder);
-
-            File.WriteAllLines(Path.Combine(DirectoryPath, $"{LanguageName}{ExtensionName}"),
-                               Packet.GetPropertyNames()
-                                     .TrySelect(i => $"{i}={Packet[i]}"));
-        }
-
-        public static void Import(string FilePath)
-        {
-            FileInfo File = new FileInfo(FilePath);
-            if (File.Exists &&
-                ExtensionName.Equals(File.Extension))
+            FileInfo Info = new(File);
+            if (Info.Exists &&
+                ExtensionName.Equals(Info.Extension))
             {
-                string FileName = File.Name.Replace(ExtensionName, string.Empty);
+                string FileName = Path.GetFileNameWithoutExtension(Info.Name);
                 if (!_Languages.Contains(FileName))
                     _Languages.Add(FileName);
 
-                File.CopyTo(Path.Combine(LanguagesFolder, File.Name), true);
+                Info.CopyTo(Path.Combine(LanguagesFolder, Info.Name), true);
                 OnStaticPropertyChanged(nameof(Languages));
             }
         }
-        public static void Export(string DirectoryPath)
-            => Current?.Save(DirectoryPath);
+        public static void Export(string Folder)
+            => Current?.Save(Folder);
 
         private static void OnAssemblyLoad(object sender, AssemblyLoadEventArgs e)
         {

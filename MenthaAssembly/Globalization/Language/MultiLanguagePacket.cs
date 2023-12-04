@@ -9,11 +9,10 @@ namespace MenthaAssembly.Globalization
     public class MultiLanguagePacket : LanguagePacketBase
     {
         public event EventHandler<IEnumerable<LanguagePacketBase>> PacketAdded;
+        public event EventHandler<IEnumerable<LanguagePacketBase>> PacketRemoved;
 
         private readonly ObservableCollection<LanguagePacketBase> _Packets;
         public IReadOnlyList<LanguagePacketBase> Packets => _Packets;
-
-        internal bool NotifyCollectionChanged = true;
 
         public override string this[string Name]
         {
@@ -25,65 +24,54 @@ namespace MenthaAssembly.Globalization
                 Debug.WriteLine($"[LanguagePacket]Not fount {Name}.");
                 return null;
             }
-
-            internal set
+            protected internal set
             {
                 if (Packets.FirstOrDefault(i => i.GetPropertyNames().Contains(Name)) is LanguagePacketBase Packet)
                     Packet[Name] = value;
             }
         }
 
-        public MultiLanguagePacket() : this(null)
+        public MultiLanguagePacket()
         {
+            _Packets = new ObservableCollection<LanguagePacketBase>();
         }
         public MultiLanguagePacket(IEnumerable<LanguagePacketBase> Packets)
         {
-            ObservableCollection<LanguagePacketBase> TempPackets = Packets is null ? new ObservableCollection<LanguagePacketBase>() :
-                                                                                  new ObservableCollection<LanguagePacketBase>(Packets);
-            TempPackets.CollectionChanged += (s, e) =>
-            {
-                if (NotifyCollectionChanged)
-                    this.OnPropertyChanged();
-            };
-            this._Packets = TempPackets;
+            _Packets = new ObservableCollection<LanguagePacketBase>(Packets);
         }
 
         public void Add(LanguagePacketBase Packet)
         {
             AddHander(Packet);
+
             PacketAdded?.Invoke(this, new LanguagePacketBase[] { Packet });
+            OnPropertyChanged();
         }
         public void Add(IEnumerable<LanguagePacketBase> Packets)
         {
-            try
-            {
-                NotifyCollectionChanged = false;
+            foreach (LanguagePacketBase p in Packets)
+                AddHander(p);
 
-                foreach (LanguagePacketBase p in Packets)
-                    AddHander(p);
-
-                PacketAdded?.Invoke(this, Packets);
-                this.OnPropertyChanged();
-            }
-            finally
-            {
-                NotifyCollectionChanged = true;
-            }
-
+            PacketAdded?.Invoke(this, Packets);
+            OnPropertyChanged();
         }
         private void AddHander(LanguagePacketBase Packet)
         {
             Type t = Packet.GetType();
             int Index = _Packets.IndexOf(i => t.Equals(i.GetType()));
             if (Index == -1)
-                this._Packets.Add(Packet);
+                _Packets.Add(Packet);
             else
-                this._Packets[Index] = Packet;
-
+                _Packets[Index] = Packet;
         }
 
         public void Remove(LanguagePacketBase Packet)
-            => _Packets.Remove(Packet);
+        {
+            _Packets.Remove(Packet);
+
+            PacketRemoved?.Invoke(this, new LanguagePacketBase[] { Packet });
+            OnPropertyChanged();
+        }
 
         protected internal override IEnumerable<string> GetPropertyNames()
         {
