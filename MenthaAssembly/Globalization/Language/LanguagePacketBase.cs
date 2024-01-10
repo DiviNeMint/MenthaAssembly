@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using static MenthaAssembly.LanguageManager;
 
 namespace MenthaAssembly.Globalization
 {
@@ -33,13 +37,113 @@ namespace MenthaAssembly.Globalization
                 Debug.WriteLine($"[{GetType().Name}]Not fount {Name}.");
                 return null;
             }
-            internal set
+            protected internal set
             {
                 if (SetCaches is null)
                     CreateCache();
 
                 if (SetCaches.TryGetValue(Name, out Action<string> SetValue))
                     SetValue(value);
+            }
+        }
+
+        public void Load(string LanguageName)
+        {
+            string FilePath = Path.Combine(LanguagesFolder, $"{LanguageName}{ExtensionName}");
+            if (File.Exists(FilePath))
+            {
+                FileStream Stream = new(FilePath, FileMode.Open, FileAccess.Read);
+                try
+                {
+                    if (IsZipArchive(Stream))
+                    {
+                        ZipArchive Archive = new(Stream, ZipArchiveMode.Read);
+                        foreach (ZipArchiveEntry Entry in Archive.Entries.OrderBy(i => i.LastWriteTime))
+                        {
+                            Stream Content = Entry.Open();
+                            try
+                            {
+                                LoadPacketContent(Content);
+                            }
+                            finally
+                            {
+                                Content.Dispose();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Stream.Seek(0L, SeekOrigin.Begin);
+                        LoadPacketContent(Stream);
+                    }
+                }
+                finally
+                {
+                    Stream.Dispose();
+                }
+
+                this.LanguageName = LanguageName;
+                OnPropertyChanged();
+            }
+            else
+            {
+                throw new ArgumentNullException(LanguageName, $"Can't find Language Packet at {FilePath}");
+            }
+        }
+
+        public void Save(string Folder)
+            => Save(LanguageName, Folder);
+        public void Save(string LanguageName, string Folder)
+        {
+            if (!Directory.Exists(LanguagesFolder))
+                Directory.CreateDirectory(LanguagesFolder);
+
+            File.WriteAllLines(Path.Combine(Folder, $"{LanguageName}{ExtensionName}"),
+                               GetPropertyNames().TrySelect(i => $"{i}={this[i]}"));
+        }
+
+        private bool IsZipArchive(Stream Stream)
+        {
+            const int IdentifierSize = 4;
+            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
+            try
+            {
+                return Stream.ReadBuffer(Identifier, IdentifierSize) &&
+                       ArchiveHelper.IsZipArchive(Identifier);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Identifier);
+            }
+        }
+        private void LoadPacketContent(Stream Stream)
+        {
+            StreamReader Reader = new(Stream);
+            try
+            {
+                while (!Reader.EndOfStream)
+                {
+                    string Line = Reader.ReadLine();
+                    if (Line.StartsWith("//"))
+                    {
+                        // Comment
+                        continue;
+                    }
+                    else if (Line.StartsWith("%"))
+                    {
+                        // Command
+                        continue;
+                    }
+                    else
+                    {
+                        string[] Contents = Line.Split('=');
+                        this[Contents[0]] = Contents[1];
+                    }
+                }
+            }
+            finally
+            {
+                Reader.Dispose();
             }
         }
 
@@ -69,7 +173,7 @@ namespace MenthaAssembly.Globalization
             }
         }
 
-        protected internal virtual void OnPropertyChanged()
+        protected virtual void OnPropertyChanged()
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(""));
 
     }

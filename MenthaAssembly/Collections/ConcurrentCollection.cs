@@ -60,6 +60,33 @@ namespace System.Collections.Generic
         public virtual void RemoveAt(int Index)
             => Handle(() => Items.RemoveAt(Index));
 
+        public virtual bool TryRemove(Predicate<T> Predict, out T Item)
+        {
+            bool Token = false;
+            try
+            {
+                Monitor.Enter(this, ref Token);
+
+                for (int i = Items.Count - 1; i >= 0; i--)
+                {
+                    Item = Items[i];
+                    if (Predict(Item))
+                    {
+                        Items.RemoveAt(i);
+                        return true;
+                    }
+                }
+
+                Item = default;
+                return false;
+            }
+            finally
+            {
+                if (Token)
+                    Monitor.Exit(this);
+            }
+        }
+
         public virtual void Insert(int Index, T Item)
             => Handle(() => Items.Insert(Index, Item));
 

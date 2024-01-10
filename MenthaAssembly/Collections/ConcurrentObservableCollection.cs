@@ -1,7 +1,6 @@
 ﻿using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -101,6 +100,37 @@ namespace System.Collections.Generic
                     OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, index));
                 }
             });
+
+        public override bool TryRemove(Predicate<T> Predict, out T Item)
+        {
+            bool Token = false;
+            try
+            {
+                Monitor.Enter(this, ref Token);
+
+                for (int i = Items.Count - 1; i >= 0; i--)
+                {
+                    Item = Items[i];
+                    if (Predict(Item))
+                    {
+                        Items.RemoveAt(i);
+                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, Item, i));
+
+                        OnPropertyChanged(CountName);
+                        OnPropertyChanged(IndexerName);
+                        return true;
+                    }
+                }
+
+                Item = default;
+                return false;
+            }
+            finally
+            {
+                if (Token)
+                    Monitor.Exit(this);
+            }
+        }
 
         public override void Insert(int index, T item)
             => Handle(() =>
