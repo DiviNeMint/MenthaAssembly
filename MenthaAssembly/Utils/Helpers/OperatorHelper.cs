@@ -493,14 +493,18 @@ namespace MenthaAssembly
             private static Func<T, U> _Cast;
             public static U Cast(T A)
             {
-                try
+                if (_Cast is null)
                 {
-                    _Cast = Expression.Lambda<Func<T, U>>(ExpressionHelper.Cast(Expression.Parameter(typeof(T), "a"), typeof(U)))
-                                      .Compile();
-                }
-                catch (Exception Ex)
-                {
-                    _Cast = a => throw Ex;
+                    ParameterExpression Arg1 = Expression.Parameter(typeof(T), "a");
+                    try
+                    {
+                        _Cast = Expression.Lambda<Func<T, U>>(ExpressionHelper.Cast(Arg1, typeof(U)), Arg1)
+                                          .Compile();
+                    }
+                    catch (Exception Ex)
+                    {
+                        _Cast = a => throw Ex;
+                    }
                 }
 
                 return _Cast(A);
