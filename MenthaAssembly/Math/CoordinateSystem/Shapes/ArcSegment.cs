@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#else
 using static MenthaAssembly.OperatorHelper;
+#endif
 
 namespace MenthaAssembly
 {
@@ -10,7 +14,11 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public unsafe struct ArcSegment<T> : IShape<T>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         /// <summary>
         /// Gets a special value that represents a ArcSegment with no position.
@@ -26,9 +34,7 @@ namespace MenthaAssembly
         {
             set
             {
-                if (Points is null)
-                    Points = new Point<T>[3];
-
+                Points ??= new Point<T>[3];
                 Points[0] = value;
                 SortPoints(ref Points[0], ref Points[1], ref Points[2]);
             }
@@ -42,9 +48,7 @@ namespace MenthaAssembly
         {
             set
             {
-                if (Points is null)
-                    Points = new Point<T>[3];
-
+                Points ??= new Point<T>[3];
                 Points[1] = value;
                 SortPoints(ref Points[0], ref Points[1], ref Points[2]);
             }
@@ -58,9 +62,7 @@ namespace MenthaAssembly
         {
             set
             {
-                if (Points is null)
-                    Points = new Point<T>[3];
-
+                Points ??= new Point<T>[3];
                 Points[2] = value;
                 SortPoints(ref Points[0], ref Points[1], ref Points[2]);
             }
@@ -216,8 +218,15 @@ namespace MenthaAssembly
         /// <summary>
         /// Creates a new casted ArcSegment.
         /// </summary>
-        public ArcSegment<U> Cast<U>() where U : unmanaged
-            => IsEmpty ? ArcSegment<U>.Empty : new ArcSegment<U>(Points[0].Cast<U>(), Points[1].Cast<U>(), Points[2].Cast<U>());
+        public ArcSegment<U> Cast<U>()
+#if NET7_0_OR_GREATER
+        where U : INumber<U>
+#else
+        where U : unmanaged
+#endif
+        {
+            return IsEmpty ? ArcSegment<U>.Empty : new ArcSegment<U>(Points[0].Cast<U>(), Points[1].Cast<U>(), Points[2].Cast<U>());
+        }
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
@@ -285,9 +294,15 @@ namespace MenthaAssembly
         {
             Circle<T>.CalculateCenter(Px1, Py1, Px2, Py2, Px3, Py3, out T Cx, out T Cy);
 
+#if NET7_0_OR_GREATER
+            double Theta1 = MathHelper.Atan(double.CreateChecked(Cx - Px1), double.CreateChecked(Cy - Py1)),
+                   Theta2 = MathHelper.Atan(double.CreateChecked(Cx - Px2), double.CreateChecked(Cy - Py2)),
+                   Theta3 = MathHelper.Atan(double.CreateChecked(Cx - Px3), double.CreateChecked(Cy - Py3));
+#else
             double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px1)), Cast<T, double>(Subtract(Cy, Py1))),
                    Theta2 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px2)), Cast<T, double>(Subtract(Cy, Py2))),
                    Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px3)), Cast<T, double>(Subtract(Cy, Py3)));
+#endif
 
             if (Theta2 < Theta1)
             {
@@ -314,9 +329,15 @@ namespace MenthaAssembly
         {
             Circle<T>.CalculateCenter(Px1, Py1, Px2, Py2, Px3, Py3, out Cx, out Cy);
 
+#if NET7_0_OR_GREATER
+            Theta1 = MathHelper.Atan(double.CreateChecked(Cx - Px1), double.CreateChecked(Cy - Py1));
+            Theta2 = MathHelper.Atan(double.CreateChecked(Cx - Px2), double.CreateChecked(Cy - Py2));
+            Theta3 = MathHelper.Atan(double.CreateChecked(Cx - Px3), double.CreateChecked(Cy - Py3));
+#else
             Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px1)), Cast<T, double>(Subtract(Cy, Py1)));
             Theta2 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px2)), Cast<T, double>(Subtract(Cy, Py2)));
             Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px3)), Cast<T, double>(Subtract(Cy, Py3)));
+#endif
 
             if (Theta2 < Theta1)
             {
@@ -350,9 +371,15 @@ namespace MenthaAssembly
 
             Circle<T>.CalculateCenter(Px1, Py1, Px2, Py2, Px3, Py3, out T Cx, out T Cy);
 
+#if NET7_0_OR_GREATER
+            double Theta1 = MathHelper.Atan(double.CreateChecked(Cx - Px1), double.CreateChecked(Cy - Py1)),
+                   Theta2 = MathHelper.Atan(double.CreateChecked(Cx - Px2), double.CreateChecked(Cy - Py2)),
+                   Theta3 = MathHelper.Atan(double.CreateChecked(Cx - Px3), double.CreateChecked(Cy - Py3));
+#else
             double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px1)), Cast<T, double>(Subtract(Cy, Py1))),
                    Theta2 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px2)), Cast<T, double>(Subtract(Cy, Py2))),
                    Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Px3)), Cast<T, double>(Subtract(Cy, Py3)));
+#endif
 
             if (Theta2 < Theta1)
             {
@@ -440,6 +467,25 @@ namespace MenthaAssembly
         {
             Circle<T>.CalculateCenter(Lx1, Ly1, Lx2, Ly2, Lx3, Ly3, out T Cx, out T Cy);
 
+#if NET7_0_OR_GREATER
+            T Dx1 = Cx - Lx1,
+              Dy1 = Cy - Ly1,
+              TDx = Cx - Px,
+              TDy = Cy - Py;
+
+            double Radius = Math.Sqrt(double.CreateChecked(Dx1 * Dx1 + Dy1 * Dy1)),
+                   D = Math.Sqrt(double.CreateChecked(TDx * TDx + TDy * TDy));
+
+            if (Radius != D)
+                return false;
+
+            T Dx3 = Cx - Lx3,
+              Dy3 = Cy - Ly3;
+
+            double Theta1 = MathHelper.Atan(double.CreateChecked(Cx - Dx1), double.CreateChecked(Cy - Dy1)),
+                   Theta3 = MathHelper.Atan(double.CreateChecked(Cx - Dx3), double.CreateChecked(Cy - Dy3)),
+                   Alpha = MathHelper.Atan(double.CreateChecked(Cx - TDx), double.CreateChecked(Cy - TDy));
+#else
             T Dx1 = Subtract(Cx, Lx1),
               Dy1 = Subtract(Cy, Ly1),
               TDx = Subtract(Cx, Px),
@@ -457,6 +503,7 @@ namespace MenthaAssembly
             double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Dx1)), Cast<T, double>(Subtract(Cy, Dy1))),
                    Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Dx3)), Cast<T, double>(Subtract(Cy, Dy3))),
                    Alpha = MathHelper.Atan(Cast<T, double>(Subtract(Cx, TDx)), Cast<T, double>(Subtract(Cy, TDy)));
+#endif
 
             return Theta1 <= Alpha && Alpha <= Theta3;
         }
@@ -491,6 +538,53 @@ namespace MenthaAssembly
 
             Circle<T>.CalculateCenter(Ax1, Ay1, Ax2, Ay2, Ax3, Ay3, out T Cx, out T Cy);
 
+#if NET7_0_OR_GREATER
+            double Theta1 = MathHelper.Atan(double.CreateChecked(Cx - Ax1), double.CreateChecked(Cy - Ay1)),
+                   Theta3 = MathHelper.Atan(double.CreateChecked(Cx - Ax3), double.CreateChecked(Cy - Ay3)),
+                   Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
+
+            T Dx = Lx2 - Lx1,
+              Dy = Ly2 - Ly1;
+
+            if (T.IsZero(Dx) && T.IsZero(Dy))
+            {
+                double Tr = Point<T>.Distance(Cx, Cy, Lx1, Ly1);
+
+                if (Radius != Tr)
+                    return CrossPoints<T>.None;
+
+                T TDx = Cx - Lx1,
+                  TDy = Cy - Ly1;
+
+                double Alpha = MathHelper.Atan(double.CreateChecked(TDx), double.CreateChecked(TDy));
+
+                return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+            }
+
+            T Kx = Lx1 - Cx,
+              Ky = Ly1 - Cy;
+            double a = double.CreateChecked(Dx * Dx + Dy * Dy),
+                   b = double.CreateChecked(Kx * Dx + Ky * Dy),
+                   c = double.CreateChecked(Kx * Kx + Ky * Ky) - Radius * Radius,
+                   D = b * b - a * c,
+                   DDx = double.CreateChecked(Dx),
+                   DDy = double.CreateChecked(Dy);
+
+            double t;
+            if (D == 0)
+            {
+                t = -b / a;
+                return new CrossPoints<T>(new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t)));
+            }
+
+            Point<T>[] Crosses = new Point<T>[2];
+            double SqrD = Math.Sqrt(D);
+
+            t = (-b + SqrD) / a;
+            Crosses[0] = new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t));
+            t = (-b - SqrD) / a;
+            Crosses[1] = new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t));
+#else
             double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Ax1)), Cast<T, double>(Subtract(Cy, Ay1))),
                    Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Ax3)), Cast<T, double>(Subtract(Cy, Ay3))),
                    Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
@@ -536,6 +630,7 @@ namespace MenthaAssembly
             Crosses[0] = new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)));
             t = (-b - SqrD) / a;
             Crosses[1] = new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)));
+#endif
 
             return new CrossPoints<T>(Crosses);
         }
@@ -574,6 +669,49 @@ namespace MenthaAssembly
             SortPoints(ref Ax1, ref Ay1, ref Ax2, ref Ay2, ref Ax3, ref Ay3, out T Cx, out T Cy, out double Theta1, out double Theta2, out double Theta3);
             double Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
 
+#if NET7_0_OR_GREATER
+            T Dx = Lx2 - Lx1,
+              Dy = Ly2 - Ly1;
+
+            if (T.IsZero(Dx) && T.IsZero(Dy))
+            {
+                double Tr = Point<T>.Distance(Cx, Cy, Lx1, Ly1);
+
+                if (Radius != Tr)
+                    return CrossPoints<T>.None;
+
+                T TDx = Cx - Lx1,
+                  TDy = Cy - Ly1;
+
+                double Alpha = MathHelper.Atan(double.CreateChecked(TDx), double.CreateChecked(TDy));
+
+                return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+            }
+
+            T Kx = Lx1 - Cx,
+              Ky = Ly1 - Cy;
+            double a = double.CreateChecked(Dx * Dx + Dy * Dy),
+                   b = double.CreateChecked(Kx * Dx + Ky * Dy),
+                   c = double.CreateChecked(Kx * Kx + Ky * Ky) - Radius * Radius,
+                   D = b * b - a * c,
+                   DDx = double.CreateChecked(Dx),
+                   DDy = double.CreateChecked(Dy);
+
+            double t;
+            if (D == 0)
+            {
+                t = -b / a;
+                return new CrossPoints<T>(new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t)));
+            }
+
+            Point<T>[] Crosses = new Point<T>[2];
+            double SqrD = Math.Sqrt(D);
+
+            t = (-b + SqrD) / a;
+            Crosses[0] = new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t));
+            t = (-b - SqrD) / a;
+            Crosses[1] = new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t));
+#else
             T Dx = Subtract(Lx2, Lx1),
               Dy = Subtract(Ly2, Ly1);
 
@@ -615,6 +753,7 @@ namespace MenthaAssembly
             Crosses[0] = new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)));
             t = (-b - SqrD) / a;
             Crosses[1] = new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t)));
+#endif
 
             return new CrossPoints<T>(Crosses);
         }
@@ -648,6 +787,57 @@ namespace MenthaAssembly
 
             Circle<T>.CalculateCenter(Ax1, Ay1, Ax2, Ay2, Ax3, Ay3, out T Cx, out T Cy);
 
+#if NET7_0_OR_GREATER
+            double Theta1 = MathHelper.Atan(double.CreateChecked(Cx - Ax1), double.CreateChecked(Cy - Ay1)),
+                   Theta3 = MathHelper.Atan(double.CreateChecked(Cx - Ax3), double.CreateChecked(Cy - Ay3)),
+                   Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
+
+            T Dx = Lx2 - Lx1,
+              Dy = Ly2 - Ly1;
+
+            if (T.IsZero(Dx) && T.IsZero(Dy))
+            {
+                double Tr = Point<T>.Distance(Cx, Cy, Lx1, Ly1);
+
+                if (Radius != Tr)
+                    return CrossPoints<T>.None;
+
+                T TDx = Cx - Lx1,
+                  TDy = Cy - Ly1;
+
+                double Alpha = MathHelper.Atan(double.CreateChecked(TDx), double.CreateChecked(TDy));
+
+                return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+            }
+
+            T Kx = Lx1 - Cx,
+              Ky = Ly1 - Cy;
+            double a = double.CreateChecked(Dx * Dx + Dy * Dy),
+                   b = double.CreateChecked(Kx * Dx + Ky * Dy),
+                   c = double.CreateChecked(Kx * Kx + Ky * Ky) - Radius * Radius,
+                   D = b * b - a * c,
+                   DDx = double.CreateChecked(Dx),
+                   DDy = double.CreateChecked(Dy);
+
+            double t;
+            if (D == 0)
+            {
+                t = -b / a;
+                return t is >= 0d and <= 1d ? new CrossPoints<T>(new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t))) :
+                                          CrossPoints<T>.None;
+            }
+
+            List<Point<T>> Crosses = new List<Point<T>>();
+            double SqrD = Math.Sqrt(D);
+
+            t = (-b + SqrD) / a;
+            if (t is >= 0d and <= 1d)
+                Crosses.Add(new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t)));
+
+            t = (-b - SqrD) / a;
+            if (t is >= 0d and <= 1d)
+                Crosses.Add(new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t)));
+#else
             double Theta1 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Ax1)), Cast<T, double>(Subtract(Cy, Ay1))),
                    Theta3 = MathHelper.Atan(Cast<T, double>(Subtract(Cx, Ax3)), Cast<T, double>(Subtract(Cy, Ay3))),
                    Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
@@ -697,6 +887,7 @@ namespace MenthaAssembly
             t = (-b - SqrD) / a;
             if (0d <= t && t <= 1d)
                 Crosses.Add(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t))));
+#endif
 
             return new CrossPoints<T>(Crosses);
         }
@@ -735,6 +926,53 @@ namespace MenthaAssembly
             SortPoints(ref Ax1, ref Ay1, ref Ax2, ref Ay2, ref Ax3, ref Ay3, out T Cx, out T Cy, out double Theta1, out double Theta2, out double Theta3);
             double Radius = Point<T>.Distance(Cx, Cy, Ax1, Ay1);
 
+#if NET7_0_OR_GREATER
+            T Dx = Lx2 - Lx1,
+              Dy = Ly2 - Ly1;
+
+            if (T.IsZero(Dx) && T.IsZero(Dy))
+            {
+                double Tr = Point<T>.Distance(Cx, Cy, Lx1, Ly1);
+
+                if (Radius != Tr)
+                    return CrossPoints<T>.None;
+
+                T TDx = Cx - Lx1,
+                  TDy = Cy - Ly1;
+
+                double Alpha = MathHelper.Atan(double.CreateChecked(TDx), double.CreateChecked(TDy));
+
+                return Theta1 <= Alpha && Alpha <= Theta3 ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+            }
+
+            T Kx = Lx1 - Cx,
+              Ky = Ly1 - Cy;
+            double a = double.CreateChecked(Dx * Dx + Dy * Dy),
+                   b = double.CreateChecked(Kx * Dx + Ky * Dy),
+                   c = double.CreateChecked(Kx * Kx + Ky * Ky) - Radius * Radius,
+                   D = b * b - a * c,
+                   DDx = double.CreateChecked(Dx),
+                   DDy = double.CreateChecked(Dy);
+
+            double t;
+            if (D == 0)
+            {
+                t = -b / a;
+                return t is >= 0d and <= 1d ? new CrossPoints<T>(new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t))) :
+                                            CrossPoints<T>.None;
+            }
+
+            List<Point<T>> Crosses = new List<Point<T>>();
+            double SqrD = Math.Sqrt(D);
+
+            t = (-b + SqrD) / a;
+            if (t is >= 0d and <= 1d)
+                Crosses.Add(new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t)));
+
+            t = (-b - SqrD) / a;
+            if (t is >= 0d and <= 1d)
+                Crosses.Add(new Point<T>(Lx1 + T.CreateChecked(DDx * t), Ly1 + T.CreateChecked(DDy * t)));
+#else
             T Dx = Subtract(Lx2, Lx1),
               Dy = Subtract(Ly2, Ly1);
 
@@ -780,6 +1018,7 @@ namespace MenthaAssembly
             t = (-b - SqrD) / a;
             if (0d <= t && t <= 1d)
                 Crosses.Add(new Point<T>(Add(Lx1, Cast<double, T>(DDx * t)), Add(Ly1, Cast<double, T>(DDy * t))));
+#endif
 
             return new CrossPoints<T>(Crosses);
         }

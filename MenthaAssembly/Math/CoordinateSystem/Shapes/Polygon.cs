@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Linq;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#else
 using static MenthaAssembly.OperatorHelper;
+#endif
 
 namespace MenthaAssembly
 {
@@ -9,7 +13,11 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public unsafe struct Polygon<T> : IPolygonShape<T>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         /// <summary>
         /// Gets a special value that represents a polygon with no position or area.
@@ -36,11 +44,20 @@ namespace MenthaAssembly
                 for (int i = 1; i < Length; i++)
                 {
                     p = Points[i];
+#if NET7_0_OR_GREATER
+                    Cx += p.X;
+                    Cy += p.Y;
+#else
                     Cx = Add(Cx, p.X);
                     Cy = Add(Cy, p.Y);
+#endif
                 }
 
+#if NET7_0_OR_GREATER
+                return new Point<T>(T.CreateChecked(double.CreateChecked(Cx) / Length), T.CreateChecked(double.CreateChecked(Cy) / Length));
+#else
                 return new Point<T>(Cast<double, T>(Cast<T, double>(Cx) / Length), Cast<double, T>(Cast<T, double>(Cy) / Length));
+#endif
             }
         }
 
@@ -56,6 +73,23 @@ namespace MenthaAssembly
                   LPy = p.Y,
                   Sum = default;
 
+#if NET7_0_OR_GREATER
+                for (int i = 1; i < Points.Length; i++)
+                {
+                    p = Points[i];
+                    T CPx = p.X,
+                      CPy = p.Y;
+
+                    Sum += Vector<T>.Cross(LPx, LPy, CPx, CPy);
+                    LPx = CPx;
+                    LPy = CPy;
+                }
+
+                p = Points[0];
+                Sum += Vector<T>.Cross(LPx, LPy, p.X, p.Y);
+
+                return double.CreateChecked(T.Abs(Sum)) / 2d;
+#else
                 for (int i = 1; i < Points.Length; i++)
                 {
                     p = Points[i];
@@ -71,6 +105,7 @@ namespace MenthaAssembly
                 Sum = Add(Sum, Vector<T>.Cross(LPx, LPy, p.X, p.Y));
 
                 return Cast<T, double>(Abs(Sum)) / 2d;
+#endif
             }
         }
 
@@ -162,6 +197,46 @@ namespace MenthaAssembly
 
             bool HasCrossPoint()
             {
+
+#if NET7_0_OR_GREATER
+                // X
+                if (CPx > LPx)
+                {
+                    Min = LPx;
+                    Max = CPx;
+                }
+                else
+                {
+                    Min = CPx;
+                    Max = LPx;
+                }
+
+                // Px < Min
+                if (Min > Px)
+                {
+                    IsBetweenPoints = true;
+                    return false;
+                }
+
+                // Px < Max
+                if (Max > Px)
+                    IsBetweenPoints = true;
+
+                // Y
+                if (CPy > LPy)
+                {
+                    Min = LPy;
+                    Max = CPy;
+                }
+                else
+                {
+                    Min = CPy;
+                    Max = LPy;
+                }
+
+                // Min <= Py && Py <= Max
+                return Min <= Py && Py <= Max;
+#else
                 // X
                 if (GreaterThan(CPx, LPx))
                 {
@@ -199,6 +274,7 @@ namespace MenthaAssembly
 
                 // Min <= Py && Py <= Max
                 return !(GreaterThan(Min, Py) || GreaterThan(Py, Max));
+#endif
             }
 
             int Counter = 0;
@@ -219,12 +295,21 @@ namespace MenthaAssembly
                     }
                     else if (Cross.Count > 0)
                     {
+#if NET7_0_OR_GREATER
+                        p = Cross.FirstOrDefault();
+                        if (p.X == Px && p.Y == Py)
+                            return true;
+
+                        if (!(p.X == CPx && p.Y == CPy))
+                            Counter++;
+#else
                         p = Cross.FirstOrDefault();
                         if (OperatorHelper.Equals(p.X, Px) && OperatorHelper.Equals(p.Y, Py))
                             return true;
 
                         if (!(OperatorHelper.Equals(p.X, CPx) && OperatorHelper.Equals(p.Y, CPy)))
                             Counter++;
+#endif
                     }
                 }
 
@@ -246,12 +331,21 @@ namespace MenthaAssembly
                 }
                 else if (Cross.Count > 0)
                 {
+#if NET7_0_OR_GREATER
+                    p = Cross.FirstOrDefault();
+                    if (p.X == Px && p.Y == Py)
+                        return true;
+
+                    if (!(p.X == CPx && p.Y == CPy))
+                        Counter++;
+#else
                     p = Cross.FirstOrDefault();
                     if (OperatorHelper.Equals(p.X, Px) && OperatorHelper.Equals(p.Y, Py))
                         return true;
 
                     if (!(OperatorHelper.Equals(p.X, CPx) && OperatorHelper.Equals(p.Y, CPy)))
                         Counter++;
+#endif
                 }
             }
 
@@ -342,8 +436,16 @@ namespace MenthaAssembly
         /// Creates a new casted <see cref="Polygon{T}"/>.
         /// </summary>
         /// <returns></returns>
-        public Polygon<U> Cast<U>() where U : unmanaged
-            => IsEmpty ? Polygon<U>.Empty : new Polygon<U> { Points = Points.Select(i => i.Cast<U>()).ToArray() };
+        public Polygon<U> Cast<U>()
+#if NET7_0_OR_GREATER
+        where U : INumber<U>
+#else
+        where U : unmanaged
+#endif
+        {
+            return IsEmpty ? Polygon<U>.Empty : new Polygon<U> { Points = Points.Select(i => i.Cast<U>()).ToArray() };
+        }
+
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()

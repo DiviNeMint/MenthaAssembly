@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Linq;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#else
 using static MenthaAssembly.OperatorHelper;
+#endif
 
 namespace MenthaAssembly
 {
@@ -9,10 +13,19 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public unsafe struct Quadrilateral<T> : IPolygonShape<T>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         private const int Vertices = 4;
-        private static readonly T GenericVertics = Cast<int, T>(Vertices);
+        private static readonly T GenericVertics
+#if NET7_0_OR_GREATER
+            = T.CreateChecked(Vertices);
+#else
+            = Cast<int, T>(Vertices);
+#endif
 
         /// <summary>
         /// Gets a special value that represents a quadrilateral with no position or area.
@@ -38,11 +51,20 @@ namespace MenthaAssembly
                 for (int i = 1; i < Vertices; i++)
                 {
                     p = Points[i];
+#if NET7_0_OR_GREATER
+                    Cx += p.X;
+                    Cy += p.Y;
+#else
                     Cx = Add(Cx, p.X);
                     Cy = Add(Cy, p.Y);
+#endif
                 }
 
+#if NET7_0_OR_GREATER
+                return new Point<T>(Cx / GenericVertics, Cy / GenericVertics);
+#else
                 return new Point<T>(Divide(Cx, GenericVertics), Divide(Cy, GenericVertics));
+#endif
             }
         }
 
@@ -58,12 +80,21 @@ namespace MenthaAssembly
                          p2 = Points[2],
                          p3 = Points[3];
 
+#if NET7_0_OR_GREATER
+                T p0x = p0.X,
+                  p0y = p0.Y,
+                  v02x = p2.X - p0x,
+                  v02y = p2.Y - p0y;
+
+                return double.CreateChecked(T.Abs(Vector<T>.Cross(v02x, v02y, p1.X - p0x, p1.Y - p0y) - Vector<T>.Cross(v02x, v02y, p3.X - p0x, p3.Y - p0y))) / 2d;
+#else
                 T p0x = p0.X,
                   p0y = p0.Y,
                   v02x = Subtract(p2.X, p0x),
                   v02y = Subtract(p2.Y, p0y);
 
                 return Cast<T, double>(Abs(Subtract(Vector<T>.Cross(v02x, v02y, Subtract(p1.X, p0x), Subtract(p1.Y, p0y)), Vector<T>.Cross(v02x, v02y, Subtract(p3.X, p0x), Subtract(p3.Y, p0y))))) / 2d;
+#endif
             }
         }
 
@@ -148,6 +179,34 @@ namespace MenthaAssembly
                      p1 = Points[1],
                      p2 = Points[3];
 
+#if NET7_0_OR_GREATER
+            // Compute Vectors
+            T p0x = p0.X,
+              p0y = p0.Y,
+              Vx0 = p2.X - p0x,
+              Vy0 = p2.Y - p0y,
+              Vx1 = p1.X - p0x,
+              Vy1 = p1.Y - p0y,
+              Vx2 = Px - p0x,
+              Vy2 = Py - p0y;
+
+            // Compute Dot
+            T Dot00 = Vector<T>.Dot(Vx0, Vy0, Vx0, Vy0),
+              Dot01 = Vector<T>.Dot(Vx0, Vy0, Vx1, Vy1),
+              Dot02 = Vector<T>.Dot(Vx0, Vy0, Vx2, Vy2),
+              Dot11 = Vector<T>.Dot(Vx1, Vy1, Vx1, Vy1),
+              Dot12 = Vector<T>.Dot(Vx1, Vy1, Vx2, Vy2);
+
+            // Compute barycentric coordinates
+            double invDenom = 1d / double.CreateChecked(Dot00 * Dot11 - Dot01 * Dot01),
+                   u = double.CreateChecked(Dot11 * Dot02 - Dot01 * Dot12) * invDenom;
+
+            if (u is < 0d or > 1d)
+                return false;
+
+            double v = double.CreateChecked(Dot00 * Dot12 - Dot01 * Dot02) * invDenom;
+            return 0d <= v && v <= 1d && u + v <= 2d;
+#else
             // Compute Vectors
             T p0x = p0.X,
               p0y = p0.Y,
@@ -174,6 +233,7 @@ namespace MenthaAssembly
 
             double v = Cast<T, double>(Subtract(Multiply(Dot00, Dot12), Multiply(Dot01, Dot02))) * invDenom;
             return 0d <= v && v <= 1d && u + v <= 2d;
+#endif
         }
 
         public void Offset(Vector<T> Vector)
@@ -260,8 +320,16 @@ namespace MenthaAssembly
         /// Creates a new casted <see cref="Quadrilateral{T}"/>.
         /// </summary>
         /// <returns></returns>
-        public Quadrilateral<U> Cast<U>() where U : unmanaged
-            => IsEmpty ? Quadrilateral<U>.Empty : new Quadrilateral<U> { Points = Points.Select(i => i.Cast<U>()).ToArray() };
+        public Quadrilateral<U> Cast<U>()
+#if NET7_0_OR_GREATER
+        where U : INumber<U>
+#else
+        where U : unmanaged
+#endif
+        {
+            return IsEmpty ? Quadrilateral<U>.Empty : new Quadrilateral<U> { Points = Points.Select(i => i.Cast<U>()).ToArray() };
+        }
+
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()

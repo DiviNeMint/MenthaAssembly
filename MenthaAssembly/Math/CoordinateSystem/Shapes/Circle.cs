@@ -1,5 +1,9 @@
 ﻿using System;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#else
 using static MenthaAssembly.OperatorHelper;
+#endif
 
 namespace MenthaAssembly
 {
@@ -8,7 +12,11 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public unsafe struct Circle<T> : IShape<T>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         /// <summary>
         /// Gets a special value that represents a circle with no position or area.
@@ -107,10 +115,17 @@ namespace MenthaAssembly
                 return false;
 
             Point<T> C = Center;
+#if NET7_0_OR_GREATER
+            T Dx = C.X - Px,
+              Dy = C.Y - Py;
+
+            return double.CreateChecked(Dx * Dx + Dy * Dy) <= Radius * Radius;
+#else
             T Dx = Subtract(C.X, Px),
               Dy = Subtract(C.Y, Py);
 
             return Cast<T, double>(Add(Multiply(Dx, Dx), Multiply(Dy, Dy))) <= Radius * Radius;
+#endif
         }
 
         public void Offset(Vector<T> Vector)
@@ -124,7 +139,13 @@ namespace MenthaAssembly
         }
 
         public void Scale(T Scale)
-            => Radius *= Cast<T, double>(Scale);
+        {
+#if NET7_0_OR_GREATER
+            Radius *= double.CreateChecked(Scale);
+#else
+            Radius *= Cast<T, double>(Scale);
+#endif
+        }
         void IShape<T>.Scale(T ScaleX, T ScaleY)
             => throw new NotSupportedException();
         void IShape<T>.Scale(Point<T> Center, T Scale)
@@ -177,8 +198,15 @@ namespace MenthaAssembly
         /// Creates a new casted <see cref="Circle{T}"/>.
         /// </summary>
         /// <returns></returns>
-        public Circle<U> Cast<U>() where U : unmanaged
-            => IsEmpty ? Circle<U>.Empty : new Circle<U>(Center.Cast<U>(), Radius);
+        public Circle<U> Cast<U>()
+#if NET7_0_OR_GREATER
+        where U : INumber<U>
+#else
+        where U : unmanaged
+#endif
+        {
+            return IsEmpty ? Circle<U>.Empty : new Circle<U>(Center.Cast<U>(), Radius);
+        }
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
@@ -226,6 +254,20 @@ namespace MenthaAssembly
 
         public static void CalculateCenter(T Px1, T Py1, T Px2, T Py2, T Px3, T Py3, out T Cx, out T Cy)
         {
+#if NET7_0_OR_GREATER
+            T Lp = Px1 * Px1 + Py1 * Py1,
+              Lq = Px2 * Px2 + Py2 * Py2,
+              Lr = Px3 * Px3 + Py3 * Py3,
+              Xrq = Px2 - Px3,
+              Yrq = Py2 - Py3,
+              Xqp = Px1 - Px2,
+              Yqp = Py1 - Py2,
+              Xpr = Px3 - Px1,
+              Ypr = Py3 - Py1;
+
+            Cx = T.CreateChecked(double.CreateChecked(Lp * Yrq + Lq * Ypr + Lr * Yqp) / (2d * double.CreateChecked(Px1 * Yrq + Px2 * Ypr + Px3 * Yqp)));
+            Cy = T.CreateChecked(double.CreateChecked(Lp * Xrq + Lq * Xpr + Lr * Xqp) / (2d * double.CreateChecked(Py1 * Xrq + Py2 * Xpr + Py3 * Xqp)));
+#else
             T Lp = Add(Multiply(Px1, Px1), Multiply(Py1, Py1)),
               Lq = Add(Multiply(Px2, Px2), Multiply(Py2, Py2)),
               Lr = Add(Multiply(Px3, Px3), Multiply(Py3, Py3)),
@@ -238,6 +280,7 @@ namespace MenthaAssembly
 
             Cx = Cast<double, T>(Cast<T, double>(Add(Add(Multiply(Lp, Yrq), Multiply(Lq, Ypr)), Multiply(Lr, Yqp))) / (2d * Cast<T, double>(Add(Add(Multiply(Px1, Yrq), Multiply(Px2, Ypr)), Multiply(Px3, Yqp)))));
             Cy = Cast<double, T>(Cast<T, double>(Add(Add(Multiply(Lp, Xrq), Multiply(Lq, Xpr)), Multiply(Lr, Xqp))) / (2d * Cast<T, double>(Add(Add(Multiply(Py1, Xrq), Multiply(Py2, Xpr)), Multiply(Py3, Xqp)))));
+#endif
         }
 
         /// <summary>
@@ -262,7 +305,13 @@ namespace MenthaAssembly
         /// <param name="Circle">The circle to be scaled.</param>
         /// <param name="Scale">The scale factor.</param>
         public static Circle<T> Scale(Circle<T> Circle, T Scale)
-            => Circle.IsEmpty ? Empty : new Circle<T>(Circle.Center, Circle.Radius * Cast<T, double>(Scale));
+        {
+#if NET7_0_OR_GREATER
+            return Circle.IsEmpty ? Empty : new Circle<T>(Circle.Center, Circle.Radius * double.CreateChecked(Scale));
+#else
+            return Circle.IsEmpty ? Empty : new Circle<T>(Circle.Center, Circle.Radius * Cast<T, double>(Scale));
+#endif
+        }
 
         /// <summary>
         /// Rotates the specified circle about the origin.

@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#else
 using static MenthaAssembly.OperatorHelper;
+#endif
 
 namespace MenthaAssembly
 {
@@ -10,7 +13,11 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public unsafe struct Point<T> : ICoordinateObject<T>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         /// <summary>
         /// Gets the origin of coordinates.
@@ -31,7 +38,16 @@ namespace MenthaAssembly
         ///  Gets a value indicating whether the point is the origin of coordinates.
         /// </summary>
         public bool IsOrigin
-            => IsDefault(X) && IsDefault(Y);
+        {
+            get
+            {
+#if NET7_0_OR_GREATER
+                return T.IsZero(X) && T.IsZero(Y);
+#else
+                return IsDefault(X) && IsDefault(Y);
+#endif
+            }
+        }
 
         /// <summary>
         /// Constructor which accepts the X and Y values
@@ -48,8 +64,13 @@ namespace MenthaAssembly
             => Offset(Vector.X, Vector.Y);
         public void Offset(T Dx, T Dy)
         {
+#if NET7_0_OR_GREATER
+            X = X + Dx;
+            Y = Y + Dy;
+#else
             X = Add(X, Dx);
             Y = Add(Y, Dy);
+#endif
         }
 
         public void Rotate(double Theta)
@@ -105,6 +126,35 @@ namespace MenthaAssembly
             => Reflect(LinePoint1.X, LinePoint1.Y, LinePoint2.X, LinePoint2.Y);
         public void Reflect(T Lx1, T Ly1, T Lx2, T Ly2)
         {
+#if NET7_0_OR_GREATER
+            T v1x = Lx2 - Lx1,
+              v1y = Ly2 - Ly1;
+
+            if (T.IsZero(v1x))
+            {
+                if (T.IsZero(v1y))
+                    return;
+
+                // Over Y-Axis
+                X = Lx1 * T.CreateChecked(2) - X;
+            }
+            else if (T.IsZero(v1y))
+            {
+                // Over X-Axis
+                Y = Ly1 * T.CreateChecked(2) - Y;
+            }
+            else
+            {
+                double PQx = double.CreateChecked(v1x),
+                       PQy = double.CreateChecked(v1y),
+                       PAx = double.CreateChecked(X - Lx1),
+                       PAy = double.CreateChecked(Y - Ly1),
+                       k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
+
+                X = Lx1 + T.CreateChecked(PQx * k - PAx);
+                Y = Ly1 + T.CreateChecked(PQy * k - PAy);
+            }
+#else
             T v1x = Subtract(Lx2, Lx1),
               v1y = Subtract(Ly2, Ly1);
 
@@ -132,6 +182,7 @@ namespace MenthaAssembly
                 X = Add(Lx1, Cast<double, T>(PQx * k - PAx));
                 Y = Add(Ly1, Cast<double, T>(PQy * k - PAy));
             }
+#endif
         }
 
         /// <summary>
@@ -139,8 +190,18 @@ namespace MenthaAssembly
         /// </summary>
         /// <returns></returns>
         public Point<U> Cast<U>()
-            where U : unmanaged
-            => new(Cast<T, U>(X), Cast<T, U>(Y));
+#if NET7_0_OR_GREATER
+        where U : INumber<U>
+#else
+        where U : unmanaged
+#endif
+        {
+#if NET7_0_OR_GREATER
+            return new(U.CreateChecked(X), U.CreateChecked(Y));
+#else
+            return new(Cast<T, U>(X), Cast<T, U>(Y));
+#endif
+        }
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
             => Cast<U>();
 
@@ -162,7 +223,14 @@ namespace MenthaAssembly
         /// </summary>
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Point<T> obj)
-            => OperatorHelper.Equals(X, obj.X) && OperatorHelper.Equals(Y, obj.Y);
+        {
+#if NET7_0_OR_GREATER
+            return X == obj.X && Y == obj.Y;
+#else
+            return OperatorHelper.Equals(X, obj.X) && OperatorHelper.Equals(Y, obj.Y);
+#endif
+        }
+
         bool ICoordinateObject<T>.Equals(ICoordinateObject<T> obj)
             => obj is Point<T> Target && Equals(Target);
         public override bool Equals(object obj)
@@ -195,9 +263,15 @@ namespace MenthaAssembly
         /// <param name="Qy">The y-coordinate of the second target point.</param>
         public static double Distance(T Px, T Py, T Qx, T Qy)
         {
+#if NET7_0_OR_GREATER
+            T Dx = Qx - Px,
+              Dy = Qy - Py;
+            return Math.Sqrt(double.CreateChecked(Dx * Dx + Dy * Dy));
+#else
             T Dx = Subtract(Qx, Px),
               Dy = Subtract(Qy, Py);
             return Math.Sqrt(Cast<T, double>(Add(Multiply(Dx, Dx), Multiply(Dy, Dy))));
+#endif
         }
 
         /// <summary>
@@ -214,7 +288,14 @@ namespace MenthaAssembly
         /// <param name="Dx">The amount to offset <see cref="X"/> coordinate.</param>
         /// <param name="Dy">The amount to offset <see cref="Y"/> coordinate.</param>
         public static Point<T> Offset(Point<T> Point, T Dx, T Dy)
-            => new(Add(Point.X, Dx), Add(Point.Y, Dy));
+        {
+#if NET7_0_OR_GREATER
+            return new(Point.X + Dx, Point.Y + Dy);
+#else
+            return new(Add(Point.X, Dx), Add(Point.Y, Dy));
+#endif
+        }
+
         /// <summary>
         /// Offsets the specified points by the specified amounts.
         /// </summary>
@@ -229,7 +310,11 @@ namespace MenthaAssembly
             for (int i = 0; i < Length; i++)
             {
                 Point = Points[i];
+#if NET7_0_OR_GREATER
+                Result[i] = new Point<T>(Point.X + Dx, Point.Y + Dy);
+#else
                 Result[i] = new Point<T>(Add(Point.X, Dx), Add(Point.Y, Dy));
+#endif
             }
             return Result;
         }
@@ -244,8 +329,13 @@ namespace MenthaAssembly
         {
             for (int i = 0; i < Length; i++)
             {
+#if NET7_0_OR_GREATER
+                pPoints->X = pPoints->X + Dx;
+                pPoints->Y = pPoints->Y + Dy;
+#else
                 pPoints->X = Add(pPoints->X, Dx);
                 pPoints->Y = Add(pPoints->Y, Dy);
+#endif
             }
         }
 
@@ -294,10 +384,17 @@ namespace MenthaAssembly
         /// <param name="Qy">The y-coordinate of the rotated point.</param>
         public static void Rotate(T Px, T Py, T Cx, T Cy, double Sin, double Cos, out T Qx, out T Qy)
         {
+#if NET7_0_OR_GREATER
+            Rotate(Px - Cx, Py - Cy, Sin, Cos, out Qx, out Qy);
+
+            Qx += Cx;
+            Qy += Cy;
+#else
             Rotate(Subtract(Px, Cx), Subtract(Py, Cy), Sin, Cos, out Qx, out Qy);
 
             Qx = Add(Qx, Cx);
             Qy = Add(Qy, Cy);
+#endif
         }
         /// <summary>
         /// Rotates the specified point about the origin.
@@ -320,8 +417,13 @@ namespace MenthaAssembly
         /// <param name="Qy">The y-coordinate of the rotated point.</param>
         public static void Rotate(T Px, T Py, double Sin, double Cos, out T Qx, out T Qy)
         {
+#if NET7_0_OR_GREATER
+            Qx = T.CreateChecked(double.CreateChecked(Px) * Cos - double.CreateChecked(Py) * Sin);
+            Qy = T.CreateChecked(double.CreateChecked(Px) * Sin + double.CreateChecked(Py) * Cos);
+#else
             Qx = Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin);
             Qy = Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos);
+#endif
         }
         /// <summary>
         /// Rotates the specified points about the origin.
@@ -343,7 +445,13 @@ namespace MenthaAssembly
                 Px = Point.X;
                 Py = Point.Y;
 
-                Result[i] = new Point<T>(Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin), Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos));
+#if NET7_0_OR_GREATER
+                Result[i] = new Point<T>(T.CreateChecked(double.CreateChecked(Px) * Cos - double.CreateChecked(Py) * Sin),
+                                         T.CreateChecked(double.CreateChecked(Px) * Sin + double.CreateChecked(Py) * Cos));
+#else
+                Result[i] = new Point<T>(Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin),
+                                         Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos));
+#endif
             }
 
             return Result;
@@ -367,10 +475,18 @@ namespace MenthaAssembly
             for (int i = 0; i < Length; i++)
             {
                 Point = Points[i];
+
+#if NET7_0_OR_GREATER
+                Px = Point.X - Cx;
+                Py = Point.Y - Cy;
+                Result[i] = new Point<T>(T.CreateChecked(double.CreateChecked(Px) * Cos - double.CreateChecked(Py) * Sin) + Cx,
+                                         T.CreateChecked(double.CreateChecked(Px) * Sin + double.CreateChecked(Py) * Cos) + Cy);
+#else
                 Px = Subtract(Point.X, Cx);
                 Py = Subtract(Point.Y, Cy);
-
-                Result[i] = new Point<T>(Add(Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin), Cx), Add(Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos), Cy));
+                Result[i] = new Point<T>(Add(Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin), Cx),
+                                         Add(Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos), Cy));
+#endif
             }
 
             return Result;
@@ -402,8 +518,13 @@ namespace MenthaAssembly
                 Px = pPoints->X;
                 Py = pPoints->Y;
 
+#if NET7_0_OR_GREATER
+                pPoints->X = T.CreateChecked(double.CreateChecked(Px) * Cos - double.CreateChecked(Py) * Sin);
+                pPoints->Y = T.CreateChecked(double.CreateChecked(Px) * Sin + double.CreateChecked(Py) * Cos);
+#else
                 pPoints->X = Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin);
                 pPoints->Y = Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos);
+#endif
             }
         }
         /// <summary>
@@ -435,11 +556,19 @@ namespace MenthaAssembly
             T Px, Py;
             for (int i = 0; i < Length; i++)
             {
+#if NET7_0_OR_GREATER
+                Px = pPoints->X - Cx;
+                Py = pPoints->Y - Cy;
+
+                pPoints->X = T.CreateChecked(double.CreateChecked(Px) * Cos - double.CreateChecked(Py) * Sin) + Cx;
+                pPoints->Y = T.CreateChecked(double.CreateChecked(Px) * Sin + double.CreateChecked(Py) * Cos) + Cy;
+#else
                 Px = Subtract(pPoints->X, Cx);
                 Py = Subtract(pPoints->Y, Cy);
 
                 pPoints->X = Add(Cast<double, T>(Cast<T, double>(Px) * Cos - Cast<T, double>(Py) * Sin), Cx);
                 pPoints->Y = Add(Cast<double, T>(Cast<T, double>(Px) * Sin + Cast<T, double>(Py) * Cos), Cy);
+#endif
             }
         }
 
@@ -487,6 +616,34 @@ namespace MenthaAssembly
         /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
         public static Point<T> Reflect(T Px, T Py, T Lx1, T Ly1, T Lx2, T Ly2)
         {
+#if NET7_0_OR_GREATER
+            T v1x = Lx2 - Lx1,
+              v1y = Ly2 - Ly1;
+
+            if (T.IsZero(v1x))
+            {
+                if (T.IsZero(v1y))
+                    return new Point<T>(Px, Py);
+
+                // Over Y-Axis
+                return new Point<T>(Lx1 * T.CreateChecked(2) - Px, Py);
+            }
+            else if (T.IsZero(v1y))
+            {
+                // Over X-Axis
+                return new Point<T>(Px, Ly1 * T.CreateChecked(2) * Py);
+            }
+            else
+            {
+                double PQx = double.CreateChecked(v1x),
+                       PQy = double.CreateChecked(v1y),
+                       PAx = double.CreateChecked(Px - Lx1),
+                       PAy = double.CreateChecked(Py - Ly1),
+                       k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
+
+                return new Point<T>(Lx1 + T.CreateChecked(PQx * k - PAx),
+                                    Ly1 + T.CreateChecked(PQy * k - PAy));
+#else
             T v1x = Subtract(Lx2, Lx1),
               v1y = Subtract(Ly2, Ly1);
 
@@ -511,7 +668,9 @@ namespace MenthaAssembly
                        PAy = Cast<T, double>(Subtract(Py, Ly1)),
                        k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
 
-                return new Point<T>(Add(Lx1, Cast<double, T>(PQx * k - PAx)), Add(Ly1, Cast<double, T>(PQy * k - PAy)));
+                return new Point<T>(Add(Lx1, Cast<double, T>(PQx * k - PAx)),
+                                    Add(Ly1, Cast<double, T>(PQy * k - PAy)));
+#endif
             }
         }
         /// <summary>
@@ -524,6 +683,66 @@ namespace MenthaAssembly
         /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
         public static Point<T>[] Reflect(Point<T>[] Points, T Lx1, T Ly1, T Lx2, T Ly2)
         {
+#if NET7_0_OR_GREATER
+            int Length = Points.Length;
+            Point<T>[] Result = new Point<T>[Length];
+            T v1x = Lx2 - Lx1,
+              v1y = Ly2 - Ly1;
+
+            if (T.IsZero(v1x))
+            {
+                if (T.IsZero(v1y))
+                {
+                    for (int i = 0; i < Length; i++)
+                        Result[i] = Points[i];
+
+                    return Result;
+                }
+
+                // Over Y-Axis
+                Point<T> Point;
+                T Two = T.CreateChecked(2);
+                for (int i = 0; i < Length; i++)
+                {
+                    Point = Points[i];
+                    Result[i] = new Point<T>(Lx1 * Two, Point.X - Point.Y);
+                }
+
+                return Result;
+            }
+            else if (T.IsZero(v1y))
+            {
+                // Over X-Axis
+                Point<T> Point;
+                T Two = T.CreateChecked(2);
+                for (int i = 0; i < Length; i++)
+                {
+                    Point = Points[i];
+                    Result[i] = new Point<T>(Point.X, Ly1 * Two - Point.Y);
+                }
+
+                return Result;
+            }
+            else
+            {
+                Point<T> Point;
+                double PQx = double.CreateChecked(v1x),
+                       PQy = double.CreateChecked(v1y);
+
+                for (int i = 0; i < Length; i++)
+                {
+                    Point = Points[i];
+                    double PAx = double.CreateChecked(Point.X - Lx1),
+                           PAy = double.CreateChecked(Point.Y - Ly1),
+                           k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
+
+                    Result[i] = new Point<T>(Lx1 + T.CreateChecked(PQx * k - PAx),
+                                             Ly1 + T.CreateChecked(PQy * k - PAy));
+                }
+            }
+
+            return Result;
+#else
             int Length = Points.Length;
             Point<T>[] Result = new Point<T>[Length];
             T v1x = Subtract(Lx2, Lx1),
@@ -574,11 +793,13 @@ namespace MenthaAssembly
                            PAy = Cast<T, double>(Subtract(Point.Y, Ly1)),
                            k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
 
-                    Result[i] = new Point<T>(Add(Lx1, Cast<double, T>(PQx * k - PAx)), Add(Ly1, Cast<double, T>(PQy * k - PAy)));
+                    Result[i] = new Point<T>(Add(Lx1, Cast<double, T>(PQx * k - PAx)), 
+                                             Add(Ly1, Cast<double, T>(PQy * k - PAy)));
                 }
             }
 
             return Result;
+#endif
         }
         /// <summary>
         /// Reflects the specified points over the specified line.
@@ -591,6 +812,54 @@ namespace MenthaAssembly
         /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
         public static void Reflect(Point<T>* pPoints, int Length, T Lx1, T Ly1, T Lx2, T Ly2)
         {
+#if NET7_0_OR_GREATER
+            T v1x = Lx2 - Lx1,
+              v1y = Ly2 - Ly1;
+
+            if (T.IsZero(v1x))
+            {
+                if (T.IsZero(v1y))
+                    return;
+
+                // Over Y-Axis
+                T Two = T.CreateChecked(2);
+                for (int i = 0; i < Length; i++)
+                {
+                    pPoints->X = Lx1 * Two - pPoints->X;
+                    pPoints++;
+                }
+
+                return;
+            }
+            else if (T.IsZero(v1y))
+            {
+                // Over X-Axis
+                T Two = T.CreateChecked(2);
+                for (int i = 0; i < Length; i++)
+                {
+                    pPoints->Y = Ly1 * Two - pPoints->Y;
+                    pPoints++;
+                }
+
+                return;
+            }
+            else
+            {
+                double PQx = double.CreateChecked(v1x),
+                       PQy = double.CreateChecked(v1y);
+
+                for (int i = 0; i < Length; i++)
+                {
+                    double PAx = double.CreateChecked(pPoints->X - Lx1),
+                           PAy = double.CreateChecked(pPoints->Y - Ly1),
+                           k = Vector<double>.Dot(PQx, PQy, PAx, PAy) / (PQx * PQx + PQy * PQy) * 2d;
+
+                    pPoints->X = Lx1 + T.CreateChecked(PQx * k - PAx);
+                    pPoints->Y = Ly1 + T.CreateChecked(PQy * k - PAy);
+                    pPoints++;
+                }
+            }
+#else
             T v1x = Subtract(Lx2, Lx1),
               v1y = Subtract(Ly2, Ly1);
 
@@ -635,8 +904,12 @@ namespace MenthaAssembly
                     pPoints++;
                 }
             }
+#endif
         }
 
+#if NET7_0_OR_GREATER
+#else
+#endif
         /// <summary>
         /// Sorts the specified points around the specified point.
         /// </summary>
@@ -647,6 +920,17 @@ namespace MenthaAssembly
             T Cx = p.X,
               Cy = p.Y;
 
+#if NET7_0_OR_GREATER
+            int Length = Points.Length;
+            for (int i = 1; i < Length; i++)
+            {
+                p = Points[i];
+                Cx += p.X;
+                Cy += p.Y;
+            }
+
+            return Sort(Points, T.CreateChecked(double.CreateChecked(Cx) / Length), T.CreateChecked(double.CreateChecked(Cy) / Length));
+#else
             int Length = Points.Length;
             for (int i = 1; i < Length; i++)
             {
@@ -656,6 +940,7 @@ namespace MenthaAssembly
             }
 
             return Sort(Points, Cast<double, T>(Cast<T, double>(Cx) / Length), Cast<double, T>(Cast<T, double>(Cy) / Length));
+#endif
         }
         /// <summary>
         /// Sorts the specified points around the specified point.
@@ -665,6 +950,30 @@ namespace MenthaAssembly
         /// <param name="Cy">The y-coordinate of the center of the points.</param>
         public static Point<T>[] Sort(Point<T>[] Points, T Cx, T Cy)
         {
+#if NET7_0_OR_GREATER
+            bool PointCmp(Point<T> P1, Point<T> P2)
+            {
+                T Px1 = P1.X,
+                  Px2 = P2.X;
+
+                if (T.Zero <= Px1 && Px2 < T.Zero)
+                    return true;
+
+                T Py1 = P1.Y,
+                  Py2 = P2.Y;
+                if (T.IsZero(Px1) && T.IsZero(Px2))
+                    return Py1 > Py2;
+
+                T v1x = Px1 - Cx,
+                  v1y = Py1 - Cy,
+                  v2x = Px2 - Cx,
+                  v2y = Py2 - Cy,
+                  D = Vector<T>.Cross(v1x, v1y, v2x, v2y);
+
+                return T.IsZero(D) ? Vector<T>.Dot(v1x, v1y, v1x, v1y) > Vector<T>.Dot(v2x, v2y, v2x, v2y) :
+                                     D < T.Zero;
+            }
+#else
             T Zero = default;
             bool PointCmp(Point<T> P1, Point<T> P2)
             {
@@ -688,6 +997,7 @@ namespace MenthaAssembly
                 return IsDefault(D) ? GreaterThan(Vector<T>.Dot(v1x, v1y, v1x, v1y), Vector<T>.Dot(v2x, v2y, v2x, v2y)) :
                                       GreaterThan(Zero, D);
             }
+#endif
 
             int Length = Points.Length,
                 Ti;
@@ -721,6 +1031,16 @@ namespace MenthaAssembly
             T Cx = p.X,
               Cy = p.Y;
 
+#if NET7_0_OR_GREATER
+            for (int i = 1; i < Length; i++)
+            {
+                p = *pTemp++;
+                Cx += p.X;
+                Cy += p.Y;
+            }
+
+            Sort(pPoints, Length, T.CreateChecked(double.CreateChecked(Cx) / Length), T.CreateChecked(double.CreateChecked(Cy) / Length));
+#else
             for (int i = 1; i < Length; i++)
             {
                 p = *pTemp++;
@@ -729,6 +1049,7 @@ namespace MenthaAssembly
             }
 
             Sort(pPoints, Length, Cast<double, T>(Cast<T, double>(Cx) / Length), Cast<double, T>(Cast<T, double>(Cy) / Length));
+#endif
         }
         /// <summary>
         /// Sorts the specified points around the specified point.
@@ -739,6 +1060,29 @@ namespace MenthaAssembly
         /// <param name="Cy">The y-coordinate of the center of the points.</param>
         public static void Sort(Point<T>* pPoints, int Length, T Cx, T Cy)
         {
+#if NET7_0_OR_GREATER
+            bool PointCmp(Point<T>* P1, Point<T>* P2)
+            {
+                T Px1 = P1->X,
+                  Px2 = P2->X;
+                if (T.Zero <= Px1 && Px2 < T.Zero)
+                    return true;
+
+                T Py1 = P1->Y,
+                  Py2 = P2->Y;
+                if (T.IsZero(Px1) && T.IsZero(Px2))
+                    return Py1 > Py2;
+
+                T v1x = Px1 - Cx,
+                  v1y = Py1 - Cy,
+                  v2x = Px2 - Cx,
+                  v2y = Py2 - Cy,
+                  D = Vector<T>.Cross(v1x, v1y, v2x, v2y);
+
+                return T.IsZero(D) ? Vector<T>.Dot(v1x, v1y, v1x, v1y) > Vector<T>.Dot(v2x, v2y, v2x, v2y) :
+                                     D < T.Zero;
+            }
+#else
             T Zero = default;
             bool PointCmp(Point<T>* P1, Point<T>* P2)
             {
@@ -762,6 +1106,7 @@ namespace MenthaAssembly
                 return IsDefault(D) ? GreaterThan(Vector<T>.Dot(v1x, v1y, v1x, v1y), Vector<T>.Dot(v2x, v2y, v2x, v2y)) :
                                       GreaterThan(Zero, D);
             }
+#endif
 
             Point<T>* pNextPoint = pPoints + 1;
             Point<T> p;
@@ -784,7 +1129,13 @@ namespace MenthaAssembly
         /// </summary>
         /// <param name="Point">The Point to negates.</param>
         public static Point<T> Negates(Point<T> Point)
-            => new(Negate(Point.X), Negate(Point.Y));
+        {
+#if NET7_0_OR_GREATER
+            return new(-Point.X, -Point.Y);
+#else
+            return new(Negate(Point.X), Negate(Point.Y));
+#endif
+        }
 
         /// <summary>
         /// Negates this Point. The Point has the same magnitude as before, but its quadrant is now opposite.

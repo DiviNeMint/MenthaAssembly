@@ -1,4 +1,7 @@
 ﻿using System;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#endif
 
 namespace MenthaAssembly
 {
@@ -6,7 +9,11 @@ namespace MenthaAssembly
     /// Represents a object in 2-D space.
     /// </summary>
     public interface ICoordinateObject<T> : ICloneable
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         /// <summary>
         /// Offsets the object's coordinates by the specified vector.
@@ -68,7 +75,12 @@ namespace MenthaAssembly
         /// <summary>
         /// Creates a new casted <see cref="ICoordinateObject{T}"/>.
         /// </summary>
-        public ICoordinateObject<U> Cast<U>() where U : unmanaged;
+        public ICoordinateObject<U> Cast<U>()
+#if NET7_0_OR_GREATER
+        where U : INumber<U>;
+#else
+        where U : unmanaged;
+#endif
 
         /// <summary>
         /// Creates a new <see cref="ICoordinateObject{T}"/> that is a copy of the current instance.

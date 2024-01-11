@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Linq;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#else
 using static MenthaAssembly.OperatorHelper;
+#endif
 
 namespace MenthaAssembly
 {
@@ -9,7 +13,11 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public unsafe struct LineSegment<T> : IShape<T>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         /// <summary>
         /// Gets a special value that represents a line with no position.
@@ -25,9 +33,7 @@ namespace MenthaAssembly
         {
             set
             {
-                if (Points is null)
-                    Points = new Point<T>[2];
-
+                Points ??= new Point<T>[2];
                 Points[0] = value;
             }
             get => Points?[0] ?? default;
@@ -40,9 +46,7 @@ namespace MenthaAssembly
         {
             set
             {
-                if (Points is null)
-                    Points = new Point<T>[2];
-
+                Points ??= new Point<T>[2];
                 Points[1] = value;
             }
             get => Points?[1] ?? default;
@@ -61,7 +65,12 @@ namespace MenthaAssembly
                 Point<T> p0 = Points[0],
                          p1 = Points[1];
 
+#if NET7_0_OR_GREATER
+                T Two = T.CreateChecked(2);
+                return new Point<T>((p0.X + p1.X) / Two, (p0.Y + p1.Y) / Two);
+#else
                 return new Point<T>(Half(Add(p0.X, p1.X)), Half(Add(p0.Y, p1.Y)));
+#endif
             }
         }
 
@@ -116,7 +125,11 @@ namespace MenthaAssembly
                 Point<T> p0 = Points[0],
                          p1 = Points[1];
 
+#if NET7_0_OR_GREATER
+                return double.CreateChecked(p1.Y - p0.Y) / double.CreateChecked(p1.X - p0.X);
+#else
                 return Cast<T, double>(Subtract(p1.Y, p0.Y)) / Cast<T, double>(Subtract(p1.X, p0.X));
+#endif
             }
         }
 
@@ -256,8 +269,15 @@ namespace MenthaAssembly
         /// <summary>
         /// Creates a new casted line segment.
         /// </summary>
-        public LineSegment<U> Cast<U>() where U : unmanaged
-            => IsEmpty ? LineSegment<U>.Empty : new LineSegment<U>(Points[0].Cast<U>(), Points[1].Cast<U>());
+        public LineSegment<U> Cast<U>()
+#if NET7_0_OR_GREATER
+        where U : INumber<U>
+#else
+        where U : unmanaged
+#endif
+        {
+            return IsEmpty ? LineSegment<U>.Empty : new LineSegment<U>(Points[0].Cast<U>(), Points[1].Cast<U>());
+        }
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
@@ -393,6 +413,32 @@ namespace MenthaAssembly
             T MaxX, MaxY,
               MinX, MinY;
 
+#if NET7_0_OR_GREATER
+            if (Lx2 > Lx1)
+            {
+                MaxX = Lx2;
+                MinX = Lx1;
+            }
+            else
+            {
+                MaxX = Lx1;
+                MinX = Lx2;
+            }
+
+            if (Ly2 > Ly1)
+            {
+                MaxY = Ly2;
+                MinY = Ly1;
+            }
+            else
+            {
+                MaxY = Ly1;
+                MinY = Ly2;
+            }
+
+            return MinX <= Px && Px <= MaxX &&
+                   MinY <= Py && Py <= MaxY;
+#else
             if (GreaterThan(Lx2, Lx1))
             {
                 MaxX = Lx2;
@@ -417,6 +463,7 @@ namespace MenthaAssembly
 
             return !(GreaterThan(MinX, Px) || GreaterThan(Px, MaxX) ||
                      GreaterThan(MinY, Py) || GreaterThan(Py, MaxY));
+#endif
         }
 
         /// <summary>
@@ -477,6 +524,39 @@ namespace MenthaAssembly
         /// <param name="L2y2">The y-coordinate of a another point on the second target line segment.</param>
         public static CrossPoints<T> CrossPoint(T L1x1, T L1y1, T L1x2, T L1y2, T L2x1, T L2y1, T L2x2, T L2y2)
         {
+#if NET7_0_OR_GREATER
+            T v1x = L1x2 - L1x1,
+              v1y = L1y2 - L1y1;
+
+            if (T.IsZero(v1x) && T.IsZero(v1y))
+                return Contain(L1x1, L1y1, L2x1, L2y1, L2x2, L2y2) ? new CrossPoints<T>(new Point<T>(L1x1, L1y1)) : CrossPoints<T>.None;
+
+            T v2x = L2x2 - L2x1,
+              v2y = L2y2 - L2y1;
+
+            if (T.IsZero(v2x) && T.IsZero(v2y))
+                return Contain(L1x1, L1y1, L1x2, L1y2, L2x1, L2y1) ? new CrossPoints<T>(new Point<T>(L2x1, L2y1)) : CrossPoints<T>.None;
+
+            T v3x = L2x1 - L1x1,
+              v3y = L2y1 - L1y1,
+              C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
+              C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
+
+            if (T.IsZero(C1))
+            {
+                if (T.IsZero(C2))
+                    return OnSegment(L1x1, L1y1, L1x2, L1y2, L2x1, L2y1) || OnSegment(L1x1, L1y1, L1x2, L1y2, L2x2, L2y2) ? CrossPoints<T>.Infinity : CrossPoints<T>.None;
+
+                return CrossPoints<T>.None;
+            }
+
+            double t = double.CreateChecked(C2) / double.CreateChecked(C1);
+            if (t < 0)
+                t = -t;
+
+            T X = L1x1 + T.CreateChecked(double.CreateChecked(v1x) * t),
+              Y = L1y1 + T.CreateChecked(double.CreateChecked(v1y) * t);
+#else
             T v1x = Subtract(L1x2, L1x1),
               v1y = Subtract(L1y2, L1y1);
 
@@ -508,6 +588,7 @@ namespace MenthaAssembly
 
             T X = Add(L1x1, Cast<double, T>(Cast<T, double>(v1x) * t)),
               Y = Add(L1y1, Cast<double, T>(Cast<T, double>(v1y) * t));
+#endif
 
             return OnSegment(L1x1, L1y1, L1x2, L1y2, X, Y) && OnSegment(L2x1, L2y1, L2x2, L2y2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : CrossPoints<T>.None;
         }
@@ -550,6 +631,38 @@ namespace MenthaAssembly
             Point<T> Lp1 = Line.Points[0],
                      Lp2 = Line.Points[1];
 
+#if NET7_0_OR_GREATER
+            T Lx1 = Lp1.X,
+              Ly1 = Lp1.Y,
+              Lx2 = Lp2.X,
+              Ly2 = Lp2.Y,
+              v1x = Sx2 - Sx1,
+              v1y = Sy2 - Sy1;
+
+            if (T.IsZero(v1x) && T.IsZero(v1y))
+                return Line<T>.IsCollinear(Sx1, Sy1, Lx1, Ly1, Lx2, Ly2) ? new CrossPoints<T>(new Point<T>(Sx1, Sy1)) : CrossPoints<T>.None;
+
+            T v2x = Lx2 - Lx1,
+              v2y = Ly2 - Ly1;
+
+            if (T.IsZero(v2x) && T.IsZero(v2y))
+                return Line<T>.IsCollinear(Sx1, Sy1, Sx2, Sy2, Lx1, Ly1) ? new CrossPoints<T>(new Point<T>(Lx1, Ly1)) : CrossPoints<T>.None;
+
+            T v3x = Lx1 - Sx1,
+              v3y = Ly1 - Sy1,
+              C1 = Vector<T>.Cross(v1x, v1y, v2x, v2y),
+              C2 = Vector<T>.Cross(v3x, v3y, v2x, v2y);
+
+            if (T.IsZero(C1))
+                return T.IsZero(C2) ? CrossPoints<T>.Infinity : CrossPoints<T>.None;
+
+            double t = double.CreateChecked(C2) / double.CreateChecked(C1);
+            if (t < 0)
+                t = -t;
+
+            T X = Sx1 + T.CreateChecked(double.CreateChecked(v1x) * t),
+              Y = Sy1 + T.CreateChecked(double.CreateChecked(v1y) * t);
+#else
             T Lx1 = Lp1.X,
               Ly1 = Lp1.Y,
               Lx2 = Lp2.X,
@@ -580,6 +693,7 @@ namespace MenthaAssembly
 
             T X = Add(Sx1, Cast<double, T>(Cast<T, double>(v1x) * t)),
               Y = Add(Sy1, Cast<double, T>(Cast<T, double>(v1y) * t));
+#endif
 
             return OnSegment(Sx1, Sy1, Sx2, Sy2, X, Y) ? new CrossPoints<T>(new Point<T>(X, Y)) : CrossPoints<T>.None;
         }
@@ -693,10 +807,18 @@ namespace MenthaAssembly
             for (int i = 0; i < Length; i++)
             {
                 p = Points[i];
+
+#if NET7_0_OR_GREATER
+                Dx = p.X - Cx;
+                Dy = p.Y - Cy;
+
+                Result[i] = new Point<T>(Cx + Dx * ScaleX, Cy + Dy * ScaleY);
+#else
                 Dx = Subtract(p.X, Cx);
                 Dy = Subtract(p.Y, Cy);
 
                 Result[i] = new Point<T>(Add(Cx, Multiply(Dx, ScaleX)), Add(Cy, Multiply(Dy, ScaleY)));
+#endif
             }
 
             return Result;
@@ -715,11 +837,19 @@ namespace MenthaAssembly
             T Dx, Dy;
             for (int i = 0; i < Length; i++)
             {
+#if NET7_0_OR_GREATER
+                Dx = pPoints->X - Cx;
+                Dy = pPoints->Y - Cy;
+
+                pPoints->X = Cx + Dx * ScaleX;
+                pPoints->Y = Cy + Dy * ScaleY;
+#else
                 Dx = Subtract(pPoints->X, Cx);
                 Dy = Subtract(pPoints->Y, Cy);
 
                 pPoints->X = Add(Cx, Multiply(Dx, ScaleX));
                 pPoints->Y = Add(Cy, Multiply(Dy, ScaleY));
+#endif
 
                 pPoints++;
             }
@@ -835,6 +965,16 @@ namespace MenthaAssembly
 
             Point<T> p0 = Segment.Points[0],
                      p1 = Segment.Points[1];
+
+#if NET7_0_OR_GREATER
+            T X0 = p0.X,
+              Y0 = p0.Y,
+              Dx = p1.X - X0,
+              Dy = p1.Y - Y0;
+
+            p1.X = X0 + Dx / Scale;
+            p1.Y = Y0 + Dy / Scale;
+#else
             T X0 = p0.X,
               Y0 = p0.Y,
               Dx = Subtract(p1.X, X0),
@@ -842,6 +982,7 @@ namespace MenthaAssembly
 
             p1.X = Add(X0, Divide(Dx, Scale));
             p1.Y = Add(Y0, Divide(Dy, Scale));
+#endif
 
             return new LineSegment<T>(p0, p1);
         }

@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#else
 using static MenthaAssembly.OperatorHelper;
+#endif
 
 namespace MenthaAssembly
 {
@@ -107,7 +111,16 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Value">A number.</param>
         public static T Ceiling<T>(T Value)
-            => Cast<double, T>(Math.Ceiling(Cast<T, double>(Value)));
+#if NET7_0_OR_GREATER
+        where T : INumberBase<T>
+#endif
+        {
+#if NET7_0_OR_GREATER
+            return T.CreateChecked(Math.Ceiling(double.CreateChecked(Value)));
+#else
+            return Cast<double, T>(Math.Ceiling(Cast<T, double>(Value)));
+#endif
+        }
         /// <summary>
         /// Returns the smallest interval number that is greater than or equal to the specified interval number.
         /// </summary>
@@ -115,9 +128,17 @@ namespace MenthaAssembly
         /// <param name="Value">A number.</param>
         /// <param name="Interval">The interval number.</param>
         public static T Ceiling<T>(T Value, T Interval)
+#if NET7_0_OR_GREATER
+        where T : INumberBase<T>
+#endif
         {
+#if NET7_0_OR_GREATER
+            double DInterval = double.CreateChecked(Interval);
+            return T.CreateChecked(Math.Ceiling(double.CreateChecked(Value) / DInterval) * DInterval);
+#else
             double DInterval = Cast<T, double>(Interval);
             return Cast<double, T>(Math.Ceiling(Cast<T, double>(Value) / DInterval) * DInterval);
+#endif
         }
 
         /// <summary>
@@ -140,7 +161,16 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Value">A number.</param>
         public static T Floor<T>(T Value)
-            => Cast<double, T>(Math.Floor(Cast<T, double>(Value)));
+#if NET7_0_OR_GREATER
+        where T : INumberBase<T>
+#endif
+        {
+#if NET7_0_OR_GREATER
+            return T.CreateChecked(Math.Floor(double.CreateChecked(Value)));
+#else
+            return Cast<double, T>(Math.Floor(Cast<T, double>(Value)));
+#endif
+        }
         /// <summary>
         /// Returns the largest interval number less than or equal to the specified interval number.
         /// </summary>
@@ -148,9 +178,17 @@ namespace MenthaAssembly
         /// <param name="Value">A number.</param>
         /// <param name="Interval">The interval number.</param>
         public static T Floor<T>(T Value, T Interval)
+#if NET7_0_OR_GREATER
+        where T : INumberBase<T>
+#endif
         {
+#if NET7_0_OR_GREATER
+            double DInterval = double.CreateChecked(Interval);
+            return T.CreateChecked(Math.Floor(double.CreateChecked(Value) / DInterval) * DInterval);
+#else
             double DInterval = Cast<T, double>(Interval);
             return Cast<double, T>(Math.Floor(Cast<T, double>(Value) / DInterval) * DInterval);
+#endif
         }
 
         /// <summary>
@@ -189,7 +227,16 @@ namespace MenthaAssembly
         /// <typeparam name="T">The type of number.</typeparam>
         /// <param name="Value">A number to be rounded.</param>
         public static T Round<T>(T Value)
-            => Cast<double, T>(Math.Round(Cast<T, double>(Value)));
+#if NET7_0_OR_GREATER
+        where T : INumberBase<T>
+#endif
+        {
+#if NET7_0_OR_GREATER
+            return T.CreateChecked(Math.Round(double.CreateChecked(Value)));
+#else
+            return Cast<double, T>(Math.Round(Cast<T, double>(Value)));
+#endif
+        }
         /// <summary>
         /// Rounds a value to the nearest interval number.
         /// </summary>
@@ -197,9 +244,17 @@ namespace MenthaAssembly
         /// <param name="Value">A number to be rounded.</param>
         /// <param name="Interval">The interval number.</param>
         public static T Round<T>(T Value, T Interval)
+#if NET7_0_OR_GREATER
+        where T : INumberBase<T>
+#endif
         {
+#if NET7_0_OR_GREATER
+            double DInterval = double.CreateChecked(Interval);
+            return T.CreateChecked(Math.Round(double.CreateChecked(Value) / DInterval) * DInterval);
+#else
             double DInterval = Cast<T, double>(Interval);
             return Cast<double, T>(Math.Round(Cast<T, double>(Value) / DInterval) * DInterval);
+#endif
         }
         /// <summary>
         /// Rounds a value to the nearest interval number.
@@ -209,9 +264,17 @@ namespace MenthaAssembly
         /// <param name="Interval">The interval number.</param>
         /// <param name="Mode">Specification for how to round d if it is midway between two other numbers.</param>
         public static T Round<T>(T Value, T Interval, MidpointRounding Mode)
+#if NET7_0_OR_GREATER
+        where T : INumberBase<T>
+#endif
         {
+#if NET7_0_OR_GREATER
+            double DInterval = double.CreateChecked(Interval);
+            return T.CreateChecked(Math.Round(double.CreateChecked(Value) / DInterval, Mode) * DInterval);
+#else
             double DInterval = Cast<T, double>(Interval);
             return Cast<double, T>(Math.Round(Cast<T, double>(Value) / DInterval, Mode) * DInterval);
+#endif
         }
 
         /// <summary>

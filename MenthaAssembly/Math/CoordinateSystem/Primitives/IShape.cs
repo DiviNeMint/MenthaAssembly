@@ -1,10 +1,18 @@
-﻿namespace MenthaAssembly
+﻿#if NET7_0_OR_GREATER
+using System.Numerics;
+#endif
+
+namespace MenthaAssembly
 {
     /// <summary>
     /// Represents a shape in 2-D space.
     /// </summary>
     public interface IShape<T> : ICoordinateObject<T>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         /// <summary>
         /// The center of the shape.
@@ -82,7 +90,12 @@
         /// <summary>
         /// Creates a new casted <see cref="IShape{T}"/>.
         /// </summary>
-        public new IShape<U> Cast<U>() where U : unmanaged;
+        public new IShape<U> Cast<U>()
+#if NET7_0_OR_GREATER
+        where U : INumber<U>;
+#else
+        where U : unmanaged;
+#endif
 
         /// <summary>
         /// Creates a new <see cref="IShape{T}"/> that is a copy of the current instance.

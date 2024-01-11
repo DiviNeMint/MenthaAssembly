@@ -3,6 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#endif
+
 namespace MenthaAssembly
 {
     /// <summary>
@@ -10,7 +14,11 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public sealed class CrossPoints<T> : IEnumerable<Point<T>>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         /// <summary>
         /// Gets a special value that represents no cross point.

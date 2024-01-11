@@ -1,6 +1,9 @@
 ﻿using System;
-using System.Linq.Expressions;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#else
 using static MenthaAssembly.OperatorHelper;
+#endif
 
 namespace MenthaAssembly
 {
@@ -9,7 +12,11 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public unsafe struct Vector<T> : ICoordinateObject<T>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         /// <summary>
         /// Gets a zero vector.
@@ -30,19 +37,46 @@ namespace MenthaAssembly
         /// The squared length of this Vector.
         /// </summary>
         public T LengthSquare
-            => Add<T>(Multiply<T>(X, X), Multiply<T>(Y, Y));
+        {
+            get
+            {
+#if NET7_0_OR_GREATER
+                return X * X + Y * Y;
+#else
+                return Add<T>(Multiply<T>(X, X), Multiply<T>(Y, Y));
+#endif
+            }
+        }
 
         /// <summary>
         /// The length of this Vector.
         /// </summary>
         public double Length
-            => Math.Sqrt(Cast<T, double>(LengthSquare));
+        {
+            get
+            {
+#if NET7_0_OR_GREATER
+                return Math.Sqrt(double.CreateChecked(LengthSquare));
+#else
+                return Math.Sqrt(Cast<T, double>(LengthSquare));
+#endif
+            }
+        }
 
         /// <summary>
         ///  Gets a value indicating whether the <see cref="Vector{T}"/> is zero vector.
         /// </summary>
         public bool IsZero
-            => IsDefault(X) && IsDefault(Y);
+        {
+            get
+            {
+#if NET7_0_OR_GREATER
+                return T.IsZero(X) && T.IsZero(Y);
+#else
+                return IsDefault(X) && IsDefault(Y);
+#endif
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -62,8 +96,13 @@ namespace MenthaAssembly
         /// <param name="End">The end point.</param>
         public Vector(T Sx, T Sy, Point<T> End)
         {
+#if NET7_0_OR_GREATER
+            X = End.X - Sx;
+            Y = End.Y - Sy;
+#else
             X = Subtract<T>(End.X, Sx);
             Y = Subtract<T>(End.Y, Sy);
+#endif
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -73,8 +112,13 @@ namespace MenthaAssembly
         /// <param name="Ey">The y-coordinate of the end point.</param>
         public Vector(Point<T> Start, T Ex, T Ey)
         {
+#if NET7_0_OR_GREATER
+            X = Ex - Start.X;
+            Y = Ey - Start.Y;
+#else
             X = Subtract<T>(Ex, Start.X);
             Y = Subtract<T>(Ey, Start.Y);
+#endif
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -83,8 +127,13 @@ namespace MenthaAssembly
         /// <param name="End">The end point.</param>
         public Vector(Point<T> Start, Point<T> End)
         {
+#if NET7_0_OR_GREATER
+            X = End.X - Start.X;
+            Y = End.Y - Start.Y;
+#else
             X = Subtract<T>(End.X, Start.X);
             Y = Subtract<T>(End.Y, Start.Y);
+#endif
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Vector{T}"/> structure.
@@ -95,8 +144,13 @@ namespace MenthaAssembly
         /// <param name="Ey">The y-coordinate of the end point.</param>
         public Vector(T Sx, T Sy, T Ex, T Ey)
         {
+#if NET7_0_OR_GREATER
+            X = Ex - Sx;
+            Y = Ey - Sy;
+#else
             X = Subtract<T>(Ex, Sx);
             Y = Subtract<T>(Ey, Sy);
+#endif
         }
 
         void ICoordinateObject<T>.Offset(Vector<T> Vector)
@@ -123,8 +177,19 @@ namespace MenthaAssembly
         /// </summary>
         /// <returns></returns>
         public Vector<U> Cast<U>()
-            where U : unmanaged
-            => new(Cast<T, U>(X), Cast<T, U>(Y));
+#if NET7_0_OR_GREATER
+        where U : INumber<U>
+#else
+        where U : unmanaged
+#endif
+        {
+#if NET7_0_OR_GREATER
+            return new(U.CreateChecked(X), U.CreateChecked(Y));
+#else
+            return new(Cast<T, U>(X), Cast<T, U>(Y));
+#endif
+        }
+
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
             => Cast<U>();
 
@@ -146,7 +211,13 @@ namespace MenthaAssembly
         /// </summary>
         /// <param name="obj">The obj to compare to the current instance.</param>
         public bool Equals(Vector<T> obj)
-            => OperatorHelper.Equals(X, obj.X) && OperatorHelper.Equals(Y, obj.Y);
+        {
+#if NET7_0_OR_GREATER
+            return X == obj.X && Y == obj.Y;
+#else
+            return OperatorHelper.Equals(X, obj.X) && OperatorHelper.Equals(Y, obj.Y);
+#endif
+        }
         bool ICoordinateObject<T>.Equals(ICoordinateObject<T> obj)
             => obj is Vector<T> Target && Equals(Target);
         public override bool Equals(object obj)
@@ -161,7 +232,7 @@ namespace MenthaAssembly
         /// <param name="Vector1">The first vector to evaluate.</param>
         /// <param name="Vector2">The second vector to evaluate.</param>
         public static T Dot(Vector<T> Vector1, Vector<T> Vector2)
-            => Add<T>(Multiply<T>(Vector1.X, Vector2.X), Multiply<T>(Vector1.Y, Vector2.Y));
+            => Dot(Vector1.X, Vector2.Y, Vector1.Y, Vector2.X);
         /// <summary>
         /// Calculates the dot product of two vectors.
         /// </summary>
@@ -171,7 +242,13 @@ namespace MenthaAssembly
         /// <param name="Dy2">The delta on y-coordinate of second vector to evaluate.</param>
         /// <returns></returns>
         public static T Dot(T Dx1, T Dy1, T Dx2, T Dy2)
-            => Add<T>(Multiply<T>(Dx1, Dx2), Multiply<T>(Dy1, Dy2));
+        {
+#if NET7_0_OR_GREATER
+            return Dx1 * Dx2 + Dy1 * Dy2;
+#else
+            return Add<T>(Multiply<T>(Dx1, Dx2), Multiply<T>(Dy1, Dy2));
+#endif
+        }
 
         /// <summary>
         /// Calculates the cross product of two vectors.
@@ -179,7 +256,7 @@ namespace MenthaAssembly
         /// <param name="Vector1">The first vector to evaluate.</param>
         /// <param name="Vector2">The second vector to evaluate.</param>
         public static T Cross(Vector<T> Vector1, Vector<T> Vector2)
-            => Subtract<T>(Multiply<T>(Vector1.X, Vector2.Y), Multiply<T>(Vector1.Y, Vector2.X));
+            => Cross(Vector1.X, Vector2.Y, Vector1.Y, Vector2.X);
         /// <summary>
         /// Calculates the cross product of two vectors.
         /// </summary>
@@ -189,7 +266,13 @@ namespace MenthaAssembly
         /// <param name="Dy2">The delta on y-coordinate of second vector to evaluate.</param>
         /// <returns></returns>
         public static T Cross(T Dx1, T Dy1, T Dx2, T Dy2)
-            => Subtract<T>(Multiply<T>(Dx1, Dy2), Multiply<T>(Dy1, Dx2));
+        {
+#if NET7_0_OR_GREATER
+            return Dx1 * Dy2 - Dy1 * Dx2;
+#else
+            return Subtract<T>(Multiply<T>(Dx1, Dy2), Multiply<T>(Dy1, Dx2));
+#endif
+        }
 
         /// <summary>
         /// Retrieves the angle, expressed in degrees, between the two specified vectors.
@@ -198,10 +281,7 @@ namespace MenthaAssembly
         /// <param name="Vector2">The second vector to evaluate.</param>
         /// <returns></returns>
         public static double AngleBetween(Vector<T> Vector1, Vector<T> Vector2)
-        {
-            T Dot = Vector<T>.Dot(Vector1, Vector2);
-            return Math.Sqrt(Cast<T, double>(Multiply<T>(Dot, Dot)) / Cast<T, double>(Multiply<T>(Vector1.LengthSquare, Vector2.LengthSquare)));
-        }
+            => AngleBetween(Vector1.X, Vector2.Y, Vector1.Y, Vector2.X);
         /// <summary>
         /// Retrieves the angle, expressed in degrees, between the two specified vectors.
         /// </summary>
@@ -211,10 +291,17 @@ namespace MenthaAssembly
         /// <param name="Dy2">The delta on y-coordinate of second vector to evaluate.</param>
         public static double AngleBetween(T Dx1, T Dy1, T Dx2, T Dy2)
         {
+#if NET7_0_OR_GREATER
+            T Dot = Vector<T>.Dot(Dx1, Dy1, Dx2, Dy2),
+              LengthSquare1 = Dx1 * Dx1 + Dy1 * Dy1,
+              LengthSquare2 = Dx2 * Dx2 + Dy2 * Dy2;
+            return Math.Sqrt(double.CreateChecked(Dot * Dot) / double.CreateChecked(LengthSquare1 * LengthSquare2));
+#else
             T Dot = Vector<T>.Dot(Dx1, Dy1, Dx2, Dy2),
               LengthSquare1 = Add<T>(Multiply<T>(Dx1, Dx1), Multiply<T>(Dy1, Dy1)),
               LengthSquare2 = Add<T>(Multiply<T>(Dx2, Dx2), Multiply<T>(Dy2, Dy2));
             return Math.Sqrt(Cast<T, double>(Multiply<T>(Dot, Dot)) / Cast<T, double>(Multiply<T>(LengthSquare1, LengthSquare2)));
+#endif
         }
 
         /// <summary>
@@ -224,7 +311,7 @@ namespace MenthaAssembly
         /// <param name="Vector2">The second vector to add.</param>
         /// <returns></returns>
         public static Vector<T> Add(Vector<T> Vector1, Vector<T> Vector2)
-            => new(Add<T>(Vector1.X, Vector2.X), Add<T>(Vector1.Y, Vector2.Y));
+            => Add(Vector1, Vector2.X, Vector2.Y);
         /// <summary>
         /// Adds two vectors and returns the result as a <see cref="Vector{T}"/> structure.
         /// </summary>
@@ -233,7 +320,13 @@ namespace MenthaAssembly
         /// <param name="Dy">The delta on y-coordinate of second vector to add.</param>
         /// <returns></returns>
         public static Vector<T> Add(Vector<T> Vector, T Dx, T Dy)
-            => new(Add<T>(Vector.X, Dx), Add<T>(Vector.Y, Dy));
+        {
+#if NET7_0_OR_GREATER
+            return new(Vector.X + Dx, Vector.Y + Dy);
+#else
+            return new(Add<T>(Vector.X, Dx), Add<T>(Vector.Y, Dy));
+#endif
+        }
 
         /// <summary>
         /// Subtracts the specified vector from another specified vector.
@@ -242,7 +335,7 @@ namespace MenthaAssembly
         /// <param name="Vector2">The vector to subtract from Vector1.</param>
         /// <returns></returns>
         public static Vector<T> Subtract(Vector<T> Vector1, Vector<T> Vector2)
-            => new(Subtract<T>(Vector1.X, Vector2.X), Subtract<T>(Vector1.Y, Vector2.Y));
+            => Subtract(Vector1, Vector2.X, Vector2.Y);
         /// <summary>
         /// Subtracts the specified vector from another specified vector.
         /// </summary>
@@ -251,7 +344,13 @@ namespace MenthaAssembly
         /// <param name="Dy">The delta on y-coordinate of the vector to subtract from Vector.</param>
         /// <returns></returns>
         public static Vector<T> Subtract(Vector<T> Vector, T Dx, T Dy)
-            => new(Subtract<T>(Vector.X, Dx), Subtract<T>(Vector.Y, Dy));
+        {
+#if NET7_0_OR_GREATER
+            return new(Vector.X - Dx, Vector.Y - Dy);
+#else
+            return new(Subtract<T>(Vector.X, Dx), Subtract<T>(Vector.Y, Dy));
+#endif
+        }
 
         /// <summary>
         /// Multiplies the specified vector by the specified scalar.
@@ -269,7 +368,13 @@ namespace MenthaAssembly
         /// <param name="ScalarY">The scalar to multiply on y-coordinate.</param>
         /// <returns></returns>
         public static Vector<T> Multiply(Vector<T> Vector, T ScalarX, T ScalarY)
-            => new(Multiply<T>(Vector.X, ScalarX), Multiply<T>(Vector.Y, ScalarY));
+        {
+#if NET7_0_OR_GREATER
+            return new(Vector.X * ScalarX, Vector.Y * ScalarY);
+#else
+            return new(Multiply<T>(Vector.X, ScalarX), Multiply<T>(Vector.Y, ScalarY));
+#endif
+        }
 
         /// <summary>
         /// Divides the specified vector by the specified scalar.
@@ -287,14 +392,26 @@ namespace MenthaAssembly
         /// <param name="ScalarY">The scalar to divide on y-coordinate.</param>
         /// <returns></returns>
         public static Vector<T> Divide(Vector<T> Vector, T ScalarX, T ScalarY)
-            => new(Divide<T>(Vector.X, ScalarX), Divide<T>(Vector.Y, ScalarY));
+        {
+#if NET7_0_OR_GREATER
+            return new(Vector.X / ScalarX, Vector.Y / ScalarY);
+#else
+            return new(Divide<T>(Vector.X, ScalarX), Divide<T>(Vector.Y, ScalarY));
+#endif
+        }
 
         /// <summary>
         /// Negates this vector. The vector has the same magnitude as before, but its direction is now opposite.
         /// </summary>
         /// <param name="Vector">The vector to reverse.</param>
         public static Vector<T> Reverse(Vector<T> Vector)
-            => new(Negate(Vector.X), Negate(Vector.Y));
+        {
+#if NET7_0_OR_GREATER
+            return new(-Vector.X, -Vector.Y);
+#else
+            return new(Negate(Vector.X), Negate(Vector.Y));
+#endif
+        }
 
         /// <summary>
         /// Calculates the dot product of two vectors.

@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#else
 using static MenthaAssembly.OperatorHelper;
+#endif
 
 namespace MenthaAssembly
 {
@@ -10,10 +14,19 @@ namespace MenthaAssembly
     /// </summary>
     [Serializable]
     public unsafe struct Triangle<T> : IPolygonShape<T>
+#if NET7_0_OR_GREATER
+        where T : INumber<T>
+#else
         where T : unmanaged
+#endif
     {
         private const int Vertices = 3;
-        private static readonly T GenericVertics = Cast<int, T>(Vertices);
+        private static readonly T GenericVertics
+#if NET7_0_OR_GREATER
+            = T.CreateChecked(Vertices);
+#else
+            = Cast<int, T>(Vertices);
+#endif
 
         /// <summary>
         /// Gets a special value that represents a triangle with no position or area.
@@ -39,11 +52,20 @@ namespace MenthaAssembly
                 for (int i = 1; i < Vertices; i++)
                 {
                     p = Points[i];
+#if NET7_0_OR_GREATER
+                    Cx += p.X;
+                    Cy += p.Y;
+#else
                     Cx = Add(Cx, p.X);
                     Cy = Add(Cy, p.Y);
+#endif
                 }
 
+#if NET7_0_OR_GREATER
+                return new Point<T>(Cx / GenericVertics, Cy / GenericVertics);
+#else
                 return new Point<T>(Divide(Cx, GenericVertics), Divide(Cy, GenericVertics));
+#endif
             }
         }
 
@@ -58,7 +80,11 @@ namespace MenthaAssembly
                          p1 = Points[1],
                          p2 = Points[2];
 
+#if NET7_0_OR_GREATER
+                return double.CreateChecked(T.Abs(Vector<T>.Cross(p1.X - p0.X, p1.Y - p0.Y, p2.X - p0.X, p2.Y - p0.Y))) / 2d;
+#else
                 return Cast<T, double>(Abs(Vector<T>.Cross(Subtract(p1.X, p0.X), Subtract(p1.Y, p0.Y), Subtract(p2.X, p0.X), Subtract(p2.Y, p0.Y)))) / 2d;
+#endif
             }
         }
 
@@ -154,6 +180,33 @@ namespace MenthaAssembly
                      p1 = Points[1],
                      p2 = Points[2];
 
+#if NET7_0_OR_GREATER
+            // Compute Vectors
+            T p0x = p0.X,
+              p0y = p0.Y,
+              Vx0 = p2.X - p0x,
+              Vy0 = p2.Y - p0y,
+              Vx1 = p1.X - p0x,
+              Vy1 = p1.Y - p0y,
+              Vx2 = Px - p0x,
+              Vy2 = Py - p0y;
+
+            // Compute Dot
+            T Dot00 = Vector<T>.Dot(Vx0, Vy0, Vx0, Vy0),
+              Dot01 = Vector<T>.Dot(Vx0, Vy0, Vx1, Vy1),
+              Dot02 = Vector<T>.Dot(Vx0, Vy0, Vx2, Vy2),
+              Dot11 = Vector<T>.Dot(Vx1, Vy1, Vx1, Vy1),
+              Dot12 = Vector<T>.Dot(Vx1, Vy1, Vx2, Vy2);
+
+            // Compute barycentric coordinates
+            double invDenom = 1d / double.CreateChecked(Dot00 * Dot11 - Dot01 * Dot01),
+                   u = double.CreateChecked(Dot11 * Dot02 - Dot01 * Dot12) * invDenom;
+
+            if (u < 0d)
+                return false;
+
+            double v = double.CreateChecked(Dot00 * Dot12 - Dot01 * Dot02) * invDenom;
+#else
             // Compute Vectors
             T p0x = p0.X,
               p0y = p0.Y,
@@ -179,6 +232,7 @@ namespace MenthaAssembly
                 return false;
 
             double v = Cast<T, double>(Subtract(Multiply(Dot00, Dot12), Multiply(Dot01, Dot02))) * invDenom;
+#endif
             return 0d <= v && u + v <= 1d;
         }
 
@@ -266,8 +320,15 @@ namespace MenthaAssembly
         /// Creates a new casted <see cref="Triangle{T}"/>.
         /// </summary>
         /// <returns></returns>
-        public Triangle<U> Cast<U>() where U : unmanaged
-            => IsEmpty ? Triangle<U>.Empty : new Triangle<U> { Points = Points.Select(i => i.Cast<U>()).ToArray() };
+        public Triangle<U> Cast<U>()
+#if NET7_0_OR_GREATER
+        where U : INumber<U>
+#else
+        where U : unmanaged
+#endif
+        {
+            return IsEmpty ? Triangle<U>.Empty : new Triangle<U> { Points = Points.Select(i => i.Cast<U>()).ToArray() };
+        }
         IShape<U> IShape<T>.Cast<U>()
             => Cast<U>();
         ICoordinateObject<U> ICoordinateObject<T>.Cast<U>()
