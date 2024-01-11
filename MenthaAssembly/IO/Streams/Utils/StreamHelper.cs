@@ -456,7 +456,6 @@ namespace System.IO
             while (Length > 0)
             {
                 ReadLength = This.Read(Buffer, Index, Length);
-
                 if (ReadLength < 1)
                     return false;
 
@@ -466,6 +465,50 @@ namespace System.IO
 
             return true;
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_1_OR_GREATER
+
+        /// <summary>
+        /// Reads a sequence of bytes from the current stream and advances the position within the stream by the number of bytes read.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="pBuffer">The pointer of buffer. This method copies datas from the pointer to the current stream.</param>
+        /// <param name="Offset">The zero-based byte offset in datas at which to begin writing to the stream.</param>
+        /// <param name="Length">The number of bytes to be written to the current stream.</param>
+        public static int Read(this Stream This, byte* pBuffer, int Offset, int Length)
+        {
+            Span<byte> Buffer = new(pBuffer + Offset, Length);
+            return This.Read(Buffer);
+        }
+
+        /// <summary>
+        /// Reads a buffer from the stream until it fills the specified length of buffer.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="pBuffer">The pointer of buffer. This method copies datas from the pointer to the current stream.</param>
+        /// <param name="Offset">The zero-based byte offset in datas at which to begin writing to the stream.</param>
+        /// <param name="Length">The number of bytes to be written to the current stream.</param>
+        public static bool ReadBuffer(this Stream This, byte* pBuffer, int Offset, int Length)
+        {
+            int Index = This.Read(pBuffer, Offset, Length),
+                ReadLength;
+
+            Length -= Index;
+            Index += Offset;
+            while (Length > 0)
+            {
+                ReadLength = This.Read(pBuffer, Index, Length);
+                if (ReadLength < 1)
+                    return false;
+
+                Index += ReadLength;
+                Length -= ReadLength;
+            }
+
+            return true;
+        }
+
+#endif
 
     }
 }
