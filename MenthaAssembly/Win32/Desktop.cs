@@ -1,6 +1,8 @@
 ﻿using MenthaAssembly.Devices;
 using MenthaAssembly.Media.Imaging;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using static MenthaAssembly.Win32.Graphic;
 
@@ -296,6 +298,17 @@ namespace MenthaAssembly.Win32
         //#endif
         #endregion
 
+        #region  Windows API (Process)
+
+        [DllImport("Ntdll.dll")]
+        internal static extern int NtQueryInformationProcess(IntPtr ProcessHandle, int ProcessInformationClass, out ProcessBasicInfo ProcessInformation, int ProcessInformationLength, out int ReturnLength);
+
+        [DllImport("User32.dll")]
+        internal static extern bool EnumThreadWindows(int dwThreadId, EnumThreadDelegate lpfn, IntPtr lParam);
+        internal delegate bool EnumThreadDelegate(IntPtr hWnd, IntPtr lParam);
+
+        #endregion
+
         /// <summary>
         /// The handle pointer of desktop.
         /// </summary>
@@ -511,6 +524,33 @@ namespace MenthaAssembly.Win32
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Gets the process id of the parent of the associated process.
+        /// </summary>
+        public static int GetParentId(this Process Process)
+        {
+            NtQueryInformationProcess(Process.Handle, 0, out ProcessBasicInfo pbi, Marshal.SizeOf(typeof(ProcessBasicInfo)), out _);
+            return pbi.InheritedFromUniqueProcessId.ToInt32();
+        }
+
+        /// <summary>
+        /// Gets the window handle of the windows of the associated process.
+        /// </summary>
+        public static IEnumerable<IntPtr> GetWindowHandles(this Process Process)
+        {
+            List<IntPtr> Handles = new();
+            bool Handler(IntPtr hWnd, IntPtr lParam)
+            {
+                Handles.Add(hWnd);
+                return true;
+            }
+
+            foreach (ProcessThread Thread in Process.Threads)
+                EnumThreadWindows(Thread.Id, Handler, IntPtr.Zero);
+
+            return Handles;
         }
 
     }

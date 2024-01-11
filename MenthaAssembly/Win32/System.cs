@@ -238,7 +238,7 @@ namespace MenthaAssembly.Win32
         internal static extern bool GetTextMetrics(IntPtr hdc, out TextMetric Metric);
 
         [DllImport("Gdi32.dll")]
-        static extern int EnumFontFamiliesEx(IntPtr hdc, ref FontData lpLogfont, EnumFontExDelegate Callback, IntPtr lParam, uint dwFlags);
+        internal static extern int EnumFontFamiliesEx(IntPtr hdc, ref FontData lpLogfont, EnumFontExDelegate Callback, IntPtr lParam, uint dwFlags);
         internal delegate int EnumFontExDelegate(ref FontData Font, ref TextMetric lpntme, int FontType, int lParam);
 
         #endregion
