@@ -171,10 +171,12 @@ namespace MenthaAssembly
             if (IsEmpty)
                 return;
 
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
             fixed (Point<T>* pPoints = &Points[0])
             {
                 Point<T>.Offset(pPoints, Points.Length, Dx, Dy);
             }
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
         }
 
         public void Rotate(double Theta)
@@ -182,10 +184,12 @@ namespace MenthaAssembly
             if (IsEmpty)
                 return;
 
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
             fixed (Point<T>* pPoints = &Points[0])
             {
                 Point<T>.Rotate(pPoints, Points.Length, Theta);
             }
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
         }
         public void Rotate(Point<T> Center, double Theta)
             => Rotate(Center.X, Center.Y, Theta);
@@ -194,10 +198,12 @@ namespace MenthaAssembly
             if (IsEmpty)
                 return;
 
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
             fixed (Point<T>* pPoints = &Points[0])
             {
                 Point<T>.Rotate(pPoints, Points.Length, Cx, Cy, Theta);
             }
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
         }
 
         public void Reflect(Line<T> Line)
@@ -217,10 +223,12 @@ namespace MenthaAssembly
             if (IsEmpty)
                 return;
 
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
             fixed (Point<T>* pPoints = &Points[0])
             {
                 Point<T>.Reflect(pPoints, Points.Length, Lx1, Ly1, Lx2, Ly2);
             }
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
         }
 
         void IShape<T>.Scale(T Scale) { }

@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿#if !NET7_0_OR_GREATER
+using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace MenthaAssembly.Network.Messages
@@ -54,3 +55,4 @@ namespace MenthaAssembly.Network.Messages
 
     }
 }
+#endif

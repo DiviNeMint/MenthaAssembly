@@ -325,6 +325,7 @@ namespace MenthaAssembly
         /// <param name="Length">The length of the points to be offsetted.</param>
         /// <param name="Dx">The amount to offset <see cref="X"/> coordinate.</param>
         /// <param name="Dy">The amount to offset <see cref="Y"/> coordinate.</param>
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
         public static void Offset(Point<T>* pPoints, int Length, T Dx, T Dy)
         {
             for (int i = 0; i < Length; i++)
@@ -338,6 +339,7 @@ namespace MenthaAssembly
 #endif
             }
         }
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
         /// <summary>
         /// Rotates the specified point about the specified point.
@@ -497,6 +499,7 @@ namespace MenthaAssembly
         /// <param name="pPoints">The pointer of the points to be rotated.</param>
         /// <param name="Length">The length of the points to be rotated.</param>
         /// <param name="Theta">The angle to rotate specifed in radians.</param>
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
         public static void Rotate(Point<T>* pPoints, int Length, double Theta)
         {
             double Sin = Math.Sin(Theta),
@@ -571,6 +574,7 @@ namespace MenthaAssembly
 #endif
             }
         }
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
         /// <summary>
         /// Reflects the specified point over the specified line.
@@ -810,6 +814,7 @@ namespace MenthaAssembly
         /// <param name="Ly1">The y-coordinate of a point on the projection line.</param>
         /// <param name="Lx2">The x-coordinate of a another point on the projection line.</param>
         /// <param name="Ly2">The y-coordinate of a another point on the projection line.</param>
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
         public static void Reflect(Point<T>* pPoints, int Length, T Lx1, T Ly1, T Lx2, T Ly2)
         {
 #if NET7_0_OR_GREATER
@@ -906,10 +911,8 @@ namespace MenthaAssembly
             }
 #endif
         }
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
-#if NET7_0_OR_GREATER
-#else
-#endif
         /// <summary>
         /// Sorts the specified points around the specified point.
         /// </summary>
@@ -1024,6 +1027,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <param name="pPoints">The pointer of the points to be sorted.</param>
         /// <param name="Length">The length of the points to be sorted.</param>
+#pragma warning disable CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
         public static void Sort(Point<T>* pPoints, int Length)
         {
             Point<T>* pTemp = pPoints;
@@ -1123,6 +1127,7 @@ namespace MenthaAssembly
                 }
             }
         }
+#pragma warning restore CS8500 // 這會取得 Managed 類型的位址、大小，或宣告指向它的指標
 
         /// <summary>
         /// Negates this Point. The Point has the same magnitude as before, but its quadrant is now opposite.

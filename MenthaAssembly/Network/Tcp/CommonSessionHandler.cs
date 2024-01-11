@@ -23,8 +23,10 @@ namespace MenthaAssembly.Network.Primitives
                 SendMessageResponse => 0x04,
                 GetTimeRequest => 0x05,
                 GetTimeResponse => 0x06,
+#if !NET7_0_OR_GREATER
                 SendSerializeObjectRequest => 0x07,
                 SendSerializeObjectResponse => 0x08,
+#endif
                 SuccessMessage => 0x09,
                 _ => byte.MaxValue
             };
@@ -53,8 +55,10 @@ namespace MenthaAssembly.Network.Primitives
                 4 => SendMessageResponse.Decode(Stream),
                 5 => new GetTimeRequest(),
                 6 => GetTimeResponse.Decode(Stream),
+#if !NET7_0_OR_GREATER
                 7 => SendSerializeObjectRequest.Decode(Stream),
                 8 => SendSerializeObjectResponse.Decode(Stream),
+#endif
                 9 => SuccessMessage.Decode(Stream),
                 byte.MaxValue => ErrorMessage.Decode(Stream),
                 _ => null
