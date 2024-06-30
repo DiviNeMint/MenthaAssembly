@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace MenthaAssembly.Win32
 {
@@ -60,6 +61,25 @@ namespace MenthaAssembly.Win32
 
         [DllImport("kernel32.dll", SetLastError = true)]
         internal static extern IntPtr GetProcAddress(IntPtr module, IntPtr ordinal);
+
+        #endregion
+
+        #region Windows API (Resource)
+
+        /// <summary>
+        /// Loads a string resource from the executable file associated with a specified module and either copies the string into a buffer with a terminating null character or returns a read-only pointer to the string resource itself.
+        /// </summary>
+        /// <param name="hInstance">A handle to an instance of the module whose executable file contains the string resource.<para/>
+        ///                         To get the handle to the application itself, call the GetModuleHandle function with NULL.</param>
+        /// <param name="uID">The identifier of the string to be loaded.</param>
+        /// <param name="lpBuffer">The buffer to receive the string.<para/>
+        ///                        Must be at least cchBufferMax characters in size.</param>
+        /// <param name="nBufferMax">The size of the buffer, in characters.<para/>
+        ///                          The string is truncated and null-terminated if it is longer than the number of characters specified.<para/>
+        ///                          This parameter may not be zero.</param>
+        /// <returns></returns>
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        internal static extern int LoadString(IntPtr hInstance, uint uID, StringBuilder lpBuffer, int nBufferMax);
 
         #endregion
 
