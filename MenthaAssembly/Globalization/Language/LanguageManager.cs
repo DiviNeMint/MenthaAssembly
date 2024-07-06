@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -129,6 +130,16 @@ namespace MenthaAssembly
             {
                 _EnableGoogleTranslate = value;
                 OnStaticPropertyChanged();
+            }
+        }
+
+        static LanguageManager()
+        {
+            IReadOnlyList<LanguagePacket> Packets = Languages;
+            if (Packets.Count > 0)
+            {
+                string CultureCode = CultureInfo.CurrentCulture.Name.ToLower();
+                Current = Packets.FirstOrDefault(i => i.CultureCode.ToLower() == CultureCode);
             }
         }
 
