@@ -65,6 +65,25 @@ namespace MenthaAssembly.Win32
         #endregion
 
         #region Windows API (Resource)
+        internal delegate bool EnumResourceNamesProc(IntPtr hModule, IntPtr lpszType, IntPtr lpszName, IntPtr lParam);
+
+        [DllImport("kernel32.dll")]
+        internal static extern IntPtr FindResource(IntPtr hModule, IntPtr lpName, ResourceType lpType);
+
+        [DllImport("kernel32.dll")]
+        internal static extern IntPtr FindResource(IntPtr hModule, uint ResourceID, ResourceType lpType);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+        internal static extern bool EnumResourceNames(IntPtr hModule, ResourceType lpszType, EnumResourceNamesProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("kernel32.dll")]
+        internal static extern IntPtr LoadResource(IntPtr hModule, IntPtr hResInfo);
+
+        [DllImport("kernel32.dll")]
+        internal static extern IntPtr LockResource(IntPtr hResData);
+
+        [DllImport("kernel32.dll")]
+        internal static extern int SizeofResource(IntPtr hModule, IntPtr hResInfo);
 
         /// <summary>
         /// Loads a string resource from the executable file associated with a specified module and either copies the string into a buffer with a terminating null character or returns a read-only pointer to the string resource itself.
