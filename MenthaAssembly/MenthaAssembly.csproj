@@ -5,6 +5,7 @@
     <LangVersion>latest</LangVersion>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <VersionPrefix>$([System.DateTime]::UtcNow.ToString(`1.yy.MMdd.HH`))</VersionPrefix>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
