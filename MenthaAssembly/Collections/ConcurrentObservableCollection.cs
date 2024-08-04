@@ -155,7 +155,7 @@ namespace System.Collections.Generic
             if (SynchronizationContext.Current == OriginalSynchronizationContext)
                 RaisePropertyChanged(PropertyName);
             else
-                OriginalSynchronizationContext.Post((s) => RaisePropertyChanged(PropertyName), null);
+                OriginalSynchronizationContext.Send((s) => RaisePropertyChanged(PropertyName), null);
         }
         protected internal void RaisePropertyChanged([CallerMemberName] string PropertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));
@@ -165,7 +165,7 @@ namespace System.Collections.Generic
             if (SynchronizationContext.Current == OriginalSynchronizationContext)
                 RaiseCollectionChanged(e);
             else
-                OriginalSynchronizationContext.Post((s) => RaiseCollectionChanged(e), null);
+                OriginalSynchronizationContext.Send((s) => RaiseCollectionChanged(e), null);
         }
         protected internal void RaiseCollectionChanged(NotifyCollectionChangedEventArgs e)
             => CollectionChanged?.Invoke(this, e);
