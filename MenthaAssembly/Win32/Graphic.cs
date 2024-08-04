@@ -8,6 +8,9 @@ namespace MenthaAssembly.Win32
 {
     public static unsafe class Graphic
     {
+        private const string User32 = "User32.dll";
+        private const string Gdi32 = "Gdi32.dll";
+
         #region Windows API
         /// <summary>
         /// Windows API : <see href="https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getdc">GetDC</see>
@@ -16,10 +19,10 @@ namespace MenthaAssembly.Win32
         /// You can use the returned handle in subsequent GDI functions to draw in the DC. <para/>
         /// The device context is an opaque data structure, whose values are used internally by GDI.
         /// </summary>
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern IntPtr GetDC(IntPtr Hwnd);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern IntPtr GetDCEx(IntPtr Hwnd, IntPtr hrgnClip, DeviceContextFlags flags);
 
         /// <summary>
@@ -28,17 +31,17 @@ namespace MenthaAssembly.Win32
         /// The GetWindowDC function retrieves the device context (DC) for the entire window, including title bar, menus, and scroll bars. 
         /// A window device context permits painting anywhere in a window, because the origin of the device context is the upper-left corner of the window instead of the client area.
         /// </summary>
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern IntPtr GetWindowDC(IntPtr Hwnd);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern IntPtr ReleaseDC(IntPtr Hwnd, IntPtr hDC);
 
         /// <summary>Deletes the specified device context (DC).</summary>
         /// <param name="hDC">A handle to the device context.</param>
         /// <returns><para>If the function succeeds, the return value is nonzero.</para><para>If the function fails, the return value is zero.</para></returns>
         /// <remarks>An application must not delete a DC whose handle was obtained by calling the <c>GetDC</c> function. Instead, it must call the <c>ReleaseDC</c> function to free the DC.</remarks>
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern bool DeleteDC(IntPtr hDC);
 
         /// <summary>
@@ -52,13 +55,13 @@ namespace MenthaAssembly.Win32
         /// <param name="cbBuffer">The number of bytes of information to be written to the buffer.</param>
         /// <param name="lpvObject"></param>
         /// <returns></returns>
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern int GetObject(IntPtr hObject, int cbBuffer, IntPtr lpvObject);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern bool DeleteObject(IntPtr hObject);
 
         /// <summary>
@@ -73,10 +76,10 @@ namespace MenthaAssembly.Win32
         /// <para/>
         /// If the function fails, the return value is <see cref="IntPtr.Zero"/>.
         /// </returns>
-        [DllImport("Gdi32.dll", SetLastError = true)]
+        [DllImport(Gdi32, SetLastError = true)]
         internal static extern IntPtr CreateCompatibleDC(IntPtr hDC);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern IntPtr CreateCompatibleBitmap(IntPtr hDC, int Width, int Height);
 
         /// <summary>
@@ -86,7 +89,7 @@ namespace MenthaAssembly.Win32
         /// <param name="hdc">A handle to the device context.</param>
         /// <param name="iBkMode">TRANSPARENT = 1, OPAQUE = 2</param>
         /// <returns></returns>
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern int SetBkMode(IntPtr hdc, int iBkMode);
 
         /// <summary>
@@ -103,13 +106,13 @@ namespace MenthaAssembly.Win32
         /// <param name="nXSrc">The leftmost x-coordinate of the source rectangle (in pixels).</param>
         /// <param name="nYSrc">The topmost y-coordinate of the source rectangle (in pixels).</param>
         /// <param name="dwRop">A raster-operation code.</param>
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern bool BitBlt(IntPtr hDCDest, int nXDest, int nYDest, int nWidth, int nHeight, IntPtr hDCSrc, int nXSrc, int nYSrc, TernaryRasterOperations dwRop);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern bool PatBlt(IntPtr hdc, int nXLeft, int nYLeft, int nWidth, int nHeight, TernaryRasterOperations dwRop);
 
-        [DllImport("Gdi32.dll", EntryPoint = "GdiAlphaBlend")]
+        [DllImport(Gdi32, EntryPoint = "GdiAlphaBlend")]
         internal static extern bool AlphaBlend(IntPtr hdcDest, int Nx, int Ny, int Nw, int Nh, IntPtr hdcSrc, int Sx, int Sy, int Sw, int Sh, BlendFunction BlendFunction);
 
         #endregion
@@ -129,40 +132,40 @@ namespace MenthaAssembly.Win32
         /// If the lpvBits parameter is NULL and GetDIBits successfully fills the <see cref="BitmapInfoHeader"/> structure, the return value is nonzero.<para/>
         /// If the function fails, the return value is zero.<para/>
         /// This function can return the following value: ERROR_INVALID_PARAMETER (87 (0×57))</returns>
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern int GetDIBits(IntPtr hDC, IntPtr hbmp, int uStartScan, int cScanLines, byte* lpvBits, BitmapInfoHeader* lpbi, DIBColorMode uUsage);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern int GetDIBits(IntPtr hDC, IntPtr hbmp, int uStartScan, int cScanLines, byte* lpvBits, IntPtr lpbi, DIBColorMode uUsage);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern IntPtr CreateDIBSection(IntPtr hdc, BitmapInfoHeader* pbmi, uint iUsage, out IntPtr ppvBits, IntPtr hSection, uint dwOffset);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern IntPtr CreateDIBSection(IntPtr hdc, BitmapV5Header* pbmi, uint iUsage, out IntPtr ppvBits, IntPtr hSection, uint dwOffset);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern IntPtr CreateBitmap(int Width, int Height, int cPlanes, int cBitsPerPel, IntPtr lpvBits);
 
         #endregion
 
         #region Windows API (Icon)
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern IntPtr CreateIconIndirect(ref IconInfo piconinfo);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern IntPtr CopyIcon(IntPtr hIcon);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool DestroyIcon(IntPtr hIcon);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool GetIconInfo(IntPtr hIcon, out IconInfo pIconInfo);
 
         #endregion
 
         #region Windows API (Font)
-        [DllImport("Gdi32.dll", EntryPoint = "GetGlyphOutlineW")]
+        [DllImport(Gdi32, EntryPoint = "GetGlyphOutlineW")]
         internal static extern int GetGlyphOutline(IntPtr hdc, uint uChar, GetGlyphOutlineFormats uFormat, out GlyphMetrics lpgm, int cbBuffer, byte* lpvBuffer, Mat2* lpmat2);
 
         #endregion

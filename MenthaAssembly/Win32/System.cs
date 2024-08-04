@@ -9,17 +9,21 @@ namespace MenthaAssembly.Win32
 {
     public unsafe static class System
     {
+        private const string Kernel32 = "Kernel32.dll";
+        private const string User32 = "User32.dll";
+        private const string Gdi32 = "Gdi32.dll";
+
         #region Windows API (Send/Post)
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern int SendMessage(IntPtr Hwnd, Win32Messages msg, IntPtr wParam, IntPtr lParam);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern int SendMessage(IntPtr Hwnd, Win32Messages msg, IntPtr wParam, int lParam);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern int SendMessage(IntPtr hwnd, Win32Messages msg, int wParam, bool lParam);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern int SendMessage(IntPtr hwnd, Win32Messages msg, int wParam, string lParam);
 
         #endregion
@@ -31,7 +35,7 @@ namespace MenthaAssembly.Win32
         /// </summary>
         /// <param name="FileName">A string that specifies the file name of the module to load.<para/>
         ///                        This name is not related to the name stored in a library module itself, as specified by the LIBRARY keyword in the module-definition (.def) file.</param>
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern IntPtr LoadLibrary(string FileName);
 
         /// <summary>
@@ -44,7 +48,7 @@ namespace MenthaAssembly.Win32
         ///                        It must be <see cref="IntPtr.Zero"/></param>
         /// <param name="Flag">The action to be taken when loading the module.<para/>
         ///                    If no flags are specified, the behavior of this function is identical to that of the LoadLibrary function.</param>
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern IntPtr LoadLibraryEx(string FileName, IntPtr Reserved, LoadLibraryFlag Flag);
 
         /// <summary>
@@ -53,13 +57,13 @@ namespace MenthaAssembly.Win32
         /// </summary>
         /// <param name="hModule">A handle to the loaded library module.<para/>
         /// The LoadLibrary, LoadLibraryEx, GetModuleHandle, or GetModuleHandleEx function returns this handle.</param>
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern bool FreeLibrary(IntPtr hModule);
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
+        [DllImport(Kernel32, CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
         internal static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern IntPtr GetProcAddress(IntPtr module, IntPtr ordinal);
 
         #endregion
@@ -67,22 +71,22 @@ namespace MenthaAssembly.Win32
         #region Windows API (Resource)
         internal delegate bool EnumResourceNamesProc(IntPtr hModule, IntPtr lpszType, IntPtr lpszName, IntPtr lParam);
 
-        [DllImport("kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern IntPtr FindResource(IntPtr hModule, IntPtr lpName, ResourceType lpType);
 
-        [DllImport("kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern IntPtr FindResource(IntPtr hModule, uint ResourceID, ResourceType lpType);
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+        [DllImport(Kernel32, CharSet = CharSet.Auto)]
         internal static extern bool EnumResourceNames(IntPtr hModule, ResourceType lpszType, EnumResourceNamesProc lpEnumFunc, IntPtr lParam);
 
-        [DllImport("kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern IntPtr LoadResource(IntPtr hModule, IntPtr hResInfo);
 
-        [DllImport("kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern IntPtr LockResource(IntPtr hResData);
 
-        [DllImport("kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern int SizeofResource(IntPtr hModule, IntPtr hResInfo);
 
         /// <summary>
@@ -97,13 +101,13 @@ namespace MenthaAssembly.Win32
         ///                          The string is truncated and null-terminated if it is longer than the number of characters specified.<para/>
         ///                          This parameter may not be zero.</param>
         /// <returns></returns>
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DllImport(User32, CharSet = CharSet.Auto)]
         internal static extern int LoadString(IntPtr hInstance, uint uID, StringBuilder lpBuffer, int nBufferMax);
 
         #endregion
 
         #region Windows API (Memory)
-        [DllImport("Kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern IntPtr OpenProcess(ProcessRight dwDesiredAccess, bool bInheritHandle, int ProcessId);
 
         /// <summary>
@@ -120,7 +124,7 @@ namespace MenthaAssembly.Win32
         /// <param name="AllocationType">The type of memory allocation.</param>
         /// <param name="Protect">The memory protection for the region of pages to be allocated.</param>
         /// <returns></returns>
-        [DllImport("Kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern IntPtr VirtualAlloc(IntPtr lpAddress, uint Size, MemAllocType AllocationType, MemProtectType Protect);
 
         /// <summary>
@@ -144,7 +148,7 @@ namespace MenthaAssembly.Win32
         ///                    This means, for example, that a 2-byte range that straddles a page boundary causes the function to allocate both pages.</param>
         /// <param name="AllocationType">The type of memory allocation.</param>
         /// <param name="Protect">The memory protection for the region of pages to be allocated.</param>
-        [DllImport("Kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, int Size, MemAllocType AllocationType, MemProtectType Protect);
 
         /// <summary>
@@ -159,10 +163,10 @@ namespace MenthaAssembly.Win32
         /// <param name="flNewProtect">The memory protection option.</param>
         /// <param name="lpflOldProtect">A pointer to a variable that receives the previous access protection value of the first page in the specified region of pages.<para/>
         ///                              If this parameter is <see cref="IntPtr.Zero"/> or does not point to a valid variable, the function fails.</param>
-        [DllImport("Kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern bool VirtualProtect(IntPtr lpAddress, int Size, MemProtectType flNewProtect, out IntPtr lpflOldProtect);
 
-        [DllImport("Kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern bool VirtualProtect(IntPtr lpAddress, uint Size, MemProtectType flNewProtect, out IntPtr lpflOldProtect);
 
         /// <summary>
@@ -178,10 +182,10 @@ namespace MenthaAssembly.Win32
         ///                    If lpAddress is the base address returned by VirtualAllocEx and Size is 0 (zero), the function decommits the entire region that is allocated by VirtualAlloc.<para/>
         ///                    After that, the entire region is in the reserved state.</param>
         /// <param name="FreeType">The type of free operation.</param>
-        [DllImport("Kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern bool VirtualFree(IntPtr lpAddress, uint Size, MemFreeType FreeType);
 
-        [DllImport("Kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern bool VirtualFree(UIntPtr lpAddress, uint Size, MemFreeType FreeType);
 
         /// <summary>
@@ -200,16 +204,16 @@ namespace MenthaAssembly.Win32
         ///                    If lpAddress is the base address returned by VirtualAllocEx and Size is 0 (zero), the function decommits the entire region that is allocated by VirtualAllocEx.<para/>
         ///                    After that, the entire region is in the reserved state.</param>
         /// <param name="FreeType">The type of free operation.</param>
-        [DllImport("Kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern bool VirtualFreeEx(IntPtr hProcess, IntPtr lpAddress, int Size, MemFreeType FreeType);
 
-        [DllImport("Kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpAddress, IntPtr lpBuffer, int Size, out int ReadLength);
 
-        [DllImport("Kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpAddress, IntPtr lpBuffer, int Size, out int WriteLength);
 
-        [DllImport("Kernel32.dll", SetLastError = true)]
+        [DllImport(Kernel32, SetLastError = true)]
         internal static extern bool CloseHandle(IntPtr hObject);
 
         [DllImport("msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
@@ -218,8 +222,17 @@ namespace MenthaAssembly.Win32
         [DllImport("msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern IntPtr MemoryCopy(void* pDest, void* pSrc, long Length);
 
-        [DllImport("Kernel32.dll", EntryPoint = "RtlZeroMemory", SetLastError = false)]
+        [DllImport(Kernel32, EntryPoint = "RtlZeroMemory", SetLastError = false)]
         public static extern void ZeroMemory(IntPtr pDest, IntPtr Size);
+
+        [DllImport(Kernel32, SetLastError = true)]
+        internal static extern IntPtr CreateFileMapping(IntPtr hFile, IntPtr lpFileMappingAttributes, MemProtectType flProtect, uint dwMaximumSizeHigh, uint dwMaximumSizeLow, string lpName);
+
+        [DllImport(Kernel32, SetLastError = true)]
+        internal static extern IntPtr MapViewOfFile(IntPtr hFileMappingObject, uint dwDesiredAccess, uint dwFileOffsetHigh, uint dwFileOffsetLow, uint dwNumberOfBytesToMap);
+
+        [DllImport(Kernel32, SetLastError = true)]
+        internal static extern bool UnmapViewOfFile(IntPtr hMap);
 
         #endregion
 
@@ -244,7 +257,7 @@ namespace MenthaAssembly.Win32
         /// For information on the PVOID datatype, see <see href="https://docs.microsoft.com/en-us/windows/win32/winprog/windows-data-types">Windows Data Types</see>.
         /// </param>
         /// <returns></returns>
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool SystemParametersInfo(SystemParameterActionType Action, uint uiParam, IntPtr pvParam, SystemParameterInfoFlag fWinIni);
 
         /// <summary>
@@ -255,28 +268,28 @@ namespace MenthaAssembly.Win32
         /// <returns>The maximum amount of time, in milliseconds, that can
         /// elapse between a first click and a second click for the OS to
         /// consider the mouse action a double-click.</returns>
-        [DllImport("User32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+        [DllImport(User32, CharSet = CharSet.Auto, ExactSpelling = true)]
         internal static extern int GetDoubleClickTime();
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool SetSystemCursor(IntPtr hCursor, CursorID type);
 
-        //[DllImport("Kernel32.dll")]
+        //[DllImport(Kernel32)]
         //internal static extern void GetLocalTime(out SystemTime lpSystemTime);
 
-        [DllImport("Kernel32.dll")]
+        [DllImport(Kernel32)]
         internal static extern bool SetLocalTime(ref SystemTime lpSystemTime);
 
         #endregion
 
         #region Windows API (Font)
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern IntPtr CreateFontIndirect([In] FontData lplf);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern bool GetTextMetrics(IntPtr hdc, out TextMetric Metric);
 
-        [DllImport("Gdi32.dll")]
+        [DllImport(Gdi32)]
         internal static extern int EnumFontFamiliesEx(IntPtr hdc, ref FontData lpLogfont, EnumFontExDelegate Callback, IntPtr lParam, uint dwFlags);
         internal delegate int EnumFontExDelegate(ref FontData Font, ref TextMetric lpntme, int FontType, int lParam);
 

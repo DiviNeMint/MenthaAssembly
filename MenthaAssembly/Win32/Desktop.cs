@@ -8,61 +8,64 @@ using static MenthaAssembly.Win32.Graphic;
 
 namespace MenthaAssembly.Win32
 {
-    public unsafe static class Desktop
+    public static unsafe class Desktop
     {
+        private const string Shell32 = "Shell32.dll";
+        private const string User32 = "User32.dll";
+
         #region Windows API (Window)
-        [DllImport("User32.dll", CharSet = CharSet.Unicode)]
+        [DllImport(User32, CharSet = CharSet.Unicode)]
         internal static extern IntPtr FindWindow(string ClassName, string WindowName);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern IntPtr FindWindowEx(IntPtr pParent, IntPtr pChild, string ClassName, string WindowName);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern IntPtr GetDesktopWindow();
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool GetWindowInfo(IntPtr Hwnd, out WindowInfo Info);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool GetWindowRect(IntPtr Hwnd, Bound<int>* Bound);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern long GetWindowLong(IntPtr Hwnd, WindowLongType Type);
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern long SetWindowLong(IntPtr Hwnd, WindowLongType Type, long dwNewLong);
 
-        [DllImport("User32.dll", SetLastError = true)]
+        [DllImport(User32, SetLastError = true)]
         internal static extern bool SetWindowPlacement(IntPtr Hwnd, ref WindowPlacementData lpwndpl);
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool GetWindowPlacement(IntPtr Hwnd, out WindowPlacementData lpwndpl);
 
-        [DllImport("User32.dll", SetLastError = true)]
+        [DllImport(User32, SetLastError = true)]
         internal static extern bool SetWindowPos(IntPtr Hwnd, IntPtr HwndInsertAfter, int X, int Y, int Width, int Height, WindowPosFlags uFlags);
 
-        [DllImport("User32.dll", SetLastError = true)]
+        [DllImport(User32, SetLastError = true)]
         internal static extern bool SetWindowPos(IntPtr Hwnd, WindowPosZOrders ZOrder, int X, int Y, int Width, int Height, WindowPosFlags uFlags);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern int SetLayeredWindowAttributes(IntPtr Hwnd, int ColorKey, byte alpha, WindowLayeredAttributeFlags flags);
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool GetLayeredWindowAttributes(IntPtr Hwnd, out int ColorKey, out byte alpha, out WindowLayeredAttributeFlags Flags);
 
-        [DllImport("User32.dll", EntryPoint = "RegisterWindowMessageW")]
+        [DllImport(User32, EntryPoint = "RegisterWindowMessageW")]
         internal static extern int RegisterWindowMessage([MarshalAs(UnmanagedType.LPWStr)] string lpString);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool SetForegroundWindow(IntPtr Hwnd);
 
-        [DllImport("User32.dll", CharSet = CharSet.Auto)]
+        [DllImport(User32, CharSet = CharSet.Auto)]
         internal static extern int GetWindowThreadProcessId(IntPtr Hwnd, out int ProcessId);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool ShowWindow(IntPtr Hwnd, WindowShowType flags);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool PrintWindow(IntPtr Hwnd, IntPtr hdcBlt, WindowPrintFlags Flags);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern int EnumChildWindows(IntPtr hwnd, EnumChildCallbackProc lpfn, IntPtr lParam);
         internal delegate bool EnumChildCallbackProc(IntPtr hwnd, IntPtr lParam);
 
@@ -76,22 +79,22 @@ namespace MenthaAssembly.Win32
         #endregion
 
         #region Windows API (AppBar)
-        [DllImport("Shell32.dll")]
+        [DllImport(Shell32)]
         internal static extern uint SHAppBarMessage(AppBarMessages dwMessage, ref AppBarData data);
 
         #endregion
 
         #region Windows API (NotifyIcon)
-        [DllImport("Shell32.dll")]
+        [DllImport(Shell32)]
         internal static extern bool Shell_NotifyIcon(NotifyCommand Command, ref NotifyIconData Data);
 
-        [DllImport("Shell32.dll", SetLastError = true)]
+        [DllImport(Shell32, SetLastError = true)]
         internal static extern int Shell_NotifyIconGetRect(ref NotifyIconIdentifier identifier, out Bound<int> Bound);
 
         #endregion
 
         #region Windows API (File System)
-        [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
+        [DllImport(Shell32, CharSet = CharSet.Auto)]
         internal static extern int SHGetFileInfo(string pszPath, SHFileAttributes dwFileAttributes, out SHFileInfo psfi, int cbfileInfo, SHGetFileInfoFlags uFlags);
 
         #endregion
@@ -303,7 +306,7 @@ namespace MenthaAssembly.Win32
         [DllImport("Ntdll.dll")]
         internal static extern int NtQueryInformationProcess(IntPtr ProcessHandle, int ProcessInformationClass, out ProcessBasicInfo ProcessInformation, int ProcessInformationLength, out int ReturnLength);
 
-        [DllImport("User32.dll")]
+        [DllImport(User32)]
         internal static extern bool EnumThreadWindows(int dwThreadId, EnumThreadDelegate lpfn, IntPtr lParam);
         internal delegate bool EnumThreadDelegate(IntPtr hWnd, IntPtr lParam);
 
@@ -331,10 +334,7 @@ namespace MenthaAssembly.Win32
 
                 uint uResult = SHAppBarMessage(AppBarMessages.GetTaskBarPos, ref Data);
 
-                if (uResult != 1)
-                    return null;
-
-                return new AppBarInfo(Data);
+                return uResult != 1 ? null : new AppBarInfo(Data);
             }
         }
 
@@ -540,7 +540,7 @@ namespace MenthaAssembly.Win32
         /// </summary>
         public static IEnumerable<IntPtr> GetWindowHandles(this Process Process)
         {
-            List<IntPtr> Handles = new();
+            List<IntPtr> Handles = [];
             bool Handler(IntPtr hWnd, IntPtr lParam)
             {
                 Handles.Add(hWnd);
