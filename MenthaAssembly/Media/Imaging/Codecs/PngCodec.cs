@@ -16,7 +16,7 @@ namespace MenthaAssembly.Media.Imaging
     /// <summary>
     /// Represents an encoder for Png file format.
     /// </summary>
-    public static unsafe class PngCoder
+    public static unsafe class PngCodec
     {
         // PNG File Struct
         // https://www.w3.org/TR/PNG/

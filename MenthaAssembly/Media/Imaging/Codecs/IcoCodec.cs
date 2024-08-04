@@ -10,7 +10,7 @@ namespace MenthaAssembly.Media.Imaging
     /// <summary>
     /// Represents an encoder for ICO file format.
     /// </summary>
-    public static unsafe class IcoCoder
+    public static unsafe class IcoCodec
     {
         // ICO File Struct
         // ============================================================
@@ -99,7 +99,7 @@ namespace MenthaAssembly.Media.Imaging
 
             // Images
             Images = new IImageContext[NumImages];
-            const int MaxIdentifierSize = PngCoder.IdentifierSize;
+            const int MaxIdentifierSize = PngCodec.IdentifierSize;
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(MaxIdentifierSize);
             try
             {
@@ -117,19 +117,19 @@ namespace MenthaAssembly.Media.Imaging
                     using SegmentStream Segment = new(Stream, ImageSize - MaxIdentifierSize, true);
 
                     IImageContext Image;
-                    if (PngCoder.Identify(Buffer))
+                    if (PngCodec.Identify(Buffer))
                     {
                         using ConcatStream Concat = new(Buffer, 0, MaxIdentifierSize, Segment);
-                        if (!PngCoder.TryDecode(Concat, out Image))
+                        if (!PngCodec.TryDecode(Concat, out Image))
                         {
                             Images = null;
                             return false;
                         }
                     }
-                    else if (BmpCoder.Identify(Buffer))
+                    else if (BmpCodec.Identify(Buffer))
                     {
                         using ConcatStream Concat = new(Buffer, 0, MaxIdentifierSize, Segment);
-                        if (!BmpCoder.TryDecode(Stream, out Image))
+                        if (!BmpCodec.TryDecode(Stream, out Image))
                         {
                             Images = null;
                             return false;
@@ -205,7 +205,7 @@ namespace MenthaAssembly.Media.Imaging
 
                     // Encodes ImageDatas
                     long Position = Data.Position;
-                    PngCoder.Encode(Image, Data);
+                    PngCodec.Encode(Image, Data);
 
                     // Entry
                     IconEntry Entry = new()

@@ -16,7 +16,7 @@ namespace MenthaAssembly.Media.Imaging
     // https://blog.csdn.net/u010192735/article/details/120869528
     // https://blog.csdn.net/weixin_58208902/article/details/125560863
     // https://github.com/MROS/jpeg_tutorial/blob/master/doc/
-    public static unsafe class JpgCoder
+    public static unsafe class JpgCodec
     {
         /// <summary>
         /// The length in bytes of the jpg file format identifier.
@@ -46,7 +46,7 @@ namespace MenthaAssembly.Media.Imaging
             53, 60, 61, 54, 47, 55, 62, 63,
         };
 
-        static JpgCoder()
+        static JpgCodec()
         {
             const int BlockSize = 8;
             const int MatrixSize = BlockSize * BlockSize;

@@ -13,7 +13,7 @@ namespace MenthaAssembly.Media.Imaging
     /// <summary>
     /// Represents an encoder for bitmap file format.
     /// </summary>
-    public static unsafe class BmpCoder
+    public static unsafe class BmpCodec
     {
         // Bitmap File Struct
         // https://crazycat1130.pixnet.net/blog/post/1345538#mark-4
