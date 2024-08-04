@@ -1,5 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+#if !NETSTANDARD2_1_OR_GREATER && !NETCOREAPP
+using System.Collections.Concurrent;
+#endif
 
 namespace System.Linq
 {
@@ -170,38 +173,6 @@ namespace System.Linq
                     yield return Item;
         }
 
-#if !NETSTANDARD2_1_OR_GREATER
-
-        /// <summary>
-        /// Appends a value to the end of the sequence.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
-        /// <param name="Source">A sequence of values.</param>
-        /// <param name="Element">The value to append to source.</param>
-        public static IEnumerable<TSource> Append<TSource>(this IEnumerable<TSource> Source, TSource Element)
-        {
-            foreach (TSource Item in Source)
-                yield return Item;
-
-            yield return Element;
-        }
-
-        /// <summary>
-        /// Adds a value to the beginning of the sequence.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
-        /// <param name="Source">A sequence of values.</param>
-        /// <param name="Element">The value to prepend to source.</param>
-        public static IEnumerable<TSource> Prepend<TSource>(this IEnumerable<TSource> Source, TSource Element)
-        {
-            yield return Element;
-
-            foreach (TSource Item in Source)
-                yield return Item;
-        }
-
-#endif
-
         public static IEnumerable<TResult> Select<TResult>(this IEnumerable Source, Func<object, TResult> Selector)
         {
             foreach (object Item in Source)
@@ -261,8 +232,51 @@ namespace System.Linq
             }
         }
 
-#if !NET6_0_OR_GREATER
+#if !NETSTANDARD1_6_OR_GREATER && !NETCOREAPP2_0_OR_GREATER
+        /// <summary>
+        /// Appends a value to the end of the sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
+        /// <param name="Source">A sequence of values.</param>
+        /// <param name="Element">The value to append to source.</param>
+        public static IEnumerable<TSource> Append<TSource>(this IEnumerable<TSource> Source, TSource Element)
+        {
+            foreach (TSource Item in Source)
+                yield return Item;
 
+            yield return Element;
+        }
+
+        /// <summary>
+        /// Adds a value to the beginning of the sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
+        /// <param name="Source">A sequence of values.</param>
+        /// <param name="Element">The value to prepend to source.</param>
+        public static IEnumerable<TSource> Prepend<TSource>(this IEnumerable<TSource> Source, TSource Element)
+        {
+            yield return Element;
+
+            foreach (TSource Item in Source)
+                yield return Item;
+        }
+#endif
+
+#if !NETSTANDARD2_1_OR_GREATER && !NETCOREAPP2_0_OR_GREATER
+
+        /// <summary>
+        /// Removes all objects from the <see cref="ConcurrentQueue{T}"/>.
+        /// </summary>
+        public static void Clear<T>(this ConcurrentQueue<T> This)
+        {
+            while (This.TryDequeue(out _))
+            {
+            }
+        }
+
+#endif
+
+#if !NET6_0_OR_GREATER
         /// <summary>
         /// Invokes a transform function on each element of a generic sequence and returns the maximum resulting element.
         /// </summary>
