@@ -174,6 +174,36 @@ namespace System.IO
         }
 
         /// <summary>
+        /// Writes string of specified encoding to the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Content">The content of string.</param>
+        public static int WriteString(this Stream This, string Content)
+            => WriteString(This, Content, Encoding.Default);
+        /// <summary>
+        /// Writes string of specified encoding to the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Content">The content of string.</param>
+        /// <param name="Encoding">The specified encoding of string.</param>
+        /// <returns>The bytes length of the <paramref name="Content"/> to be written.</returns>
+        public static int WriteString(this Stream This, string Content, Encoding Encoding)
+        {
+            int Length = Encoding.GetByteCount(Content);
+            byte[] Buffer = ArrayPool<byte>.Shared.Rent(Length);
+            try
+            {
+                int NewLength = Encoding.GetBytes(Content, 0, Content.Length, Buffer, 0);
+                This.Write(Buffer, 0, NewLength);
+                return NewLength;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Buffer);
+            }
+        }
+
+        /// <summary>
         /// Asynchronously writes a data of specified type to the stream.
         /// </summary>
         /// <typeparam name="T">The specified type of data.</typeparam>
