@@ -17,8 +17,8 @@ namespace MenthaAssembly.Network
 
         #endregion
 
-        internal static readonly ConcurrentObservableCollection<RemoteDesktop> InternalRemoteDesktops = new ConcurrentObservableCollection<RemoteDesktop>();
-        public static ReadOnlyConcurrentObservableCollection<RemoteDesktop> RemoteDesktops { get; } = new ReadOnlyConcurrentObservableCollection<RemoteDesktop>(InternalRemoteDesktops);
+        internal static readonly ConcurrentObservableCollection<RemoteDesktop> InternalRemoteDesktops = [];
+        public static IReadOnlyList<RemoteDesktop> RemoteDesktops { get; } = new ReadOnlyObservableCollection<RemoteDesktop>(InternalRemoteDesktops);
 
         public static int Timeout { set; get; } = 3000;
 

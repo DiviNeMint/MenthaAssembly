@@ -7,9 +7,6 @@ using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
-#if NET7_0_OR_GREATER
-#else
-#endif
     [Serializable]
     public struct Bound<T> : ICloneable
 #if NET7_0_OR_GREATER

@@ -1,8 +1,14 @@
-﻿using System.Linq;
+﻿using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading;
 
 namespace System.Collections.Generic
 {
+    /// <summary>
+    /// Represents a thread-safe collection that can be accessed by multiple threads concurrently.
+    /// </summary>
+    /// <typeparam name="T">The type of elements in the list.</typeparam>
+    [Serializable]
     public class ConcurrentCollection<T> : IList<T>, ICollection<T>, IEnumerable<T>, IEnumerable, IList, ICollection, IReadOnlyList<T>, IReadOnlyCollection<T>
     {
         public virtual T this[int Index]
@@ -14,11 +20,18 @@ namespace System.Collections.Generic
         public int Count
             => Items.Count;
 
-        internal readonly List<T> Items = new();
+        protected readonly List<T> Items = [];
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConcurrentCollection{T}"/> class that is empty and has the default initial capacity.
+        /// </summary>
         public ConcurrentCollection()
         {
-            Items = new List<T>();
+            Items = [];
         }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConcurrentCollection{T}"/> class that contains elements copied from the specified collection and has sufficient capacity to accommodate the number of elements copied.
+        /// </summary>
+        /// <param name="Items">The collection whose elements are copied to the new collection.</param>
         public ConcurrentCollection(IEnumerable<T> Items)
         {
             this.Items = new List<T>(Items);
@@ -33,12 +46,20 @@ namespace System.Collections.Generic
         public virtual void Add(T Item)
             => Handle(() => Items.Add(Item));
 
+        /// <summary>
+        /// Adds items to the <see cref="ConcurrentCollection{T}"/>.
+        /// </summary>
+        /// <param name="Items">The objects to add to the <see cref="ConcurrentCollection{T}"/>.</param>
         public virtual void AddRange(IEnumerable<T> Items)
             => Handle(() => this.Items.AddRange(Items));
 
         public virtual bool Remove(T Item)
             => Handle(() => Items.Remove(Item));
 
+        /// <summary>
+        /// Remove objects from <see cref="ConcurrentCollection{T}"/> that satisfy predictions.
+        /// </summary>
+        /// <param name="Predict">The predictions to be met.</param>
         public virtual void Remove(Predicate<T> Predict)
             => Handle(() =>
             {
@@ -47,6 +68,10 @@ namespace System.Collections.Generic
                         Items.RemoveAt(i);
             });
 
+        /// <summary>
+        /// Removes all specific objects from <see cref="ConcurrentCollection{T}"/>.
+        /// </summary>
+        /// <param name="Items">The objects to remove from <see cref="ConcurrentCollection{T}"/>.</param>
         public virtual void Remove(IEnumerable<T> Items)
             => Handle(() =>
             {
@@ -60,6 +85,12 @@ namespace System.Collections.Generic
         public virtual void RemoveAt(int Index)
             => Handle(() => Items.RemoveAt(Index));
 
+        /// <summary>
+        /// Attempts to remove and return the value that satisfies the prediction from the <see cref="ConcurrentCollection{T}"/>.
+        /// </summary>
+        /// <param name="Predict">The prediction of the element to remove and return.</param>
+        /// <param name="Item">When this method returns, contains the object removed from the <see cref="ConcurrentCollection{T}"/>, or the default value of the <typeparamref name="T"/> type if no object meets the prediction.</param>
+        /// <returns>true if the object was removed successfully; otherwise, false.</returns>
         public virtual bool TryRemove(Predicate<T> Predict, out T Item)
         {
             bool Token = false;

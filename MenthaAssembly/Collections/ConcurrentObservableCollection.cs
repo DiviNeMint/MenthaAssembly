@@ -6,6 +6,7 @@ using System.Threading;
 
 namespace System.Collections.Generic
 {
+    [Serializable]
     public class ConcurrentObservableCollection<T> : ConcurrentCollection<T>, INotifyCollectionChanged, INotifyPropertyChanged
     {
         private readonly SynchronizationContext OriginalSynchronizationContext = SynchronizationContext.Current;
