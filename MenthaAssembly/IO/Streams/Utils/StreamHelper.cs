@@ -66,6 +66,25 @@ namespace System.IO
         }
 
         /// <summary>
+        /// Writes datas from a pointer of specified datas to the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="pBuffer">The pointer of specified datas. This method copies datas from the pointer to the current stream.</param>
+        /// <param name="Length">The number of bytes to be written to the current stream.</param>
+        public static void Write(this Stream This, IntPtr pBuffer, int Length)
+        {
+            byte[] Buffer = ArrayPool<byte>.Shared.Rent(Length);
+            try
+            {
+                Marshal.Copy(pBuffer, Buffer, 0, Length);
+                This.Write(Buffer, 0, Length);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Buffer);
+            }
+        }
+        /// <summary>
         /// Writes a data of specified type to the stream.
         /// </summary>
         /// <typeparam name="T">The specified type of data.</typeparam>
@@ -216,6 +235,17 @@ namespace System.IO
         /// <param name="Encoding">The specified encoding of string.</param>
         public static int WriteStringAndLength(this Stream This, string Content, Encoding Encoding)
         {
+            if (Content is null)
+            {
+                This.Write(-1);
+                return -1;
+            }
+            else if (string.IsNullOrEmpty(Content))
+            {
+                This.Write(0);
+                return 0;
+            }
+
             int Length = Encoding.GetByteCount(Content);
             byte[] Buffer = ArrayPool<byte>.Shared.Rent(Length);
             try
@@ -512,6 +542,17 @@ namespace System.IO
         public static bool TryReadStringAndLength(this Stream This, Encoding Encoding, out string Result)
         {
             int BytesLength = This.Read<int>();
+            if (BytesLength == 0)
+            {
+                Result = string.Empty;
+                return true;
+            }
+            else if (BytesLength < 0)
+            {
+                Result = null;
+                return true;
+            }
+
             return TryReadString(This, BytesLength, Encoding, out Result);
         }
 
