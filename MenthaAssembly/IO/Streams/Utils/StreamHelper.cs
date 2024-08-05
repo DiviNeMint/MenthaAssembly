@@ -204,6 +204,34 @@ namespace System.IO
         }
 
         /// <summary>
+        /// Writes the string length and specified encoding from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        public static int WriteStringAndLength(this Stream This, string Content)
+            => WriteStringAndLength(This, Content, Encoding.Default);
+        /// <summary>
+        /// Writes the string length and specified encoding from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Encoding">The specified encoding of string.</param>
+        public static int WriteStringAndLength(this Stream This, string Content, Encoding Encoding)
+        {
+            int Length = Encoding.GetByteCount(Content);
+            byte[] Buffer = ArrayPool<byte>.Shared.Rent(Length);
+            try
+            {
+                Length = Encoding.GetBytes(Content, 0, Content.Length, Buffer, 0);
+                This.Write(Length);
+                This.Write(Buffer, 0, Length);
+                return Length;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(Buffer);
+            }
+        }
+
+        /// <summary>
         /// Asynchronously writes a data of specified type to the stream.
         /// </summary>
         /// <typeparam name="T">The specified type of data.</typeparam>
@@ -452,6 +480,39 @@ namespace System.IO
             {
                 ArrayPool<byte>.Shared.Return(Buffer);
             }
+        }
+
+        /// <summary>
+        /// Reads the string length and specified encoding from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        public static string ReadStringAndLength(this Stream This)
+            => TryReadStringAndLength(This, Encoding.Default, out string Result) ? Result : throw new IOException();
+        /// <summary>
+        /// Reads the string length and specified encoding from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Encoding">The specified encoding of string.</param>
+        public static string ReadStringAndLength(this Stream This, Encoding Encoding)
+            => TryReadStringAndLength(This, Encoding, out string Result) ? Result : throw new IOException();
+
+        /// <summary>
+        /// Reads the string length and specified encoding from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Result">The string decoded from the stream.</param>
+        public static bool TryReadStringAndLength(this Stream This, out string Result)
+            => TryReadStringAndLength(This, Encoding.Default, out Result);
+        /// <summary>
+        /// Reads the string length and specified encoding from the stream.
+        /// </summary>
+        /// <param name="This">The current stream.</param>
+        /// <param name="Encoding">The specified encoding of string.</param>
+        /// <param name="Result">The string decoded from the stream.</param>
+        public static bool TryReadStringAndLength(this Stream This, Encoding Encoding, out string Result)
+        {
+            int BytesLength = This.Read<int>();
+            return TryReadString(This, BytesLength, Encoding, out Result);
         }
 
         /// <summary>
