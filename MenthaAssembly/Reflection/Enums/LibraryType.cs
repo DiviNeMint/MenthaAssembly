@@ -9,4 +9,3 @@ public enum LibraryType
     x64 = 8,
     Unknown = 128
 }
-

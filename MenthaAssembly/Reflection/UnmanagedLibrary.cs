@@ -10,24 +10,22 @@ namespace MenthaAssembly
 {
     // https://github.com/dretax/DynamicDllLoader/blob/master/DynamicDLLLoader/DynamicDllLoader.cs
     // https://github.com/fancycode/MemoryModule/blob/master/MemoryModule.c
-    public sealed unsafe partial class UnmanagedLibrary : DynamicLibrary
+    public sealed unsafe class UnmanagedLibrary : DynamicLibrary
     {
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         private unsafe delegate bool DllEntryProc(IntPtr instance, uint reason, IntPtr reserved);
 
-        private static readonly MemProtectType[][][] ProtectionFlags = new MemProtectType[][][]
-        {
-            new MemProtectType[][]
-            {
-                new MemProtectType[] { MemProtectType.Page_NoAccess, MemProtectType.Page_WriteCopy },
-                new MemProtectType[] { MemProtectType.Page_ReadOnly, MemProtectType.Page_ReadWrite },
-            },
-            new MemProtectType[][]
-            {
-                new MemProtectType[] { MemProtectType.Page_Execute, MemProtectType.Page_Execute_WriteCopy },
-                new MemProtectType[] { MemProtectType.Page_Execute_Read, MemProtectType.Page_Execute_ReadWrite },
-            },
-        };
+        private static readonly MemProtectType[][][] ProtectionFlags =
+        [
+            [
+                [MemProtectType.Page_NoAccess, MemProtectType.Page_WriteCopy],
+                [MemProtectType.Page_ReadOnly, MemProtectType.Page_ReadWrite],
+            ],
+            [
+                [MemProtectType.Page_Execute, MemProtectType.Page_Execute_WriteCopy],
+                [MemProtectType.Page_Execute_Read, MemProtectType.Page_Execute_ReadWrite],
+            ],
+        ];
 
         private int e_lfanew;
         private IntPtr CodeBase;
@@ -35,7 +33,7 @@ namespace MenthaAssembly
         private ImageDataDirectory ExportDirectory;
 
         private readonly ConcurrentDictionary<string, Delegate> MethodInfos = new();
-        private readonly List<IntPtr> ImportLibraries = new();
+        private readonly List<IntPtr> ImportLibraries = [];
 
         internal readonly bool IsLoaded;
         internal UnmanagedLibrary(string Path, LibraryType Type) : base(Path, Type)
@@ -354,11 +352,9 @@ namespace MenthaAssembly
             return Method;
         }
 
-        public void Invoke<TDelegate>(string FunctionName, params object[] Args)
-            where TDelegate : Delegate
+        public void Invoke<TDelegate>(string FunctionName, params object[] Args) where TDelegate : Delegate
             => GetMethod<TDelegate>(FunctionName).DynamicInvoke(Args);
-        public TResult Invoke<TDelegate, TResult>(string FunctionName, params object[] Args)
-            where TDelegate : Delegate
+        public TResult Invoke<TDelegate, TResult>(string FunctionName, params object[] Args) where TDelegate : Delegate
             => (TResult)GetMethod<TDelegate>(FunctionName).DynamicInvoke(Args);
 
         private IntPtr GetProcAddress(string Name)
@@ -399,7 +395,7 @@ namespace MenthaAssembly
         }
 
         private bool IsDisposed;
-        private void Dispose(bool IsDisposing)
+        protected override void Dispose(bool IsDisposing)
         {
             if (!IsDisposed)
             {
@@ -427,12 +423,6 @@ namespace MenthaAssembly
         ~UnmanagedLibrary()
         {
             Dispose(false);
-        }
-
-        public override void Dispose()
-        {
-            Dispose(true);
-            base.Dispose();
         }
 
         #region Window API Version (Old)

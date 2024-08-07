@@ -1,5 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+#if NET7_0_OR_GREATER
+using System.Numerics;
+#endif
 
 namespace System.Reflection
 {
@@ -736,6 +740,7 @@ namespace System.Reflection
         #endregion
 
         #region NumberType
+
         internal static readonly Dictionary<Type, byte> NumberTypes = new Dictionary<Type, byte>
         {
             { typeof(byte), 0 },
@@ -771,6 +776,31 @@ namespace System.Reflection
             { typeof(decimal), 10 },
         };
 
+#if NET7_0_OR_GREATER
+        internal static readonly Type NumberType = typeof(INumber<>);
+        internal static readonly Type FloatingPointType = typeof(IFloatingPoint<>);
+
+        /// <summary>
+        /// Determines whether the current type is <see cref="INumber&lt;&gt;"/>.
+        /// </summary>
+        public static bool IsNumberType(this Type This)
+        {
+            return This.GetInterfaces()
+                       .Any(i => i.IsGenericType &&
+                                 i.GetGenericTypeDefinition() == NumberType);
+        }
+        /// <summary>
+        /// Determines whether the current type is <see cref="IFloatingPoint&lt;&gt;"/>.
+        /// </summary>
+        public static bool IsDecimalType(this Type This)
+        {
+            return This.GetInterfaces()
+                       .Any(i => i.IsGenericType &&
+                                 i.GetGenericTypeDefinition() == FloatingPointType);
+        }
+
+#else
+
         /// <summary>
         /// Determines whether the current type is
         /// <see cref="byte"/>、<see cref="ushort"/>、<see cref="uint"/>、<see cref="ulong"/>、
@@ -784,6 +814,9 @@ namespace System.Reflection
         /// </summary>
         public static bool IsDecimalType(this Type This)
             => NumberTypes.TryGetValue(This, out byte Value) && 7 < Value;
+
+#endif
+
         /// <summary>
         /// Determines whether the current type is
         /// <see cref="byte"/>、<see cref="ushort"/>、<see cref="uint"/>、<see cref="ulong"/>、
