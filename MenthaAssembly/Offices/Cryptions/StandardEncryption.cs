@@ -97,13 +97,25 @@ namespace MenthaAssembly.Offices
                 case StandardCipher.Default when (Flags & EncryptionHeaderFlags.AES) != 0:
                     {
                         VerifierHashSize = 32;
-                        CipherCreator = () => new RijndaelManaged
+
+                        CipherCreator = () =>
                         {
-                            KeySize = KeySize,
-                            BlockSize = 128,
-                            Mode = CipherMode.ECB,
-                            Padding = PaddingMode.Zeros
+                            Aes Algorithm = Aes.Create();
+                            Algorithm.KeySize = KeySize;
+                            Algorithm.BlockSize = 128;
+                            Algorithm.Mode = CipherMode.ECB;
+                            Algorithm.Padding = PaddingMode.Zeros;
+                            return Algorithm;
                         };
+
+
+                        //CipherCreator = () => new RijndaelManaged
+                        //{
+                        //    KeySize = KeySize,
+                        //    BlockSize = 128,
+                        //    Mode = CipherMode.ECB,
+                        //    Padding = PaddingMode.Zeros
+                        //};
                         break;
                     }
                 case StandardCipher.RC4:

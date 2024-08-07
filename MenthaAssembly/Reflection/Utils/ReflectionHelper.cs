@@ -9,10 +9,10 @@ namespace System.Reflection
 {
     public static class ReflectionHelper
     {
-        private static readonly BindingFlags InternalFlags = BindingFlags.Instance | BindingFlags.NonPublic,
-                                             StaticInternalFlags = InternalFlags | BindingFlags.Static,
-                                             PublicFlags = BindingFlags.Instance | BindingFlags.Public,
-                                             StaticFlags = BindingFlags.Public | BindingFlags.Static;
+        internal static readonly BindingFlags InternalFlags = BindingFlags.Instance | BindingFlags.NonPublic,
+                                              StaticInternalFlags = InternalFlags | BindingFlags.Static,
+                                              PublicFlags = BindingFlags.Instance | BindingFlags.Public,
+                                              StaticFlags = BindingFlags.Public | BindingFlags.Static;
 
         #region Property
         public static IEnumerable<PropertyInfo> GetProperties(this Type This, params string[] Names)
@@ -858,7 +858,7 @@ namespace System.Reflection
             { "void", typeof(void) }
         };
         public static bool TryGetType(string Route, out Type Type)
-            => TryGetType(Route, new Type[0], out Type);
+            => TryGetType(Route, Type.EmptyTypes, out Type);
         public static bool TryGetType(string Route, Type[] GenericTypes, out Type Type)
         {
             int Length = GenericTypes.Length;

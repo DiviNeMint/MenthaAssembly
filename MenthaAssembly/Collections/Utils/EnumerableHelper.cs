@@ -162,6 +162,26 @@ namespace System.Linq
         }
 
         /// <summary>
+        /// Returns the number of elements in a sequence.
+        /// </summary>
+        /// <param name="Source">A sequence that contains elements to be counted.</param>
+        /// <returns>The number of elements in the input sequence.</returns>
+        public static int Count(this IEnumerable Source)
+        {
+            if (Source is ICollection Collection)
+                return Collection.Count;
+
+            if (Source is Array Array)
+                return Array.Length;
+
+            int Count = 0;
+            foreach (object _ in Source)
+                Count++;
+
+            return Count;
+        }
+
+        /// <summary>
         /// Filters a sequence of values based on a predicate.
         /// </summary>
         /// <param name="Source">A sequence to filter.</param>

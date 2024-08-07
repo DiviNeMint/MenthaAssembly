@@ -33,7 +33,7 @@ namespace MenthaAssembly.Network
         public void Start(IPAddress Address)
         {
             Stop();
-            
+
             Listener = new IOCPSocket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP) { BufferSize = BufferSize };
             Listener.Bind(new IPEndPoint(Address, 0));
 
@@ -165,21 +165,12 @@ namespace MenthaAssembly.Network
             return false;
         }
 
-        private bool IsStopping = false;
         public void Stop()
         {
             if (Listener != null)
             {
-                try
-                {
-                    IsStopping = true;
-                    Listener.Dispose();
-                    Listener = null;
-                }
-                finally
-                {
-                    IsStopping = false;
-                }
+                Listener.Dispose();
+                Listener = null;
             }
         }
 

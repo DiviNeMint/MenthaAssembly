@@ -75,13 +75,23 @@ namespace MenthaAssembly.Offices
                     {
                         case "AES":
                             {
-                                CipherCreator = () => new RijndaelManaged
+                                CipherCreator = () =>
                                 {
-                                    KeySize = KeyBits,
-                                    BlockSize = BlockSize << 3,
-                                    Mode = CipherChaining,
-                                    Padding = PaddingMode.Zeros
+                                    Aes Algorithm = Aes.Create();
+                                    Algorithm.KeySize = KeyBits;
+                                    Algorithm.BlockSize = BlockSize << 3;
+                                    Algorithm.Mode = CipherChaining;
+                                    Algorithm.Padding = PaddingMode.Zeros;
+                                    return Algorithm;
                                 };
+
+                                //CipherCreator = () => new RijndaelManaged
+                                //{
+                                //    KeySize = KeyBits,
+                                //    BlockSize = BlockSize << 3,
+                                //    Mode = CipherChaining,
+                                //    Padding = PaddingMode.Zeros
+                                //};
                                 break;
                             }
                         case "DES":
@@ -131,27 +141,27 @@ namespace MenthaAssembly.Offices
                     {
                         case "MD5":
                             {
-                                HasherCreator = () => MD5.Create();
+                                HasherCreator = MD5.Create;
                                 break;
                             }
                         case "SHA1":
                             {
-                                HasherCreator = () => SHA1.Create();
+                                HasherCreator = SHA1.Create;
                                 break;
                             }
                         case "SHA256":
                             {
-                                HasherCreator = () => SHA256.Create();
+                                HasherCreator = SHA256.Create;
                                 break;
                             }
                         case "SHA384":
                             {
-                                HasherCreator = () => SHA384.Create();
+                                HasherCreator = SHA384.Create;
                                 break;
                             }
                         case "SHA512":
                             {
-                                HasherCreator = () => SHA512.Create();
+                                HasherCreator = SHA512.Create;
                                 break;
                             }
                         default:
@@ -207,13 +217,23 @@ namespace MenthaAssembly.Offices
                                     {
                                         case "AES":
                                             {
-                                                PasswordCipherCreator = () => new RijndaelManaged
+                                                PasswordCipherCreator = () =>
                                                 {
-                                                    KeySize = PasswordKeyBits,
-                                                    BlockSize = PasswordBlockSize << 3,
-                                                    Mode = PasswordCipherChaining,
-                                                    Padding = PaddingMode.Zeros
+                                                    Aes Algorithm = Aes.Create();
+                                                    Algorithm.KeySize = PasswordKeyBits;
+                                                    Algorithm.BlockSize = PasswordBlockSize << 3;
+                                                    Algorithm.Mode = PasswordCipherChaining;
+                                                    Algorithm.Padding = PaddingMode.Zeros;
+                                                    return Algorithm;
                                                 };
+
+                                                //PasswordCipherCreator = () => new RijndaelManaged
+                                                //{
+                                                //    KeySize = PasswordKeyBits,
+                                                //    BlockSize = PasswordBlockSize << 3,
+                                                //    Mode = PasswordCipherChaining,
+                                                //    Padding = PaddingMode.Zeros
+                                                //};
                                                 break;
                                             }
                                         case "DES":
@@ -263,27 +283,27 @@ namespace MenthaAssembly.Offices
                                     {
                                         case "MD5":
                                             {
-                                                PasswordHasherCreator = () => MD5.Create();
+                                                PasswordHasherCreator = MD5.Create;
                                                 break;
                                             }
                                         case "SHA1":
                                             {
-                                                PasswordHasherCreator = () => SHA1.Create();
+                                                PasswordHasherCreator = SHA1.Create;
                                                 break;
                                             }
                                         case "SHA256":
                                             {
-                                                PasswordHasherCreator = () => SHA256.Create();
+                                                PasswordHasherCreator = SHA256.Create;
                                                 break;
                                             }
                                         case "SHA384":
                                             {
-                                                PasswordHasherCreator = () => SHA384.Create();
+                                                PasswordHasherCreator = SHA384.Create;
                                                 break;
                                             }
                                         case "SHA512":
                                             {
-                                                PasswordHasherCreator = () => SHA512.Create();
+                                                PasswordHasherCreator = SHA512.Create;
                                                 break;
                                             }
                                         default:
