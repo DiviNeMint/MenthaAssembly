@@ -4,32 +4,19 @@ using static MenthaAssembly.OperatorHelper;
 
 namespace MenthaAssembly
 {
-    public struct Operatorable<T>
+#if NET7_0_OR_GREATER
+    [Obsolete("Microsoft allows operators to be defined in the interface in .Net7.0.")]
+#endif
+    public record struct Operatorable<T>(T Value) : IEquatable<Operatorable<T>>
     {
-        public T Value { get; set; }
-
-        public Operatorable(T Value)
-        {
-            this.Value = Value;
-        }
-
-        public override int GetHashCode()
+        public override readonly int GetHashCode()
             => Value.GetHashCode();
 
-        public bool Equals(Operatorable<T> obj)
+        public readonly bool Equals(Operatorable<T> obj)
             => OperatorHelper.Equals(Value, obj.Value);
-        public override bool Equals(object obj)
-        {
-            if (obj is Operatorable<T> Target)
-                return Equals(Target);
 
-            if (obj is T Value)
-                return OperatorHelper.Equals(this.Value, Value);
-
-            return false;
-        }
-
-        public override string ToString() => $"{Value}";
+        public override readonly string ToString()
+            => $"{Value}";
 
         private static bool HasMinValue = false;
         private static T _MinValue;
@@ -98,11 +85,6 @@ namespace MenthaAssembly
             This.Value = Subtract(This.Value, Cast<int, T>(1));
             return This;
         }
-
-        public static bool operator ==(Operatorable<T> This, Operatorable<T> Target)
-            => OperatorHelper.Equals(This.Value, Target.Value);
-        public static bool operator !=(Operatorable<T> This, Operatorable<T> Target)
-            => !OperatorHelper.Equals(This.Value, Target.Value);
 
         public static bool operator <(Operatorable<T> This, Operatorable<T> Target)
             => LessThan(This.Value, Target.Value);

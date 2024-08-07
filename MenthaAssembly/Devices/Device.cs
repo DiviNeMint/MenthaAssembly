@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace MenthaAssembly.Devices
 {
@@ -88,25 +86,29 @@ namespace MenthaAssembly.Devices
             int Length = 0;
             if (GetRawInputDeviceList(null, &Length, sizeof(RawInputDevice)) > 0 ||
                 Length == 0)
-                return new RawInputDevice[0];
+                return [];
 
             RawInputDevice[] Devices = new RawInputDevice[Length];
             if (GetRawInputDeviceList(Devices, &Length, sizeof(RawInputDevice)) == 0)
-                return new RawInputDevice[0];
+                return [];
 
             foreach (RawInputDevice d in Devices)
             {
                 Length = 0;
                 GetRawInputDeviceInfo(d.hDevice, DeviceInfoTypes.RIDI_DeviceName, null, &Length);
 
-                char* pName = stackalloc char[Length];
-                GetRawInputDeviceInfo(d.hDevice, DeviceInfoTypes.RIDI_DeviceName, pName, &Length);
-
-                string Name = new string(pName);
+                string Name;
+                char[] Datas = new char[Length];
+                fixed (char* pData = Datas)
+                {
+                    GetRawInputDeviceInfo(d.hDevice, DeviceInfoTypes.RIDI_DeviceName, pData, &Length);
+                    Name = new(pData);
+                }
+                
                 Debug.WriteLine($"Name : {Name}");
 
                 Length = sizeof(RID_Device_Info);
-                RID_Device_Info Info = new RID_Device_Info { cbSize = Length };
+                RID_Device_Info Info = new() { cbSize = Length };
 
                 GetRawInputDeviceInfo(d.hDevice, DeviceInfoTypes.RIDI_DeviceInfo, &Info, &Length);
 
