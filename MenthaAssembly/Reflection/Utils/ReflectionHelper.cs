@@ -9,10 +9,12 @@ namespace System.Reflection
 {
     public static class ReflectionHelper
     {
-        internal static readonly BindingFlags InternalFlags = BindingFlags.Instance | BindingFlags.NonPublic,
-                                              StaticInternalFlags = InternalFlags | BindingFlags.Static,
-                                              PublicFlags = BindingFlags.Instance | BindingFlags.Public,
-                                              StaticFlags = BindingFlags.Public | BindingFlags.Static;
+        internal static readonly BindingFlags AllModifier = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                                              AllStaticModifier = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static,
+                                              PublicModifier = BindingFlags.Public | BindingFlags.Instance,
+                                              PublicStaticModifier = BindingFlags.Public | BindingFlags.Static,
+                                              InternalModifier = BindingFlags.NonPublic | BindingFlags.Instance,
+                                              InternalStaticModifier = BindingFlags.NonPublic | BindingFlags.Static;
 
         #region Property
         public static IEnumerable<PropertyInfo> GetProperties(this Type This, params string[] Names)
@@ -23,31 +25,31 @@ namespace System.Reflection
         }
 
         public static bool TryGetProperty<T>(string Name, out PropertyInfo Info)
-            => TryGetProperty(typeof(T), PublicFlags, Name, out Info);
+            => TryGetProperty(typeof(T), Name, PublicModifier, out Info);
         public static bool TryGetProperty(this Type This, string Name, out PropertyInfo Info)
-            => TryGetProperty(This, PublicFlags, Name, out Info);
+            => TryGetProperty(This, Name, PublicModifier, out Info);
 
         public static bool TryGetStaticProperty<T>(string Name, out PropertyInfo Info)
-            => TryGetProperty(typeof(T), StaticFlags, Name, out Info);
+            => TryGetProperty(typeof(T), Name, PublicStaticModifier, out Info);
         public static bool TryGetStaticProperty(this Type This, string Name, out PropertyInfo Info)
-            => TryGetProperty(This, StaticFlags, Name, out Info);
+            => TryGetProperty(This, Name, PublicStaticModifier, out Info);
 
         public static bool TryGetInternalProperty<T>(string Name, out PropertyInfo Info)
-            => TryGetProperty(typeof(T), InternalFlags, Name, out Info);
+            => TryGetProperty(typeof(T), Name, InternalModifier, out Info);
         public static bool TryGetInternalProperty(this Type This, string Name, out PropertyInfo Info)
-            => TryGetProperty(This, InternalFlags, Name, out Info);
+            => TryGetProperty(This, Name, InternalModifier, out Info);
 
         public static bool TryGetStaticInternalProperty<T>(string Name, out PropertyInfo Info)
-            => TryGetProperty(typeof(T), StaticInternalFlags, Name, out Info);
+            => TryGetProperty(typeof(T), Name, InternalStaticModifier, out Info);
         public static bool TryGetStaticInternalProperty(this Type This, string Name, out PropertyInfo Info)
-            => TryGetProperty(This, StaticInternalFlags, Name, out Info);
+            => TryGetProperty(This, Name, InternalStaticModifier, out Info);
 
-        public static bool TryGetProperty<T>(BindingFlags Flags, string Name, out PropertyInfo Info)
-            => TryGetProperty(typeof(T), Flags, Name, out Info);
-        public static bool TryGetProperty(this Type This, BindingFlags Flags, string Name, out PropertyInfo Info)
+        public static bool TryGetProperty<T>(string Name, BindingFlags Modifier, out PropertyInfo Info)
+            => TryGetProperty(typeof(T), Name, Modifier, out Info);
+        public static bool TryGetProperty(this Type This, string Name, BindingFlags Modifier, out PropertyInfo Info)
         {
             Type BaseType = This;
-            PropertyInfo Result = BaseType?.GetProperty(Name, Flags);
+            PropertyInfo Result = BaseType?.GetProperty(Name, Modifier);
             while (Result is null)
             {
                 BaseType = BaseType?.BaseType;
@@ -57,48 +59,55 @@ namespace System.Reflection
                     return false;
                 }
 
-                Result = BaseType.GetProperty(Name, Flags);
+                Result = BaseType.GetProperty(Name, Modifier);
             }
             Info = Result;
             return true;
         }
 
         public static bool TrySetPropertyValue<T>(this object This, string Name, T Value)
-            => TrySetPropertyValue(This, PublicFlags, Name, Value);
+            => InternalTrySetPropertyValue(This?.GetType(), This, Name, PublicModifier, Value);
         public static bool TryGetPropertyValue<T>(this object This, string Name, out T Value)
-            => TryGetPropertyValue(This, PublicFlags, Name, out Value);
-
-        public static bool TrySetStaticPropertyValue<T>(this object This, string Name, T Value)
-            => TrySetPropertyValue(This, StaticFlags, Name, Value);
-        public static bool TryGetStaticPropertyValue<T>(this object This, string Name, out T Value)
-            => TryGetPropertyValue(This, StaticFlags, Name, out Value);
+            => InternalTryGetPropertyValue(This?.GetType(), This, Name, PublicModifier, out Value);
 
         public static bool TrySetInternalPropertyValue<T>(this object This, string Name, T Value)
-            => TrySetPropertyValue(This, InternalFlags, Name, Value);
+            => InternalTrySetPropertyValue(This?.GetType(), This, Name, InternalModifier, Value);
         public static bool TryGetInternalPropertyValue<T>(this object This, string Name, out T Value)
-            => TryGetPropertyValue(This, InternalFlags, Name, out Value);
+            => InternalTryGetPropertyValue(This?.GetType(), This, Name, InternalModifier, out Value);
 
-        public static bool TrySetStaticInternalPropertyValue<T>(this object This, string Name, T Value)
-            => TrySetPropertyValue(This, StaticInternalFlags, Name, Value);
-        public static bool TryGetStaticInternalPropertyValue<T>(this object This, string Name, out T Value)
-            => TryGetPropertyValue(This, StaticInternalFlags, Name, out Value);
+        public static bool TrySetPropertyValue<T>(this object This, string Name, BindingFlags Modifier, T Value)
+            => InternalTrySetPropertyValue(This?.GetType(), This, Name, Modifier, Value);
+        public static bool TryGetPropertyValue<T>(this object This, string Name, BindingFlags Modifier, out T Value)
+            => InternalTryGetPropertyValue(This?.GetType(), This, Name, Modifier, out Value);
 
-        public static bool TrySetPropertyValue<T>(this object This, BindingFlags Flags, string Name, T Value)
+        public static bool TrySetStaticPropertyValue<T>(this Type This, string Name, T Value)
+            => InternalTrySetPropertyValue(This?.GetType(), null, Name, PublicStaticModifier, Value);
+        public static bool TryGetStaticPropertyValue<T>(this Type This, string Name, out T Value)
+            => InternalTryGetPropertyValue(This?.GetType(), null, Name, PublicStaticModifier, out Value);
+
+        public static bool TrySetStaticInternalPropertyValue<T>(this Type This, string Name, T Value)
+            => InternalTrySetPropertyValue(This?.GetType(), null, Name, InternalStaticModifier, Value);
+        public static bool TryGetStaticInternalPropertyValue<T>(this Type This, string Name, out T Value)
+            => InternalTryGetPropertyValue(This?.GetType(), null, Name, InternalStaticModifier, out Value);
+
+        private static bool InternalTrySetPropertyValue<T>(Type Type, object Object, string Name, BindingFlags Modifier, T Value)
         {
-            if (TryGetProperty(This?.GetType(), Flags, Name, out PropertyInfo Info) &&
+            if (TryGetProperty(Type, Name, Modifier, out PropertyInfo Info) &&
+                Info.CanWrite &&
                 typeof(T).IsBaseOn(Info.PropertyType))
             {
-                Info.SetValue(This, Value);
+                Info.SetValue(Object, Value);
                 return true;
             }
             return false;
         }
-        public static bool TryGetPropertyValue<T>(this object This, BindingFlags Flags, string Name, out T Value)
+        private static bool InternalTryGetPropertyValue<T>(Type Type, object Object, string Name, BindingFlags Modifier, out T Value)
         {
-            if (TryGetProperty(This?.GetType(), Flags, Name, out PropertyInfo Info) &&
+            if (TryGetProperty(Type, Name, Modifier, out PropertyInfo Info) &&
+                Info.CanRead &&
                 Info.PropertyType.IsBaseOn<T>())
             {
-                Value = (T)Info.GetValue(This);
+                Value = (T)Info.GetValue(Object);
                 return true;
             }
 
@@ -110,31 +119,31 @@ namespace System.Reflection
 
         #region Field
         public static bool TryGetField<T>(string Name, out FieldInfo Info)
-            => TryGetField(typeof(T), PublicFlags, Name, out Info);
+            => TryGetField(typeof(T), Name, PublicModifier, out Info);
         public static bool TryGetField(this Type This, string Name, out FieldInfo Info)
-            => TryGetField(This, PublicFlags, Name, out Info);
+            => TryGetField(This, Name, PublicModifier, out Info);
 
         public static bool TryGetStaticField<T>(string Name, out FieldInfo Info)
-            => TryGetField(typeof(T), StaticFlags, Name, out Info);
+            => TryGetField(typeof(T), Name, PublicStaticModifier, out Info);
         public static bool TryGetStaticField(this Type This, string Name, out FieldInfo Info)
-            => TryGetField(This, StaticFlags, Name, out Info);
+            => TryGetField(This, Name, PublicStaticModifier, out Info);
 
         public static bool TryGetInternalField<T>(string Name, out FieldInfo Info)
-            => TryGetField(typeof(T), InternalFlags, Name, out Info);
+            => TryGetField(typeof(T), Name, InternalModifier, out Info);
         public static bool TryGetInternalField(this Type This, string Name, out FieldInfo Info)
-            => TryGetField(This, InternalFlags, Name, out Info);
+            => TryGetField(This, Name, InternalModifier, out Info);
 
         public static bool TryGetStaticInternalField<T>(string Name, out FieldInfo Info)
-            => TryGetField(typeof(T), StaticInternalFlags, Name, out Info);
+            => TryGetField(typeof(T), Name, InternalStaticModifier, out Info);
         public static bool TryGetStaticInternalField(this Type This, string Name, out FieldInfo Info)
-            => TryGetField(This, StaticInternalFlags, Name, out Info);
+            => TryGetField(This, Name, InternalStaticModifier, out Info);
 
-        public static bool TryGetField<T>(BindingFlags Flags, string Name, out FieldInfo Info)
-            => TryGetField(typeof(T), Flags, Name, out Info);
-        public static bool TryGetField(this Type This, BindingFlags Flags, string Name, out FieldInfo Info)
+        public static bool TryGetField<T>(string Name, BindingFlags Modifier, out FieldInfo Info)
+            => TryGetField(typeof(T), Name, Modifier, out Info);
+        public static bool TryGetField(this Type This, string Name, BindingFlags Modifier, out FieldInfo Info)
         {
             Type BaseType = This;
-            FieldInfo Result = BaseType?.GetField(Name, Flags);
+            FieldInfo Result = BaseType?.GetField(Name, Modifier);
             while (Result is null)
             {
                 BaseType = BaseType?.BaseType;
@@ -144,48 +153,54 @@ namespace System.Reflection
                     return false;
                 }
 
-                Result = BaseType.GetField(Name, Flags);
+                Result = BaseType.GetField(Name, Modifier);
             }
             Info = Result;
             return true;
         }
 
         public static bool TrySetFieldValue<T>(this object This, string Name, T Value)
-            => TrySetFieldValue(This, PublicFlags, Name, Value);
+            => TrySetFieldValue(This, Name, PublicModifier, Value);
         public static bool TryGetFieldValue<T>(this object This, string Name, out T Value)
-            => TryGetFieldValue(This, PublicFlags, Name, out Value);
-
-        public static bool TrySetStaticFieldValue<T>(this object This, string Name, T Value)
-            => TrySetFieldValue(This, StaticFlags, Name, Value);
-        public static bool TryGetStaticFieldValue<T>(this object This, string Name, out T Value)
-            => TryGetFieldValue(This, StaticFlags, Name, out Value);
+            => TryGetFieldValue(This, Name, PublicModifier, out Value);
 
         public static bool TrySetInternalFieldValue<T>(this object This, string Name, T Value)
-            => TrySetFieldValue(This, InternalFlags, Name, Value);
+            => TrySetFieldValue(This, Name, InternalModifier, Value);
         public static bool TryGetInternalFieldValue<T>(this object This, string Name, out T Value)
-            => TryGetFieldValue(This, InternalFlags, Name, out Value);
+            => TryGetFieldValue(This, Name, InternalModifier, out Value);
 
-        public static bool TrySetStaticInternalFieldValue<T>(this object This, string Name, T Value)
-            => TrySetFieldValue(This, StaticInternalFlags, Name, Value);
-        public static bool TryGetStaticInternalFieldValue<T>(this object This, string Name, out T Value)
-            => TryGetFieldValue(This, StaticInternalFlags, Name, out Value);
+        public static bool TrySetFieldValue<T>(this object This, string Name, BindingFlags Modifier, T Value)
+            => InternalTrySetFieldValue(This?.GetType(), This, Name, Modifier, Value);
+        public static bool TryGetFieldValue<T>(this object This, string Name, BindingFlags Modifier, out T Value)
+            => InternalTryGetFieldValue(This?.GetType(), This, Name, Modifier, out Value);
 
-        public static bool TrySetFieldValue<T>(this object This, BindingFlags Flags, string Name, T Value)
+        public static bool TrySetStaticFieldValue<T>(this Type This, string Name, T Value)
+            => InternalTrySetFieldValue(This?.GetType(), null, Name, PublicStaticModifier, Value);
+        public static bool TryGetStaticFieldValue<T>(this Type This, string Name, out T Value)
+            => InternalTryGetFieldValue(This?.GetType(), null, Name, PublicStaticModifier, out Value);
+
+        public static bool TrySetStaticInternalFieldValue<T>(this Type This, string Name, T Value)
+            => InternalTrySetFieldValue(This?.GetType(), null, Name, InternalStaticModifier, Value);
+        public static bool TryGetStaticInternalFieldValue<T>(this Type This, string Name, out T Value)
+            => InternalTryGetFieldValue(This?.GetType(), null, Name, InternalStaticModifier, out Value);
+
+        private static bool InternalTrySetFieldValue<T>(Type Type, object Object, string Name, BindingFlags Modifier, T Value)
         {
-            if (TryGetField(This?.GetType(), Flags, Name, out FieldInfo Info) &&
+            if (TryGetField(Type, Name, Modifier, out FieldInfo Info) &&
                 typeof(T).IsBaseOn(Info.FieldType))
             {
-                Info.SetValue(This, Value);
+                Info.SetValue(Object, Value);
                 return true;
             }
+
             return false;
         }
-        public static bool TryGetFieldValue<T>(this object This, BindingFlags Flags, string Name, out T Value)
+        private static bool InternalTryGetFieldValue<T>(Type Type, object Object, string Name, BindingFlags Modifier, out T Value)
         {
-            if (TryGetField(This?.GetType(), Flags, Name, out FieldInfo Info) &&
-                Info.FieldType.IsBaseOn<T>())
+            if (TryGetField(Type, Name, Modifier, out FieldInfo Info) &&
+                typeof(T).IsBaseOn(Info.FieldType))
             {
-                Value = (T)Info.GetValue(This);
+                Value = (T)Info.GetValue(Object);
                 return true;
             }
 
@@ -197,17 +212,17 @@ namespace System.Reflection
 
         #region Indexer
         public static bool TryGetIndexer<T>(Type[] ParameterTypes, out PropertyInfo Info)
-            => TryGetIndexer(typeof(T), PublicFlags, ParameterTypes, out Info);
-        public static bool TryGetIndexer<T>(BindingFlags Flags, Type[] ParameterTypes, out PropertyInfo Info)
-            => TryGetIndexer(typeof(T), Flags, ParameterTypes, out Info);
+            => TryGetIndexer(typeof(T), PublicModifier, ParameterTypes, out Info);
+        public static bool TryGetIndexer<T>(BindingFlags Modifier, Type[] ParameterTypes, out PropertyInfo Info)
+            => TryGetIndexer(typeof(T), Modifier, ParameterTypes, out Info);
         public static bool TryGetIndexer(this Type This, Type[] ParameterTypes, out PropertyInfo Info)
-            => TryGetIndexer(This, PublicFlags, ParameterTypes, out Info);
-        public static bool TryGetIndexer(this Type This, BindingFlags Flags, Type[] ParameterTypes, out PropertyInfo Info)
+            => TryGetIndexer(This, PublicModifier, ParameterTypes, out Info);
+        public static bool TryGetIndexer(this Type This, BindingFlags Modifier, Type[] ParameterTypes, out PropertyInfo Info)
         {
             int ParameterCount = ParameterTypes.Length;
             while (This != null)
             {
-                foreach (PropertyInfo Property in This.GetProperties(Flags))
+                foreach (PropertyInfo Property in This.GetProperties(Modifier))
                 {
                     ParameterInfo[] Params = Property.GetIndexParameters();
                     if (Params.Length != ParameterCount)
@@ -228,12 +243,12 @@ namespace System.Reflection
         }
 
         public static bool TryGetIndexerWithImplicitParameter<T>(Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
-            => TryGetIndexerWithImplicitParameter(typeof(T), PublicFlags, ParameterTypes, out Info, out DefinedParameterTypes);
-        public static bool TryGetIndexerWithImplicitParameter<T>(BindingFlags Flags, Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
-            => TryGetIndexerWithImplicitParameter(typeof(T), Flags, ParameterTypes, out Info, out DefinedParameterTypes);
+            => TryGetIndexerWithImplicitParameter(typeof(T), PublicModifier, ParameterTypes, out Info, out DefinedParameterTypes);
+        public static bool TryGetIndexerWithImplicitParameter<T>(BindingFlags Modifier, Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
+            => TryGetIndexerWithImplicitParameter(typeof(T), Modifier, ParameterTypes, out Info, out DefinedParameterTypes);
         public static bool TryGetIndexerWithImplicitParameter(this Type This, Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
-            => TryGetIndexerWithImplicitParameter(This, PublicFlags, ParameterTypes, out Info, out DefinedParameterTypes);
-        public static bool TryGetIndexerWithImplicitParameter(this Type This, BindingFlags Flags, Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
+            => TryGetIndexerWithImplicitParameter(This, PublicModifier, ParameterTypes, out Info, out DefinedParameterTypes);
+        public static bool TryGetIndexerWithImplicitParameter(this Type This, BindingFlags Modifier, Type[] ParameterTypes, out PropertyInfo Info, out Type[] DefinedParameterTypes)
         {
             int ParameterCount = ParameterTypes.Length;
 
@@ -243,14 +258,14 @@ namespace System.Reflection
 
             while (This != null)
             {
-                foreach (PropertyInfo Property in This.GetProperties(Flags))
+                foreach (PropertyInfo Property in This.GetProperties(Modifier))
                 {
                     ParameterInfo[] Params = Property.GetIndexParameters();
                     if (Params.Length != ParameterCount)
                         continue;
 
                     Type[] TempDefinedParameterTypes = Params.Select(i => i.ParameterType).ToArray();
-                    int Score = MatchParameters(ParameterTypes, TempDefinedParameterTypes);
+                    int Score = ScoreMatchingParameters(ParameterTypes, TempDefinedParameterTypes);
                     if (Score == 0)
                     {
                         Info = Property;
@@ -288,7 +303,7 @@ namespace System.Reflection
         #region Constant
         public static bool TryGetConstant<T>(this Type This, string Name, out T Value)
         {
-            if (TryGetField(This, StaticFlags, Name, out FieldInfo Field))
+            if (TryGetField(This, Name, PublicStaticModifier, out FieldInfo Field))
             {
                 Value = (T)Field.GetValue(null);
                 return true;
@@ -302,67 +317,67 @@ namespace System.Reflection
 
         #region Method
         public static bool TryGetMethod<T>(string Name, out MethodInfo Info)
-            => TryGetMethod(typeof(T), PublicFlags, Name, out Info);
+            => TryGetMethod(typeof(T), Name, PublicModifier, out Info);
         public static bool TryGetMethod<T>(string Name, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), PublicFlags, Name, ParameterTypes, out Info);
+            => TryGetMethod(typeof(T), Name, PublicModifier, ParameterTypes, out Info);
         public static bool TryGetMethod<T>(string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), PublicFlags, Name, GenericTypes, ParameterTypes, out Info);
+            => TryGetMethod(typeof(T), Name, PublicModifier, GenericTypes, ParameterTypes, out Info);
         public static bool TryGetMethod(this Type This, string Name, out MethodInfo Info)
-            => TryGetMethod(This, PublicFlags, Name, out Info);
+            => TryGetMethod(This, Name, PublicModifier, out Info);
         public static bool TryGetMethod(this Type This, string Name, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(This, PublicFlags, Name, ParameterTypes, out Info);
+            => TryGetMethod(This, Name, PublicModifier, ParameterTypes, out Info);
         public static bool TryGetMethod(this Type This, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(This, PublicFlags, Name, GenericTypes, ParameterTypes, out Info);
+            => TryGetMethod(This, Name, PublicModifier, GenericTypes, ParameterTypes, out Info);
 
         public static bool TryGetStaticMethod<T>(string Name, out MethodInfo Info)
-            => TryGetMethod(typeof(T), StaticFlags, Name, out Info);
+            => TryGetMethod(typeof(T), Name, PublicStaticModifier, out Info);
         public static bool TryGetStaticMethod<T>(string Name, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), StaticFlags, Name, ParameterTypes, out Info);
+            => TryGetMethod(typeof(T), Name, PublicStaticModifier, ParameterTypes, out Info);
         public static bool TryGetStaticMethod<T>(string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), StaticFlags, Name, GenericTypes, ParameterTypes, out Info);
+            => TryGetMethod(typeof(T), Name, PublicStaticModifier, GenericTypes, ParameterTypes, out Info);
         public static bool TryGetStaticMethod(this Type This, string Name, out MethodInfo Info)
-            => TryGetMethod(This, StaticFlags, Name, out Info);
+            => TryGetMethod(This, Name, PublicStaticModifier, out Info);
         public static bool TryGetStaticMethod(this Type This, string Name, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(This, StaticFlags, Name, ParameterTypes, out Info);
+            => TryGetMethod(This, Name, PublicStaticModifier, ParameterTypes, out Info);
         public static bool TryGetStaticMethod(this Type This, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(This, StaticFlags, Name, GenericTypes, ParameterTypes, out Info);
+            => TryGetMethod(This, Name, PublicStaticModifier, GenericTypes, ParameterTypes, out Info);
 
         public static bool TryGetInternalMethod<T>(string Name, out MethodInfo Info)
-            => TryGetMethod(typeof(T), InternalFlags, Name, out Info);
+            => TryGetMethod(typeof(T), Name, InternalModifier, out Info);
         public static bool TryGetInternalMethod<T>(string Name, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), InternalFlags, Name, ParameterTypes, out Info);
+            => TryGetMethod(typeof(T), Name, InternalModifier, ParameterTypes, out Info);
         public static bool TryGetInternalMethod<T>(string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), InternalFlags, Name, GenericTypes, ParameterTypes, out Info);
+            => TryGetMethod(typeof(T), Name, InternalModifier, GenericTypes, ParameterTypes, out Info);
         public static bool TryGetInternalMethod(this Type This, string Name, out MethodInfo Info)
-            => TryGetMethod(This, InternalFlags, Name, out Info);
+            => TryGetMethod(This, Name, InternalModifier, out Info);
         public static bool TryGetInternalMethod(this Type This, string Name, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(This, InternalFlags, Name, ParameterTypes, out Info);
+            => TryGetMethod(This, Name, InternalModifier, ParameterTypes, out Info);
         public static bool TryGetInternalMethod(this Type This, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(This, InternalFlags, Name, GenericTypes, ParameterTypes, out Info);
+            => TryGetMethod(This, Name, InternalModifier, GenericTypes, ParameterTypes, out Info);
 
         public static bool TryGetStaticInternalMethod<T>(string Name, out MethodInfo Info)
-            => TryGetMethod(typeof(T), StaticInternalFlags, Name, out Info);
+            => TryGetMethod(typeof(T), Name, InternalStaticModifier, out Info);
         public static bool TryGetStaticInternalMethod<T>(string Name, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), StaticInternalFlags, Name, ParameterTypes, out Info);
+            => TryGetMethod(typeof(T), Name, InternalStaticModifier, ParameterTypes, out Info);
         public static bool TryGetStaticInternalMethod<T>(string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), StaticInternalFlags, Name, GenericTypes, ParameterTypes, out Info);
+            => TryGetMethod(typeof(T), Name, InternalStaticModifier, GenericTypes, ParameterTypes, out Info);
         public static bool TryGetStaticInternalMethod(this Type This, string Name, out MethodInfo Info)
-            => TryGetMethod(This, StaticInternalFlags, Name, out Info);
+            => TryGetMethod(This, Name, InternalStaticModifier, out Info);
         public static bool TryGetStaticInternalMethod(this Type This, string Name, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(This, StaticInternalFlags, Name, ParameterTypes, out Info);
+            => TryGetMethod(This, Name, InternalStaticModifier, ParameterTypes, out Info);
         public static bool TryGetStaticInternalMethod(this Type This, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(This, StaticInternalFlags, Name, GenericTypes, ParameterTypes, out Info);
+            => TryGetMethod(This, Name, InternalStaticModifier, GenericTypes, ParameterTypes, out Info);
 
-        public static bool TryGetMethod<T>(BindingFlags Flags, string Name, out MethodInfo Info)
-            => TryGetMethod(typeof(T), Flags, Name, out Info);
-        public static bool TryGetMethod<T>(BindingFlags Flags, string Name, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), Flags, Name, ParameterTypes, out Info);
-        public static bool TryGetMethod<T>(BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethod(typeof(T), Flags, Name, GenericTypes, ParameterTypes, out Info);
-        public static bool TryGetMethod(this Type This, BindingFlags Flags, string Name, out MethodInfo Info)
+        public static bool TryGetMethod<T>(string Name, BindingFlags Modifier, out MethodInfo Info)
+            => TryGetMethod(typeof(T), Name, Modifier, out Info);
+        public static bool TryGetMethod<T>(string Name, BindingFlags Modifier, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(typeof(T), Name, Modifier, ParameterTypes, out Info);
+        public static bool TryGetMethod<T>(string Name, BindingFlags Modifier, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethod(typeof(T), Name, Modifier, GenericTypes, ParameterTypes, out Info);
+        public static bool TryGetMethod(this Type This, string Name, BindingFlags Modifier, out MethodInfo Info)
         {
             Type BaseType = This;
-            MethodInfo Result = BaseType?.GetMethod(Name, Flags);
+            MethodInfo Result = BaseType?.GetMethod(Name, Modifier);
             while (Result is null)
             {
                 BaseType = BaseType?.BaseType;
@@ -372,16 +387,16 @@ namespace System.Reflection
                     return false;
                 }
 
-                Result = BaseType.GetMethod(Name, Flags);
+                Result = BaseType.GetMethod(Name, Modifier);
             }
             Info = Result;
             return true;
         }
-        public static bool TryGetMethod(this Type This, BindingFlags Flags, string Name, Type[] ParameterTypes, out MethodInfo Info)
+        public static bool TryGetMethod(this Type This, string Name, BindingFlags Modifier, Type[] ParameterTypes, out MethodInfo Info)
         {
             while (This != null)
             {
-                if (This.GetMethod(Name, Flags, null, ParameterTypes, null) is MethodInfo Method)
+                if (This.GetMethod(Name, Modifier, null, ParameterTypes, null) is MethodInfo Method)
                 {
                     Info = Method;
                     return true;
@@ -393,16 +408,16 @@ namespace System.Reflection
             Info = null;
             return false;
         }
-        public static bool TryGetMethod(this Type This, BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+        public static bool TryGetMethod(this Type This, string Name, BindingFlags Modifier, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
         {
             int GenericLength = GenericTypes.Length,
                 ParameterLength = ParameterTypes.Length;
             bool IsGeneric = GenericLength > 0;
 
-            List<Tuple<MethodInfo, Type[]>> MinorMethods = new List<Tuple<MethodInfo, Type[]>>();
+            List<Tuple<MethodInfo, Type[]>> MinorMethods = [];
             while (This != null)
             {
-                foreach (MethodInfo Method in This.GetMethods(Flags).Where(i => i.Name == Name))
+                foreach (MethodInfo Method in This.GetMethods(Modifier).Where(i => i.Name == Name))
                 {
                     ParameterInfo[] Parameter = Method.GetParameters();
                     if (Parameter.Length == ParameterLength)
@@ -458,12 +473,12 @@ namespace System.Reflection
         }
 
         public static bool TryGetMethodWithImplicitParameter(Type Base, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethodWithImplicitParameter(Base, PublicFlags | BindingFlags.Static, Name, GenericTypes, ParameterTypes, out Info, out _);
-        public static bool TryGetMethodWithImplicitParameter(Type Base, BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
-            => TryGetMethodWithImplicitParameter(Base, Flags, Name, GenericTypes, ParameterTypes, out Info, out _);
+            => TryGetMethodWithImplicitParameter(Base, Name, PublicModifier | BindingFlags.Static, GenericTypes, ParameterTypes, out Info, out _);
+        public static bool TryGetMethodWithImplicitParameter(Type Base, string Name, BindingFlags Modifier, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info)
+            => TryGetMethodWithImplicitParameter(Base, Name, Modifier, GenericTypes, ParameterTypes, out Info, out _);
         internal static bool TryGetMethodWithImplicitParameter(Type Base, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes)
-            => TryGetMethodWithImplicitParameter(Base, PublicFlags | BindingFlags.Static, Name, GenericTypes, ParameterTypes, out Info, out DefinedParameterTypes);
-        internal static bool TryGetMethodWithImplicitParameter(Type Base, BindingFlags Flags, string Name, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes)
+            => TryGetMethodWithImplicitParameter(Base, Name, PublicModifier | BindingFlags.Static, GenericTypes, ParameterTypes, out Info, out DefinedParameterTypes);
+        internal static bool TryGetMethodWithImplicitParameter(Type Base, string Name, BindingFlags Modifier, Type[] GenericTypes, Type[] ParameterTypes, out MethodInfo Info, out Type[] DefinedParameterTypes)
         {
             int GenericLength = GenericTypes.Length,
                 ParameterLength = ParameterTypes.Length;
@@ -474,7 +489,7 @@ namespace System.Reflection
             int MinorScore = int.MaxValue;
             while (Base != null)
             {
-                foreach (MethodInfo Method in Base.GetMethods(Flags).Where(i => i.Name == Name))
+                foreach (MethodInfo Method in Base.GetMethods(Modifier).Where(i => i.Name == Name))
                 {
                     ParameterInfo[] Parameter = Method.GetParameters();
                     if (Parameter.Length == ParameterLength)
@@ -508,7 +523,7 @@ namespace System.Reflection
                                 }
                             }
 
-                            int Score = MatchParameters(ParameterTypes, TempDefinedParameterTypes);
+                            int Score = ScoreMatchingParameters(ParameterTypes, TempDefinedParameterTypes);
                             if (Score == 0)
                             {
                                 Info = Method.MakeGenericMethod(GenericTypes);
@@ -528,7 +543,7 @@ namespace System.Reflection
                         else
                         {
                             Type[] TempDefinedParameterTypes = Parameter.Select(i => i.ParameterType).ToArray();
-                            int Score = MatchParameters(ParameterTypes, TempDefinedParameterTypes);
+                            int Score = ScoreMatchingParameters(ParameterTypes, TempDefinedParameterTypes);
                             if (Score == 0)
                             {
                                 Info = Method;
@@ -568,7 +583,7 @@ namespace System.Reflection
             Type BaseType = This;
             while (BaseType != null)
             {
-                foreach (MethodInfo Implicit in BaseType.GetMethods(StaticFlags).Where(i => i.Name == "op_Implicit"))
+                foreach (MethodInfo Implicit in BaseType.GetMethods(PublicStaticModifier).Where(i => i.Name == "op_Implicit"))
                     yield return Implicit;
 
                 BaseType = BaseType.BaseType;
@@ -579,7 +594,7 @@ namespace System.Reflection
             Type BaseType = This;
             while (BaseType != null)
             {
-                foreach (MethodInfo Implicit in BaseType.GetMethods(StaticFlags).Where(i => i.Name == "op_Explicit"))
+                foreach (MethodInfo Implicit in BaseType.GetMethods(PublicStaticModifier).Where(i => i.Name == "op_Explicit"))
                     yield return Implicit;
 
                 BaseType = BaseType.BaseType;
@@ -587,93 +602,67 @@ namespace System.Reflection
         }
 
         public static bool TryInvokeMethod(this object This, string Name, params object[] Args)
-            => TryInvokeMethod(This, PublicFlags, Name, Args);
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, PublicModifier, Type.EmptyTypes, Args);
+        public static bool TryInvokeMethod(this object This, string Name, Type[] GenericTypes, params object[] Args)
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, PublicModifier, GenericTypes, Args);
         public static bool TryInvokeMethod<T>(this object This, string Name, out T Result, params object[] Args)
-            => TryInvokeMethod(This, PublicFlags, Name, out Result, Args);
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, PublicModifier, Type.EmptyTypes, out Result, Args);
         public static bool TryInvokeMethod<T>(this object This, string Name, Type[] GenericTypes, out T Result, params object[] Args)
-            => TryInvokeMethod(This, PublicFlags, Name, GenericTypes, out Result, Args);
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, PublicModifier, GenericTypes, out Result, Args);
 
         public static bool TryInvokeInternalMethod(this object This, string Name, params object[] Args)
-            => TryInvokeMethod(This, InternalFlags, Name, Args);
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, InternalModifier, Type.EmptyTypes, Args);
+        public static bool TryInvokeInternalMethod(this object This, string Name, Type[] GenericTypes, params object[] Args)
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, InternalModifier, GenericTypes, Args);
         public static bool TryInvokeInternalMethod<T>(this object This, string Name, out T Result, params object[] Args)
-            => TryInvokeMethod(This, InternalFlags, Name, out Result, Args);
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, InternalModifier, Type.EmptyTypes, out Result, Args);
         public static bool TryInvokeInternalMethod<T>(this object This, string Name, Type[] GenericTypes, out T Result, params object[] Args)
-            => TryInvokeMethod(This, InternalFlags, Name, GenericTypes, out Result, Args);
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, InternalModifier, GenericTypes, out Result, Args);
 
-        public static bool TryInvokeMethod(this object This, BindingFlags Flags, string Name, params object[] Args)
+        public static bool TryInvokeMethod(this object This, string Name, BindingFlags Modifier, params object[] Args)
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, Modifier, Type.EmptyTypes, Args);
+        public static bool TryInvokeMethod(this object This, string Name, BindingFlags Modifier, Type[] GenericTypes, params object[] Args)
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, Modifier, GenericTypes, Args);
+        public static bool TryInvokeMethod<T>(this object This, string Name, BindingFlags Modifier, out T Result, params object[] Args)
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, Modifier, Type.EmptyTypes, out Result, Args);
+        public static bool TryInvokeMethod<T>(this object This, string Name, BindingFlags Modifier, Type[] GenericTypes, out T Result, params object[] Args)
+            => InternalTryInvokeMethod(This?.GetType(), This, Name, Modifier, GenericTypes, out Result, Args);
+
+        private static bool InternalTryInvokeMethod(Type Type, object Object, string Name, BindingFlags Modifier, Type[] GenericTypes, params object[] Args)
         {
-            if (TryGetMethodWithImplicitParameter(This?.GetType(), Flags, Name, new Type[0], Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method))
+            if (TryGetMethodWithImplicitParameter(Type, Name, Modifier, GenericTypes, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method))
             {
-                Method.Invoke(This, Args);
+                Method.Invoke(Object, Args);
                 return true;
             }
 
             return false;
         }
-        public static bool TryInvokeMethod<T>(this object This, BindingFlags Flags, string Name, out T Result, params object[] Args)
+        private static bool InternalTryInvokeMethod<T>(Type Type, object Object, string Name, BindingFlags Modifier, Type[] GenericTypes, out T Result, params object[] Args)
         {
-            if (TryGetMethodWithImplicitParameter(This?.GetType(), Flags, Name, new Type[0], Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
+            if (TryGetMethodWithImplicitParameter(Type, Name, Modifier, GenericTypes, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
                 Method.ReturnType.IsConvertibleTo<T>())
             {
-                Result = (T)Method.Invoke(This, Args);
+                Result = (T)Method.Invoke(Object, Args);
                 return true;
             }
 
             Result = default;
             return false;
         }
-        public static bool TryInvokeMethod<T>(this object This, BindingFlags Flags, string Name, Type[] GenericTypes, out T Result, params object[] Args)
-        {
-            if (TryGetMethodWithImplicitParameter(This?.GetType(), Flags, Name, GenericTypes, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
-                Method.ReturnType.IsConvertibleTo<T>())
-            {
-                Result = (T)Method.Invoke(This, Args);
-                return true;
-            }
 
-            Result = default;
-            return false;
-        }
+        public static IEnumerable<MethodInfo> GetDeclaredMethods(this Type This)
+            => This.GetMethods()
+                   .Concat(This.GetInterfaces()
+                               .SelectMany(i => i.GetMethods()));
 
         #endregion
-
-        /// <summary>
-        /// Scores the matching of the types.
-        /// </summary>
-        /// <returns>The score of matching.<para/>
-        /// If <paramref name="Types"/> are equal to <paramref name="DefinedTypes"/>, return 0.<para/>
-        /// If <paramref name="Types"/> and <paramref name="DefinedTypes"/> are completely different, return <see cref="int.MinValue"/>.</returns>
-        private static int MatchParameters(Type[] Types, Type[] DefinedTypes)
-        {
-            Type Type, DefinedType;
-            int Score = 0;
-            for (int i = 0; i < Types.Length; i++)
-            {
-                DefinedType = DefinedTypes[i];
-                Type = Types[i];
-                if (Type != DefinedType)
-                {
-                    Score++;
-                    if (!Type.IsConvertibleTo(DefinedType))
-                        return int.MinValue;
-
-                    if (NumberTypeScores.TryGetValue(Type, out sbyte Score1) &&
-                        NumberTypeScores.TryGetValue(DefinedType, out sbyte Score2))
-                    {
-                        int Delta = Score2 - Score1;
-                        Score += Delta < 0 ? 11 - Score1 : Delta;
-                    }
-                }
-            }
-
-            return Score;
-        }
 
         #region Event
         public static bool TryGetEventField(this object This, string Name, out MulticastDelegate Delegates)
             => TryGetInternalFieldValue(This, Name, out Delegates) && Delegates != null;
 
-        public static bool TryGetStaticEventField(this object This, string Name, out MulticastDelegate Delegates)
+        public static bool TryGetStaticEventField(this Type This, string Name, out MulticastDelegate Delegates)
             => TryGetStaticInternalFieldValue(This, Name, out Delegates) && Delegates != null;
 
         public static void RaiseEvent(this object This, string Name, params object[] Args)
@@ -685,9 +674,9 @@ namespace System.Reflection
 
         public static void RaiseStaticEvent(this object This, string Name, params object[] Args)
         {
-            if (TryGetStaticEventField(This, Name, out MulticastDelegate Handler))
+            if (TryGetStaticEventField(This?.GetType(), Name, out MulticastDelegate Handler))
                 foreach (Delegate InvocationMethod in Handler.GetInvocationList())
-                    InvocationMethod.DynamicInvoke(new[] { This, Args });
+                    InvocationMethod.DynamicInvoke([This, Args]);
         }
 
         #endregion
@@ -726,8 +715,8 @@ namespace System.Reflection
 
             do
             {
-                if (This.GetMethods(StaticFlags)
-                        .Where(i => i.Name == "op_Implicit" || i.Name == "op_Explicit")
+                if (This.GetMethods(PublicStaticModifier)
+                        .Where(i => i.Name is "op_Implicit" or "op_Explicit")
                         .Any(t => t.ReturnType == Type))
                     return true;
 
@@ -737,43 +726,70 @@ namespace System.Reflection
             return false;
         }
 
+        /// <summary>
+        /// Try to get the interface type that inherits the specified generic interface in the specified type.
+        /// </summary>
+        /// <param name="Type">The specified type.</param>
+        /// <param name="GenericInterface">The specified type of generic interface.</param>
+        /// <param name="InheritedInterface">The interface type that inherits <paramref name="GenericInterface"/>.</param>
+        public static bool TryGetInheritedGenericInterfaceType(Type Type, Type GenericInterface, out Type InheritedInterface)
+        {
+            if (Type.IsGenericType && Type.GetGenericTypeDefinition() == GenericInterface)
+            {
+                InheritedInterface = Type;
+                return true;
+            }
+
+            // Check all the interfaces implemented by this type
+            foreach (Type Interface in Type.GetInterfaces())
+            {
+                if (Interface.IsGenericType && Interface.GetGenericTypeDefinition() == GenericInterface)
+                {
+                    InheritedInterface = Interface;
+                    return true;
+                }
+            }
+
+            InheritedInterface = null;
+            return false;
+        }
+
         #endregion
 
         #region NumberType
-
-        internal static readonly Dictionary<Type, byte> NumberTypes = new Dictionary<Type, byte>
+        internal static readonly Dictionary<Type, byte> NumberTypes = new()
         {
-            { typeof(byte), 0 },
-            { typeof(ushort), 1 },
-            { typeof(uint), 2 },
-            { typeof(ulong), 3 },
+            { typeof(byte)    , 0  },
+            { typeof(ushort)  , 1  },
+            { typeof(uint)    , 2  },
+            { typeof(ulong)   , 3  },
 
-            { typeof(sbyte), 4 },
-            { typeof(short), 5 },
-            { typeof(int), 6 },
-            { typeof(long), 7 },
+            { typeof(sbyte)   , 4  },
+            { typeof(short)   , 5  },
+            { typeof(int)     , 6  },
+            { typeof(long)    , 7  },
 
-            { typeof(float), 8 },
-            { typeof(double), 9 },
-            { typeof(decimal), 10 }
+            { typeof(float)   , 8  },
+            { typeof(double)  , 9  },
+            { typeof(decimal) , 10 }
         };
-        private static readonly Dictionary<Type, sbyte> NumberTypeScores = new Dictionary<Type, sbyte>
+        private static readonly Dictionary<Type, sbyte> NumberTypeScores = new()
         {
-            { typeof(sbyte), 0 },
-            { typeof(byte), 1 },
+            { typeof(sbyte)   , 0  },
+            { typeof(byte)    , 1  },
 
-            { typeof(short), 2 },
-            { typeof(ushort), 3 },
+            { typeof(short)   , 2  },
+            { typeof(ushort)  , 3  },
 
-            { typeof(int), 4 },
-            { typeof(uint), 5 },
+            { typeof(int)     , 4  },
+            { typeof(uint)    , 5  },
 
-            { typeof(long), 6 },
-            { typeof(ulong), 7 },
+            { typeof(long)    , 6  },
+            { typeof(ulong)   , 7  },
 
-            { typeof(float), 8 },
-            { typeof(double), 9 },
-            { typeof(decimal), 10 },
+            { typeof(float)   , 8  },
+            { typeof(double)  , 9  },
+            { typeof(decimal) , 10 },
         };
 
 #if NET7_0_OR_GREATER
@@ -839,23 +855,23 @@ namespace System.Reflection
 
         #endregion
 
-        internal static readonly Dictionary<string, Type> TypeAlias = new Dictionary<string, Type>
+        internal static readonly Dictionary<string, Type> TypeAlias = new()
         {
-            { "bool", typeof(bool) },
-            { "byte", typeof(byte) },
-            { "char", typeof(char) },
-            { "decimal", typeof(decimal) },
-            { "double", typeof(double) },
-            { "float", typeof(float) },
-            { "int", typeof(int) },
-            { "long", typeof(long) },
-            { "object", typeof(object) },
-            { "sbyte", typeof(sbyte) },
-            { "short", typeof(short) },
-            { "string", typeof(string) },
-            { "uint", typeof(uint) },
-            { "ulong", typeof(ulong) },
-            { "void", typeof(void) }
+            { "bool"    , typeof(bool)    },
+            { "byte"    , typeof(byte)    },
+            { "char"    , typeof(char)    },
+            { "decimal" , typeof(decimal) },
+            { "double"  , typeof(double)  },
+            { "float"   , typeof(float)   },
+            { "int"     , typeof(int)     },
+            { "long"    , typeof(long)    },
+            { "object"  , typeof(object)  },
+            { "sbyte"   , typeof(sbyte)   },
+            { "short"   , typeof(short)   },
+            { "string"  , typeof(string)  },
+            { "uint"    , typeof(uint)    },
+            { "ulong"   , typeof(ulong)   },
+            { "void"    , typeof(void)    }
         };
         public static bool TryGetType(string Route, out Type Type)
             => TryGetType(Route, Type.EmptyTypes, out Type);
@@ -902,7 +918,7 @@ namespace System.Reflection
             }
         }
         public static bool TryGetType(string Name, string Namespace, out Type Type)
-            => TryGetType(Name, Namespace, new Type[0], out Type);
+            => TryGetType(Name, Namespace, Type.EmptyTypes, out Type);
         public static bool TryGetType(string Name, string Namespace, Type[] GenericTypes, out Type Type)
         {
             int Length = GenericTypes.Length;
@@ -945,6 +961,63 @@ namespace System.Reflection
 
             Type = null;
             return false;
+        }
+
+        /// <summary>
+        /// Determines whether the specified type is a structure type.
+        /// </summary>
+        /// <param name="This">The specified type.</param>
+        /// <param name="CheckGeneric">Determines whether to check together with generic parameters.</param>
+        public static bool IsStruct(this Type This, bool CheckGeneric)
+        {
+            if (!This.IsValueType)
+                return false;
+
+            if (!This.IsGenericType)
+                return true;
+
+            // Generic Types
+            if (CheckGeneric)
+            {
+                Type[] GenericTypes = This.GetGenericArguments();
+                foreach (Type GenericType in GenericTypes)
+                    if (!IsStruct(GenericType, true))
+                        return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Scores the matching of the types.
+        /// </summary>
+        /// <returns>The score of matching.<para/>
+        /// If <paramref name="Types"/> are equal to <paramref name="DefinedTypes"/>, return 0.<para/>
+        /// If <paramref name="Types"/> and <paramref name="DefinedTypes"/> are completely different, return <see cref="int.MinValue"/>.</returns>
+        private static int ScoreMatchingParameters(Type[] Types, Type[] DefinedTypes)
+        {
+            Type Type, DefinedType;
+            int Score = 0;
+            for (int i = 0; i < Types.Length; i++)
+            {
+                DefinedType = DefinedTypes[i];
+                Type = Types[i];
+                if (Type != DefinedType)
+                {
+                    Score++;
+                    if (!Type.IsConvertibleTo(DefinedType))
+                        return int.MinValue;
+
+                    if (NumberTypeScores.TryGetValue(Type, out sbyte Score1) &&
+                        NumberTypeScores.TryGetValue(DefinedType, out sbyte Score2))
+                    {
+                        int Delta = Score2 - Score1;
+                        Score += Delta < 0 ? 11 - Score1 : Delta;
+                    }
+                }
+            }
+
+            return Score;
         }
 
     }
