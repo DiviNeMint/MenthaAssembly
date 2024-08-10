@@ -237,12 +237,12 @@ namespace System.IO
         {
             if (Content is null)
             {
-                This.Write(-1);
+                This.WriteByte(byte.MinValue);
                 return -1;
             }
             else if (string.IsNullOrEmpty(Content))
             {
-                This.Write(0);
+                This.WriteByte(0b0000_0001);
                 return 0;
             }
 
@@ -251,7 +251,25 @@ namespace System.IO
             try
             {
                 Length = Encoding.GetBytes(Content, 0, Content.Length, Buffer, 0);
-                This.Write(Length);
+
+                int Bits = Length switch
+                {
+                    < 32 => 1,
+                    < 8192 => 2,
+                    < 2097152 => 3,
+                    < 536870912 => 4,
+                    _ => throw new ArgumentOutOfRangeException(nameof(Content), "Not support the string whose bytes count is greater than 536870912."),
+                };
+
+                // Length
+                int LengthData = Length << 3;
+                LengthData |= (Bits & 3) << 1;
+                for (int i = 0; i < Bits; i++)
+                {
+                    This.WriteByte((byte)LengthData);
+                    LengthData >>= 8;
+                }
+
                 This.Write(Buffer, 0, Length);
                 return Length;
             }
@@ -541,19 +559,28 @@ namespace System.IO
         /// <param name="Result">The string decoded from the stream.</param>
         public static bool TryReadStringAndLength(this Stream This, Encoding Encoding, out string Result)
         {
-            int BytesLength = This.Read<int>();
-            if (BytesLength == 0)
-            {
-                Result = string.Empty;
-                return true;
-            }
-            else if (BytesLength < 0)
+            int Data = This.ReadByte();
+            if (Data == byte.MinValue)
             {
                 Result = null;
                 return true;
             }
 
-            return TryReadString(This, BytesLength, Encoding, out Result);
+            if (Data == 1)
+            {
+                Result = string.Empty;
+                return true;
+            }
+
+            Data >>= 1;
+
+            // Length
+            int Bits = (Data & 3) - 1;
+            Data >>= 2;
+            for (int i = 0, Shift = 5; i < Bits; i++, Shift += 8)
+                Data |= This.ReadByte() << Shift;
+
+            return TryReadString(This, Data, Encoding, out Result);
         }
 
         /// <summary>
