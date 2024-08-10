@@ -9,6 +9,9 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+#if NET5_0_OR_GREATER
+using System.Runtime.Versioning;
+#endif
 
 namespace MenthaAssembly.Network
 {
@@ -359,7 +362,9 @@ namespace MenthaAssembly.Network
                 };
             }
 
+#pragma warning disable CA1416 // 驗證平台相容性
             Socket.IOControl(IOControlCode.KeepAliveValues, Data, null);
+#pragma warning restore CA1416 // 驗證平台相容性
         }
 
         private bool IsDisposed = false;

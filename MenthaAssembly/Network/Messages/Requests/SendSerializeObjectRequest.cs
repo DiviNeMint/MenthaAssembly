@@ -1,20 +1,21 @@
-﻿#if !NET7_0_OR_GREATER
-using System.IO;
+﻿#if NET5_0_OR_GREATER
+using MenthaAssembly.IO;
+#else
 using System.Runtime.Serialization.Formatters.Binary;
+#endif
+using System.IO;
 
 namespace MenthaAssembly.Network.Messages
 {
-    public class SendSerializeObjectRequest : IMessage
+    public class SendSerializeObjectRequest(object SerializeObject) : IMessage
     {
-        public object SerializeObject { get; }
-
-        public SendSerializeObjectRequest(object SerializeObject)
-        {
-            this.SerializeObject = SerializeObject;
-        }
+        public object SerializeObject { get; } = SerializeObject;
 
         public void Encode(Stream Stream)
         {
+#if NET5_0_OR_GREATER
+            Codec.Encode(Stream, SerializeObject);
+#else
             // SerializeObject
             if (SerializeObject is null)
             {
@@ -29,10 +30,14 @@ namespace MenthaAssembly.Network.Messages
                 BinaryFormatter BF = new();
                 BF.Serialize(Stream, SerializeObject);
             }
+#endif
         }
 
         public static SendSerializeObjectRequest Decode(Stream Stream)
         {
+#if NET5_0_OR_GREATER
+            object SerializeObject = Codec.Decode(Stream);
+#else
             // Check null
             if (Stream.ReadByte() == 0)
                 return new SendSerializeObjectRequest(null);
@@ -40,10 +45,10 @@ namespace MenthaAssembly.Network.Messages
             // Deserialize
             BinaryFormatter BF = new();
             object SerializeObject = BF.Deserialize(Stream);
+#endif
 
             return new SendSerializeObjectRequest(SerializeObject);
         }
 
     }
 }
-#endif

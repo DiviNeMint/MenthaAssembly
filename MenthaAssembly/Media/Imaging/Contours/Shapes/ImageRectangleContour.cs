@@ -1,7 +1,5 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
@@ -11,17 +9,17 @@ namespace MenthaAssembly.Media.Imaging
         private double[] Points;
         public ImageRectangleContour(ImageRectangleContour Contour) : base(Contour)
         {
-            Points = Contour.Points.ToArray();
+            Points = [.. Contour.Points];
             //CropBound = Contour.CropBound?.ToArray();
         }
         public ImageRectangleContour(double Cx, double Cy, double Width, double Height)
         {
             double Width2 = Width / 2d,
                    Height2 = Height / 2d;
-            Points = new double[]{ Width2,  Height2,
-                                  -Width2,  Height2,
-                                  -Width2, -Height2,
-                                   Width2, -Height2};
+            Points = [ Width2,  Height2,
+                      -Width2,  Height2,
+                      -Width2, -Height2,
+                       Width2, -Height2];
             OffsetX = Cx;
             OffsetY = Cy;
         }
@@ -36,10 +34,10 @@ namespace MenthaAssembly.Media.Imaging
                    HSin = Height2 * Sin,
                    HCos = Height2 * Cos;
 
-            Points = new double[]{ WCos - HSin,  WSin + HCos,
-                                  -WCos - HSin, -WSin + HCos,
-                                  -WCos + HSin, -WSin - HCos,
-                                   WCos + HSin,  WSin - HCos};
+            Points = [ WCos - HSin,  WSin + HCos,
+                      -WCos - HSin, -WSin + HCos,
+                      -WCos + HSin, -WSin - HCos,
+                       WCos + HSin,  WSin - HCos];
             OffsetX = Cx;
             OffsetY = Cy;
         }
@@ -50,7 +48,7 @@ namespace MenthaAssembly.Media.Imaging
             MaxX -= OffsetX;
             MinY -= OffsetY;
             MaxY -= OffsetY;
-            Points = CropPoints(Points, MinX, MinY, MaxX, MaxY).ToArray();
+            Points = [.. CropPoints(Points, MinX, MinY, MaxX, MaxY)];
             InvalidateContent();
         }
 
@@ -213,7 +211,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public override string ToString()
         {
-            StringBuilder Builder = new StringBuilder($"{{{Points[0] + OffsetX}, {Points[1] + OffsetY}}}");
+            StringBuilder Builder = new($"{{{Points[0] + OffsetX}, {Points[1] + OffsetY}}}");
             try
             {
                 for (int i = 2; i < Points.Length;)

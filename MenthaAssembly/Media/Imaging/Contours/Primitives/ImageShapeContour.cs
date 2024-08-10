@@ -108,28 +108,28 @@ namespace MenthaAssembly.Media.Imaging
 
         protected override void InternalEnsureContents()
         {
-            int i = 0,
-                Count = Children.Count;
+            //int i = 0,
+            //    Count = Children.Count;
 
-            double Ox, Oy;
-            for (; i < Count; i++)
-            {
-                Tuple<Bitwises, ImageShapeContourContext> Data = Children[i];
-                if (Data.Item1 == Bitwises.Or)
-                {
-                    ImageShapeContourContext Context = Data.Item2;
-                    Context.EnsureContents();
+            //double Ox, Oy;
+            //for (; i < Count; i++)
+            //{
+            //    Tuple<Bitwises, ImageShapeContourContext> Data = Children[i];
+            //    if (Data.Item1 == Bitwises.Or)
+            //    {
+            //        ImageShapeContourContext Context = Data.Item2;
+            //        Context.EnsureContents();
 
-                    foreach (var item in Context.Contents)
-                    {
+            //        foreach (var item in Context.Contents)
+            //        {
 
 
 
-                    }
+            //        }
 
-                    break;
-                }
-            }
+            //        break;
+            //    }
+            //}
         }
 
         /// <summary>

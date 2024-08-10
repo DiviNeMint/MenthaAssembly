@@ -1,11 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MenthaAssembly.Media.Imaging
 {
     /// <summary>
     /// Represents a contour in image.
     /// </summary>
-    public interface IImageContour : IEnumerable<KeyValuePair<int, ImageContourScanLine>>
+    public interface IImageContour : IEnumerable<KeyValuePair<int, ImageContourScanLine>>, ICloneable
     {
         internal IReadOnlyDictionary<int, ImageContourScanLine> Contents { get; }
 
@@ -47,7 +48,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <summary>
         /// Creates a new contour that is a copy of the current instance.
         /// </summary>
-        public IImageContour Clone();
+        public new IImageContour Clone();
 
     }
 }

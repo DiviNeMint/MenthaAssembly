@@ -147,6 +147,7 @@ namespace MenthaAssembly.Network
 
         protected virtual void OnPacketArrived(PacketArrivedEventArgs e)
             => PacketArrived?.Invoke(this, e);
+
         private bool SetSocketOption()
         {
             try
@@ -155,7 +156,9 @@ namespace MenthaAssembly.Network
                 Listener.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
 
                 // Enable Receive All
+#pragma warning disable CA1416 // 驗證平台相容性
                 int Code = Listener.IOControl(IOControlCode.ReceiveAll, BitConverter.GetBytes(1), null);
+#pragma warning restore CA1416 // 驗證平台相容性
 
                 return Code == 0;
             }
@@ -175,20 +178,27 @@ namespace MenthaAssembly.Network
         }
 
         private bool IsDisposed;
-        public void Dispose()
+        protected virtual void Dispose(bool IsDisposing)
         {
             if (IsDisposed)
                 return;
 
-            try
+
+            if (IsDisposing)
             {
                 // Listener
                 Stop();
             }
-            finally
-            {
-                IsDisposed = true;
-            }
+
+            // TODO: 釋出非受控資源 (非受控物件) 並覆寫完成項
+            // TODO: 將大型欄位設為 Null
+            IsDisposed = true;
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
     }

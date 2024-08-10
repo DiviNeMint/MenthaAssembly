@@ -11,14 +11,14 @@ namespace MenthaAssembly.Media.Imaging
 
         public ImageContourScanLine()
         {
-            Datas = new List<int>();
+            Datas = [];
         }
         public ImageContourScanLine(int Left, int Right)
         {
             if (Right < Left)
                 MathHelper.Swap(ref Left, ref Right);
 
-            Datas = new List<int> { Left, Right };
+            Datas = [Left, Right];
         }
         public ImageContourScanLine(ImageContourScanLine ScanLine)
         {
@@ -263,7 +263,7 @@ namespace MenthaAssembly.Media.Imaging
             => GetEnumerator();
 
         public ImageContourScanLine Clone()
-            => new ImageContourScanLine(this);
+            => new(this);
         object ICloneable.Clone()
             => Clone();
 
@@ -542,40 +542,40 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContourScanLine Union(ImageContourScanLine Data, int Left, int Right)
         {
-            ImageContourScanLine Result = new ImageContourScanLine(Data);
+            ImageContourScanLine Result = new(Data);
             Result.Union(Left, Right);
             return Result;
         }
         public static ImageContourScanLine Union(ImageContourScanLine Data1, ImageContourScanLine Data2)
         {
-            ImageContourScanLine Result = new ImageContourScanLine(Data1);
+            ImageContourScanLine Result = new(Data1);
             Result.Union(Data2);
             return Result;
         }
 
         public static ImageContourScanLine Intersection(ImageContourScanLine Data1, ImageContourScanLine Data2)
         {
-            ImageContourScanLine Result = new ImageContourScanLine(Data1);
+            ImageContourScanLine Result = new(Data1);
             Result.Intersection(Data2);
             return Result;
         }
 
         public static ImageContourScanLine Difference(ImageContourScanLine Data, int Left, int Right)
         {
-            ImageContourScanLine Result = new ImageContourScanLine(Data);
+            ImageContourScanLine Result = new(Data);
             Result.Difference(Left, Right);
             return Result;
         }
         public static ImageContourScanLine Difference(ImageContourScanLine Data1, ImageContourScanLine Data2)
         {
-            ImageContourScanLine Result = new ImageContourScanLine(Data1);
+            ImageContourScanLine Result = new(Data1);
             Result.Difference(Data2);
             return Result;
         }
 
         public static ImageContourScanLine Offset(ImageContourScanLine Data, int X)
         {
-            ImageContourScanLine Result = new ImageContourScanLine();
+            ImageContourScanLine Result = new();
             foreach (int Value in Data.Datas)
                 Result.Datas.Add(Value + X);
 

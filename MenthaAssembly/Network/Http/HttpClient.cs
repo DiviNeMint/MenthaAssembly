@@ -52,9 +52,10 @@ namespace MenthaAssembly.Network
                 if (SchemeHttps)
                 {
                     SslStream ssl = new(Stream, false, OnValidateServerCertificate, null);
-#pragma warning disable CS0618 // 類型或成員已經過時
-                    ssl.AuthenticateAsClient(Host, null, SslProtocols.Ssl2 | SslProtocols.Ssl3 | SslProtocols.Tls, false);
-#pragma warning restore CS0618 // 類型或成員已經過時
+                    ssl.AuthenticateAsClient(Host, null, SslProtocols.None, false);
+//#pragma warning disable CS0618 // 類型或成員已經過時
+//                    ssl.AuthenticateAsClient(Host, null, SslProtocols.Ssl2 | SslProtocols.Ssl3 | SslProtocols.Tls, false);
+//#pragma warning restore CS0618 // 類型或成員已經過時
 
                     Stream = ssl;
                 }
