@@ -131,7 +131,7 @@ namespace MenthaAssembly.IO
 
             // Public Properties
             PropertyInfo[] PublicProperties = Type.GetProperties(ReflectionHelper.PublicModifier)
-                                                  .Where(i => i.CanRead && i.CanWrite && !Params.Any(p => p.Name == i.Name) && i.GetIndexParameters().Length == 0)
+                                                  .Where(i => IsPropertyValid(i, Params))
                                                   .ToArray();
 
             // Total Members Count
@@ -271,13 +271,19 @@ namespace MenthaAssembly.IO
 
             // Fill Properties
             IEnumerable<PropertyInfo> PublicProperties = Type.GetProperties(ReflectionHelper.PublicModifier)
-                                                             .Where(i => i.CanRead && i.CanWrite && !Params.Any(p => p.Name == i.Name) && i.GetIndexParameters().Length == 0);
+                                                             .Where(i => IsPropertyValid(i, Params));
             foreach (PropertyInfo Property in PublicProperties)
                 if (Members.TryGetValue(Property.Name, out object obj))
                     Property.SetValue(Result, obj);
 
             return Result;
         }
+
+        private static bool IsPropertyValid(PropertyInfo Property, ValueAccessor[] ConstructorParams)
+            => Property.CanRead && Property.CanWrite &&
+               !ConstructorParams.Any(p => p.Name == Property.Name) &&
+               Property.GetIndexParameters().Length == 0 &&
+               Property.GetCustomAttribute<CodecIgnoreAttribute>() is null;
 
         private static bool TryGetSpecifiedMethod(Type Type, Type GenericInterface, string Name, int ParamsLength, out MethodInfo Method, out Type[] ParamTypes)
         {
@@ -357,6 +363,9 @@ namespace MenthaAssembly.IO
                 for (int i = 0; i < Constructors.Length; i++)
                 {
                     ConstructorInfo Constructor = Constructors[i];
+                    if (Constructor.GetCustomAttribute<CodecIgnoreAttribute>() is not null)
+                        continue;
+
                     ParameterInfo[] Params = Constructor.GetParameters();
 
                     if (Params.Length == 0)
