@@ -4,41 +4,18 @@ using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public sealed class ImageRectangleContour : ImageShapeContourNormContext
+    public sealed class ImageTriangleContour : ImageShapeContourNormContext
     {
         private double[] Points;
-        public ImageRectangleContour(ImageRectangleContour Contour) : base(Contour)
+        public ImageTriangleContour(ImageTriangleContour Contour) : base(Contour)
         {
             Points = [.. Contour.Points];
         }
-        public ImageRectangleContour(double Cx, double Cy, double Width, double Height) : base()
+        public ImageTriangleContour(double X1, double Y1, double X2, double Y2, double X3, double Y3) : base()
         {
-            double Width2 = Width / 2d,
-                   Height2 = Height / 2d;
-            Points = [ Width2,  Height2,
-                      -Width2,  Height2,
-                      -Width2, -Height2,
-                       Width2, -Height2];
-            OffsetX = Cx;
-            OffsetY = Cy;
-        }
-        public ImageRectangleContour(double Cx, double Cy, double Width, double Height, double Theta) : base()
-        {
-            double Width2 = Width / 2d,
-                   Height2 = Height / 2d,
-                   Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta),
-                   WCos = Width2 * Cos,
-                   WSin = Width2 * Sin,
-                   HSin = Height2 * Sin,
-                   HCos = Height2 * Cos;
-
-            Points = [ WCos - HSin,  WSin + HCos,
-                      -WCos - HSin, -WSin + HCos,
-                      -WCos + HSin, -WSin - HCos,
-                       WCos + HSin,  WSin - HCos];
-            OffsetX = Cx;
-            OffsetY = Cy;
+            Points = [X1, Y1, X2, Y2, X3, Y3];
+            OffsetX = 0d;
+            OffsetY = 0d;
         }
 
         protected override void InternalFlip(double Cx, double Cy, FlipMode Flip)
@@ -50,9 +27,8 @@ namespace MenthaAssembly.Media.Imaging
                         double Ty = Cy * 2d;
 
                         for (int i = 1; i < Points.Length; i += 2)
-                            Points[i] = Ty - Points[i] - OffsetY;
+                            Points[i] = Ty - Points[i];
 
-                        OffsetY = 0d;
                         InvalidateContent();
                         break;
                     }
@@ -61,9 +37,8 @@ namespace MenthaAssembly.Media.Imaging
                         double Tx = Cx * 2d;
 
                         for (int i = 0; i < Points.Length; i += 2)
-                            Points[i] = Tx - Points[i] - OffsetX;
+                            Points[i] = Tx - Points[i];
 
-                        OffsetX = 0d;
                         InvalidateContent();
                         break;
                     }
@@ -74,12 +49,10 @@ namespace MenthaAssembly.Media.Imaging
 
                         for (int i = 0; i < Points.Length;)
                         {
-                            Points[i++] = Tx - Points[i] - OffsetX;
-                            Points[i++] = Ty - Points[i] - OffsetY;
+                            Points[i++] = Tx - Points[i];
+                            Points[i++] = Ty - Points[i];
                         }
 
-                        OffsetX = 0d;
-                        OffsetY = 0d;
                         InvalidateContent();
                         break;
                     }
@@ -88,17 +61,18 @@ namespace MenthaAssembly.Media.Imaging
 
         protected override void InternalRotate(double Cx, double Cy, double Theta)
         {
+            Cx -= OffsetX;
+            Cy -= OffsetY;
+
             double Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
             for (int i = 0; i < Points.Length;)
             {
                 int i0 = i++,
                     i1 = i++;
-                Point<double>.Rotate(Points[i0] + OffsetX, Points[i1] + OffsetY, Cx, Cy, Sin, Cos, out Points[i0], out Points[i1]);
+                Point<double>.Rotate(Points[i0], Points[i1], Cx, Cy, Sin, Cos, out Points[i0], out Points[i1]);
             }
 
-            OffsetX = 0d;
-            OffsetY = 0f;
             InvalidateContent();
         }
 
@@ -121,7 +95,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <summary>
         /// Creates a new contour that is a copy of the current instance.
         /// </summary>
-        public ImageRectangleContour Clone()
+        public ImageTriangleContour Clone()
             => new(this);
         protected override IImageContour InternalClone()
             => Clone();

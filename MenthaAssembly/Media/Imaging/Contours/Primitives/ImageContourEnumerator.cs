@@ -11,8 +11,8 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContourEnumerator(IImageContour Contour)
         {
             Source = Contour.Contents.GetEnumerator();
-            Ox = (int)Math.Round(Contour.OffsetX);
-            Oy = (int)Math.Round(Contour.OffsetY);
+            Ox = (int)Math.Round(Contour.OffsetX, MidpointRounding.AwayFromZero);
+            Oy = (int)Math.Round(Contour.OffsetY, MidpointRounding.AwayFromZero);
         }
 
         public KeyValuePair<int, ImageContourScanLine> Current

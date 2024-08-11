@@ -77,7 +77,7 @@ namespace MenthaAssembly.Media.Imaging
         /// </summary>
         public ImageContour()
         {
-            Contents = new Dictionary<int, ImageContourScanLine>();
+            Contents = [];
         }
         /// <summary>
         /// Initializes a new instance.
@@ -93,73 +93,61 @@ namespace MenthaAssembly.Media.Imaging
 
         public void Union(IImageContour Contour)
         {
-            int Ox = (int)Math.Round(Contour.OffsetX - OffsetX),
-                Oy = (int)Math.Round(Contour.OffsetY - OffsetY);
-
             Contour.EnsureContents();
-            foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
+
+            int Ox = (int)Math.Round(OffsetX + Contour.OffsetX),
+                Oy = (int)Math.Round(OffsetY + Contour.OffsetY);
+            foreach (KeyValuePair<int, ImageContourScanLine> Data in Contour.Contents)
             {
-                int Y = Content.Key + Oy;
+                int Y = Data.Key + Oy;
                 if (!Contents.TryGetValue(Y, out ImageContourScanLine ScanLine))
                 {
-                    ScanLine = new ImageContourScanLine();
-                    Contents.Add(Y, ScanLine);
+                    Contents[Y] = ImageContourScanLine.Offset(Data.Value, Ox);
+                    continue;
                 }
 
-                List<int> Datas = Content.Value.Datas;
-                for (int i = 0; i < Datas.Count;)
-                    ScanLine.Union(Datas[i++] + Ox, Datas[i++] + Ox);
+                ScanLine.Union(Data.Value, Ox);
             }
         }
 
         public void Intersection(IImageContour Contour)
         {
-            int Ox = (int)Math.Round(Contour.OffsetX - OffsetX),
-                Oy = (int)Math.Round(Contour.OffsetY - OffsetY);
-
             Contour.EnsureContents();
-            foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
-            {
-                int Y = Content.Key + Oy;
-                if (Contents.TryGetValue(Y, out ImageContourScanLine ScanLine))
-                    ScanLine.Intersection(ImageContourScanLine.Offset(Content.Value, Ox));
-            }
+
+            int Ox = (int)Math.Round(OffsetX + Contour.OffsetX),
+                Oy = (int)Math.Round(OffsetY + Contour.OffsetY);
+            foreach (KeyValuePair<int, ImageContourScanLine> Data in Contour.Contents)
+                if (Contents.TryGetValue(Data.Key + Oy, out ImageContourScanLine ScanLine))
+                    ScanLine.Intersection(Data.Value, Ox);
         }
 
         public void Difference(IImageContour Contour)
         {
-            int Ox = (int)Math.Round(Contour.OffsetX - OffsetX),
-                Oy = (int)Math.Round(Contour.OffsetY - OffsetY);
-
             Contour.EnsureContents();
-            foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
-            {
-                int Y = Content.Key + Oy;
-                if (Contents.TryGetValue(Y, out ImageContourScanLine ScanLine))
-                {
-                    List<int> Datas = Content.Value.Datas;
-                    for (int i = 0; i < Datas.Count;)
-                        ScanLine.Difference(Datas[i++] + Ox, Datas[i++] + Ox);
-                }
-            }
+
+            int Ox = (int)Math.Round(OffsetX + Contour.OffsetX),
+                Oy = (int)Math.Round(OffsetY + Contour.OffsetY);
+            foreach (KeyValuePair<int, ImageContourScanLine> Data in Contour.Contents)
+                if (Contents.TryGetValue(Data.Key + Oy, out ImageContourScanLine ScanLine))
+                    ScanLine.Difference(Data.Value, Ox);
         }
 
         public void SymmetricDifference(IImageContour Contour)
         {
-            int Ox = (int)Math.Round(Contour.OffsetX - OffsetX),
-                Oy = (int)Math.Round(Contour.OffsetY - OffsetY);
-
             Contour.EnsureContents();
-            foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
+
+            int Ox = (int)Math.Round(OffsetX + Contour.OffsetX),
+                Oy = (int)Math.Round(OffsetY + Contour.OffsetY);
+            foreach (KeyValuePair<int, ImageContourScanLine> Data in Contour.Contents)
             {
-                int Y = Content.Key + Oy;
+                int Y = Data.Key + Oy;
                 if (!Contents.TryGetValue(Y, out ImageContourScanLine ScanLine))
                 {
-                    ScanLine = new ImageContourScanLine();
-                    Contents.Add(Y, ScanLine);
+                    Contents[Y] = ImageContourScanLine.Offset(Data.Value, Ox);
+                    continue;
                 }
 
-                ScanLine.SymmetricDifference(ImageContourScanLine.Offset(Content.Value, Ox));
+                ScanLine.SymmetricDifference(Data.Value, Ox);
             }
         }
 
@@ -291,6 +279,12 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
+        void IImageContour.Rotate(double Cx, double Cy, double Theta)
+            => throw new NotSupportedException();
+
+        void IImageContour.Scale(double ScaleX, double ScaleY)
+            => throw new NotSupportedException();
+
         public bool Contain(int X, int Y)
             => Contents.TryGetValue(Y, out ImageContourScanLine Data) && Data.Contain(X);
 
@@ -302,7 +296,9 @@ namespace MenthaAssembly.Media.Imaging
             Contents.Clear();
         }
 
-        void IImageContour.EnsureContents() { }
+        void IImageContour.EnsureContents()
+        {
+        }
 
         public IEnumerator<KeyValuePair<int, ImageContourScanLine>> GetEnumerator()
             => new ImageContourEnumerator(this);
@@ -321,14 +317,14 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour Flip(ImageContour Source, double CenterX, double CenterY, FlipMode Mode)
         {
-            ImageContour Contour = new ImageContour(Source);
+            ImageContour Contour = new(Source);
             Contour.Flip(CenterX, CenterY, Mode);
             return Contour;
         }
 
         public static ImageContour Offset(ImageContour Source, double OffsetX, double OffsetY)
         {
-            ImageContour Result = new ImageContour(Source);
+            ImageContour Result = new(Source);
             Result.OffsetX += OffsetX;
             Result.OffsetY += OffsetY;
             return Result;
@@ -338,7 +334,7 @@ namespace MenthaAssembly.Media.Imaging
         {
             StrokeColor = default;
             bool FoundColor = false;
-            ImageContour Contour = new ImageContour();
+            ImageContour Contour = new();
             for (int j = 0; j < Stroke.Height; j++)
             {
                 bool IsFoundLeft = false;
@@ -378,7 +374,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateFillEllipse(int Cx, int Cy, int Rx, int Ry)
         {
-            ImageContour Ellipse = new ImageContour();
+            ImageContour Ellipse = new();
 
             GraphicAlgorithm.CalculateBresenhamEllipseContourQuadrantI(Rx, Ry, (Dx, Dy) =>
             {
@@ -395,7 +391,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateFillSector(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise)
         {
-            ImageContour Contour = new ImageContour();
+            ImageContour Contour = new();
 
             void AddData(int X, int Y)
             {
@@ -428,7 +424,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateFillObround(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
-            ImageContour Obround = new ImageContour();
+            ImageContour Obround = new();
 
             int Length;
 
@@ -521,7 +517,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateFillDiamond(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
-            ImageContour Diamond = new ImageContour();
+            ImageContour Diamond = new();
 
             int X = Cx - HalfWidth;
             GraphicAlgorithm.CalculateBresenhamLine(HalfWidth, HalfHeight, HalfWidth, HalfHeight, (Dx, Dy) => Diamond[Cy + Dy].AddLeft(X + Dx));
@@ -551,7 +547,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateFillTriangle(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
-            ImageContour Triangle = new ImageContour();
+            ImageContour Triangle = new();
 
             int Height = HalfHeight << 1;
             GraphicAlgorithm.CalculateBresenhamLine(-HalfWidth, -Height, HalfWidth, Height, (Dx, Dy) => Triangle[Cy + HalfHeight + Dy].Datas.Add(Cx + Dx));
@@ -578,7 +574,7 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillTriangle(int X1, int Y1, int X2, int Y2, int X3, int Y3)
         {
-            ImageContour Triangle = new ImageContour();
+            ImageContour Triangle = new();
             void AddData(int X, int Y)
             {
                 ImageContourScanLine TData = Triangle[Y];
@@ -615,7 +611,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateFillRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight)
         {
-            ImageContour Rectangle = new ImageContour();
+            ImageContour Rectangle = new();
 
             int Left = Cx - HalfWidth,
                 Right = Cx + HalfWidth;
@@ -654,7 +650,7 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillRectangle(int X1, int Y1, int X2, int Y2, int X3, int Y3, int X4, int Y4)
         {
-            ImageContour Rectangle = new ImageContour();
+            ImageContour Rectangle = new();
             void AddData(int X, int Y)
             {
                 ImageContourScanLine TData = Rectangle[Y];
@@ -697,7 +693,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateFillRoundedRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, int CornerRadius)
         {
-            ImageContour Contour = new ImageContour();
+            ImageContour Contour = new();
             int CornerRx = Cx + HalfWidth - CornerRadius,
                 CornerLx = Cx - HalfWidth + CornerRadius,
                 CornerTy = Cy - HalfHeight + CornerRadius,
@@ -733,7 +729,7 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillRoundedRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, int CornerRadius1, int CornerRadius2, int CornerRadius3, int CornerRadius4)
         {
-            ImageContour Rectangle = new ImageContour();
+            ImageContour Rectangle = new();
 
             int Left = Cx - HalfWidth,
                 Right = Cx + HalfWidth,
@@ -815,17 +811,16 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillRoundedRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta, int CornerRadius)
         {
-            if (Theta == 0d)
-                return CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, CornerRadius);
-
-            return CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, Theta, CornerRadius, CornerRadius, CornerRadius, CornerRadius);
+            return Theta == 0d
+                ? CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, CornerRadius)
+                : CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, Theta, CornerRadius, CornerRadius, CornerRadius, CornerRadius);
         }
         public static ImageContour CreateFillRoundedRectangle(int Cx, int Cy, int HalfWidth, int HalfHeight, double Theta, int CornerRadius1, int CornerRadius2, int CornerRadius3, int CornerRadius4)
         {
             if (Math.Round(Theta % MathHelper.HalfPI, 5) == 0d)
                 return CreateFillRoundedRectangle(Cx, Cy, HalfWidth, HalfHeight, CornerRadius1, CornerRadius2, CornerRadius3, CornerRadius4);
 
-            ImageContour Rectangle = new ImageContour();
+            ImageContour Rectangle = new();
             double Sin = Math.Sin(Theta),
                    Cos = Math.Cos(Theta);
             int X1 = Cx - HalfWidth,
@@ -957,7 +952,7 @@ namespace MenthaAssembly.Media.Imaging
             if (VertexNum < 3)
                 throw new ArgumentException($"VertexNum must more than or equal 3.");
 
-            ImageContour Polygon = new ImageContour();
+            ImageContour Polygon = new();
             void AddData(int X, int Y)
             {
                 ImageContourScanLine TData = Polygon[Y];
@@ -1006,7 +1001,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateFillPolygon(IEnumerable<int> VerticeDatas, int OffsetX, int OffsetY)
         {
-            ImageContour Polygon = new ImageContour();
+            ImageContour Polygon = new();
             int[] Datas = VerticeDatas is int[] TArray ? TArray : VerticeDatas.ToArray();
             int pn = Datas.Length,
                 pnh = pn >> 1;
@@ -1044,8 +1039,8 @@ namespace MenthaAssembly.Media.Imaging
                           Y1 = Datas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
-                    if (Y0 < y && y <= Y1 ||
-                        Y1 < y && y <= Y0)
+                    if ((Y0 < y && y <= Y1) ||
+                        (Y1 < y && y <= Y0))
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
                         IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
@@ -1092,10 +1087,10 @@ namespace MenthaAssembly.Media.Imaging
         }
         public static ImageContour CreateFillPolygon(IEnumerable<int> VerticeDatas, int OffsetX, int OffsetY, int MinX, int MaxX, int MinY, int MaxY)
         {
-            ImageContour Polygon = new ImageContour();
-            int[] Datas = GraphicAlgorithm.CropPolygon(VerticeDatas, MinX, MaxX, MinY, MaxY);
+            ImageContour Polygon = new();
+            List<int> Datas = GraphicAlgorithm.InternalCropPolygon(VerticeDatas, MinX, MaxX, MinY, MaxY);
 
-            int pn = Datas.Length;
+            int pn = Datas.Count;
             if (pn == 0)
                 return null;
 
@@ -1134,8 +1129,8 @@ namespace MenthaAssembly.Media.Imaging
                           Y1 = Datas[i + 1] + OffsetY;
 
                     // Is the scanline between the two points
-                    if (Y0 < y && y <= Y1 ||
-                        Y1 < y && y <= Y0)
+                    if ((Y0 < y && y <= Y1) ||
+                        (Y1 < y && y <= Y0))
                     {
                         // Compute the intersection of the scanline with the edge (line between two points)
                         IntersectionsX[IntersectionCount++] = (int)(X0 + (y - Y0) * (X1 - X0) / (Y1 - Y0));
@@ -1197,7 +1192,7 @@ namespace MenthaAssembly.Media.Imaging
                 AbsDeltaY = DeltaY.Abs();
 
             bool IsHollow = false;
-            ImageContour LineContour = new ImageContour();
+            ImageContour LineContour = new();
 
             #region Pen Bound
             int PCx = (Bound.Left + Bound.Right) >> 1,
@@ -1337,7 +1332,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateArcContour(int Sx, int Sy, int Ex, int Ey, int Cx, int Cy, int Rx, int Ry, bool Clockwise, ImageContour Pen)
         {
-            ImageContour Contour = new ImageContour();
+            ImageContour Contour = new();
             Bound<int> Bound = Pen.Bound;
 
             if (Bound.IsEmpty)
@@ -1353,7 +1348,7 @@ namespace MenthaAssembly.Media.Imaging
 
             if (IsHollow)
             {
-                ImageContour Stroke = ImageContour.Offset(Pen, Cx - PCx, Cy - PCy);
+                ImageContour Stroke = Offset(Pen, Cx - PCx, Cy - PCy);
 
                 int LastDx = 0,
                     LastDy = 0;
@@ -1369,10 +1364,10 @@ namespace MenthaAssembly.Media.Imaging
             }
             else
             {
-                Dictionary<int, int> LargeLeftBound = new Dictionary<int, int>(),
-                                     LargeRightBound = new Dictionary<int, int>(),
-                                     SmallLeftBound = new Dictionary<int, int>(),
-                                     SmallRightBound = new Dictionary<int, int>();
+                Dictionary<int, int> LargeLeftBound = [],
+                                     LargeRightBound = [],
+                                     SmallLeftBound = [],
+                                     SmallRightBound = [];
 
                 GraphicAlgorithm.CalculateBresenhamArc(DSx, DSy, DEx, DEy, Rx, Ry, Clockwise, false,
                     (Dx, Dy) =>
@@ -1460,7 +1455,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static ImageContour CreateTextContour(int X, int Y, string Text, string FontName, int CharSize, double Angle = 0, FontWeightType Weight = FontWeightType.Normal, bool Italic = false)
         {
-            FontData Font = new FontData
+            FontData Font = new()
             {
                 FaceName = string.IsNullOrEmpty(FontName) ? "System" : FontName,
                 Height = CharSize,

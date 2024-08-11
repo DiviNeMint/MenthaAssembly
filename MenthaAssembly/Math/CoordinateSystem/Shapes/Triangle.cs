@@ -98,7 +98,7 @@ namespace MenthaAssembly
         /// <param name="Py3">The y-coordinate of the third point that the new triangle must contain.</param>
         public Triangle(Point<T> Point1, T Px2, T Py2, T Px3, T Py3)
         {
-            Points = new[] { Point1, new Point<T>(Px2, Py2), new Point<T>(Px3, Py3) };
+            Points = [Point1, new Point<T>(Px2, Py2), new Point<T>(Px3, Py3)];
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Triangle{T}"/> structure.
@@ -109,7 +109,7 @@ namespace MenthaAssembly
         /// <param name="Py3">The y-coordinate of the third point that the new triangle must contain.</param>
         public Triangle(Point<T> Point1, Point<T> Point2, T Px3, T Py3)
         {
-            Points = new[] { Point1, Point2, new Point<T>(Px3, Py3) };
+            Points = [Point1, Point2, new Point<T>(Px3, Py3)];
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Triangle{T}"/> structure.
@@ -119,7 +119,7 @@ namespace MenthaAssembly
         /// <param name="Point3">The third point that the new triangle must contain.</param>
         public Triangle(Point<T> Point1, Point<T> Point2, Point<T> Point3)
         {
-            Points = new[] { Point1, Point2, Point3 };
+            Points = [Point1, Point2, Point3];
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Triangle{T}"/> structure.
@@ -166,7 +166,7 @@ namespace MenthaAssembly
         /// <param name="Py3">The y-coordinate of the third point that the new triangle must contain.</param>
         public Triangle(T Px1, T Py1, T Px2, T Py2, T Px3, T Py3)
         {
-            Points = new[] { new Point<T>(Px1, Py1), new Point<T>(Px2, Py2), new Point<T>(Px3, Py3) };
+            Points = [new Point<T>(Px1, Py1), new Point<T>(Px2, Py2), new Point<T>(Px3, Py3)];
         }
 
         public bool Contain(Point<T> Point)

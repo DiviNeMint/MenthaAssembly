@@ -2355,9 +2355,9 @@ namespace MenthaAssembly.Media.Imaging
                 _ => throw new NotSupportedException(),
             };
 
-            int[] Datas = GraphicAlgorithm.CropPolygon(VerticeDatas, -OffsetX - 1, -OffsetY - 1, Width - OffsetX, Height - OffsetY);
+            List<int> Datas = GraphicAlgorithm.InternalCropPolygon(VerticeDatas, -OffsetX - 1, -OffsetY - 1, Width - OffsetX, Height - OffsetY);
 
-            int pn = Datas.Length,
+            int pn = Datas.Count,
                 pnh = pn >> 1;
 
             int[] IntersectionsX = new int[pnh - 1],

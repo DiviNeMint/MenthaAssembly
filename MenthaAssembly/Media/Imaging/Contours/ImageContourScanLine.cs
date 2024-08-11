@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MenthaAssembly.Media.Imaging
 {
@@ -150,6 +151,18 @@ namespace MenthaAssembly.Media.Imaging
             for (int i = 0; i < Data.Length;)
                 InternalUnion(Data.Datas[i++], Data.Datas[i++], ref Index);
         }
+        public void Union(ImageContourScanLine Data, int Offset)
+        {
+            if (Datas.Count == 0)
+            {
+                Datas.AddRange(Data.Datas.Select(i => i + Offset));
+                return;
+            }
+
+            int Index = 0;
+            for (int i = 0; i < Data.Length;)
+                InternalUnion(Data.Datas[i++] + Offset, Data.Datas[i++] + Offset, ref Index);
+        }
         public void Union(int Left, int Right)
         {
             if (Right < Left)
@@ -188,6 +201,28 @@ namespace MenthaAssembly.Media.Imaging
             for (int i = Length - 1; i >= Index; i--)
                 Datas.RemoveAt(i);
         }
+        public void Intersection(ImageContourScanLine Data, int Offset)
+        {
+            if (Length == 0)
+                return;
+
+            if (Data.Length == 0)
+            {
+                Datas.Clear();
+                return;
+            }
+
+            int Index = 0;
+            for (int i = 0; i < Data.Length;)
+            {
+                InternalIntersection(Data.Datas[i++] + Offset, Data.Datas[i++] + Offset, ref Index);
+                if (Index >= Length)
+                    return;
+            }
+
+            for (int i = Length - 1; i >= Index; i--)
+                Datas.RemoveAt(i);
+        }
 
         public void Difference(ImageContourScanLine Data)
         {
@@ -198,6 +233,19 @@ namespace MenthaAssembly.Media.Imaging
             for (int i = 0; i < Data.Length;)
             {
                 InternalDifference(Data.Datas[i++], Data.Datas[i++], ref Index);
+                if (Index >= Length)
+                    return;
+            }
+        }
+        public void Difference(ImageContourScanLine Data, int Offset)
+        {
+            if (Datas.Count == 0)
+                return;
+
+            int Index = 0;
+            for (int i = 0; i < Data.Length;)
+            {
+                InternalDifference(Data.Datas[i++] + Offset, Data.Datas[i++] + Offset, ref Index);
                 if (Index >= Length)
                     return;
             }
@@ -216,7 +264,49 @@ namespace MenthaAssembly.Media.Imaging
 
         public void SymmetricDifference(ImageContourScanLine Data)
         {
+            if (Datas.Count == 0)
+            {
+                Datas.AddRange(Data.Datas);
+                return;
+            }
 
+            ImageContourScanLine Cross = new(this);
+            Cross.Intersection(Data);
+
+            int Index = 0;
+            for (int i = 0; i < Data.Length;)
+                InternalUnion(Data.Datas[i++], Data.Datas[i++], ref Index);
+
+            Index = 0;
+            for (int i = 0; i < Cross.Length;)
+            {
+                InternalDifference(Cross.Datas[i++], Cross.Datas[i++], ref Index);
+                if (Index >= Length)
+                    return;
+            }
+        }
+        public void SymmetricDifference(ImageContourScanLine Data, int Offset)
+        {
+            if (Datas.Count == 0)
+            {
+                Datas.AddRange(Data.Datas);
+                return;
+            }
+
+            ImageContourScanLine Cross = new(this);
+            Cross.Intersection(Data, Offset);
+
+            int Index = 0;
+            for (int i = 0; i < Data.Length;)
+                InternalUnion(Data.Datas[i++] + Offset, Data.Datas[i++] + Offset, ref Index);
+
+            Index = 0;
+            for (int i = 0; i < Cross.Length;)
+            {
+                InternalDifference(Cross.Datas[i++], Cross.Datas[i++], ref Index);
+                if (Index >= Length)
+                    return;
+            }
         }
 
         internal void Crop(int Left, int Right)
@@ -443,6 +533,9 @@ namespace MenthaAssembly.Media.Imaging
             for (int i = StartIndex; i < Index; i++)
                 Datas.RemoveAt(StartIndex);
 
+            if (Length <= StartIndex)
+                return;
+
             StartIndex++;
             for (; StartIndex < Length; StartIndex++)
                 if (Right < Datas[StartIndex])
@@ -452,9 +545,8 @@ namespace MenthaAssembly.Media.Imaging
             {
                 Datas.Insert(StartIndex, Right + 1);
                 Datas.Insert(StartIndex, Right);
+                StartIndex++;
             }
-
-            StartIndex++;
         }
         private void InternalDifference(int Left, int Right, ref int StartIndex)
         {
@@ -467,6 +559,8 @@ namespace MenthaAssembly.Media.Imaging
                 if (Right < Datas[MaxIndex])
                     break;
 
+            Left--;
+            Right++;
             if (StartIndex == MaxIndex)
             {
                 if ((StartIndex & 0x01) == 0)

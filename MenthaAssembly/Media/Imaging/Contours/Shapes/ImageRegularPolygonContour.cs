@@ -4,39 +4,30 @@ using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
 {
-    public sealed class ImageRectangleContour : ImageShapeContourNormContext
+    public sealed class ImageRegularPolygonContour : ImageShapeContourNormContext
     {
         private double[] Points;
-        public ImageRectangleContour(ImageRectangleContour Contour) : base(Contour)
+        public ImageRegularPolygonContour(ImageRegularPolygonContour Contour) : base(Contour)
         {
             Points = [.. Contour.Points];
         }
-        public ImageRectangleContour(double Cx, double Cy, double Width, double Height) : base()
+        public ImageRegularPolygonContour(double Cx, double Cy, double Radius, int VertexNum) : this(Cx, Cy, Radius, VertexNum, 0d)
         {
-            double Width2 = Width / 2d,
-                   Height2 = Height / 2d;
-            Points = [ Width2,  Height2,
-                      -Width2,  Height2,
-                      -Width2, -Height2,
-                       Width2, -Height2];
-            OffsetX = Cx;
-            OffsetY = Cy;
-        }
-        public ImageRectangleContour(double Cx, double Cy, double Width, double Height, double Theta) : base()
-        {
-            double Width2 = Width / 2d,
-                   Height2 = Height / 2d,
-                   Sin = Math.Sin(Theta),
-                   Cos = Math.Cos(Theta),
-                   WCos = Width2 * Cos,
-                   WSin = Width2 * Sin,
-                   HSin = Height2 * Sin,
-                   HCos = Height2 * Cos;
 
-            Points = [ WCos - HSin,  WSin + HCos,
-                      -WCos - HSin, -WSin + HCos,
-                      -WCos + HSin, -WSin - HCos,
-                       WCos + HSin,  WSin - HCos];
+        }
+        public ImageRegularPolygonContour(double Cx, double Cy, double Radius, int VertexNum, double Theta) : base()
+        {
+            int Length = VertexNum << 1;
+            double DeltaTheta = 360d / VertexNum * MathHelper.UnitTheta;
+
+            Points = new double[Length];
+            for (int i = 0; i < Length;)
+            {
+                Points[i++] = Radius * Math.Cos(Theta);
+                Points[i++] = Radius * Math.Sin(Theta);
+                Theta += DeltaTheta;
+            }
+
             OffsetX = Cx;
             OffsetY = Cy;
         }
@@ -121,7 +112,7 @@ namespace MenthaAssembly.Media.Imaging
         /// <summary>
         /// Creates a new contour that is a copy of the current instance.
         /// </summary>
-        public ImageRectangleContour Clone()
+        public ImageRegularPolygonContour Clone()
             => new(this);
         protected override IImageContour InternalClone()
             => Clone();

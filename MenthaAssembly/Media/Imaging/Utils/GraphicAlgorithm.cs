@@ -307,7 +307,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 xStopping = 0;
                 yStopping = xrSqTwo * LRy;
 
-                List<int> Datas = new List<int>();
+                List<int> Datas = [];
 
                 // Draw second set of points clockwise where tangent line slope < -1.
                 while (xStopping <= yStopping)
@@ -707,13 +707,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
 
-            if (IngoreEndPoint)
-            {
-                if (DEx > 0)
-                {
-                    if (DEy > 0)
-                    {
-                        QuadrantHandler = (Dx, Dy) =>
+            QuadrantHandler = IngoreEndPoint
+                ? DEx > 0
+                    ? DEy > 0
+                        ? ((Dx, Dy) =>
                         {
                             if (Dx != DEx && Dy != DEy && Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                                 Handler(Dx, Dy);
@@ -723,11 +720,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                 Handler(-Dx, -Dy);
                             if (Filter4(Dx, -Dy))     // Quadrant IV
                                 Handler(Dx, -Dy);
-                        };
-                    }
-                    else
-                    {
-                        QuadrantHandler = (Dx, Dy) =>
+                        })
+                        : ((Dx, Dy) =>
                         {
                             if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                                 Handler(Dx, Dy);
@@ -737,14 +731,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                 Handler(-Dx, -Dy);
                             if (Dx != DEx && Dy != DEy && Filter4(Dx, -Dy))     // Quadrant IV
                                 Handler(Dx, -Dy);
-                        };
-                    }
-                }
-                else
-                {
-                    if (DEy > 0)
-                    {
-                        QuadrantHandler = (Dx, Dy) =>
+                        })
+                    : DEy > 0
+                        ? ((Dx, Dy) =>
                         {
                             if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                                 Handler(Dx, Dy);
@@ -754,11 +743,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                 Handler(-Dx, -Dy);
                             if (Filter4(Dx, -Dy))     // Quadrant IV
                                 Handler(Dx, -Dy);
-                        };
-                    }
-                    else
-                    {
-                        QuadrantHandler = (Dx, Dy) =>
+                        })
+                        : ((Dx, Dy) =>
                         {
                             if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                                 Handler(Dx, Dy);
@@ -768,13 +754,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                 Handler(-Dx, -Dy);
                             if (Filter4(Dx, -Dy))     // Quadrant IV
                                 Handler(Dx, -Dy);
-                        };
-                    }
-                }
-            }
-            else
-            {
-                QuadrantHandler = (Dx, Dy) =>
+                        })
+                : ((Dx, Dy) =>
                 {
                     if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                         Handler(Dx, Dy);
@@ -784,8 +765,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Handler(-Dx, -Dy);
                     if (Filter4(Dx, -Dy))     // Quadrant IV
                         Handler(Dx, -Dy);
-                };
-            }
+                });
 
             CalculateBresenhamEllipseQuadrantI(Rx, Ry, QuadrantHandler);
         }
@@ -1143,13 +1123,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
 
-            if (IngoreEndPoint)
-            {
-                if (DEx > 0)
-                {
-                    if (DEy > 0)
-                    {
-                        QuadrantHandler = (Dx, Dy) =>
+            QuadrantHandler = IngoreEndPoint
+                ? DEx > 0
+                    ? DEy > 0
+                        ? ((Dx, Dy) =>
                         {
                             if (Dx != DEx && Dy != DEy && Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                                 Handler(Dx, Dy);
@@ -1159,11 +1136,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                 Handler(-Dx, -Dy);
                             if (Filter4(Dx, -Dy))     // Quadrant IV
                                 Handler(Dx, -Dy);
-                        };
-                    }
-                    else
-                    {
-                        QuadrantHandler = (Dx, Dy) =>
+                        })
+                        : ((Dx, Dy) =>
                         {
                             if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                                 Handler(Dx, Dy);
@@ -1173,14 +1147,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                 Handler(-Dx, -Dy);
                             if (Dx != DEx && Dy != DEy && Filter4(Dx, -Dy))     // Quadrant IV
                                 Handler(Dx, -Dy);
-                        };
-                    }
-                }
-                else
-                {
-                    if (DEy > 0)
-                    {
-                        QuadrantHandler = (Dx, Dy) =>
+                        })
+                    : DEy > 0
+                        ? ((Dx, Dy) =>
                         {
                             if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                                 Handler(Dx, Dy);
@@ -1190,11 +1159,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                 Handler(-Dx, -Dy);
                             if (Filter4(Dx, -Dy))     // Quadrant IV
                                 Handler(Dx, -Dy);
-                        };
-                    }
-                    else
-                    {
-                        QuadrantHandler = (Dx, Dy) =>
+                        })
+                        : ((Dx, Dy) =>
                         {
                             if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                                 Handler(Dx, Dy);
@@ -1204,13 +1170,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
                                 Handler(-Dx, -Dy);
                             if (Filter4(Dx, -Dy))     // Quadrant IV
                                 Handler(Dx, -Dy);
-                        };
-                    }
-                }
-            }
-            else
-            {
-                QuadrantHandler = (Dx, Dy) =>
+                        })
+                : ((Dx, Dy) =>
                 {
                     if (Filter1(Dx, Dy))      // Quadrant I  (Actually an octant)
                         Handler(Dx, Dy);
@@ -1220,8 +1181,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Handler(-Dx, -Dy);
                     if (Filter4(Dx, -Dy))     // Quadrant IV
                         Handler(Dx, -Dy);
-                };
-            }
+                });
 
             CalculateBresenhamEllipseContourQuadrantI(Rx, Ry, QuadrantHandler);
         }
@@ -2330,6 +2290,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         /// <param name="MaxX">The right of the specified rectangle to crop.</param>
         /// <param name="MaxY">The bottom of the specified rectangle to crop.</param>
         public static int[] CropPolygon(IEnumerable<int> Polygon, int MinX, int MinY, int MaxX, int MaxY)
+            => [.. InternalCropPolygon(Polygon, MinX, MinY, MaxX, MaxY)];
+        internal static List<int> InternalCropPolygon(IEnumerable<int> Polygon, int MinX, int MinY, int MaxX, int MaxY)
         {
             List<int> Output = Polygon.ToList(),
                       Input;
@@ -2342,7 +2304,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             // Left
             {
                 Input = Output;
-                Output = new List<int>();
+                Output = [];
 
                 Length = Input.Count;
                 Sx = Input[Length - 2];
@@ -2387,10 +2349,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             // Top
             {
                 if (Output.Count == 0)
-                    return new int[0];
+                    return [];
 
                 Input = Output;
-                Output = new List<int>();
+                Output = [];
 
                 Length = Input.Count;
                 Sx = Input[Length - 2];
@@ -2435,10 +2397,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             // Right
             {
                 if (Output.Count == 0)
-                    return new int[0];
+                    return [];
 
                 Input = Output;
-                Output = new List<int>();
+                Output = [];
 
                 Length = Input.Count;
                 Sx = Input[Length - 2];
@@ -2483,10 +2445,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             // Bottom
             {
                 if (Output.Count == 0)
-                    return new int[0];
+                    return [];
 
                 Input = Output;
-                Output = new List<int>();
+                Output = [];
 
                 Length = Input.Count;
                 Sx = Input[Length - 2];
@@ -2544,8 +2506,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
 
-            return Output.ToArray();
+            return Output;
         }
+
         /// <summary>
         /// Crop the specified polygon by the specified rectangle. (By Sutherland-Hodgman Algorithm)
         /// </summary>
@@ -2568,7 +2531,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             // Left
             {
                 Input = Output;
-                Output = new List<Point<int>>();
+                Output = [];
 
                 Length = Input.Count;
                 S = Input[Length - 1];
@@ -2619,7 +2582,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     return new Point<int>[0];
 
                 Input = Output;
-                Output = new List<Point<int>>();
+                Output = [];
 
                 Length = Input.Count;
                 S = Input[Length - 1];
@@ -2668,7 +2631,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     return new Point<int>[0];
 
                 Input = Output;
-                Output = new List<Point<int>>();
+                Output = [];
 
                 Length = Input.Count;
                 S = Input[Length - 1];
@@ -2719,7 +2682,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     return new Point<int>[0];
 
                 Input = Output;
-                Output = new List<Point<int>>();
+                Output = [];
 
                 Length = Input.Count;
                 S = Input[Length - 1];
@@ -2802,10 +2765,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
             {
                 //	Sometimes when the polygons don't intersect, this list goes to zero.  Jump out to avoid an index out of range exception
                 if (Output.Count == 0)
-                    return new int[0];
+                    return [];
 
                 List<int> Input = Output;
-                Output = new List<int>();
+                Output = [];
 
                 int InputLength = Input.Count,
                     Sx = Input[InputLength - 2],
@@ -2911,5 +2874,4 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
 
     }
-
 }
