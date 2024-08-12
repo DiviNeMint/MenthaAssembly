@@ -1,4 +1,7 @@
-﻿using System;
+﻿#if NET5_0_OR_GREATER
+using System.Runtime.Loader;
+#endif
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
@@ -20,9 +23,9 @@ namespace MenthaAssembly.IO
         static Codec()
         {
             Instances = AppDomain.CurrentDomain.GetAssemblies()
-                                                 .TrySelectMany(i => i.GetTypes())
-                                                 .Where(IsInheritedCodec)
-                                                 .ToDictionary(t => t, t => (Codec)Activator.CreateInstance(t));
+                                               .TrySelectMany(i => i.GetTypes())
+                                               .Where(IsInheritedCodec)
+                                               .ToDictionary(t => t, t => (Codec)Activator.CreateInstance(t));
 
             AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
 
@@ -204,7 +207,13 @@ namespace MenthaAssembly.IO
             if (string.IsNullOrEmpty(AssemblyName))
                 return null;
 
-            Assembly Assembly = Assembly.Load(AssemblyName);
+            Assembly Assembly =
+#if NET5_0_OR_GREATER
+                AssemblyLoadContext.All.SelectMany(i => i.Assemblies)
+#else
+                AppDomain.CurrentDomain.GetAssemblies()
+#endif
+                                       .FirstOrDefault(i => i.GetName().Name == AssemblyName);
 
             string CodecName = Stream.ReadStringAndLength(Encoding.UTF8);
             Type DefineType = Assembly.GetType(CodecName);
