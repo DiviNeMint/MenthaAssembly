@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace MenthaAssembly
 {
@@ -16,12 +18,22 @@ namespace MenthaAssembly
         /// </summary>
         public static T Add<T>(T A, T B)
             => Operator<T>.Add(A, B);
+        /// <summary>
+        /// A + B
+        /// </summary>
+        public static object Add(object A, object B)
+            => Operator.Add(A, B);
 
         /// <summary>
         /// A - B
         /// </summary>
         public static T Subtract<T>(T A, T B)
             => Operator<T>.Subtract(A, B);
+        /// <summary>
+        /// A - B
+        /// </summary>
+        public static object Subtract(object A, object B)
+            => Operator.Subtract(A, B);
 
         /// <summary>
         /// A * B
@@ -94,6 +106,11 @@ namespace MenthaAssembly
         /// </summary>
         public static bool LessThan<T>(T A, T B)
             => Operator<T>.LessThan(A, B);
+        /// <summary>
+        /// A &lt; B
+        /// </summary>
+        public static bool LessThan(object A, object B)
+            => Operator.LessThan(A, B);
 
         /// <summary>
         /// A &lt;= B
@@ -106,6 +123,95 @@ namespace MenthaAssembly
         /// </summary>
         public static U Cast<T, U>(T A)
             => Operator<T, U>.Cast(A);
+
+        private static class Operator
+        {
+            private readonly static Type ObjectType = ReflectionHelper.TypeAlias["object"];
+            private readonly static Type ByteType = ReflectionHelper.TypeAlias["byte"];
+            private readonly static Type IntType = ReflectionHelper.TypeAlias["int"];
+            private readonly static Dictionary<Type, Func<object, object, object>> _Add, _Sub;
+            private readonly static Dictionary<Type, Func<object, object, bool>> _LessThan;
+            static Operator()
+            {
+                _Add = [];
+                _Sub = [];
+                _LessThan = [];
+            }
+
+            public static object Add(object A, object B)
+            {
+                Type t = A.GetType();
+                if (!_Add.TryGetValue(t, out Func<object, object, object> Add))
+                {
+                    ParameterExpression Arg1 = Expression.Parameter(ObjectType, "a"),
+                                        Arg2 = Expression.Parameter(ObjectType, "b");
+
+                    Expression AddExpression = t == ByteType ? Expression.AddChecked(Arg1.Cast(IntType), Arg2.Cast(IntType)).Cast(t) :
+                                                               Expression.AddChecked(Arg1.Cast(t), Arg2.Cast(t));
+                    try
+                    {
+                        Add = Expression.Lambda<Func<object, object, object>>(AddExpression.Cast(ObjectType), Arg1, Arg2)
+                                        .Compile();
+                    }
+                    catch (Exception Ex)
+                    {
+                        Add = (a, b) => throw Ex;
+                    }
+                    _Add[t] = Add;
+                }
+
+                return Add(A, B);
+            }
+
+            public static object Subtract(object A, object B)
+            {
+                Type t = A.GetType();
+                if (!_Sub.TryGetValue(t, out Func<object, object, object> Sub))
+                {
+                    ParameterExpression Arg1 = Expression.Parameter(ObjectType, "a"),
+                                        Arg2 = Expression.Parameter(ObjectType, "b");
+
+                    Expression SubExpression = t == ByteType ? Expression.SubtractChecked(Arg1.Cast(IntType), Arg2.Cast(IntType)).Cast(t) :
+                                                               Expression.SubtractChecked(Arg1.Cast(t), Arg2.Cast(t));
+                    try
+                    {
+                        Sub = Expression.Lambda<Func<object, object, object>>(SubExpression.Cast(ObjectType), Arg1, Arg2)
+                                        .Compile();
+                    }
+                    catch (Exception Ex)
+                    {
+                        Sub = (a, b) => throw Ex;
+                    }
+                    _Sub[t] = Sub;
+                }
+
+                return Sub(A, B);
+            }
+
+            public static bool LessThan(object A, object B)
+            {
+                Type t = A.GetType();
+                if (!_LessThan.TryGetValue(t, out Func<object, object, bool> LessThan))
+                {
+                    ParameterExpression Arg1 = Expression.Parameter(ObjectType, "a"),
+                                        Arg2 = Expression.Parameter(ObjectType, "b");
+
+                    try
+                    {
+                        LessThan = Expression.Lambda<Func<object, object, bool>>(Expression.LessThan(Arg1.Cast(t), Arg2.Cast(t)), Arg1, Arg2)
+                                              .Compile();
+                    }
+                    catch (Exception Ex)
+                    {
+                        LessThan = (a, b) => throw Ex;
+                    }
+                    _LessThan[t] = LessThan;
+                }
+
+                return LessThan(A, B);
+            }
+
+        }
 
         private static class Operator<T>
         {
