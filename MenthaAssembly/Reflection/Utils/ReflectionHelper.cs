@@ -81,14 +81,14 @@ namespace System.Reflection
             => InternalTryGetPropertyValue(This?.GetType(), This, Name, Modifier, out Value);
 
         public static bool TrySetStaticPropertyValue<T>(this Type This, string Name, T Value)
-            => InternalTrySetPropertyValue(This?.GetType(), null, Name, PublicStaticModifier, Value);
+            => InternalTrySetPropertyValue(This, null, Name, PublicStaticModifier, Value);
         public static bool TryGetStaticPropertyValue<T>(this Type This, string Name, out T Value)
-            => InternalTryGetPropertyValue(This?.GetType(), null, Name, PublicStaticModifier, out Value);
+            => InternalTryGetPropertyValue(This, null, Name, PublicStaticModifier, out Value);
 
         public static bool TrySetStaticInternalPropertyValue<T>(this Type This, string Name, T Value)
-            => InternalTrySetPropertyValue(This?.GetType(), null, Name, InternalStaticModifier, Value);
+            => InternalTrySetPropertyValue(This, null, Name, InternalStaticModifier, Value);
         public static bool TryGetStaticInternalPropertyValue<T>(this Type This, string Name, out T Value)
-            => InternalTryGetPropertyValue(This?.GetType(), null, Name, InternalStaticModifier, out Value);
+            => InternalTryGetPropertyValue(This, null, Name, InternalStaticModifier, out Value);
 
         private static bool InternalTrySetPropertyValue<T>(Type Type, object Object, string Name, BindingFlags Modifier, T Value)
         {
@@ -630,7 +630,7 @@ namespace System.Reflection
 
         private static bool InternalTryInvokeMethod(Type Type, object Object, string Name, BindingFlags Modifier, Type[] GenericTypes, params object[] Args)
         {
-            if (TryGetMethodWithImplicitParameter(Type, Name, Modifier, GenericTypes, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method))
+            if (TryGetMethodWithImplicitParameter(Type, Name, Modifier, GenericTypes, Args.Select(i => i?.GetType()).ToArray(), out MethodInfo Method))
             {
                 Method.Invoke(Object, Args);
                 return true;
@@ -640,7 +640,7 @@ namespace System.Reflection
         }
         private static bool InternalTryInvokeMethod<T>(Type Type, object Object, string Name, BindingFlags Modifier, Type[] GenericTypes, out T Result, params object[] Args)
         {
-            if (TryGetMethodWithImplicitParameter(Type, Name, Modifier, GenericTypes, Args.Select(i => i.GetType()).ToArray(), out MethodInfo Method) &&
+            if (TryGetMethodWithImplicitParameter(Type, Name, Modifier, GenericTypes, Args.Select(i => i?.GetType()).ToArray(), out MethodInfo Method) &&
                 Method.ReturnType.IsConvertibleTo<T>())
             {
                 Result = (T)Method.Invoke(Object, Args);
@@ -1005,14 +1005,22 @@ namespace System.Reflection
                 if (Type != DefinedType)
                 {
                     Score++;
-                    if (!Type.IsConvertibleTo(DefinedType))
-                        return int.MinValue;
-
-                    if (NumberTypeScores.TryGetValue(Type, out sbyte Score1) &&
-                        NumberTypeScores.TryGetValue(DefinedType, out sbyte Score2))
+                    if (Type is null)
                     {
-                        int Delta = Score2 - Score1;
-                        Score += Delta < 0 ? 11 - Score1 : Delta;
+                        if (DefinedType.IsValueType)
+                            return int.MinValue;
+                    }
+                    else
+                    {
+                        if (!Type.IsConvertibleTo(DefinedType))
+                            return int.MinValue;
+
+                        if (NumberTypeScores.TryGetValue(Type, out sbyte Score1) &&
+                            NumberTypeScores.TryGetValue(DefinedType, out sbyte Score2))
+                        {
+                            int Delta = Score2 - Score1;
+                            Score += Delta < 0 ? 11 - Score1 : Delta;
+                        }
                     }
                 }
             }
