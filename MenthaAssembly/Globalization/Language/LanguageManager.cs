@@ -165,7 +165,7 @@ namespace MenthaAssembly
             if (Packets.Count > 0)
             {
                 string CultureCode = CultureInfo.CurrentCulture.Name.ToLower();
-                Current = Packets.FirstOrDefault(i => i.CultureCode.ToLower() == CultureCode);
+                Current = Packets.FirstOrDefault(i => i.CultureCode?.ToLower() == CultureCode);
             }
         }
 
