@@ -36,14 +36,7 @@ namespace MenthaAssembly.Globalization
                     return null;
 
                 Load();
-
-                if (!Contexts.TryGetValue(Name, out string Value))
-                {
-                    Debug.WriteLine($"[{GetType().Name}][{LanguageName}] Not fount {Name}.");
-                    return null;
-                }
-
-                return Value;
+                return Contexts.TryGetValue(Name, out string Value) ? Value : null;
             }
             set
             {
