@@ -150,7 +150,7 @@ namespace MenthaAssembly.IO
             }
         }
 
-        protected override object DecodeValue(Stream Stream, Type Type)
+        protected override object DecodeValue(Stream Stream, Type Type, object[] Arguments)
         {
             // Type
             if (TypeOfType == Type)
@@ -195,8 +195,8 @@ namespace MenthaAssembly.IO
                     Lengths[i] = Stream.Read<int>();
 
                 Array Array = Array.CreateInstance(ElementType, Lengths);
-                Func<Stream, object> Decoder = ElementType == typeof(object) ? Decode :
-                                                                               s => DecodeValue(s, ElementType);
+                Func<Stream, object> Decoder = ElementType == typeof(object) ? s => Decode(s, Arguments) :
+                                                                               s => DecodeValue(s, ElementType, Arguments);
 
                 void FillMultiDimArray(int DimensionIndex, int[] Index)
                 {
@@ -240,7 +240,8 @@ namespace MenthaAssembly.IO
                     for (int i = 0; i < Length; i++)
                     {
                         int Index = i;
-                        Decoders[i] = AddParams[i] == ObjectType ? Decode : s => DecodeValue(Stream, AddParams[Index]);
+                        Decoders[i] = AddParams[i] == ObjectType ? s => Decode(s, Arguments) :
+                                                                   s => DecodeValue(s, AddParams[Index], Arguments);
                     }
 
                     object[] Parameters = new object[Length];
@@ -258,7 +259,7 @@ namespace MenthaAssembly.IO
 
             Dictionary<string, object> Members = new(MemberCount);
             for (int i = 0; i < MemberCount; i++)
-                Members.Add(Stream.ReadStringAndLength(), Decode(Stream));
+                Members.Add(Stream.ReadStringAndLength(), Decode(Stream, Arguments));
 
             if (Result is null)
             {

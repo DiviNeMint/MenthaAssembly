@@ -15,7 +15,7 @@ namespace MenthaAssembly.IO
     {
         protected abstract void EncodeValue(Stream Stream, Type Type, object Value);
 
-        protected abstract object DecodeValue(Stream Stream, Type Type);
+        protected abstract object DecodeValue(Stream Stream, Type Type, object[] Arguments);
 
         private static readonly Codec Default = new DefaultCodec();
         private static readonly Dictionary<Type, Codec> Instances;          // CodecType , Codec
@@ -74,35 +74,58 @@ namespace MenthaAssembly.IO
         }
 
         /// <summary>
-        /// Decodes a object from the specified stream using the default codec or the codec set from <see cref="CodecAttribute"/>.
+        /// Decodes an object from the specified stream using the default codec or the codec set from <see cref="CodecAttribute"/>.
         /// </summary>
         /// <param name="Stream">The specified stream.</param>
         public static object Decode(Stream Stream)
+            => Decode(Stream, Arguments: null);
+        /// <summary>
+        /// Decodes an object from the specified stream using the specified arguments and using the default codec or the codec set from <see cref="CodecAttribute"/>.
+        /// </summary>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Arguments">The specified arguments.</param>
+        public static object Decode(Stream Stream, object[] Arguments)
         {
             Type Type = DecodeType(Stream);
             if (Type is null)
                 return null;
 
             Codec Codec = GetCodec(Type);
-            return Codec.DecodeValue(Stream, Type);
+            return Codec.DecodeValue(Stream, Type, Arguments);
         }
         /// <summary>
-        /// Decodes a object from the specified stream using the specified decoder.
+        /// Decodes an object from the specified stream using the specified decoder.
         /// </summary>
         /// <param name="Stream">The specified stream.</param>
         /// <param name="Codec"></param>
         public static object Decode(Stream Stream, Codec Codec)
+            => Decode(Stream, Codec, null);
+        /// <summary>
+        /// Decodes an object from the specified stream using the specified decoder with the specified arguments.
+        /// </summary>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Codec">The specified codec</param>
+        /// <param name="Arguments">The specified arguments.</param>
+        public static object Decode(Stream Stream, Codec Codec, object[] Arguments)
         {
             Type Type = DecodeType(Stream);
-            return Type is null ? null : Codec.DecodeValue(Stream, Type);
+            return Type is null ? null : Codec.DecodeValue(Stream, Type, Arguments);
         }
 
         /// <summary>
-        /// Decodes a object of the specified type from the specified stream using the default codec or the codec set from <see cref="CodecAttribute"/>.
+        /// Decodes an object of the specified type from the specified stream using the default codec or the codec set from <see cref="CodecAttribute"/>.
         /// </summary>
         /// <typeparam name="T">The specified type</typeparam>
         /// <param name="Stream">The specified stream.</param>
         public static T Decode<T>(Stream Stream)
+            => Decode<T>(Stream, Arguments: null);
+        /// <summary>
+        /// Decodes an object of the specified type from the specified stream using the specified arguments and using the default codec or the codec set from <see cref="CodecAttribute"/>.
+        /// </summary>
+        /// <typeparam name="T">The specified type</typeparam>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Arguments">The specified arguments.</param>
+        public static T Decode<T>(Stream Stream, object[] Arguments)
         {
             Type Type = DecodeType(Stream),
                  ValueType = typeof(T);
@@ -114,15 +137,24 @@ namespace MenthaAssembly.IO
                 throw new InvalidCastException($"The decoded object ({Type.Name} type) can't be converted to the specified {ValueType.Name} type.");
 
             Codec Codec = GetCodec(Type);
-            return (T)Codec.DecodeValue(Stream, Type);
+            return (T)Codec.DecodeValue(Stream, Type, Arguments);
         }
         /// <summary>
-        /// Decodes a object of the specified type from the specified stream using the specified decoder.
+        /// Decodes an object of the specified type from the specified stream using the specified decoder.
         /// </summary>
         /// <typeparam name="T">The specified type</typeparam>
         /// <param name="Stream">The specified stream.</param>
         /// <param name="Codec">The specified codec</param>
         public static T Decode<T>(Stream Stream, Codec Codec)
+            => Decode<T>(Stream, Codec, null);
+        /// <summary>
+        /// Decodes an object of the specified type from the specified stream using the specified decoder with the specified argument.
+        /// </summary>
+        /// <typeparam name="T">The specified type</typeparam>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Codec">The specified codec</param>
+        /// <param name="Arguments">The specified arguments.</param>
+        public static T Decode<T>(Stream Stream, Codec Codec, object[] Arguments)
         {
             Type Type = DecodeType(Stream),
                  ValueType = typeof(T);
@@ -130,7 +162,7 @@ namespace MenthaAssembly.IO
                 return ValueType.IsStruct(false) ? throw new InvalidCastException($"The specified {ValueType.Name} type does not support null value.") :
                                                    default;
 
-            object Result = Codec.DecodeValue(Stream, Type);
+            object Result = Codec.DecodeValue(Stream, Type, Arguments);
             if (Result is null)
                 return ValueType.IsStruct(false) ? throw new InvalidCastException($"The specified {ValueType.Name} type does not support null value.") :
                                                    default;
@@ -141,19 +173,29 @@ namespace MenthaAssembly.IO
                 : (T)Result;
         }
         /// <summary>
-        /// Decodes a object of the specified type from the specified stream using the specified decoder.
+        /// Decodes an object of the specified type from the specified stream using the specified decoder.
         /// </summary>
         /// <typeparam name="T">The specified type</typeparam>
         /// <param name="Stream">The specified stream.</param>
         /// <param name="Codec">The specified codec</param>
+        /// <param name="Arguments">The specified arguments.</param>
         public static T Decode<T>(Stream Stream, Codec<T> Codec)
+            => Decode(Stream, Codec, null);
+        /// <summary>
+        /// Decodes an object of the specified type from the specified stream using the specified decoder with the specified argument.
+        /// </summary>
+        /// <typeparam name="T">The specified type</typeparam>
+        /// <param name="Stream">The specified stream.</param>
+        /// <param name="Codec">The specified codec</param>
+        /// <param name="Arguments">The specified arguments.</param>
+        public static T Decode<T>(Stream Stream, Codec<T> Codec, object[] Arguments)
         {
             Type Type = DecodeType(Stream),
                  ValueType = typeof(T);
             return Type is null
                 ? ValueType.IsStruct(false) ? throw new InvalidCastException($"The specified {ValueType.Name} type does not support null value.") :
                                                    default
-                : (T)Codec.DecodeValue(Stream, Type);
+                : (T)Codec.DecodeValue(Stream, Type, Arguments);
         }
 
         private static Codec GetCodec(Type Type)
