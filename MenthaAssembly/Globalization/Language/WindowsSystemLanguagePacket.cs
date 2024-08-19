@@ -61,6 +61,7 @@ namespace MenthaAssembly.Globalization
             if (!Directory.Exists(Folder))
                 return null;
 
+            bool IsDefault = CultureCode.ToLower() == "en-us";
             WindowsSystemLanguagePacket Packet = new(CultureCode);
             foreach (string FilePath in Directory.EnumerateFiles(Folder, "*.mui"))
             {
@@ -100,7 +101,7 @@ namespace MenthaAssembly.Globalization
                             string Text = Win32.System.LoadString(hModule, KeyTable[Key], Buffer, Buffer.Capacity) > 0 ? Buffer.ToString() : null;
                             Buffer.Clear();
 
-                            if (Key != Text)
+                            if (IsDefault || Key != Text)
                             {
                                 string LowerKey = Key.ToLower();
 
