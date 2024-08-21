@@ -1,5 +1,6 @@
 ﻿using MenthaAssembly.Globalization;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -167,6 +168,54 @@ namespace MenthaAssembly
                 string CultureCode = CultureInfo.CurrentCulture.Name.ToLower();
                 Current = Packets.FirstOrDefault(i => i.CultureCode?.ToLower() == CultureCode);
             }
+        }
+
+        internal static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> CacheTranslate = [];
+        /// <summary>
+        /// Gets the language content from key.
+        /// </summary>
+        public static string Get(string Key, string Default)
+        {
+            if (string.IsNullOrEmpty(Key))
+                return Default;
+
+            // Current
+            string Result = Current?[Key];
+            if (!string.IsNullOrEmpty(Result))
+                return Result;
+
+            // Windows System Build-in String
+            Result = CurrentWindowsSystem[Key];
+            if (!string.IsNullOrEmpty(Result))
+                return Result;
+
+            // GoogleTranslate
+            string ToCulture = Current?.CultureCode;
+            if (!string.IsNullOrEmpty(ToCulture) &&
+                CanGoogleTranslate &&
+                EnableGoogleTranslate)
+            {
+                if (CacheTranslate.TryGetValue(ToCulture, out ConcurrentDictionary<string, string> Caches))
+                {
+                    if (Caches.TryGetValue(Key, out Result))
+                        return Result;
+                }
+                else
+                {
+                    Caches = [];
+                    CacheTranslate.AddOrUpdate(ToCulture, Caches, (k, v) => Caches);
+                }
+
+                Result = GoogleTranslate(Key, "en-US", ToCulture);
+                if (!string.IsNullOrEmpty(Result))
+                {
+                    Caches.AddOrUpdate(Key, Result, (k, v) => Result);
+                    return Result;
+                }
+            }
+
+            Debug.WriteLine($"[Language] Not fount {Key}.");
+            return Default ?? Key;
         }
 
         /// <summary>
