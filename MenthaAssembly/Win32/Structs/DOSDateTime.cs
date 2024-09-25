@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MenthaAssembly
+namespace MenthaAssembly.Win32
 {
     public struct DOSDateTime
     {
