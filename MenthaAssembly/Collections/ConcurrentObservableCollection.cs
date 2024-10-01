@@ -29,25 +29,25 @@ namespace System.Collections.Generic
                 T originalItem = Items[Index];
                 Items[Index] = Value;
 
-                OnPropertyChanged(IndexerName);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, originalItem, Value, Index));
+                RaisePropertyChanged(IndexerName);
+                RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, originalItem, Value, Index));
             });
 
         public override void Add(T item)
             => Handle(() =>
             {
                 Items.Add(item);
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
+                RaisePropertyChanged(CountName);
+                RaisePropertyChanged(IndexerName);
+                RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
             });
         public override void AddRange(IEnumerable<T> Items)
             => Handle(() =>
             {
                 this.Items.AddRange(Items);
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                RaisePropertyChanged(CountName);
+                RaisePropertyChanged(IndexerName);
+                RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             });
 
         public override bool Remove(T item)
@@ -56,9 +56,9 @@ namespace System.Collections.Generic
                 if (!Items.Remove(item))
                     return false;
 
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+                RaisePropertyChanged(CountName);
+                RaisePropertyChanged(IndexerName);
+                RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
                 return true;
             });
         public override void Remove(Predicate<T> Predict)
@@ -70,12 +70,12 @@ namespace System.Collections.Generic
                     if (Predict(RemovedItem))
                     {
                         Items.RemoveAt(i);
-                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, i));
+                        RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, i));
                     }
                 }
 
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
+                RaisePropertyChanged(CountName);
+                RaisePropertyChanged(IndexerName);
             });
         public override void Remove(IEnumerable<T> Items)
             => Handle(() =>
@@ -85,10 +85,10 @@ namespace System.Collections.Generic
 
                 foreach (T item in Items)
                     if (this.Items.Remove(item))
-                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+                        RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
 
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
+                RaisePropertyChanged(CountName);
+                RaisePropertyChanged(IndexerName);
             });
         public override void RemoveAt(int index)
             => Handle(() =>
@@ -96,29 +96,26 @@ namespace System.Collections.Generic
                 T RemovedItem = Items[index];
                 if (Items.Remove(RemovedItem))
                 {
-                    OnPropertyChanged(CountName);
-                    OnPropertyChanged(IndexerName);
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, index));
+                    RaisePropertyChanged(CountName);
+                    RaisePropertyChanged(IndexerName);
+                    RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, index));
                 }
             });
 
         public override bool TryRemove(Predicate<T> Predict, out T Item)
         {
-            bool Token = false;
-            try
+            bool InternalTryRemove(out T Item)
             {
-                Monitor.Enter(this, ref Token);
-
                 for (int i = Items.Count - 1; i >= 0; i--)
                 {
                     Item = Items[i];
                     if (Predict(Item))
                     {
                         Items.RemoveAt(i);
-                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, Item, i));
+                        RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, Item, i));
 
-                        OnPropertyChanged(CountName);
-                        OnPropertyChanged(IndexerName);
+                        RaisePropertyChanged(CountName);
+                        RaisePropertyChanged(IndexerName);
                         return true;
                     }
                 }
@@ -126,50 +123,53 @@ namespace System.Collections.Generic
                 Item = default;
                 return false;
             }
-            finally
-            {
-                if (Token)
-                    Monitor.Exit(this);
-            }
+
+            return Handle(InternalTryRemove, out Item);
         }
 
         public override void Insert(int index, T item)
             => Handle(() =>
             {
                 Items.Insert(index, item);
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
+                RaisePropertyChanged(CountName);
+                RaisePropertyChanged(IndexerName);
+                RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
             });
 
         public override void Clear()
             => Handle(() =>
             {
                 Items.Clear();
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                RaisePropertyChanged(CountName);
+                RaisePropertyChanged(IndexerName);
+                RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             });
 
-        private void OnPropertyChanged([CallerMemberName] string PropertyName = null)
-        {
-            if (SynchronizationContext.Current == OriginalSynchronizationContext)
-                RaisePropertyChanged(PropertyName);
-            else
-                OriginalSynchronizationContext.Send((s) => RaisePropertyChanged(PropertyName), null);
-        }
         protected internal void RaisePropertyChanged([CallerMemberName] string PropertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));
-
-        private void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
         {
+            if (PropertyChanged is null)
+                return;
+
             if (SynchronizationContext.Current == OriginalSynchronizationContext)
-                RaiseCollectionChanged(e);
+                OnPropertyChanged(PropertyName);
             else
-                OriginalSynchronizationContext.Send((s) => RaiseCollectionChanged(e), null);
+                OriginalSynchronizationContext.Send((s) => OnPropertyChanged(PropertyName), null);
         }
+        private void OnPropertyChanged(string PropertyName)
+            => PropertyChanged.Invoke(this, new PropertyChangedEventArgs(PropertyName));
+
         protected internal void RaiseCollectionChanged(NotifyCollectionChangedEventArgs e)
-            => CollectionChanged?.Invoke(this, e);
+        {
+            if (CollectionChanged is null)
+                return;
+
+            if (SynchronizationContext.Current == OriginalSynchronizationContext)
+                OnCollectionChanged(e);
+            else
+                OriginalSynchronizationContext.Send((s) => OnCollectionChanged(e), null);
+        }
+        private void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+            => CollectionChanged.Invoke(this, e);
 
     }
 }

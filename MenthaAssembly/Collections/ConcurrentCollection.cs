@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+﻿using MenthaAssembly;
 using System.Linq;
 using System.Threading;
 
@@ -38,7 +38,7 @@ namespace System.Collections.Generic
         }
 
         protected virtual T GetItem(int Index)
-            => Handle(() => Items[Index]);
+            => (Monitor.IsEntered(LockObj) ? Items : [.. Items])[Index];
 
         protected virtual void SetItem(int Index, T Value)
             => Handle(() => Items[Index] = Value);
@@ -93,11 +93,8 @@ namespace System.Collections.Generic
         /// <returns>true if the object was removed successfully; otherwise, false.</returns>
         public virtual bool TryRemove(Predicate<T> Predict, out T Item)
         {
-            bool Token = false;
-            try
+            bool InternalTryRemove(out T Item)
             {
-                Monitor.Enter(this, ref Token);
-
                 for (int i = Items.Count - 1; i >= 0; i--)
                 {
                     Item = Items[i];
@@ -111,11 +108,8 @@ namespace System.Collections.Generic
                 Item = default;
                 return false;
             }
-            finally
-            {
-                if (Token)
-                    Monitor.Exit(this);
-            }
+
+            return Handle(InternalTryRemove, out Item);
         }
 
         public virtual void Insert(int Index, T Item)
@@ -125,13 +119,13 @@ namespace System.Collections.Generic
             => Handle(Items.Clear);
 
         public virtual bool Contains(T Item)
-            => Handle(() => Items.Contains(Item));
+            => (Monitor.IsEntered(LockObj) ? Items : [.. Items]).Contains(Item);
 
         public virtual void CopyTo(T[] Array, int ArrayIndex)
-            => Handle(() => Items.CopyTo(Array, ArrayIndex));
+            => (Monitor.IsEntered(LockObj) ? Items : [.. Items]).CopyTo(Array, ArrayIndex);
 
         public virtual int IndexOf(T Item)
-            => Handle(() => Items.IndexOf(Item));
+            => (Monitor.IsEntered(LockObj) ? Items : [.. Items]).IndexOf(Item);
 
         public void ForEach(Action<T> Action)
             => Handle(() =>
@@ -145,18 +139,33 @@ namespace System.Collections.Generic
         IEnumerator IEnumerable.GetEnumerator()
             => Items.ToArray().GetEnumerator();
 
+        private readonly object LockObj = new();
         protected internal U Handle<U>(Func<U> Func)
         {
             bool Token = false;
             try
             {
-                Monitor.Enter(this, ref Token);
+                Monitor.Enter(LockObj, ref Token);
                 return Func();
             }
             finally
             {
                 if (Token)
-                    Monitor.Exit(this);
+                    Monitor.Exit(LockObj);
+            }
+        }
+        protected internal W Handle<U, W>(OFunc<U, W> Func, out U p)
+        {
+            bool Token = false;
+            try
+            {
+                Monitor.Enter(LockObj, ref Token);
+                return Func(out p);
+            }
+            finally
+            {
+                if (Token)
+                    Monitor.Exit(LockObj);
             }
         }
         protected internal void Handle(Action Action)
@@ -164,22 +173,22 @@ namespace System.Collections.Generic
             bool Token = false;
             try
             {
-                Monitor.Enter(this, ref Token);
+                Monitor.Enter(LockObj, ref Token);
                 Action();
             }
             finally
             {
                 if (Token)
-                    Monitor.Exit(this);
+                    Monitor.Exit(LockObj);
             }
         }
 
         public void Lock()
-            => Monitor.Enter(this);
+            => Monitor.Enter(LockObj);
         public void Unlock()
         {
-            if (Monitor.IsEntered(this))
-                Monitor.Exit(this);
+            if (Monitor.IsEntered(LockObj))
+                Monitor.Exit(LockObj);
         }
 
         #region IList
