@@ -118,6 +118,9 @@ namespace System.Reflection
         #endregion
 
         #region Field
+        public static bool IsBackingField(FieldInfo Field)
+            => Field.Name.ToLower().Contains(">k__backingfield");
+
         public static bool TryGetField<T>(string Name, out FieldInfo Info)
             => TryGetField(typeof(T), Name, PublicModifier, out Info);
         public static bool TryGetField(this Type This, string Name, out FieldInfo Info)
