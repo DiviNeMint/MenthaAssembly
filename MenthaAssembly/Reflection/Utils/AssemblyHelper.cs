@@ -11,6 +11,8 @@ namespace System.Reflection
 {
     public static class AssemblyHelper
     {
+        internal static readonly BindingFlags AllModifierWithStatic = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+
         // System assemblies usually have a specific PublicKeyToken, such as "b77a5c561934e089" (.NET Framework) or "7cec85d7bea7798e" (.NET Core/.NET 5+)
         private static readonly HashSet<string> SystemPublicKeyTokens =
             [
@@ -107,7 +109,7 @@ namespace System.Reflection
 
         public static IEnumerable<string> GetUnmanagedDependencyAssemblyNames(this Assembly This)
             => This.GetTypes()
-                   .TrySelectMany(i => i.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+                   .TrySelectMany(i => i.GetMethods(AllModifierWithStatic))
                    .TrySelect(i => i.GetCustomAttribute<DllImportAttribute>(false))
                    .Where(i => i != null)
                    .Select(i => i.Value)
@@ -193,6 +195,85 @@ namespace System.Reflection
             int DataDirectorySize = s.Read<int>();
 
             return r | (DataDirectorySize > 0 ? LibraryType.Managed : LibraryType.Unmanaged);
+        }
+
+        public static IEnumerable<Assembly> GetDependencyAssemblies(object Obj)
+        {
+            if (Obj is null)
+                yield break;
+
+            Dictionary<Type, Assembly> Datas = [];
+
+            // Type Assembly
+            Type t = Obj.GetType();
+            Datas[t] = t.Assembly;
+
+            // Content
+            GetDependencyAssemblies(t, ref Datas);
+
+            foreach (Assembly Assembly in Datas.Values.Distinct())
+                yield return Assembly;
+        }
+        private static void GetDependencyAssemblies(Type ObjectType, ref Dictionary<Type, Assembly> Datas)
+        {
+            // Constructors
+            foreach (ConstructorInfo Method in ObjectType.GetConstructors(AllModifierWithStatic))
+            {
+                foreach (ParameterInfo Parameter in Method.GetParameters())
+                {
+                    // Parameter Type Assembly
+                    Type t = Parameter.ParameterType;
+                    if (Datas.ContainsKey(t))
+                        continue;
+
+                    Datas[t] = t.Assembly;
+
+                    // Nested Type Assembly
+                    GetDependencyAssemblies(t, ref Datas);
+                }
+            }
+
+            // Methods
+            foreach (MethodInfo Method in ObjectType.GetMethods(AllModifierWithStatic))
+            {
+                // Return Type Assembly
+                Type ReturnType = Method.ReturnType;
+                if (!Datas.ContainsKey(ReturnType))
+                    Datas[ReturnType] = ReturnType.Assembly;
+
+                // Parameters
+                foreach (ParameterInfo Parameter in Method.GetParameters())
+                {
+                    // Parameter Type Assembly
+                    Type t = Parameter.ParameterType;
+                    if (Datas.ContainsKey(t))
+                        continue;
+
+                    Datas[t] = t.Assembly;
+
+                    // Nested Type Assembly
+                    GetDependencyAssemblies(t, ref Datas);
+                }
+            }
+
+            // Fields
+            foreach (FieldInfo Field in ObjectType.GetFields(AllModifierWithStatic)
+                                                  .Where(i => !ReflectionHelper.IsBackingField(i)))
+            {
+                // Field Type Assembly
+                Type FieldType = Field.FieldType;
+                if (!Datas.ContainsKey(FieldType))
+                    Datas[FieldType] = FieldType.Assembly;
+            }
+
+            // Properties
+            foreach (PropertyInfo Property in ObjectType.GetProperties(AllModifierWithStatic))
+            {
+                // Property Type Assembly
+                Type PropertyType = Property.PropertyType;
+                if (!Datas.ContainsKey(PropertyType))
+                    Datas[PropertyType] = PropertyType.Assembly;
+            }
         }
 
     }
