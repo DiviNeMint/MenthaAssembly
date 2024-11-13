@@ -197,82 +197,105 @@ namespace System.Reflection
             return r | (DataDirectorySize > 0 ? LibraryType.Managed : LibraryType.Unmanaged);
         }
 
-        public static IEnumerable<Assembly> GetDependencyAssemblies(object Obj)
+        public static IEnumerable<Assembly> GetDependencyAssemblies(object Object)
         {
-            if (Obj is null)
+            if (Object is null)
                 yield break;
 
-            Dictionary<Type, Assembly> Datas = [];
+            List<Type> SearchedTypes = [];
+            List<Assembly> Assemblies = [];
+            GetDependencyAssemblies(Object, Object.GetType(), ref SearchedTypes, ref Assemblies);
 
-            // Type Assembly
-            Type t = Obj.GetType();
-            Datas[t] = t.Assembly;
-
-            // Content
-            GetDependencyAssemblies(t, ref Datas);
-
-            foreach (Assembly Assembly in Datas.Values.Distinct())
+            foreach (Assembly Assembly in Assemblies)
                 yield return Assembly;
         }
-        private static void GetDependencyAssemblies(Type ObjectType, ref Dictionary<Type, Assembly> Datas)
+        private static void GetDependencyAssemblies(object Object, Type ObjectType, ref List<Type> SearchedTypes, ref List<Assembly> Assemblies)
         {
+            // Collection
+            if (Object is IEnumerable Collection)
+                foreach (object item in Collection.Where(i => i != null))
+                    GetDependencyAssemblies(item, item.GetType(), ref SearchedTypes, ref Assemblies);
+
+            if (SearchedTypes.Contains(ObjectType))
+                return;
+
+            SearchedTypes.Add(ObjectType);
+            Assembly a = ObjectType.Assembly;
+            if (!Assemblies.Contains(a))
+                Assemblies.Add(a);
+
+            // Generic Type
+            if (ObjectType.IsGenericType)
+                foreach (Type t in ObjectType.GenericTypeArguments)
+                    GetDependencyAssemblies(null, t, ref SearchedTypes, ref Assemblies);
+
+            // DotNet Assembly
+            if (a.IsDotNetAssembly())
+                return;
+
             // Constructors
             foreach (ConstructorInfo Method in ObjectType.GetConstructors(AllModifierWithStatic))
-            {
                 foreach (ParameterInfo Parameter in Method.GetParameters())
-                {
-                    // Parameter Type Assembly
-                    Type t = Parameter.ParameterType;
-                    if (Datas.ContainsKey(t))
-                        continue;
-
-                    Datas[t] = t.Assembly;
-
-                    // Nested Type Assembly
-                    GetDependencyAssemblies(t, ref Datas);
-                }
-            }
+                    GetDependencyAssemblies(null, Parameter.ParameterType, ref SearchedTypes, ref Assemblies);
 
             // Methods
             foreach (MethodInfo Method in ObjectType.GetMethods(AllModifierWithStatic))
             {
-                // Return Type Assembly
-                Type ReturnType = Method.ReturnType;
-                if (!Datas.ContainsKey(ReturnType))
-                    Datas[ReturnType] = ReturnType.Assembly;
+                // Return Type
+                GetDependencyAssemblies(null, Method.ReturnType, ref SearchedTypes, ref Assemblies);
 
                 // Parameters
                 foreach (ParameterInfo Parameter in Method.GetParameters())
-                {
-                    // Parameter Type Assembly
-                    Type t = Parameter.ParameterType;
-                    if (Datas.ContainsKey(t))
-                        continue;
-
-                    Datas[t] = t.Assembly;
-
-                    // Nested Type Assembly
-                    GetDependencyAssemblies(t, ref Datas);
-                }
+                    GetDependencyAssemblies(null, Parameter.ParameterType, ref SearchedTypes, ref Assemblies);
             }
 
             // Fields
             foreach (FieldInfo Field in ObjectType.GetFields(AllModifierWithStatic)
                                                   .Where(i => !ReflectionHelper.IsBackingField(i)))
             {
-                // Field Type Assembly
-                Type FieldType = Field.FieldType;
-                if (!Datas.ContainsKey(FieldType))
-                    Datas[FieldType] = FieldType.Assembly;
+                GetDependencyAssemblies(null, Field.FieldType, ref SearchedTypes, ref Assemblies);
+
+                // Field Value
+                if ((!Field.IsStatic && Object is null) ||
+                    Field.GetValue(Object) is not object FieldValue)
+                    continue;
+
+                GetDependencyAssemblies(FieldValue, FieldValue.GetType(), ref SearchedTypes, ref Assemblies);
             }
 
             // Properties
             foreach (PropertyInfo Property in ObjectType.GetProperties(AllModifierWithStatic))
             {
-                // Property Type Assembly
-                Type PropertyType = Property.PropertyType;
-                if (!Datas.ContainsKey(PropertyType))
-                    Datas[PropertyType] = PropertyType.Assembly;
+                GetDependencyAssemblies(null, Property.PropertyType, ref SearchedTypes, ref Assemblies);
+
+                if (Property.CanRead)
+                {
+                    object Value;
+                    if (Property.GetMethod.IsStatic)
+                    {
+                        Value = Property.GetValue(null);
+                    }
+                    else
+                    {
+                        // Indexer
+                        ParameterInfo[] Parameters = Property.GetIndexParameters();
+                        foreach (ParameterInfo Parameter in Parameters)
+                            GetDependencyAssemblies(null, Parameter.ParameterType, ref SearchedTypes, ref Assemblies);
+
+                        if (Parameters.Length > 0)
+                            continue;
+
+                        if (Object is null)
+                            continue;
+
+                        Value = Property.GetValue(Object);
+                    }
+
+                    if (Value is null)
+                        continue;
+
+                    GetDependencyAssemblies(Value, Value.GetType(), ref SearchedTypes, ref Assemblies);
+                }
             }
         }
 
