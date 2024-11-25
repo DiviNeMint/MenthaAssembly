@@ -42,7 +42,9 @@ namespace MenthaAssembly.IO
             {
                 using PinnedIntPtr Handle = new(Value);
                 IntPtr pValue = Handle.DangerousGetHandle();
-                Stream.Write(pValue, Marshal.SizeOf(Value));
+
+                Type SizeOfType = Type.IsEnum ? Enum.GetUnderlyingType(Type) : Type;
+                Stream.Write(pValue, Marshal.SizeOf(SizeOfType));
                 return;
             }
 
@@ -165,7 +167,7 @@ namespace MenthaAssembly.IO
             {
                 object Struct = Activator.CreateInstance(Type);
 
-                int Size = Marshal.SizeOf(Struct);
+                int Size = Type.IsEnum ? Marshal.SizeOf(Enum.GetUnderlyingType(Type)) : Marshal.SizeOf(Struct);
                 byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
                 try
                 {
