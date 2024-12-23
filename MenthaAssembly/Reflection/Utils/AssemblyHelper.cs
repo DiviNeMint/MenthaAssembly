@@ -1,8 +1,10 @@
 ﻿using MenthaAssembly.Win32;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 #if NET6_0_OR_GREATER
 using System.Runtime.Loader;
 #endif
@@ -30,6 +32,45 @@ namespace System.Reflection
             // Use the PublicKeyToken of the assembly as the judgment criterion.
             string publicKeyToken = BitConverter.ToString(This.GetPublicKeyToken()).Replace("-", "").ToLower();
             return SystemPublicKeyTokens.Contains(publicKeyToken);
+        }
+
+        public static string GetFrameworkName(this Assembly This)
+            => This.GetCustomAttribute<TargetFrameworkAttribute>() is TargetFrameworkAttribute Framework ? Framework.FrameworkDisplayName : null;
+
+        public static Assembly[] GetDependencyManagedNonSystemAssemblies(this Assembly This)
+            => [.. GetDependencyManagedNonSystemAssemblyTable(This).Values];
+        internal static Dictionary<string, Assembly> GetDependencyManagedNonSystemAssemblyTable(Assembly This)
+        {
+            Dictionary<string, Assembly> Dependency = [];
+            GetDependencyManagedNonSystemAssemblyTable(This, ref Dependency);
+            return Dependency;
+        }
+        private static Dictionary<string, Assembly> GetDependencyManagedNonSystemAssemblyTable(Assembly This, ref Dictionary<string, Assembly> Dependency)
+        {
+            Dictionary<string, Assembly> New = [];
+            foreach (AssemblyName AssemblyName in This.GetReferencedAssemblies())
+            {
+                string Name = AssemblyName.Name;
+                if (Dependency.ContainsKey(Name))
+                    continue;
+
+                if (AssemblyName.IsDotNetAssembly())
+                    continue;
+
+                if (AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(i => i.GetName().Name == Name) is not Assembly Assembly)
+                    Assembly = AppDomain.CurrentDomain.Load(AssemblyName);
+
+                Dependency[Name] = Assembly;
+
+                // Sub Dependency
+                foreach (KeyValuePair<string, Assembly> Info in GetDependencyManagedNonSystemAssemblyTable(Assembly, ref Dependency))
+                {
+                    Dependency[Info.Key] = Info.Value;
+                    New[Info.Key] = Info.Value;
+                }
+            }
+
+            return New;
         }
 
 #if NET6_0_OR_GREATER
