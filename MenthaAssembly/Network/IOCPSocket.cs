@@ -75,9 +75,12 @@ namespace MenthaAssembly.Network
                 OnAcceptProcess(e);
         }
 
+
         public bool TryConnect(EndPoint Address)
-            => TryConnect(Address, 5000);
+            => TryConnect(Address, new CancellationTokenSource(5000).Token);
         public bool TryConnect(EndPoint Address, int Timeout)
+            => TryConnect(Address, new CancellationTokenSource(Timeout).Token);
+        public bool TryConnect(EndPoint Address, CancellationToken Token)
         {
             // Checks Dispose
             if (IsDisposed)
@@ -96,7 +99,7 @@ namespace MenthaAssembly.Network
             e.RemoteEndPoint = Address;
 
             // Timeout
-            CancellationTokenSource CancelToken = new(Timeout);
+            CancellationTokenSource CancelToken = CancellationTokenSource.CreateLinkedTokenSource(Token);
             CancelToken.Token.Register(() =>
             {
                 if (ConnectToken.TrySetResult(false))
