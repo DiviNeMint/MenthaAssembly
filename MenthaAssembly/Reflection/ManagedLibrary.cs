@@ -22,7 +22,13 @@ namespace MenthaAssembly
 
             Context = new AssemblyLoadContext(Guid.NewGuid().ToString(), true);
             Context.Resolving += OnResolving;
-            Assembly = Context.LoadFromAssemblyPath(Filename);
+
+            using FileStream Stream = new(Fullname, FileMode.Open, FileAccess.Read);
+            using MemoryStream Memory = new();
+            Stream.CopyTo(Memory);
+            Memory.Position = 0;
+
+            Assembly = Context.LoadFromStream(Memory);
         }
         private Assembly OnResolving(AssemblyLoadContext Context, AssemblyName Name)
         {
