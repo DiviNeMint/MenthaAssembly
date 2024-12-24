@@ -85,7 +85,7 @@ namespace MenthaAssembly
         public Type[] GetTypes()
             => Assembly.GetTypes();
 
-        public IEnumerable<AssemblyInfo> EnumDependencyLibrarieyInfos()
+        public IEnumerable<AssemblyInfo> EnumDependencyLibraryInfos()
         {
             string[] LoadedAssemblies = Assembly.GetEntryAssembly()
                                                 .GetReferencedAssemblies()

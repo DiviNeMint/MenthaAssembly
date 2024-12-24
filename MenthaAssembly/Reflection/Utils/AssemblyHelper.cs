@@ -34,8 +34,27 @@ namespace System.Reflection
             return SystemPublicKeyTokens.Contains(publicKeyToken);
         }
 
-        public static string GetFrameworkName(this Assembly This)
-            => This.GetCustomAttribute<TargetFrameworkAttribute>() is TargetFrameworkAttribute Framework ? Framework.FrameworkDisplayName : null;
+        public static TargetFrameworkAttribute GetFramework(this Assembly This)
+            => This.GetCustomAttribute<TargetFrameworkAttribute>();
+
+        public static Assembly GetFrameworkAssembly(Assembly Target)
+        {
+            TargetFrameworkAttribute Framework = Target.GetFramework();
+            if (Framework.FrameworkName.StartsWith(".NETCoreApp"))
+            {
+                if (Target.GetReferencedAssemblies()
+                          .FirstOrDefault(i => i.Name == "System.Runtime") is AssemblyName FrameworkAssemblyName)
+                    return Assembly.Load(FrameworkAssemblyName);
+            }
+            else if (Framework.FrameworkName.StartsWith(".NETStandard"))
+            {
+                if (Target.GetReferencedAssemblies()
+                          .FirstOrDefault(i => i.Name == "netstandard") is AssemblyName FrameworkAssemblyName)
+                    return Assembly.Load(FrameworkAssemblyName);
+            }
+
+            return null;
+        }
 
         public static Assembly[] GetDependencyManagedNonSystemAssemblies(this Assembly This)
             => [.. GetDependencyManagedNonSystemAssemblyTable(This).Values];
