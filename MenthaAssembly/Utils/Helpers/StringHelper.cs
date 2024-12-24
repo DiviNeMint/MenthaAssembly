@@ -7,6 +7,8 @@ namespace System
 {
     public static class StringHelper
     {
+        private static readonly char[] InvalidFilenameChars = Path.GetInvalidFileNameChars();
+
         public static object ParseStaticObject(this string Path)
         {
             string[] Paths = Path.Split(new string[] { "." }, StringSplitOptions.RemoveEmptyEntries);
@@ -136,12 +138,49 @@ namespace System
             return DefaultName;
         }
 
+        public static string GetValidFilename(string Filename)
+            => GetValidFilename(Filename, null, '_');
+        public static string GetValidFilename(string Filename, char? ReplaceInvalidChar, char? ReplaceSpaceChar)
+        {
+            StringBuilder Builder = new();
+
+            try
+            {
+                foreach (char c in Filename)
+                {
+                    if (char.IsWhiteSpace(c))
+                    {
+                        if (ReplaceSpaceChar.HasValue)
+                            Builder.Append(ReplaceSpaceChar.Value);
+
+                        continue;
+                    }
+
+                    if (InvalidFilenameChars.Contains(c))
+                    {
+                        if (ReplaceInvalidChar.HasValue)
+                            Builder.Append(ReplaceInvalidChar.Value);
+
+                        continue;
+                    }
+
+                    Builder.Append(c);
+                }
+
+                return Builder.ToString();
+            }
+            finally
+            {
+                Builder.Clear();
+            }
+        }
+
         /// <summary>
         /// Indicates whether the specified character is categorized as a [0 - 9].
         /// </summary>
         /// <param name="This">The character to evaluate.</param>
         public static bool IsArabicNumerals(this char This)
-            => '0' <= This && This <= '9';
+            => This is >= '0' and <= '9';
 
         /// <summary>
         /// Indicates whether the specified character is categorized as a [0 - 9] or [A - Z] or [a - z].
