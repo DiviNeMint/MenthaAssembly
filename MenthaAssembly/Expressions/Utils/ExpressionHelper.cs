@@ -957,11 +957,17 @@ namespace System.Linq.Expressions
             }
         }
 
-        private static readonly MethodInfo ConvertMethod = typeof(Convert).GetMethod("ChangeType", new Type[] { typeof(object), typeof(Type) });
+        private static readonly MethodInfo ConvertMethod = typeof(Convert).GetMethod("ChangeType", [typeof(object), typeof(Type)]);
         public static Expression Cast(this Expression This, Type Type)
         {
             Type ObjType = This.Type;
-            if (ObjType == Type || ObjType.IsBaseOn(Type))
+            if (ObjType == Type)
+                return This;
+
+            if (Type == typeof(object))
+                return Expression.Convert(This, Type);
+
+            if (ObjType.IsBaseOn(Type))
                 return This;
 
             if (ObjType.IsConvertibleTo(Type))
