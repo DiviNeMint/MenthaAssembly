@@ -115,9 +115,9 @@ namespace System.Collections.Generic
             => ((IList)Items).Clear();
 
         int IList.IndexOf(object value)
-            => ((IList)Items).IndexOf((U)value);
-        int IList<T>.IndexOf(T item)
-            => ((IList)Items).IndexOf(item);
+            => value is U item ? Items.IndexOf(item) : -1;
+        int IList<T>.IndexOf(T value)
+            => value is U item ? Items.IndexOf(item) : -1;
 
         bool IList.Contains(object value)
             => value is U Item && Items.Contains(Item);
