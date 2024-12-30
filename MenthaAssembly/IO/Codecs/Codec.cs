@@ -205,7 +205,7 @@ namespace MenthaAssembly.IO
                 if (Type.GetCustomAttribute<CodecAttribute>() is CodecAttribute Attribute &&
                     !Instances.TryGetValue(Attribute.CodecType, out Codec))
                 {
-                    Codec = (Codec)Activator.CreateInstance(Type);
+                    Codec = (Codec)Activator.CreateInstance(Attribute.CodecType);
                     Instances[Type] = Codec;
                 }
 
