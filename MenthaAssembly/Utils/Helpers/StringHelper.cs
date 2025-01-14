@@ -183,13 +183,20 @@ namespace System
             => This is >= '0' and <= '9';
 
         /// <summary>
+        /// Indicates whether the specified character is categorized as a [A - Z] or [a - z].
+        /// </summary>
+        /// <param name="This">The character to evaluate.</param>
+        public static bool IsHexLiterals(this char This)
+            => 'A' <= This && This <= 'F' ||
+               'a' <= This && This <= 'f';
+
+        /// <summary>
         /// Indicates whether the specified character is categorized as a [0 - 9] or [A - Z] or [a - z].
         /// </summary>
         /// <param name="This">The character to evaluate.</param>
         public static bool IsHexNumerals(this char This)
             => This.IsArabicNumerals() ||
-               'A' <= This && This <= 'F' ||
-               'a' <= This && This <= 'f';
+               This.IsHexLiterals();
 
         public static bool IsInteger(this string This)
         {
