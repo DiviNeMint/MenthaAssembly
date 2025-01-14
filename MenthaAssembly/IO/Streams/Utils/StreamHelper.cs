@@ -257,13 +257,13 @@ namespace System.IO
                     < 32 => 1,
                     < 8192 => 2,
                     < 2097152 => 3,
-                    < 536870912 => 4,
+                    < 536870912 => 0,
                     _ => throw new ArgumentOutOfRangeException(nameof(Content), "Not support the string whose bytes count is greater than 536870912."),
                 };
 
                 // Length
                 int LengthData = Length << 3;
-                LengthData |= (Bits & 3) << 1;
+                LengthData |= Bits << 1;
                 for (int i = 0; i < Bits; i++)
                 {
                     This.WriteByte((byte)LengthData);
@@ -575,9 +575,12 @@ namespace System.IO
             Data >>= 1;
 
             // Length
-            int Bits = (Data & 3) - 1;
+            int Bits = Data & 3;
+            if (Bits == 0)
+                Bits = 4;
+
             Data >>= 2;
-            for (int i = 0, Shift = 5; i < Bits; i++, Shift += 8)
+            for (int i = 1, Shift = 5; i < Bits; i++, Shift += 8)
                 Data |= This.ReadByte() << Shift;
 
             return TryReadString(This, Data, Encoding, out Result);
