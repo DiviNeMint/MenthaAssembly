@@ -65,19 +65,19 @@ namespace System.Reflection
             return true;
         }
 
-        public static bool TrySetPropertyValue<T>(this object This, string Name, T Value)
+        public static bool TrySetPropertyValue<T>(object This, string Name, T Value)
             => InternalTrySetPropertyValue(This?.GetType(), This, Name, PublicModifier, Value);
-        public static bool TryGetPropertyValue<T>(this object This, string Name, out T Value)
+        public static bool TryGetPropertyValue<T>(object This, string Name, out T Value)
             => InternalTryGetPropertyValue(This?.GetType(), This, Name, PublicModifier, out Value);
 
-        public static bool TrySetInternalPropertyValue<T>(this object This, string Name, T Value)
+        public static bool TrySetInternalPropertyValue<T>(object This, string Name, T Value)
             => InternalTrySetPropertyValue(This?.GetType(), This, Name, InternalModifier, Value);
-        public static bool TryGetInternalPropertyValue<T>(this object This, string Name, out T Value)
+        public static bool TryGetInternalPropertyValue<T>(object This, string Name, out T Value)
             => InternalTryGetPropertyValue(This?.GetType(), This, Name, InternalModifier, out Value);
 
-        public static bool TrySetPropertyValue<T>(this object This, string Name, BindingFlags Modifier, T Value)
+        public static bool TrySetPropertyValue<T>(object This, string Name, BindingFlags Modifier, T Value)
             => InternalTrySetPropertyValue(This?.GetType(), This, Name, Modifier, Value);
-        public static bool TryGetPropertyValue<T>(this object This, string Name, BindingFlags Modifier, out T Value)
+        public static bool TryGetPropertyValue<T>(object This, string Name, BindingFlags Modifier, out T Value)
             => InternalTryGetPropertyValue(This?.GetType(), This, Name, Modifier, out Value);
 
         public static bool TrySetStaticPropertyValue<T>(this Type This, string Name, T Value)
@@ -162,19 +162,19 @@ namespace System.Reflection
             return true;
         }
 
-        public static bool TrySetFieldValue<T>(this object This, string Name, T Value)
+        public static bool TrySetFieldValue<T>(object This, string Name, T Value)
             => TrySetFieldValue(This, Name, PublicModifier, Value);
-        public static bool TryGetFieldValue<T>(this object This, string Name, out T Value)
+        public static bool TryGetFieldValue<T>(object This, string Name, out T Value)
             => TryGetFieldValue(This, Name, PublicModifier, out Value);
 
-        public static bool TrySetInternalFieldValue<T>(this object This, string Name, T Value)
+        public static bool TrySetInternalFieldValue<T>(object This, string Name, T Value)
             => TrySetFieldValue(This, Name, InternalModifier, Value);
-        public static bool TryGetInternalFieldValue<T>(this object This, string Name, out T Value)
+        public static bool TryGetInternalFieldValue<T>(object This, string Name, out T Value)
             => TryGetFieldValue(This, Name, InternalModifier, out Value);
 
-        public static bool TrySetFieldValue<T>(this object This, string Name, BindingFlags Modifier, T Value)
+        public static bool TrySetFieldValue<T>(object This, string Name, BindingFlags Modifier, T Value)
             => InternalTrySetFieldValue(This?.GetType(), This, Name, Modifier, Value);
-        public static bool TryGetFieldValue<T>(this object This, string Name, BindingFlags Modifier, out T Value)
+        public static bool TryGetFieldValue<T>(object This, string Name, BindingFlags Modifier, out T Value)
             => InternalTryGetFieldValue(This?.GetType(), This, Name, Modifier, out Value);
 
         public static bool TrySetStaticFieldValue<T>(this Type This, string Name, T Value)
@@ -190,7 +190,7 @@ namespace System.Reflection
         private static bool InternalTrySetFieldValue<T>(Type Type, object Object, string Name, BindingFlags Modifier, T Value)
         {
             if (TryGetField(Type, Name, Modifier, out FieldInfo Info) &&
-                typeof(T).IsBaseOn(Info.FieldType))
+                Info.FieldType.IsBaseOn<T>())
             {
                 Info.SetValue(Object, Value);
                 return true;
@@ -201,7 +201,7 @@ namespace System.Reflection
         private static bool InternalTryGetFieldValue<T>(Type Type, object Object, string Name, BindingFlags Modifier, out T Value)
         {
             if (TryGetField(Type, Name, Modifier, out FieldInfo Info) &&
-                typeof(T).IsBaseOn(Info.FieldType))
+                Info.FieldType.IsBaseOn<T>())
             {
                 Value = (T)Info.GetValue(Object);
                 return true;
@@ -604,31 +604,31 @@ namespace System.Reflection
             }
         }
 
-        public static bool TryInvokeMethod(this object This, string Name, params object[] Args)
+        public static bool TryInvokeMethod(object This, string Name, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, PublicModifier, Type.EmptyTypes, Args);
-        public static bool TryInvokeMethod(this object This, string Name, Type[] GenericTypes, params object[] Args)
+        public static bool TryInvokeMethod(object This, string Name, Type[] GenericTypes, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, PublicModifier, GenericTypes, Args);
-        public static bool TryInvokeMethod<T>(this object This, string Name, out T Result, params object[] Args)
+        public static bool TryInvokeMethod<T>(object This, string Name, out T Result, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, PublicModifier, Type.EmptyTypes, out Result, Args);
-        public static bool TryInvokeMethod<T>(this object This, string Name, Type[] GenericTypes, out T Result, params object[] Args)
+        public static bool TryInvokeMethod<T>(object This, string Name, Type[] GenericTypes, out T Result, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, PublicModifier, GenericTypes, out Result, Args);
 
-        public static bool TryInvokeInternalMethod(this object This, string Name, params object[] Args)
+        public static bool TryInvokeInternalMethod(object This, string Name, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, InternalModifier, Type.EmptyTypes, Args);
-        public static bool TryInvokeInternalMethod(this object This, string Name, Type[] GenericTypes, params object[] Args)
+        public static bool TryInvokeInternalMethod(object This, string Name, Type[] GenericTypes, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, InternalModifier, GenericTypes, Args);
-        public static bool TryInvokeInternalMethod<T>(this object This, string Name, out T Result, params object[] Args)
+        public static bool TryInvokeInternalMethod<T>(object This, string Name, out T Result, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, InternalModifier, Type.EmptyTypes, out Result, Args);
-        public static bool TryInvokeInternalMethod<T>(this object This, string Name, Type[] GenericTypes, out T Result, params object[] Args)
+        public static bool TryInvokeInternalMethod<T>(object This, string Name, Type[] GenericTypes, out T Result, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, InternalModifier, GenericTypes, out Result, Args);
 
-        public static bool TryInvokeMethod(this object This, string Name, BindingFlags Modifier, params object[] Args)
+        public static bool TryInvokeMethod(object This, string Name, BindingFlags Modifier, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, Modifier, Type.EmptyTypes, Args);
-        public static bool TryInvokeMethod(this object This, string Name, BindingFlags Modifier, Type[] GenericTypes, params object[] Args)
+        public static bool TryInvokeMethod(object This, string Name, BindingFlags Modifier, Type[] GenericTypes, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, Modifier, GenericTypes, Args);
-        public static bool TryInvokeMethod<T>(this object This, string Name, BindingFlags Modifier, out T Result, params object[] Args)
+        public static bool TryInvokeMethod<T>(object This, string Name, BindingFlags Modifier, out T Result, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, Modifier, Type.EmptyTypes, out Result, Args);
-        public static bool TryInvokeMethod<T>(this object This, string Name, BindingFlags Modifier, Type[] GenericTypes, out T Result, params object[] Args)
+        public static bool TryInvokeMethod<T>(object This, string Name, BindingFlags Modifier, Type[] GenericTypes, out T Result, params object[] Args)
             => InternalTryInvokeMethod(This?.GetType(), This, Name, Modifier, GenericTypes, out Result, Args);
 
         private static bool InternalTryInvokeMethod(Type Type, object Object, string Name, BindingFlags Modifier, Type[] GenericTypes, params object[] Args)
@@ -662,20 +662,26 @@ namespace System.Reflection
         #endregion
 
         #region Event
-        public static bool TryGetEventField(this object This, string Name, out MulticastDelegate Delegates)
+        public static bool TryGetEventField(object This, string Name, out MulticastDelegate Delegates)
             => TryGetInternalFieldValue(This, Name, out Delegates) && Delegates != null;
 
         public static bool TryGetStaticEventField(this Type This, string Name, out MulticastDelegate Delegates)
             => TryGetStaticInternalFieldValue(This, Name, out Delegates) && Delegates != null;
 
-        public static void RaiseEvent(this object This, string Name, params object[] Args)
+        public static void RaiseEvent(object This, string Name, params object[] Args)
         {
             if (TryGetEventField(This, Name, out MulticastDelegate Handler))
+            {
+                object[] Arguments = new object[Args.Length + 1];
+                Arguments[0] = This;
+                Args.CopyTo(Arguments, 1);
+
                 foreach (Delegate InvocationMethod in Handler.GetInvocationList())
-                    InvocationMethod.DynamicInvoke(new[] { This, Args });
+                    InvocationMethod.DynamicInvoke(Arguments);
+            }
         }
 
-        public static void RaiseStaticEvent(this object This, string Name, params object[] Args)
+        public static void RaiseStaticEvent(object This, string Name, params object[] Args)
         {
             if (TryGetStaticEventField(This?.GetType(), Name, out MulticastDelegate Handler))
                 foreach (Delegate InvocationMethod in Handler.GetInvocationList())
