@@ -75,7 +75,6 @@ namespace MenthaAssembly.Network
                 OnAcceptProcess(e);
         }
 
-
         public bool TryConnect(EndPoint Address)
             => TryConnect(Address, new CancellationTokenSource(5000).Token);
         public bool TryConnect(EndPoint Address, int Timeout)
