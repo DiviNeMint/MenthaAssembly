@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 #if NET7_0_OR_GREATER
@@ -437,10 +438,13 @@ namespace System.Reflection
                             Type[] DefinedParameterTypes = Parameter.Select(i => i.ParameterType).ToArray();
 
                             // Implement Generic Parameter Types.
-                            Type DefinedType;
+                            bool IsMatch = true;
                             for (int i = 0; i < ParameterLength; i++)
                             {
-                                DefinedType = DefinedParameterTypes[i];
+                                Type DefinedType = DefinedParameterTypes[i];
+
+                                // Generic parameters
+                                // Ex. T arg1
                                 if (DefinedType.IsGenericParameter)
                                 {
                                     for (int j = 0; j < GenericLength; j++)
@@ -452,9 +456,36 @@ namespace System.Reflection
                                         }
                                     }
                                 }
+
+                                // Generic type parameters
+                                // Ex. Func<T> arg1
+                                else if (DefinedType.IsGenericType)
+                                {
+                                    List<Type> SubDefinedParameterTypes = [];
+
+                                    Type[] SubDefinedGenericTypes = DefinedType.GetGenericArguments();
+                                    foreach (Type SubDefinedType in SubDefinedGenericTypes)
+                                    {
+                                        int Index = Array.IndexOf(DefinedGenericTypes, SubDefinedType);
+                                        if (Index == -1)
+                                        {
+                                            IsMatch = false;
+                                            break;
+                                        }
+
+                                        SubDefinedParameterTypes.Add(GenericTypes[Index]);
+                                    }
+
+                                    if (!IsMatch)
+                                        break;
+
+                                    DefinedType = DefinedType.GetGenericTypeDefinition();
+                                    DefinedParameterTypes[i] = DefinedType.MakeGenericType([.. SubDefinedParameterTypes]);
+                                }
                             }
 
-                            if (ParameterTypes.SequenceEqual(DefinedParameterTypes))
+                            if (IsMatch &&
+                                ParameterTypes.SequenceEqual(DefinedParameterTypes))
                             {
                                 Info = Method.MakeGenericMethod(GenericTypes);
                                 return true;
@@ -509,10 +540,13 @@ namespace System.Reflection
                             Type[] TempDefinedParameterTypes = Parameter.Select(i => i.ParameterType).ToArray();
 
                             // Implement Generic Parameter Types.
-                            Type DefinedType;
+                            bool IsMatch = true;
                             for (int i = 0; i < ParameterLength; i++)
                             {
-                                DefinedType = TempDefinedParameterTypes[i];
+                                Type DefinedType = TempDefinedParameterTypes[i];
+
+                                // Generic parameters
+                                // Ex. T arg1
                                 if (DefinedType.IsGenericParameter)
                                 {
                                     for (int j = 0; j < GenericLength; j++)
@@ -524,7 +558,36 @@ namespace System.Reflection
                                         }
                                     }
                                 }
+
+                                // Generic type parameters
+                                // Ex. Func<T> arg1
+                                else if (DefinedType.IsGenericType)
+                                {
+                                    List<Type> SubDefinedParameterTypes = [];
+
+                                    Type[] SubDefinedGenericTypes = DefinedType.GetGenericArguments();
+                                    foreach (Type SubDefinedType in SubDefinedGenericTypes)
+                                    {
+                                        int Index = Array.IndexOf(DefinedGenericTypes, SubDefinedType);
+                                        if (Index == -1)
+                                        {
+                                            IsMatch = false;
+                                            break;
+                                        }
+
+                                        SubDefinedParameterTypes.Add(GenericTypes[Index]);
+                                    }
+
+                                    if (!IsMatch)
+                                        break;
+
+                                    DefinedType = DefinedType.GetGenericTypeDefinition();
+                                    TempDefinedParameterTypes[i] = DefinedType.MakeGenericType([.. SubDefinedParameterTypes]);
+                                }
                             }
+
+                            if (!IsMatch)
+                                continue;
 
                             int Score = ScoreMatchingParameters(ParameterTypes, TempDefinedParameterTypes);
                             if (Score == 0)
@@ -1035,6 +1098,51 @@ namespace System.Reflection
             }
 
             return Score;
+        }
+
+        private static Action<Action> InvokeAction;
+        public static void Invoke(Action Callback)
+        {
+            if (InvokeAction is null)
+            {
+                AssemblyName[] References = Assembly.GetEntryAssembly()?.GetReferencedAssemblies();
+
+                // WPF
+                if (References?.FirstOrDefault(i => i.Name == "PresentationFramework" && i.IsDotNetAssembly()) is AssemblyName Name)
+                {
+                    Assembly Assembly = Assembly.Load(Name);
+                    if (Assembly.GetType("System.Windows.Application", false) is Type AppType &&
+                        AppType.TryGetStaticPropertyValue("Current", out object Current) &&
+                        TryGetPropertyValue(Current, "Dispatcher", out object Dispatcher) &&
+                        TryGetMethod(Dispatcher.GetType(), "Invoke", [typeof(Action)], out MethodInfo Method))
+                        InvokeAction = a => Method.Invoke(Dispatcher, [a]);
+                }
+            }
+
+            InvokeAction?.Invoke(Callback);
+        }
+
+        private static readonly ConcurrentDictionary<Type, Func<object[], object>> InvokeFuncs = [];
+        public static T Invoke<T>(Func<T> Callback)
+        {
+            Type Key = typeof(T);
+            if (!InvokeFuncs.TryGetValue(Key, out Func<object[], object> Func))
+            {
+                AssemblyName[] References = Assembly.GetEntryAssembly()?.GetReferencedAssemblies();
+
+                // WPF
+                if (References?.FirstOrDefault(i => i.Name == "PresentationFramework" && i.IsDotNetAssembly()) is AssemblyName Name)
+                {
+                    Assembly Assembly = Assembly.Load(Name);
+                    if (Assembly.GetType("System.Windows.Application", false) is Type AppType &&
+                        AppType.TryGetStaticPropertyValue("Current", out object Current) &&
+                        TryGetPropertyValue(Current, "Dispatcher", out object Dispatcher) &&
+                        TryGetMethod(Dispatcher.GetType(), "Invoke", [typeof(T)], [typeof(Func<T>)], out MethodInfo Method))
+                        Func = Arg => Method.Invoke(Dispatcher, Arg);
+                }
+            }
+
+            return (T)Func?.Invoke([Callback]);
         }
 
     }
