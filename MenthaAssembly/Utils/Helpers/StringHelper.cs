@@ -8,6 +8,7 @@ namespace System
     public static class StringHelper
     {
         private static readonly char[] InvalidFilenameChars = Path.GetInvalidFileNameChars();
+        private static readonly char[] InvalidFilePathChars = Path.GetInvalidPathChars();
 
         public static object ParseStaticObject(this string Path)
         {
@@ -137,6 +138,11 @@ namespace System
 
             return DefaultName;
         }
+
+        public static bool IsFilenameValid(string Filename)
+            => !Filename.Any(i => InvalidFilenameChars.Contains(i));
+        public static bool IsFilePathValid(string FilePath)
+            => !FilePath.Any(i => InvalidFilePathChars.Contains(i));
 
         public static string GetValidFilename(string Filename)
             => GetValidFilename(Filename, null, '_');
