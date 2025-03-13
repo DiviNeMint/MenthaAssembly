@@ -41,10 +41,10 @@ namespace System.Collections.Generic
             get => Base[key];
             set
             {
-                if (Base.ContainsKey(key))
+                if (Base.TryGetValue(key, out TValue OldValue))
                 {
                     Base[key] = value;
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, new KeyValuePair<TKey, TValue>(key, value)));
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, new KeyValuePair<TKey, TValue>(key, value), new KeyValuePair<TKey, TValue>(key, OldValue)));
                     return;
                 }
 
@@ -56,10 +56,12 @@ namespace System.Collections.Generic
             get => ((IDictionary)Base)[key];
             set
             {
-                if (((IDictionary)Base).Contains(key))
+                IDictionary Dictionary = Base;
+                if (Dictionary.Contains(key))
                 {
-                    ((IDictionary)Base)[key] = value;
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, key));
+                    object OldValue = Dictionary[key];
+                    Dictionary[key] = value;
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, key, OldValue));
                     return;
                 }
 
