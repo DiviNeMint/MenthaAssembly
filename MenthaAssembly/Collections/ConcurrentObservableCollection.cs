@@ -1,6 +1,7 @@
 ﻿using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -9,7 +10,7 @@ namespace System.Collections.Generic
     [Serializable]
     public class ConcurrentObservableCollection<T> : ConcurrentCollection<T>, INotifyCollectionChanged, INotifyPropertyChanged
     {
-        private readonly SynchronizationContext OriginalSynchronizationContext = SynchronizationContext.Current;
+        private readonly SynchronizationContext OriginalSynchronizationContext = ReflectionHelper.Invoke(() => SynchronizationContext.Current);
         private const string CountName = nameof(Count);
         private const string IndexerName = "Item[]";
 
