@@ -1,5 +1,4 @@
-﻿using MenthaAssembly;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading;
 
 namespace System.Collections.Generic
@@ -93,23 +92,28 @@ namespace System.Collections.Generic
         /// <returns>true if the object was removed successfully; otherwise, false.</returns>
         public virtual bool TryRemove(Predicate<T> Predict, out T Item)
         {
-            bool InternalTryRemove(out T Item)
+            T Temp = default;
+            try
             {
-                for (int i = Items.Count - 1; i >= 0; i--)
+                return Handle(() =>
                 {
-                    Item = Items[i];
-                    if (Predict(Item))
+                    for (int i = Items.Count - 1; i >= 0; i--)
                     {
-                        Items.RemoveAt(i);
-                        return true;
+                        Temp = Items[i];
+                        if (Predict(Temp))
+                        {
+                            Items.RemoveAt(i);
+                            return true;
+                        }
                     }
-                }
 
-                Item = default;
-                return false;
+                    return false;
+                });
             }
-
-            return Handle(InternalTryRemove, out Item);
+            finally
+            {
+                Item = Temp;
+            }
         }
 
         public virtual void Insert(int Index, T Item)
@@ -140,7 +144,7 @@ namespace System.Collections.Generic
             => Items.ToArray().GetEnumerator();
 
         private readonly object LockObj = new();
-        protected internal U Handle<U>(Func<U> Func)
+        protected internal virtual U Handle<U>(Func<U> Func)
         {
             bool Token = false;
             try
@@ -154,21 +158,7 @@ namespace System.Collections.Generic
                     Monitor.Exit(LockObj);
             }
         }
-        protected internal W Handle<U, W>(OFunc<U, W> Func, out U p)
-        {
-            bool Token = false;
-            try
-            {
-                Monitor.Enter(LockObj, ref Token);
-                return Func(out p);
-            }
-            finally
-            {
-                if (Token)
-                    Monitor.Exit(LockObj);
-            }
-        }
-        protected internal void Handle(Action Action)
+        protected internal virtual void Handle(Action Action)
         {
             bool Token = false;
             try
@@ -183,13 +173,13 @@ namespace System.Collections.Generic
             }
         }
 
-        public void Lock()
-            => Monitor.Enter(LockObj);
-        public void Unlock()
-        {
-            if (Monitor.IsEntered(LockObj))
-                Monitor.Exit(LockObj);
-        }
+        //public virtual void Lock()
+        //    => Monitor.Enter(LockObj);
+        //public virtual void Unlock()
+        //{
+        //    if (Monitor.IsEntered(LockObj))
+        //        Monitor.Exit(LockObj);
+        //}
 
         #region IList
 
