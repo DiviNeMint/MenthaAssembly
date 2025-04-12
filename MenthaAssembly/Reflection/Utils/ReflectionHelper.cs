@@ -10,12 +10,12 @@ namespace System.Reflection
 {
     public static class ReflectionHelper
     {
-        internal static readonly BindingFlags AllModifier = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
-                                              AllStaticModifier = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static,
-                                              PublicModifier = BindingFlags.Public | BindingFlags.Instance,
-                                              PublicStaticModifier = BindingFlags.Public | BindingFlags.Static,
-                                              InternalModifier = BindingFlags.NonPublic | BindingFlags.Instance,
-                                              InternalStaticModifier = BindingFlags.NonPublic | BindingFlags.Static;
+        public const BindingFlags AllModifier = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                                  AllStaticModifier = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static,
+                                  PublicModifier = BindingFlags.Public | BindingFlags.Instance,
+                                  PublicStaticModifier = BindingFlags.Public | BindingFlags.Static,
+                                  InternalModifier = BindingFlags.NonPublic | BindingFlags.Instance,
+                                  InternalStaticModifier = BindingFlags.NonPublic | BindingFlags.Static;
 
         #region Property
         public static IEnumerable<PropertyInfo> GetProperties(this Type This, params string[] Names)
