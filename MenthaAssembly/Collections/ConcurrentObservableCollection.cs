@@ -150,9 +150,9 @@ namespace System.Collections.Generic
             });
 
         protected internal override void Handle(Action Action)
-            => ReflectionHelper.Invoke(Action);
+            => ReflectionHelper.InvokeOnUIThread(Action);
         protected internal override U Handle<U>(Func<U> Func)
-            => ReflectionHelper.Invoke(Func);
+            => ReflectionHelper.InvokeOnUIThread(Func);
 
         protected void OnPropertyChanged([CallerMemberName] string PropertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -1101,14 +1102,17 @@ namespace System.Reflection
         }
 
         private static Action<Action> InvokeAction;
-        public static void Invoke(Action Callback)
+        public static void InvokeOnUIThread(Action Callback)
         {
             if (InvokeAction is null)
             {
-                AssemblyName[] References = Assembly.GetEntryAssembly()?.GetReferencedAssemblies();
+                AssemblyName[] References = Assembly.GetEntryAssembly()?
+                                                    .GetReferencedAssemblies()
+                                                    .Where(AssemblyHelper.IsDotNetAssembly)
+                                                    .ToArray();
 
                 // WPF
-                if (References?.FirstOrDefault(i => i.Name == "PresentationFramework" && i.IsDotNetAssembly()) is AssemblyName Name)
+                if (References?.FirstOrDefault(i => i.Name == "PresentationFramework") is AssemblyName Name)
                 {
                     Assembly Assembly = Assembly.Load(Name);
                     if (Assembly.GetType("System.Windows.Application", false) is Type AppType &&
@@ -1117,32 +1121,107 @@ namespace System.Reflection
                         TryGetMethod(Dispatcher.GetType(), "Invoke", [typeof(Action)], out MethodInfo Method))
                         InvokeAction = a => Method.Invoke(Dispatcher, [a]);
                 }
+
+                // Winform
+                if (References?.FirstOrDefault(i => i.Name == "System.Windows.Forms") is AssemblyName WinformAssemblyName)
+                {
+                    Assembly Assembly = Assembly.Load(WinformAssemblyName);
+                    if (Assembly.GetType("System.Windows.Forms.Application", false) is Type AppType &&
+                        AppType.TryGetStaticPropertyValue("OpenForms", out IEnumerable Current) &&
+                        Current.FirstOrNull() is object Form &&
+                        TryGetMethod(Form.GetType(), "Invoke", [typeof(Action)], out MethodInfo Method))
+                        InvokeAction = a => Method.Invoke(Form, [a]);
+                }
+
+                if (InvokeAction is null)
+                    throw new EntryPointNotFoundException("Unable to locate a supported UI thread dispatcher.\r\n" +
+                                                          "This method requires either a WPF (PresentationFramework) or WinForms (System.Windows.Forms) application context.");
             }
 
-            InvokeAction?.Invoke(Callback);
+            InvokeAction.Invoke(Callback);
         }
 
         private static readonly ConcurrentDictionary<Type, Func<object[], object>> InvokeFuncs = [];
-        public static T Invoke<T>(Func<T> Callback)
+        public static T InvokeOnUIThread<T>(Func<T> Callback)
         {
             Type Key = typeof(T);
             if (!InvokeFuncs.TryGetValue(Key, out Func<object[], object> Func))
             {
-                AssemblyName[] References = Assembly.GetEntryAssembly()?.GetReferencedAssemblies();
+                AssemblyName[] References = Assembly.GetEntryAssembly()?
+                                                    .GetReferencedAssemblies()
+                                                    .Where(AssemblyHelper.IsDotNetAssembly)
+                                                    .ToArray();
 
                 // WPF
-                if (References?.FirstOrDefault(i => i.Name == "PresentationFramework" && i.IsDotNetAssembly()) is AssemblyName Name)
+                if (References?.FirstOrDefault(i => i.Name == "PresentationFramework") is AssemblyName WPFAssemblyName)
                 {
-                    Assembly Assembly = Assembly.Load(Name);
+                    Assembly Assembly = Assembly.Load(WPFAssemblyName);
                     if (Assembly.GetType("System.Windows.Application", false) is Type AppType &&
                         AppType.TryGetStaticPropertyValue("Current", out object Current) &&
                         TryGetPropertyValue(Current, "Dispatcher", out object Dispatcher) &&
                         TryGetMethod(Dispatcher.GetType(), "Invoke", [typeof(T)], [typeof(Func<T>)], out MethodInfo Method))
                         Func = Arg => Method.Invoke(Dispatcher, Arg);
                 }
+
+                // Winform
+                else if (References?.FirstOrDefault(i => i.Name == "System.Windows.Forms") is AssemblyName WinformAssemblyName)
+                {
+                    Assembly Assembly = Assembly.Load(WinformAssemblyName);
+                    if (Assembly.GetType("System.Windows.Forms.Application", false) is Type AppType &&
+                        AppType.TryGetStaticPropertyValue("OpenForms", out IEnumerable Current) &&
+                        Current.FirstOrNull() is object Form &&
+                        TryGetMethod(Form.GetType(), "Invoke", [typeof(T)], [typeof(Func<T>)], out MethodInfo Method))
+                        Func = Arg => Method.Invoke(Form, Arg);
+                }
+
+                if (Func is null)
+                    throw new EntryPointNotFoundException("Unable to locate a supported UI thread dispatcher.\r\n" +
+                                                          "This method requires either a WPF (PresentationFramework) or WinForms (System.Windows.Forms) application context.");
+
+                InvokeFuncs.TryAdd(Key, Func);
             }
 
-            return (T)Func?.Invoke([Callback]);
+            return (T)Func.Invoke([Callback]);
+        }
+
+        private static Action<Action> BeginInvokeAction;
+        public static void BeginInvokeOnUIThread(Action Callback)
+        {
+            if (BeginInvokeAction is null)
+            {
+                AssemblyName[] References = Assembly.GetEntryAssembly()?
+                                                    .GetReferencedAssemblies()
+                                                    .Where(AssemblyHelper.IsDotNetAssembly)
+                                                    .ToArray();
+
+                // WPF
+                if (References?.FirstOrDefault(i => i.Name == "PresentationFramework") is AssemblyName WPFAssemblyName)
+                {
+                    Assembly Assembly = Assembly.Load(WPFAssemblyName);
+                    if (Assembly.GetType("System.Windows.Application", false) is Type AppType &&
+                        AppType.TryGetStaticPropertyValue("Current", out object Current) &&
+                        TryGetPropertyValue(Current, "Dispatcher", out object Dispatcher) &&
+                        TryGetMethod(Dispatcher.GetType(), "BeginInvoke", [typeof(Delegate), typeof(object[])], out MethodInfo Method))
+                        BeginInvokeAction = a => Method.Invoke(Dispatcher, [a, null]);
+                }
+
+                // WinForms
+                if (References?.FirstOrDefault(i => i.Name == "System.Windows.Forms") is AssemblyName WinformsAssemblyName)
+                {
+                    Assembly Assembly = Assembly.Load(WinformsAssemblyName);
+                    if (Assembly.GetType("System.Windows.Forms.Application", false) is Type AppType &&
+                        AppType.TryGetStaticPropertyValue("OpenForms", out IEnumerable Current) &&
+                        Current.FirstOrNull() is object Form &&
+                        TryGetMethod(Form.GetType(), "BeginInvoke", [typeof(Delegate), typeof(object[])], out MethodInfo Method))
+                        BeginInvokeAction = a => Method.Invoke(Form, [a, null]);
+                }
+
+                if (BeginInvokeAction is null)
+                    throw new EntryPointNotFoundException("Unable to locate a supported UI thread dispatcher for BeginInvoke.\r\n" +
+                                                          "This method requires either a WPF (PresentationFramework) or WinForms (System.Windows.Forms) application context.");
+            }
+
+            BeginInvokeAction.Invoke(Callback);
         }
 
     }
