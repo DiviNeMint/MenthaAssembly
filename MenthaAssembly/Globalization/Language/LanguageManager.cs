@@ -62,20 +62,23 @@ namespace MenthaAssembly
         }
 
         private static readonly Dictionary<string, WindowsSystemLanguagePacket> WindowsSystemCache = [];
-        private static string CurrentWindowsSystemCultureCode;
+        internal static string CurrentWindowsSystemCultureCode;
         private static WindowsSystemLanguagePacket _CurrentWindowsSystem;
         public static WindowsSystemLanguagePacket CurrentWindowsSystem
         {
             get
             {
-                if (string.IsNullOrEmpty(CurrentWindowsSystemCultureCode))
+                lock (WindowsSystemCache)
                 {
-                    CurrentWindowsSystemCultureCode = _Current?.CultureCode?.ToLower() ?? CultureInfo.CurrentCulture.Name.ToLower();
-                    if (!WindowsSystemCache.TryGetValue(CurrentWindowsSystemCultureCode, out _CurrentWindowsSystem) &&
-                        WindowsSystemLanguagePacket.Load(CurrentWindowsSystemCultureCode) is WindowsSystemLanguagePacket LoadPacket)
+                    if (string.IsNullOrEmpty(CurrentWindowsSystemCultureCode))
                     {
-                        WindowsSystemCache[CurrentWindowsSystemCultureCode] = LoadPacket;
-                        _CurrentWindowsSystem = LoadPacket;
+                        CurrentWindowsSystemCultureCode = _Current?.CultureCode?.ToLower() ?? CultureInfo.CurrentCulture.Name.ToLower();
+                        if (!WindowsSystemCache.TryGetValue(CurrentWindowsSystemCultureCode, out _CurrentWindowsSystem) &&
+                            WindowsSystemLanguagePacket.Load(CurrentWindowsSystemCultureCode) is WindowsSystemLanguagePacket LoadPacket)
+                        {
+                            WindowsSystemCache[CurrentWindowsSystemCultureCode] = LoadPacket;
+                            _CurrentWindowsSystem = LoadPacket;
+                        }
                     }
                 }
 
