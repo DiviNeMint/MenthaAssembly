@@ -829,6 +829,75 @@ namespace System.Reflection
 
         #endregion
 
+        #region Operator
+        /// <summary>
+        /// Determines whether this type supports "&amp;&amp;" operator.
+        /// </summary>
+        public static bool SupportsLogicalAnd(this Type Type)
+            => Type == typeof(bool) ||
+               (HasOperator(Type, "op_True") &&
+                HasOperator(Type, "op_False") &&
+                (HasOperator(Type, "op_BitwiseAnd") || HasOperator(Type, "op_And")));
+
+        /// <summary>
+        /// Determines whether this type supports "||" operator.
+        /// </summary>
+        public static bool SupportsLogicalOr(this Type Type)
+            => Type == typeof(bool) ||
+               (HasOperator(Type, "op_True") &&
+                HasOperator(Type, "op_False") &&
+                (HasOperator(Type, "op_BitwiseOr") || HasOperator(Type, "op_Or")));
+
+        /// <summary>
+        /// Determines whether this type supports "!" operator.
+        /// </summary>
+        public static bool SupportsLogicalNot(this Type Type)
+            => Type == typeof(bool) || HasOperator(Type, "op_LogicalNot") || HasOperator(Type, "op_Not");
+
+        /// <summary>
+        /// Determines whether this type supports "==" operators.
+        /// </summary>
+        public static bool SupportsComparisonEquality(this Type Type)
+            => HasOperator(Type, "op_Equality");
+
+        /// <summary>
+        /// Determines whether this type supports "!=" operators.
+        /// </summary>
+        public static bool SupportsComparisonInequality(this Type Type)
+            => HasOperator(Type, "op_Inequality");
+
+        /// <summary>
+        /// Determines whether this type supports "&lt;" operator.
+        /// </summary>
+        public static bool SupportsComparisonLessThan(this Type Type)
+            => HasOperator(Type, "op_LessThan");
+
+        /// <summary>
+        /// Determines whether this type supports "&lt;=" operator.
+        /// </summary>
+        public static bool SupportsComparisonLessThanOrEqual(this Type Type)
+            => HasOperator(Type, "op_LessThanOrEqual");
+
+        /// <summary>
+        /// Determines whether this type supports "&gt;" operator.
+        /// </summary>
+        public static bool SupportsComparisonGreaterThan(this Type Type)
+            => HasOperator(Type, "op_GreaterThan");
+
+        /// <summary>
+        /// Determines whether this type supports "&gt;=" operator.
+        /// </summary>
+        public static bool SupportsComparisonGreaterThanOrEqual(this Type Type)
+            => HasOperator(Type, "op_GreaterThanOrEqual");
+
+        /// <summary>
+        /// Checks whether the specified operator exists.
+        /// </summary>
+        private static bool HasOperator(Type Type, string OperatorName)
+            => TryGetMethod(Type, OperatorName, PublicStaticModifier, out _);
+
+        #endregion
+
         #region NumberType
         internal static readonly Dictionary<Type, byte> NumberTypes = new()
         {
