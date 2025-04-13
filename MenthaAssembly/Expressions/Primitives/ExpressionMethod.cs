@@ -22,19 +22,19 @@ namespace MenthaAssembly.Expressions
 
         public List<IExpressionObject> Parameters { get; }
 
-        public ExpressionMethod(string Name)
+        internal ExpressionMethod(string Name)
         {
             this.Name = Name;
-            GenericTypes = new List<ExpressionTypeInfo>(0);
-            Parameters = new List<IExpressionObject>(0);
+            GenericTypes = [];
+            Parameters = [];
         }
-        public ExpressionMethod(string Name, IEnumerable<IExpressionObject> Parameters)
+        internal ExpressionMethod(string Name, IEnumerable<IExpressionObject> Parameters)
         {
             this.Name = Name;
-            GenericTypes = new List<ExpressionTypeInfo>(0);
+            GenericTypes = [];
             this.Parameters = new List<IExpressionObject>(Parameters);
         }
-        public ExpressionMethod(string Name, IEnumerable<ExpressionTypeInfo> GenericTypes, IEnumerable<IExpressionObject> Parameters)
+        internal ExpressionMethod(string Name, IEnumerable<ExpressionTypeInfo> GenericTypes, IEnumerable<IExpressionObject> Parameters)
         {
             this.Name = Name;
             this.GenericTypes = new List<ExpressionTypeInfo>(GenericTypes);
@@ -42,10 +42,10 @@ namespace MenthaAssembly.Expressions
         }
 
         private Expression Method;
-        public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
-            => TryImplement(null, Base, Parameters, out Method) ? Method :
+        public Expression Implement(ExpressionMode Mode, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+            => TryImplement(Mode, null, Base, Parameters, out Method) ? Method :
                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found valid method : {this}.");
-        public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
+        public bool TryImplement(ExpressionMode Mode, object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
         {
             if (Method != null)
             {
@@ -53,7 +53,7 @@ namespace MenthaAssembly.Expressions
                 return true;
             }
 
-            Expression[] MethodParameters = this.Parameters.Select(i => i.Implement(Base, Parameters)).ToArray();
+            Expression[] MethodParameters = this.Parameters.Select(i => i.Implement(Mode, Base, Parameters)).ToArray();
             Type[] ParameterTypes = MethodParameters.Select(i => i.Type).ToArray(),
                    GenericTypes = this.GenericTypes.Select(i => i.Implement()).ToArray();
 

@@ -24,25 +24,25 @@ namespace MenthaAssembly.Expressions
 
         public List<IExpressionRoute> Contexts { get; }
 
-        public ExpressionRoute()
+        internal ExpressionRoute()
         {
-            Contexts = new List<IExpressionRoute>();
+            Contexts = [];
         }
-        public ExpressionRoute(IEnumerable<IExpressionRoute> Contexts)
+        internal ExpressionRoute(IEnumerable<IExpressionRoute> Contexts)
         {
             this.Contexts = new List<IExpressionRoute>(Contexts);
         }
 
         private Expression Element;
-        public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
-            => TryImplement(null, Base, Parameters, out Element) ? Element :
+        public Expression Implement(ExpressionMode Mode, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+            => TryImplement(Mode, null, Base, Parameters, out Element) ? Element :
                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown route : {this}.");
-        public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
+        public bool TryImplement(ExpressionMode Mode, object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
         {
             if (Element != null)
             {
                 Expression = Element;
-                return true; ;
+                return true;
             }
 
             else if (Contexts.Count < 1)
@@ -55,18 +55,18 @@ namespace MenthaAssembly.Expressions
 
             IExpressionRoute Context = Contexts[0];
             if (Contexts.Count == 1)
-                return Context.TryImplement(Parent, Base, Parameters, out Expression);
+                return Context.TryImplement(Mode, Parent, Base, Parameters, out Expression);
 
             Expression = null;
             int Index = 0,
                 Count = Contexts.Count;
             if (Context.Type == ExpressionObjectType.Member &&
-                !Context.TryImplement(Parent, Base, Parameters, out Expression) &&
-                !TryImplementFirstRoute(Parent, Base, Parameters, out Expression, out Index))
+                !Context.TryImplement(Mode, Parent, Base, Parameters, out Expression) &&
+                !TryImplementFirstRoute(Mode, Parent, Base, Parameters, out Expression, out Index))
                 return false;
 
             for (; Index < Count; Index++)
-                if (!Contexts[Index].TryImplement(Expression, Base, Parameters, out Expression))
+                if (!Contexts[Index].TryImplement(Mode, Expression, Base, Parameters, out Expression))
                     return false;
 
             if (Expression is null)
@@ -75,9 +75,9 @@ namespace MenthaAssembly.Expressions
             Element = Expression;
             return true;
         }
-        private bool TryImplementFirstRoute(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression, out int Index)
+        private bool TryImplementFirstRoute(ExpressionMode Mode, object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression, out int Index)
         {
-            StringBuilder Builder = new StringBuilder();
+            StringBuilder Builder = new();
             try
             {
                 Index = 0;
@@ -95,7 +95,7 @@ namespace MenthaAssembly.Expressions
                         return false;
                     }
 
-                    if (Contexts[Index].TryImplement(Type, Base, Parameters, out Expression))
+                    if (Contexts[Index].TryImplement(Mode, Type, Base, Parameters, out Expression))
                         return true;
                 }
 
@@ -116,7 +116,7 @@ namespace MenthaAssembly.Expressions
                             return false;
                         }
 
-                        if (Contexts[Index].TryImplement(Type, Base, Parameters, out Expression))
+                        if (Contexts[Index].TryImplement(Mode, Type, Base, Parameters, out Expression))
                             return true;
                     }
 

@@ -23,20 +23,20 @@ namespace MenthaAssembly.Expressions
 
         public List<IExpressionObject> Parameters { get; }
 
-        public ExpressionIndexer()
+        internal ExpressionIndexer()
         {
-            Parameters = new List<IExpressionObject>(0);
+            Parameters = [];
         }
-        public ExpressionIndexer(IEnumerable<IExpressionObject> Parameters)
+        internal ExpressionIndexer(IEnumerable<IExpressionObject> Parameters)
         {
             this.Parameters = new List<IExpressionObject>(Parameters);
         }
 
         private Expression Indexer;
-        public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
-            => TryImplement(null, Base, Parameters, out Indexer) ? Indexer :
+        public Expression Implement(ExpressionMode Mode, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+            => TryImplement(Mode, null, Base, Parameters, out Indexer) ? Indexer :
                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found valid indexer : {this}.");
-        public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
+        public bool TryImplement(ExpressionMode Mode, object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
         {
             if (Indexer != null)
             {
@@ -44,7 +44,7 @@ namespace MenthaAssembly.Expressions
                 return true;
             }
 
-            Expression[] IndexerParameters = this.Parameters.Select(i => i.Implement(Base, Parameters)).ToArray();
+            Expression[] IndexerParameters = this.Parameters.Select(i => i.Implement(Mode, Base, Parameters)).ToArray();
             Type[] ParameterTypes = IndexerParameters.Select(i => i.Type).ToArray();
 
             // Base Indexer

@@ -292,7 +292,7 @@ namespace System.Linq.Expressions
 
         public static bool TryParse(string Code, out ExpressionBlock Block)
         {
-            StringBuilder Builder = new StringBuilder();
+            StringBuilder Builder = new();
             int Index = 0,
                 Length = Code.Length;
 
@@ -306,6 +306,7 @@ namespace System.Linq.Expressions
                 return false;
             }
 
+            NormalizeConverter(Block);
             return true;
         }
         private static bool TryParseElement(string Code, ref int Index, int Length, ref StringBuilder Builder, out IExpressionObject Element)
@@ -324,7 +325,7 @@ namespace System.Linq.Expressions
                     {
                         Index++;
 
-                        ExpressionBlock Block = new ExpressionBlock();
+                        ExpressionBlock Block = new();
                         while (TryParseElement(Code, ref Index, Length, ref Builder, out IExpressionObject Child))
                             Block.Contexts.Add(Child);
 
@@ -352,42 +353,177 @@ namespace System.Linq.Expressions
                         return false;
                     }
                 #endregion
-                #region Math Identifier
+                #region Identifier
                 case '+':
                     {
                         Index++;
-                        Element = new ExpressionIdentifier(ExpressionType.Add);
+                        Element = new ExpressionIdentifier("+", ExpressionType.Add);
                         return true;
                     }
                 case '-':
                     {
                         Index++;
-                        Element = new ExpressionIdentifier(ExpressionType.Subtract);
+                        Element = new ExpressionIdentifier("-", ExpressionType.Subtract);
                         return true;
                     }
                 case '*':
                     {
                         Index++;
-                        Element = new ExpressionIdentifier(ExpressionType.Multiply);
+                        Element = new ExpressionIdentifier("*", ExpressionType.Multiply);
                         return true;
                     }
                 case '/':
                     {
                         Index++;
-                        Element = new ExpressionIdentifier(ExpressionType.Divide);
+                        Element = new ExpressionIdentifier("/", ExpressionType.Divide);
                         return true;
                     }
                 case '%':
                     {
                         Index++;
-                        Element = new ExpressionIdentifier(ExpressionType.Modulo);
+                        Element = new ExpressionIdentifier("%", ExpressionType.Modulo);
+                        return true;
+                    }
+                case '＆':
+                case '&':
+                    {
+                        Index++;
+                        if (Index < Length)
+                        {
+                            c = Code[Index];
+                            switch (c)
+                            {
+                                case '＆':
+                                case '&':
+                                    {
+                                        Index++;
+                                        Element = new ExpressionIdentifier("&&", ExpressionType.AndAlso);
+                                        return true;
+                                    }
+                            }
+                        }
+
+                        Element = new ExpressionIdentifier("&", ExpressionType.And);
+                        return true;
+                    }
+                case '|':
+                    {
+                        Index++;
+                        if (Index < Length)
+                        {
+                            c = Code[Index];
+                            if (c == '|')
+                            {
+                                Index++;
+                                Element = new ExpressionIdentifier("||", ExpressionType.OrElse);
+                                return true;
+                            }
+                        }
+
+                        Element = new ExpressionIdentifier("|", ExpressionType.Or);
                         return true;
                     }
                 case '^':
                     {
                         Index++;
-                        Element = new ExpressionIdentifier(ExpressionType.Power);
+                        Element = new ExpressionIdentifier("^", ExpressionType.ExclusiveOr);
                         return true;
+                    }
+                case '!':
+                    {
+                        Index++;
+                        if (Index < Length)
+                        {
+                            c = Code[Index];
+                            if (c == '=')
+                            {
+                                Index++;
+                                Element = new ExpressionIdentifier("!=", ExpressionType.NotEqual);
+                                return true;
+                            }
+                        }
+
+                        Element = new ExpressionIdentifier("!", ExpressionType.Not);
+                        return true;
+                    }
+                case '~':
+                    {
+                        Index++;
+                        Element = new ExpressionIdentifier("~", ExpressionType.OnesComplement);
+                        return true;
+                    }
+                case '＜':
+                case '<':
+                    {
+                        Index++;
+                        if (Index < Length)
+                        {
+                            c = Code[Index];
+                            switch (c)
+                            {
+                                case '=':
+                                    {
+                                        Index++;
+                                        Element = new ExpressionIdentifier("<=", ExpressionType.LessThanOrEqual);
+                                        return true;
+                                    }
+                                case '＜':
+                                case '<':
+                                    {
+                                        Index++;
+                                        Element = new ExpressionIdentifier("<<", ExpressionType.LeftShift);
+                                        return true;
+                                    }
+                            }
+                        }
+
+                        Element = new ExpressionIdentifier("<", ExpressionType.LessThan);
+                        return true;
+                    }
+                case '＞':
+                case '>':
+                    {
+                        Index++;
+                        if (Index < Length)
+                        {
+                            c = Code[Index];
+                            switch (c)
+                            {
+                                case '=':
+                                    {
+                                        Index++;
+                                        Element = new ExpressionIdentifier(">=", ExpressionType.GreaterThanOrEqual);
+                                        return true;
+                                    }
+                                case '＞':
+                                case '>':
+                                    {
+                                        Index++;
+                                        Element = new ExpressionIdentifier(">>", ExpressionType.RightShift);
+                                        return true;
+                                    }
+                            }
+                        }
+
+                        Element = new ExpressionIdentifier(">", ExpressionType.GreaterThan);
+                        return true;
+                    }
+                case '=':
+                    {
+                        Index++;
+                        if (Index < Length)
+                        {
+                            c = Code[Index];
+                            if (c == '=')
+                            {
+                                Index++;
+                                Element = new ExpressionIdentifier("==", ExpressionType.Equal);
+                                return true;
+                            }
+                        }
+
+                        Element = null;
+                        return false;
                     }
                 #endregion
                 #region Constant
@@ -433,6 +569,109 @@ namespace System.Linq.Expressions
                         Element = ParseRoute(Code, ref Index, Length, ref Builder);
                         return true;
                     }
+            }
+        }
+        private static void NormalizeConverter(ExpressionBlock Block)
+            => NormalizeConverter(Block.Contexts);
+        private static void NormalizeConverter(ExpressionRoute Route)
+        {
+            IExpressionRoute Context = Route.Contexts[Route.Contexts.Count - 1];
+            if (Context is ExpressionMethod Method)
+            {
+                NormalizeConverter(Method.Parameters);
+            }
+
+            else if (Context is ExpressionIndexer Indexer)
+            {
+                NormalizeConverter(Indexer.Parameters);
+            }
+        }
+        private static void NormalizeConverter(List<IExpressionObject> Contexts)
+        {
+            for (int i = 0; i < Contexts.Count;)
+            {
+                IExpressionObject Curt = Contexts[i++];
+                if (Curt is ExpressionBlock Group)
+                {
+                    // Check if it could be a converter.
+                    if (!TryGetConverterType(Group, out ExpressionRoute Type))
+                    {
+                        NormalizeConverter(Group);
+                        continue;
+                    }
+
+                    // Checks end.
+                    if (i >= Contexts.Count)
+                        break;
+
+                    // Checks if the it is a variable by checking if next one is an operator.
+                    if (Contexts[i].Type == ExpressionObjectType.Identifier)
+                        continue;
+
+                    Contexts.Insert(i - 1, new ExpressionConvert(Type));
+                    Contexts.RemoveAt(i);
+                }
+                else if (Curt is ExpressionRoute Route)
+                {
+                    NormalizeConverter(Route);
+                }
+            }
+        }
+        private static bool TryGetConverterType(ExpressionBlock Block, out ExpressionRoute Type)
+        {
+            if (Block.Contexts.Count != 1 ||
+                Block.Contexts[0] is not ExpressionRoute Route ||
+                Route.Contexts.Any(i => i.Type != ExpressionObjectType.Member))
+            {
+                Type = null;
+                return false;
+            }
+
+            Type = Route;
+            return true;
+        }
+
+        public static IEnumerable<string> EnumParameterNames(ExpressionBlock Block)
+            => EnumParameterNames(Block.Contexts);
+        private static IEnumerable<string> EnumParameterNames(ExpressionRoute Route)
+        {
+            if (Route.Contexts.Count == 1)
+            {
+                IExpressionRoute Path = Route.Contexts[0];
+                if (Path.Type == ExpressionObjectType.Member)
+                    yield return Path.Name;
+
+                yield break;
+            }
+
+            IExpressionRoute Context = Route.Contexts[Route.Contexts.Count - 1];
+            if (Context is ExpressionMethod Method)
+            {
+                foreach (string Name in EnumParameterNames(Method.Parameters))
+                    yield return Name;
+            }
+
+            else if (Context is ExpressionIndexer Indexer)
+            {
+                foreach (string Name in EnumParameterNames(Indexer.Parameters))
+                    yield return Name;
+            }
+        }
+        private static IEnumerable<string> EnumParameterNames(List<IExpressionObject> Contents)
+        {
+            foreach (IExpressionObject Content in Contents)
+            {
+                if (Content is ExpressionRoute Route)
+                {
+                    foreach (string Name in EnumParameterNames(Route))
+                        yield return Name;
+                }
+
+                else if (Content is ExpressionBlock Block)
+                {
+                    foreach (string Name in EnumParameterNames(Block))
+                        yield return Name;
+                }
             }
         }
 
@@ -611,7 +850,7 @@ namespace System.Linq.Expressions
         /// </summary>
         public static IExpressionObject ParseRoute(string Code, ref int Index, int Length, ref StringBuilder Builder)
         {
-            ExpressionRoute Route = new ExpressionRoute();
+            ExpressionRoute Route = new();
             List<ExpressionTypeInfo> GenericTypes = null;
             char c;
             while (TryParseName(Code, ref Index, Length, ref Builder, out bool IsEnd, out string Name))
@@ -689,7 +928,7 @@ namespace System.Linq.Expressions
                 }
 
                 // Member
-                ExpressionMember Member = new ExpressionMember(Name);
+                ExpressionMember Member = new(Name);
                 if (GenericTypes != null)
                 {
                     Member.GenericTypes.AddRange(GenericTypes);
@@ -725,7 +964,7 @@ namespace System.Linq.Expressions
             if (Route.Contexts.Count > 0)
                 return Route;
 
-            if (Index >= Length)
+            if (Index < Length)
                 throw new IndexOutOfRangeException();
 
             try
@@ -756,32 +995,32 @@ namespace System.Linq.Expressions
                 case '(':
                     {
                         i++;
-                        EndChar = new[] { ')' };
+                        EndChar = [')'];
                         break;
                     }
                 case '[':
                     {
                         i++;
-                        EndChar = new[] { ']' };
+                        EndChar = [']'];
                         break;
                     }
                 case '{':
                     {
                         i++;
-                        EndChar = new[] { '}' };
+                        EndChar = ['}'];
                         break;
                     }
                 default:
-                    EndChar = new[] { ')', ']', '}' };
+                    EndChar = [')', ']', '}'];
                     break;
             }
 
-            Contents = new List<IExpressionObject>();
-            List<IExpressionObject> Contexts = new List<IExpressionObject>();
+            Contents = [];
 
             char c;
             do
             {
+                List<IExpressionObject> Contexts = [];
                 while (TryParseElement(Code, ref i, Length, ref Builder, out IExpressionObject Context))
                     Contexts.Add(Context);
 
@@ -812,10 +1051,9 @@ namespace System.Linq.Expressions
                         }
                     default:
                         {
-                            ExpressionBlock Block = new ExpressionBlock();
+                            ExpressionBlock Block = new();
                             Block.Contexts.AddRange(Contexts);
                             Contents.Add(Block);
-                            Contexts.Clear();
                             break;
                         }
                 }
@@ -848,7 +1086,7 @@ namespace System.Linq.Expressions
                 i++;
 
             string Namespace = null;
-            Types = new List<ExpressionTypeInfo>();
+            Types = [];
             while (TryParseName(Code, ref i, Length, ref Builder, out bool IsEnd, out string Name))
             {
                 if (IsEnd ||
@@ -867,7 +1105,7 @@ namespace System.Linq.Expressions
                         }
                     case '<':
                         {
-                            ExpressionTypeInfo Type = new ExpressionTypeInfo(Name, Namespace);
+                            ExpressionTypeInfo Type = new(Name, Namespace);
                             Namespace = null;
 
                             if (!TryParseGenericTypes(Code, ref i, Length, ref Builder, out List<ExpressionTypeInfo> SubTypes))
@@ -981,13 +1219,12 @@ namespace System.Linq.Expressions
             => char.IsLetterOrDigit(This) || This == '_' || This == '@';
 
         public static bool IsIdentifierChars(this char This)
-            => This == '+' || This == '-' || This == '*' || This == '/' || This == '%' || This == '^' ||
-               This == '|' || This == '&' || This == '~' || This == '!' || This == '<' || This == '=' || This == '>' ||
-               This == '(' || This == ')' || This == '[' || This == ']' || This == '{' || This == '}' || This == ',' ||
-               This == '?' || This == ':' ||
-               This == ';' ||
-               This == '"';
+            => This is '+' or '-' or '*' or '/' or '%' or '^' or
+               '|' or '&' or '＆' or '~' or '!' or '<' or '＜' or '=' or '>' or '＞' or
+               '(' or ')' or '[' or ']' or '{' or '}' or ',' or
+               '?' or ':' or
+               ';' or
+               '"';
 
     }
-
 }

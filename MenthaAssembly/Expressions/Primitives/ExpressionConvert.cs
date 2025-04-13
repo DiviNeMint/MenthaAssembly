@@ -12,18 +12,18 @@ namespace MenthaAssembly.Expressions
         ExpressionType IExpressionObject.ExpressionType
             => ExpressionType.Convert;
 
-        public Type Type { get; }
+        public ExpressionRoute TypeRoute { get; }
 
-        public ExpressionConvert(Type Type)
+        internal ExpressionConvert(ExpressionRoute TypeRoute)
         {
-            this.Type = Type;
+            this.TypeRoute = TypeRoute;
         }
 
-        public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+        public Expression Implement(ExpressionMode Mode, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
             => throw new NotSupportedException();
 
         public override string ToString()
-            => $"({Type.Name})";
+            => $"({TypeRoute})";
 
     }
 }

@@ -19,23 +19,23 @@ namespace MenthaAssembly.Expressions
 
         public List<ExpressionTypeInfo> GenericTypes { get; }
 
-        public ExpressionMember(string Name)
+        internal ExpressionMember(string Name)
         {
             this.Name = Name;
-            GenericTypes = new List<ExpressionTypeInfo>(0);
+            GenericTypes = [];
         }
-        public ExpressionMember(string Name, IEnumerable<ExpressionTypeInfo> GenericTypes)
+        internal ExpressionMember(string Name, IEnumerable<ExpressionTypeInfo> GenericTypes)
         {
             this.Name = Name;
             this.GenericTypes = new List<ExpressionTypeInfo>(GenericTypes);
         }
 
         private Expression Member;
-        public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
-            => GenericTypes.Count == 0 ? TryImplement(null, Base, Parameters, out Member) ? Member :
+        public Expression Implement(ExpressionMode Mode, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+            => GenericTypes.Count == 0 ? TryImplement(Mode, null, Base, Parameters, out Member) ? Member :
                throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Not found member : {this}.") :
                throw new InvalidProgramException($"[Expression]{this} is not object's member.");
-        public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
+        public bool TryImplement(ExpressionMode Mode, object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression)
         {
             if (GenericTypes.Count > 0)
             {

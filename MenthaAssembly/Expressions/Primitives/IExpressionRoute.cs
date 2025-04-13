@@ -9,7 +9,7 @@ namespace MenthaAssembly.Expressions
 
         public List<ExpressionTypeInfo> GenericTypes { get; }
 
-        public bool TryImplement(object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression);
+        public bool TryImplement(ExpressionMode Mode, object Parent, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters, out Expression Expression);
 
     }
 }

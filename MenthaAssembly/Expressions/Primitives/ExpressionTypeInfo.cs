@@ -13,13 +13,13 @@ namespace MenthaAssembly.Expressions
 
         public List<ExpressionTypeInfo> GenericTypes { get; }
 
-        public ExpressionTypeInfo(string Name, string Namespace)
+        internal ExpressionTypeInfo(string Name, string Namespace)
         {
             this.Name = Name;
             this.Namespace = Namespace;
-            GenericTypes = new List<ExpressionTypeInfo>();
+            GenericTypes = [];
         }
-        public ExpressionTypeInfo(string Name, string Namespace, IEnumerable<ExpressionTypeInfo> GenericTypes)
+        internal ExpressionTypeInfo(string Name, string Namespace, IEnumerable<ExpressionTypeInfo> GenericTypes)
         {
             this.Name = Name;
             this.Namespace = Namespace;
@@ -30,10 +30,8 @@ namespace MenthaAssembly.Expressions
         {
             Type[] GenericTypes = this.GenericTypes.Select(i => i.Implement())
                                                    .ToArray();
-            if (!ReflectionHelper.TryGetType(Name, Namespace, GenericTypes, out Type t))
-                throw new TypeLoadException($"Not found type : {this}");
-
-            return t;
+            return ReflectionHelper.TryGetType(Name, Namespace, GenericTypes, out Type t) ? t :
+                   throw new TypeLoadException($"Not found type : {this}");
         }
 
         public override string ToString()

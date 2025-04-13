@@ -8,21 +8,18 @@ namespace MenthaAssembly.Expressions
         Unknown = 0,
 
         Identifier = 1,
-        
+
         Block = 2,
-        
+
         Const = 4,
 
-        Convert = 5,
+        Convert = Const | Identifier,
 
-        Route = 6,
+        Route = Const | Block,
 
-        Member = 262,
-        Indexer = 518,
-        Method = 1030,
-
-        MathIdentifier = 257,
-        LogicIdentifier = 513,
+        Member = 256 | Route,
+        Indexer = 512 | Route,
+        Method = 1024 | Route,
 
     }
 }

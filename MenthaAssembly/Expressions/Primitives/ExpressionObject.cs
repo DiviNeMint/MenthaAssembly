@@ -14,13 +14,13 @@ namespace MenthaAssembly.Expressions
 
         public string Context { get; }
 
-        public ExpressionObject(string Context)
+        internal ExpressionObject(string Context)
         {
             this.Context = Context;
         }
 
-        public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
-            => throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown Context : {{{ Context }}}.");
+        public Expression Implement(ExpressionMode Mode, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+            => throw new InvalidProgramException($"[Expression][{nameof(Implement)}]Unknown Context : {{{Context}}}.");
 
         public override string ToString()
             => Context;

@@ -13,13 +13,13 @@ namespace MenthaAssembly.Expressions
 
         public object Value { get; }
 
-        public ExpressionConst(object Value)
+        internal ExpressionConst(object Value)
         {
             this.Value = Value;
         }
 
         private ConstantExpression Const;
-        public Expression Implement(ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
+        public Expression Implement(ExpressionMode Mode, ConstantExpression Base, IEnumerable<ParameterExpression> Parameters)
         {
             if (Const != null)
                 return Const;
