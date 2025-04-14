@@ -62,7 +62,7 @@ namespace MenthaAssembly
         }
 
         private static readonly Dictionary<string, WindowsSystemLanguagePacket> WindowsSystemCache = [];
-        internal static string CurrentWindowsSystemCultureCode;
+        private static string CurrentWindowsSystemCultureCode;
         private static WindowsSystemLanguagePacket _CurrentWindowsSystem;
         public static WindowsSystemLanguagePacket CurrentWindowsSystem
         {
