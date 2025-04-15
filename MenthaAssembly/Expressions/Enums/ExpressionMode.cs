@@ -1,4 +1,4 @@
-﻿namespace System.Linq.Expressions
+﻿namespace MenthaAssembly.Expressions
 {
     /// <summary>
     /// Specifies the type of expression to be evaluated.
