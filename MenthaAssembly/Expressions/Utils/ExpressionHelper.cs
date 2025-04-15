@@ -10,6 +10,10 @@ namespace System.Linq.Expressions
 {
     public static class ExpressionHelper
     {
+        public static ConstantExpression Null { get; } = Expression.Constant(null, typeof(object));
+        public static ConstantExpression True { get; } = Expression.Constant(true, typeof(bool));
+        public static ConstantExpression False { get; } = Expression.Constant(false, typeof(bool));
+
         public static object GetValue(this Expression This)
             => This.GetValue<object>();
         public static T GetValue<T>(this Expression This)
@@ -26,7 +30,7 @@ namespace System.Linq.Expressions
         public static Func<object, object> CreateExtractor(Type ParentType, string Path)
         {
             Type t = typeof(object);
-            StringBuilder Builder = new StringBuilder(128);
+            StringBuilder Builder = new(128);
 
             try
             {
@@ -75,7 +79,7 @@ namespace System.Linq.Expressions
                         if (string.IsNullOrEmpty(MethodName))
                             continue;
 
-                        if (ParentType.GetMethod(MethodName, new Type[0]) is MethodInfo Method)
+                        if (ParentType.GetMethod(MethodName, Type.EmptyTypes) is MethodInfo Method)
                         {
                             ParentType = Method.ReturnType;
                             Body = Expression.Call(Body, Method);
@@ -151,7 +155,7 @@ namespace System.Linq.Expressions
         public static Func<object, T> CreateExtractor<T>(Type ParentType, string Path)
         {
             Type t = typeof(object);
-            StringBuilder Builder = new StringBuilder(128);
+            StringBuilder Builder = new(128);
 
             try
             {
@@ -200,7 +204,7 @@ namespace System.Linq.Expressions
                         if (string.IsNullOrEmpty(MethodName))
                             continue;
 
-                        if (ParentType.GetMethod(MethodName, new Type[0]) is MethodInfo Method)
+                        if (ParentType.GetMethod(MethodName, Type.EmptyTypes) is MethodInfo Method)
                         {
                             ParentType = Method.ReturnType;
                             Body = Expression.Call(Body, Method);
@@ -274,7 +278,7 @@ namespace System.Linq.Expressions
                         Body = Expression.Convert(Body, ReturnType);
                     else
                     {
-                        if (typeof(Convert).TryGetStaticMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) }, out MethodInfo Method))
+                        if (typeof(Convert).TryGetStaticMethod(nameof(Convert.ChangeType), [typeof(object), typeof(Type)], out MethodInfo Method))
                             Body = Expression.Call(Method, Body, Expression.Constant(ReturnType));
 
                         Body = Expression.Convert(Body, ReturnType);
@@ -290,26 +294,61 @@ namespace System.Linq.Expressions
             }
         }
 
-        public static bool TryParse(string Code, out ExpressionBlock Block)
+        public static IEnumerable<string> EnumParameterNames(this ExpressionBlock Block)
+            => EnumParameterNames(Block.Contexts).Distinct()
+                                                 .Where(i => i != "null" && i != "true" && i != "false");
+        private static IEnumerable<string> EnumParameterNames(ExpressionRoute Route)
         {
-            StringBuilder Builder = new();
-            int Index = 0,
-                Length = Code.Length;
-
-            Block = new ExpressionBlock();
-            while (TryParseElement(Code, ref Index, Length, ref Builder, out IExpressionObject Element))
-                Block.Contexts.Add(Element);
-
-            if (Block.Contexts.Count == 0 || Index < Length)
+            if (Route.Contexts.Count == 1)
             {
-                Block = null;
-                return false;
+                IExpressionRoute Path = Route.Contexts[0];
+                if (Path.Type == ExpressionObjectType.Member)
+                    yield return Path.Name;
+
+                yield break;
             }
 
-            NormalizeConverter(Block);
-            return true;
+            IExpressionRoute Context = Route.Contexts[Route.Contexts.Count - 1];
+            if (Context is ExpressionMethod Method)
+            {
+                foreach (string Name in EnumParameterNames(Method.Parameters))
+                    yield return Name;
+            }
+
+            else if (Context is ExpressionIndexer Indexer)
+            {
+                foreach (string Name in EnumParameterNames(Indexer.Parameters))
+                    yield return Name;
+            }
         }
-        private static bool TryParseElement(string Code, ref int Index, int Length, ref StringBuilder Builder, out IExpressionObject Element)
+        private static IEnumerable<string> EnumParameterNames(List<IExpressionObject> Contents)
+        {
+            foreach (IExpressionObject Content in Contents)
+            {
+                if (Content is ExpressionRoute Route)
+                {
+                    foreach (string Name in EnumParameterNames(Route))
+                        yield return Name;
+                }
+
+                else if (Content is ExpressionBlock Block)
+                {
+                    foreach (string Name in EnumParameterNames(Block))
+                        yield return Name;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Parses an element from the given code.
+        /// </summary>
+        /// <param name="Code">The code to parse.</param>
+        /// <param name="Index">The current index in the code.</param>
+        /// <param name="Length">The length of the code.</param>
+        /// <param name="Builder">The string builder used for parsing.</param>
+        /// <param name="Element">The parsed element.</param>
+        /// <returns>True if an element is successfully parsed, otherwise false.</returns>
+        public static bool TryParseElement(string Code, ref int Index, int Length, ref StringBuilder Builder, out IExpressionObject Element)
         {
             if (!ReaderHelper.MoveTo(Code, ref Index, Length, false, c => !char.IsWhiteSpace(c)))
             {
@@ -525,6 +564,18 @@ namespace System.Linq.Expressions
                         Element = null;
                         return false;
                     }
+                case '?':
+                    {
+                        Index++;
+                        Element = new ExpressionIdentifier("?", ExpressionType.Conditional);
+                        return true;
+                    }
+                case ':':
+                    {
+                        Index++;
+                        Element = new ExpressionIdentifier(":", ExpressionType.Conditional);
+                        return true;
+                    }
                 #endregion
                 #region Constant
                 // String
@@ -571,110 +622,6 @@ namespace System.Linq.Expressions
                     }
             }
         }
-        private static void NormalizeConverter(ExpressionBlock Block)
-            => NormalizeConverter(Block.Contexts);
-        private static void NormalizeConverter(ExpressionRoute Route)
-        {
-            IExpressionRoute Context = Route.Contexts[Route.Contexts.Count - 1];
-            if (Context is ExpressionMethod Method)
-            {
-                NormalizeConverter(Method.Parameters);
-            }
-
-            else if (Context is ExpressionIndexer Indexer)
-            {
-                NormalizeConverter(Indexer.Parameters);
-            }
-        }
-        private static void NormalizeConverter(List<IExpressionObject> Contexts)
-        {
-            for (int i = 0; i < Contexts.Count;)
-            {
-                IExpressionObject Curt = Contexts[i++];
-                if (Curt is ExpressionBlock Group)
-                {
-                    // Check if it could be a converter.
-                    if (!TryGetConverterType(Group, out ExpressionRoute Type))
-                    {
-                        NormalizeConverter(Group);
-                        continue;
-                    }
-
-                    // Checks end.
-                    if (i >= Contexts.Count)
-                        break;
-
-                    // Checks if the it is a variable by checking if next one is an operator.
-                    if (Contexts[i].Type == ExpressionObjectType.Identifier)
-                        continue;
-
-                    Contexts.Insert(i - 1, new ExpressionConvert(Type));
-                    Contexts.RemoveAt(i);
-                }
-                else if (Curt is ExpressionRoute Route)
-                {
-                    NormalizeConverter(Route);
-                }
-            }
-        }
-        private static bool TryGetConverterType(ExpressionBlock Block, out ExpressionRoute Type)
-        {
-            if (Block.Contexts.Count != 1 ||
-                Block.Contexts[0] is not ExpressionRoute Route ||
-                Route.Contexts.Any(i => i.Type != ExpressionObjectType.Member))
-            {
-                Type = null;
-                return false;
-            }
-
-            Type = Route;
-            return true;
-        }
-
-        public static IEnumerable<string> EnumParameterNames(ExpressionBlock Block)
-            => EnumParameterNames(Block.Contexts);
-        private static IEnumerable<string> EnumParameterNames(ExpressionRoute Route)
-        {
-            if (Route.Contexts.Count == 1)
-            {
-                IExpressionRoute Path = Route.Contexts[0];
-                if (Path.Type == ExpressionObjectType.Member)
-                    yield return Path.Name;
-
-                yield break;
-            }
-
-            IExpressionRoute Context = Route.Contexts[Route.Contexts.Count - 1];
-            if (Context is ExpressionMethod Method)
-            {
-                foreach (string Name in EnumParameterNames(Method.Parameters))
-                    yield return Name;
-            }
-
-            else if (Context is ExpressionIndexer Indexer)
-            {
-                foreach (string Name in EnumParameterNames(Indexer.Parameters))
-                    yield return Name;
-            }
-        }
-        private static IEnumerable<string> EnumParameterNames(List<IExpressionObject> Contents)
-        {
-            foreach (IExpressionObject Content in Contents)
-            {
-                if (Content is ExpressionRoute Route)
-                {
-                    foreach (string Name in EnumParameterNames(Route))
-                        yield return Name;
-                }
-
-                else if (Content is ExpressionBlock Block)
-                {
-                    foreach (string Name in EnumParameterNames(Block))
-                        yield return Name;
-                }
-            }
-        }
-
         /// <summary>
         /// Parses numbers.
         /// </summary>
@@ -844,7 +791,6 @@ namespace System.Linq.Expressions
                 Builder.Clear();
             }
         }
-
         /// <summary>
         /// Parses route. (Variable or Method or Member)
         /// </summary>
@@ -886,7 +832,7 @@ namespace System.Linq.Expressions
                     if (!TryParseCollectionContents(Code, ref Index, Length, ref Builder, out List<IExpressionObject> Parameters))
                         break;
 
-                    ExpressionMethod Method = new ExpressionMethod(Name);
+                    ExpressionMethod Method = new(Name);
                     if (GenericTypes != null)
                     {
                         Method.GenericTypes.AddRange(GenericTypes);
@@ -909,7 +855,7 @@ namespace System.Linq.Expressions
                             Parameters.Count == 0)
                             return Route;
 
-                        ExpressionIndexer Indexer = new ExpressionIndexer(Parameters);
+                        ExpressionIndexer Indexer = new(Parameters);
                         Route.Contexts.Add(Indexer);
 
                         // Skips all trailing spaces.
@@ -944,7 +890,7 @@ namespace System.Linq.Expressions
                         Parameters.Count == 0)
                         return Route;
 
-                    ExpressionIndexer Indexer = new ExpressionIndexer(Parameters);
+                    ExpressionIndexer Indexer = new(Parameters);
                     Route.Contexts.Add(Indexer);
 
                     // Skips all trailing spaces.
@@ -964,12 +910,12 @@ namespace System.Linq.Expressions
             if (Route.Contexts.Count > 0)
                 return Route;
 
-            if (Index < Length)
+            if (Index >= Length)
                 throw new IndexOutOfRangeException();
 
             try
             {
-                c = Code[Index];
+                c = Code[Index++];
                 Builder.Append(c);
                 ReaderHelper.ReadTo(Code, ref Index, Length, false, out _, ref Builder, c => !c.IsVariableChars());
                 return new ExpressionObject(Builder.ToString());
@@ -978,6 +924,53 @@ namespace System.Linq.Expressions
             {
                 Builder.Clear();
             }
+        }
+
+        public static bool TryGroupUntil(List<IExpressionObject> Contexts, ref int Index, Predicate<IExpressionObject> UntilPredicate, bool SucceedOnEnd, bool IncludeTerminator, out bool IsEnd, out IExpressionObject Group)
+        {
+            List<IExpressionObject> Items = [];
+
+            IsEnd = false;
+            for (; Index < Contexts.Count; Index++)
+            {
+                IExpressionObject Context = Contexts[Index];
+                if (UntilPredicate(Context))
+                {
+                    int Count = Items.Count;
+                    if (IncludeTerminator)
+                    {
+                        Index++;
+                        Count++;
+                        Items.Add(Context);
+                    }
+                    else if (Count == 0)
+                    {
+                        Items.Clear();
+                        Group = null;
+                        return false;
+                    }
+
+                    Group = Count == 1 ? Items[0] : new ExpressionBlock(Items);
+                    return true;
+                }
+
+                Items.Add(Context);
+            }
+
+            IsEnd = true;
+            if (SucceedOnEnd)
+            {
+                int Count = Items.Count;
+                if (Count > 0)
+                {
+                    Group = Count == 1 ? Items[0] : new ExpressionBlock(Items);
+                    return true;
+                }
+            }
+
+            Items.Clear();
+            Group = null;
+            return false;
         }
 
         /// <summary>
@@ -1210,6 +1203,10 @@ namespace System.Linq.Expressions
 
             if (ObjType.IsConvertibleTo(Type))
                 return Expression.Convert(This, Type);
+
+            if (This is ConstantExpression Constant &&
+                Constant.Value == null)
+                return Expression.Constant(null, Type);
 
             This = Expression.Call(ConvertMethod, This, Expression.Constant(Type));
             return Expression.Convert(This, Type);

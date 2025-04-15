@@ -52,6 +52,30 @@ namespace MenthaAssembly.Expressions
             // Base Member
             if (Parent is null)
             {
+                // null
+                if (Name == "null")
+                {
+                    Member = ExpressionHelper.Null;
+                    Expression = Member;
+                    return true;
+                }
+
+                // true
+                if (Name == "true")
+                {
+                    Member = ExpressionHelper.True;
+                    Expression = Member;
+                    return true;
+                }
+
+                // false
+                if (Name == "false")
+                {
+                    Member = ExpressionHelper.False;
+                    Expression = Member;
+                    return true;
+                }
+
                 // Parameters
                 if (Parameters.FirstOrDefault(i => i.Name == Name) is ParameterExpression Parameter)
                 {
@@ -119,14 +143,14 @@ namespace MenthaAssembly.Expressions
                 Type ParentType = ParentExpression.Type;
                 if (ParentType.GetProperty(Name) is PropertyInfo Property)
                 {
-                    Member = Expression.Property(null, Property);
+                    Member = Expression.Property(ParentExpression, Property);
                     Expression = Member;
                     return true;
                 }
 
                 else if (ParentType.GetField(Name) is FieldInfo Field)
                 {
-                    Member = Expression.Field(null, Field);
+                    Member = Expression.Field(ParentExpression, Field);
                     Expression = Member;
                     return true;
                 }

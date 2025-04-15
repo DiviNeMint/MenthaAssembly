@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq.Expressions;
-using System.Text;
 
 namespace MenthaAssembly.Expressions
 {
@@ -24,7 +21,7 @@ namespace MenthaAssembly.Expressions
         }
         public MathExpression(string Formula, object Base, params ParameterExpression[] Parameters)
         {
-            if (!ExpressionHelper.TryParse(Formula, out ExpressionBlock Block))
+            if (!ExpressionBlock.TryParse(Formula, out ExpressionBlock Block))
                 throw new InvalidProgramException($"[MathExpression][Parse]Invalid program {{ {Formula} }}.");
 
             this.Parameters = Parameters;
@@ -34,7 +31,8 @@ namespace MenthaAssembly.Expressions
         public override string ToString()
             => Context.ToString();
 
-        public static implicit operator Expression(MathExpression This) => This.Context;
+        public static implicit operator Expression(MathExpression This)
+            => This.Context;
 
     }
 }
