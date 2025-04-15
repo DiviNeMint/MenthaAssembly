@@ -8,4 +8,6 @@
     public delegate TResult RFunc<TParam1, TParam2, out TResult>(ref TParam1 p1, ref TParam2 p2);
     public delegate TResult RFunc<TParam1, TParam2, TParam3, out TResult>(ref TParam1 p1, ref TParam2 p2, ref TParam3 p3);
 
+    public delegate bool Predicate<TParam1, TParam2>(TParam1 p1, TParam2 p2);
+
 }

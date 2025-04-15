@@ -830,6 +830,40 @@ namespace System.Reflection
         #endregion
 
         #region Operator
+
+        private static HashSet<Type> BuiltInBitwiseTypes =
+        [
+            typeof(bool), typeof(byte), typeof(sbyte), typeof(short), typeof(ushort),
+            typeof(int), typeof(uint), typeof(long), typeof(ulong), typeof(char)
+        ];
+
+        /// <summary>
+        /// Determines whether this type supports "&amp;" operator.
+        /// </summary>
+        public static bool SupportsBitwiseAnd(this Type Type)
+        {
+            Type NonNullable = Nullable.GetUnderlyingType(Type) ?? Type;
+            return BuiltInBitwiseTypes.Contains(NonNullable) || HasOperator(NonNullable, "op_BitwiseAnd");
+        }
+
+        /// <summary>
+        /// Determines whether this type supports "|" operator.
+        /// </summary>
+        public static bool SupportsBitwiseOr(this Type Type)
+        {
+            Type NonNullable = Nullable.GetUnderlyingType(Type) ?? Type;
+            return BuiltInBitwiseTypes.Contains(NonNullable) || HasOperator(NonNullable, "op_BitwiseOr");
+        }
+
+        /// <summary>
+        /// Determines whether this type supports "^" operator.
+        /// </summary>
+        public static bool SupportsBitwiseXor(this Type Type)
+        {
+            Type NonNullable = Nullable.GetUnderlyingType(Type) ?? Type;
+            return BuiltInBitwiseTypes.Contains(NonNullable) || HasOperator(NonNullable, "op_ExclusiveOr");
+        }
+
         /// <summary>
         /// Determines whether this type supports "&amp;&amp;" operator.
         /// </summary>
