@@ -892,13 +892,13 @@ namespace System.Reflection
         /// Determines whether this type supports "==" operators.
         /// </summary>
         public static bool SupportsComparisonEquality(this Type Type)
-            => HasOperator(Type, "op_Equality");
+            => Type == typeof(bool) || HasOperator(Type, "op_Equality");
 
         /// <summary>
         /// Determines whether this type supports "!=" operators.
         /// </summary>
         public static bool SupportsComparisonInequality(this Type Type)
-            => HasOperator(Type, "op_Inequality");
+            => Type == typeof(bool) || HasOperator(Type, "op_Inequality");
 
         /// <summary>
         /// Determines whether this type supports "&lt;" operator.
