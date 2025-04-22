@@ -37,7 +37,7 @@ namespace MenthaAssembly.IO
         {
         }
         public CRCStream(Stream Stream, StreamAccess Access, bool LeaveOpen, int CRCBitCount, ulong Polynomial, ulong Init, bool RefIn, bool RefOut, ulong XorOut) :
-            this(Stream, Access, false, new CRCCalculator(CRCBitCount, Polynomial, Init, RefIn, RefOut, XorOut))
+            this(Stream, Access, LeaveOpen, new CRCCalculator(CRCBitCount, Polynomial, Init, RefIn, RefOut, XorOut))
         {
         }
         private CRCStream(Stream Stream, StreamAccess Access, bool LeaveOpen, CRCCalculator Calculator)
