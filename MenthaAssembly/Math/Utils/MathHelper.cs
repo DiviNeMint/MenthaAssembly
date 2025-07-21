@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
 #if NET7_0_OR_GREATER
 using System.Numerics;
 #else
@@ -486,6 +487,33 @@ namespace MenthaAssembly
             T Temp = X;
             X = Y;
             Y = Temp;
+        }
+
+        /// <summary>
+        /// Reverses the byte order (endianness) of the specified unmanaged value in place.
+        /// </summary>
+        /// <typeparam name="T">An unmanaged type such as int, float, double, etc.</typeparam>
+        /// <param name="Value">The value whose byte order will be reversed. Passed by reference to modify in place.</param>
+        /// <remarks>
+        /// This method performs an in-place byte reversal on the memory of the value,
+        /// useful for manual control of endian formats.
+        /// Ensure that the size of T is even to avoid partial byte swaps.
+        /// </remarks>
+        public static unsafe void ReverseEndianness<T>(ref T Value)
+            where T : unmanaged
+        {
+            fixed (T* pValue = &Value)
+            {
+                byte* pDest = (byte*)pValue;
+                int Size = sizeof(T);
+
+                for (int i = 0; i < Size >> 1; i++)
+                {
+                    byte Temp = pDest[i];
+                    pDest[i] = pDest[Size - 1 - i];
+                    pDest[Size - 1 - i] = Temp;
+                }
+            }
         }
 
         /// <summary>
