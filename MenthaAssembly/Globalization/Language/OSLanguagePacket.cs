@@ -11,7 +11,7 @@ using System.Text;
 
 namespace MenthaAssembly.Globalization
 {
-    public sealed class WindowsSystemLanguagePacket(string CultureCode) : IReadOnlyDictionary<string, string>
+    public sealed class OSLanguagePacket(string CultureCode) : IReadOnlyDictionary<string, string>
     {
         private readonly Dictionary<string, string> Single = [],
                                                     Complex = [],
@@ -51,7 +51,7 @@ namespace MenthaAssembly.Globalization
         public override string ToString()
             => $"Culture = {CultureCode} ,Count = {Count}";
 
-        public static WindowsSystemLanguagePacket Load(string CultureCode)
+        public static OSLanguagePacket Load(string CultureCode)
         {
             string KeyFolder = Path.Combine(Environment.SystemDirectory, "en-US");
             if (!Directory.Exists(KeyFolder))
@@ -62,7 +62,7 @@ namespace MenthaAssembly.Globalization
                 return null;
 
             bool IsDefault = CultureCode.ToLower() == "en-us";
-            WindowsSystemLanguagePacket Packet = new(CultureCode);
+            OSLanguagePacket Packet = new(CultureCode);
             foreach (string FilePath in Directory.EnumerateFiles(Folder, "*.mui"))
             {
                 string FileName = Path.GetFileName(FilePath);
@@ -89,7 +89,7 @@ namespace MenthaAssembly.Globalization
                         Message = Ex.Message;
 #endif
 
-                        Debug.WriteLine($"[{nameof(WindowsSystemLanguagePacket)}][{nameof(Load)}][Win32Exception]{Message}");
+                        Debug.WriteLine($"[{nameof(OSLanguagePacket)}][{nameof(Load)}][Win32Exception]{Message}");
                         continue;
                     }
 
@@ -177,7 +177,7 @@ namespace MenthaAssembly.Globalization
             }
         }
 
-        private class Enumerator(WindowsSystemLanguagePacket Parent) : IEnumerator<KeyValuePair<string, string>>
+        private class Enumerator(OSLanguagePacket Parent) : IEnumerator<KeyValuePair<string, string>>
         {
             public KeyValuePair<string, string> Current
                 => Enumerators[Index].Current;

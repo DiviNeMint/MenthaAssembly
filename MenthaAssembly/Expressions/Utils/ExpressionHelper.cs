@@ -296,7 +296,7 @@ namespace System.Linq.Expressions
 
         public static IEnumerable<string> EnumParameterNames(this ExpressionBlock Block)
             => EnumParameterNames(Block.Contexts).Distinct()
-                                                 .Where(i => i != "null" && i != "true" && i != "false");
+                                                 .Where(i => i != "null" && i != "true" && i != "false" && i != "this");
         private static IEnumerable<string> EnumParameterNames(ExpressionRoute Route)
         {
             if (Route.Contexts.Count == 1)

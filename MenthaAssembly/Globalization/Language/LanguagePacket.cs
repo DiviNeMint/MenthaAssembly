@@ -100,7 +100,7 @@ namespace MenthaAssembly.Globalization
 
         private void Parse(Stream Stream)
         {
-            if (IsZipArchive(Stream))
+            if (ArchiveHelper.IsZipArchive(Stream))
             {
                 ZipArchive Archive = new(Stream, ZipArchiveMode.Read);
                 foreach (ZipArchiveEntry Entry in Archive.Entries.OrderBy(i => i.LastWriteTime))
@@ -121,21 +121,6 @@ namespace MenthaAssembly.Globalization
                 Stream.Seek(0L, SeekOrigin.Begin);
                 ParsePacket(Stream);
             }
-
-        }
-        private static bool IsZipArchive(Stream Stream)
-        {
-            const int IdentifierSize = 4;
-            byte[] Identifier = ArrayPool<byte>.Shared.Rent(IdentifierSize);
-            try
-            {
-                return Stream.ReadBuffer(Identifier, IdentifierSize) &&
-                       ArchiveHelper.IsZipArchive(Identifier);
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(Identifier);
-            }
         }
         private void ParsePacket(Stream Stream)
         {
@@ -153,11 +138,7 @@ namespace MenthaAssembly.Globalization
                         continue;
 
                     // Command
-#if NETSTANDARD2_1_OR_GREATER || NET7_0_OR_GREATER
-                    if (Line.StartsWith('%'))
-#else
                     if (Line.StartsWith("%"))
-#endif
                     {
                         ParseContent(Line, 1, ref Builder, out string Command, out string Content);
                         switch (Command.ToLower())

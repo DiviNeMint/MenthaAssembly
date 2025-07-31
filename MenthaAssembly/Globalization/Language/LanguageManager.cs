@@ -44,45 +44,36 @@ namespace MenthaAssembly
             }
         }
 
-        private static LanguagePacket _Current;
-        public static LanguagePacket Current
+        private static LanguagePacket _Custom;
+        public static LanguagePacket Custom
         {
-            get => _Current;
+            get => _Custom;
             set
             {
-                // Reset current WindowsSystemLanguagePacket
-                if (_Current?.CultureCode != value?.CultureCode)
-                    CurrentWindowsSystemCultureCode = null;
+                // Reset current SystemLanguage
+                if (_Custom?.CultureCode != value?.CultureCode)
+                    LazySystem = null;
 
-                _Current = value;
+                _Custom = value;
 
                 // Notify
                 OnStaticPropertyChanged();
             }
         }
 
-        private static readonly Dictionary<string, WindowsSystemLanguagePacket> WindowsSystemCache = [];
-        private static string CurrentWindowsSystemCultureCode;
-        private static WindowsSystemLanguagePacket _CurrentWindowsSystem;
-        public static WindowsSystemLanguagePacket CurrentWindowsSystem
+        private static readonly ConcurrentDictionary<string, Lazy<OSLanguagePacket>> SystemCache = new();
+        internal static Lazy<OSLanguagePacket> LazySystem;
+        public static OSLanguagePacket System
         {
             get
             {
-                lock (WindowsSystemCache)
+                if (LazySystem is null)
                 {
-                    if (string.IsNullOrEmpty(CurrentWindowsSystemCultureCode))
-                    {
-                        CurrentWindowsSystemCultureCode = _Current?.CultureCode?.ToLower() ?? CultureInfo.CurrentCulture.Name.ToLower();
-                        if (!WindowsSystemCache.TryGetValue(CurrentWindowsSystemCultureCode, out _CurrentWindowsSystem) &&
-                            WindowsSystemLanguagePacket.Load(CurrentWindowsSystemCultureCode) is WindowsSystemLanguagePacket LoadPacket)
-                        {
-                            WindowsSystemCache[CurrentWindowsSystemCultureCode] = LoadPacket;
-                            _CurrentWindowsSystem = LoadPacket;
-                        }
-                    }
+                    string Culture = _Custom?.CultureCode ?? CultureInfo.CurrentCulture.Name;
+                    LazySystem = SystemCache.GetOrAdd(Culture, key => new Lazy<OSLanguagePacket>(() => OSLanguagePacket.Load(key)));
                 }
 
-                return _CurrentWindowsSystem;
+                return LazySystem.Value;
             }
         }
 
@@ -111,7 +102,7 @@ namespace MenthaAssembly
                 else
                 {
                     _Languages.Clear();
-                    Current = null;
+                    Custom = null;
                 }
 
                 return _Languages;
@@ -169,62 +160,11 @@ namespace MenthaAssembly
             if (Packets.Count > 0)
             {
                 string CultureCode = CultureInfo.CurrentCulture.Name.ToLower();
-                Current = Packets.FirstOrDefault(i => i.CultureCode?.ToLower() == CultureCode);
+                Custom = Packets.FirstOrDefault(i => i.CultureCode?.ToLower() == CultureCode);
             }
         }
 
-        internal static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> CacheTranslate = [];
-        /// <summary>
-        /// Gets the language content from key.
-        /// </summary>
-        public static string Get(string Key)
-            => Get(Key, Key);
-        /// <summary>
-        /// Gets the language content from key.
-        /// </summary>
-        public static string Get(string Key, string Default)
-        {
-            if (string.IsNullOrEmpty(Key))
-                return Default;
-
-            // Current
-            string Result = Current?[Key];
-            if (!string.IsNullOrEmpty(Result))
-                return Result;
-
-            // Windows System Build-in String
-            Result = CurrentWindowsSystem[Key];
-            if (!string.IsNullOrEmpty(Result))
-                return Result;
-
-            // GoogleTranslate
-            string ToCulture = Current?.CultureCode;
-            if (!string.IsNullOrEmpty(ToCulture) &&
-                CanGoogleTranslate &&
-                EnableGoogleTranslate)
-            {
-                if (CacheTranslate.TryGetValue(ToCulture, out ConcurrentDictionary<string, string> Caches))
-                {
-                    if (Caches.TryGetValue(Key, out Result))
-                        return Result;
-                }
-                else
-                {
-                    Caches = [];
-                    CacheTranslate.AddOrUpdate(ToCulture, Caches, (k, v) => Caches);
-                }
-
-                Result = GoogleTranslate(Key, "en-US", ToCulture);
-                if (!string.IsNullOrEmpty(Result))
-                {
-                    Caches.AddOrUpdate(Key, Result, (k, v) => Result);
-                    return Result;
-                }
-            }
-
-            Debug.WriteLine($"[Language] Not fount {Key}.");
-            return Default ?? Key;
-        }
+        internal static readonly ConcurrentDictionary<(string, string), ConcurrentDictionary<string, Lazy<string>>> CacheTranslate = [];
 
         /// <summary>
         /// Translates a string into another language using Google's translate API JSON calls.
@@ -238,34 +178,32 @@ namespace MenthaAssembly
         /// </param>
         public static string GoogleTranslate(string Text, string FromCulture, string ToCulture)
         {
+            if (string.IsNullOrEmpty(Text))
+                throw new ArgumentNullException(nameof(Text), "Text cannot be null or empty.");
+
+            if (string.IsNullOrEmpty(FromCulture))
+                throw new ArgumentNullException(nameof(FromCulture), "Text cannot be null or empty.");
+
             FromCulture = FromCulture.ToLower();
             if (!CultureHelper.ExistsCulture(FromCulture))
-            {
-                Debug.WriteLine($"[{nameof(GoogleTranslate)}] Invalid culture : {FromCulture}");
-                return null;
-            }
+                throw new InvalidDataException($"[{nameof(GoogleTranslate)}] Invalid culture : {FromCulture}");
+
+            if (string.IsNullOrEmpty(ToCulture))
+                throw new ArgumentNullException(nameof(ToCulture), "Text cannot be null or empty.");
 
             ToCulture = ToCulture.ToLower();
             if (!CultureHelper.ExistsCulture(ToCulture))
-            {
-                Debug.WriteLine($"[{nameof(GoogleTranslate)}] Invalid culture : {ToCulture}");
-                return null;
-            }
+                throw new InvalidDataException($"[{nameof(GoogleTranslate)}] Invalid culture : {ToCulture}");
 
-            string Url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl={FromCulture}&tl={ToCulture}&dt=t&q={Uri.EscapeDataString(Text)}";
+            if (CanGoogleTranslate)
+                throw new HttpRequestException($"[{nameof(GoogleTranslate)}] Google Translate is not available.");
 
-            string Json = GetGoogleTranslateResult(Url).Result;
-            if (string.IsNullOrEmpty(Json))
-                return null;
+            (string FromCulture, string ToCulture) Key = (FromCulture, ToCulture);
+            if (!CacheTranslate.TryGetValue(Key, out ConcurrentDictionary<string, Lazy<string>> Caches))
+                Caches = CacheTranslate.GetOrAdd(Key, k => []);
 
-            string Result = ParseGoogleTranslateResult(Json);
-            if (string.IsNullOrEmpty(Result))
-            {
-                Debug.WriteLine($"[{nameof(GoogleTranslate)}] Invalid search result : {Json}");
-                return null;
-            }
-
-            return Result;
+            Lazy<string> LazyResult = Caches.GetOrAdd(Text, k => new Lazy<string>(() => InternalGoogleTranslate(k, FromCulture, ToCulture)));
+            return LazyResult.Value;
         }
         /// <summary>
         /// Translates a string into another language using Google's translate API JSON calls.
@@ -279,30 +217,45 @@ namespace MenthaAssembly
         /// </param>
         public static async Task<string> GoogleTranslateAsync(string Text, string FromCulture, string ToCulture)
         {
+            if (string.IsNullOrEmpty(Text))
+                throw new ArgumentNullException(nameof(Text), "Text cannot be null or empty.");
+
+            if (string.IsNullOrEmpty(FromCulture))
+                throw new ArgumentNullException(nameof(FromCulture), "Text cannot be null or empty.");
+
             FromCulture = FromCulture.ToLower();
-            if (CultureHelper.ExistsCulture(FromCulture))
-            {
-                Debug.WriteLine($"[{nameof(GoogleTranslate)}] Invalid culture : {FromCulture}");
-                return null;
-            }
+            if (!CultureHelper.ExistsCulture(FromCulture))
+                throw new InvalidDataException($"[{nameof(GoogleTranslate)}] Invalid culture : {FromCulture}");
+
+            if (string.IsNullOrEmpty(ToCulture))
+                throw new ArgumentNullException(nameof(ToCulture), "Text cannot be null or empty.");
 
             ToCulture = ToCulture.ToLower();
-            if (CultureHelper.ExistsCulture(ToCulture))
-            {
-                Debug.WriteLine($"[{nameof(GoogleTranslate)}] Invalid culture : {ToCulture}");
-                return null;
-            }
+            if (!CultureHelper.ExistsCulture(ToCulture))
+                throw new InvalidDataException($"[{nameof(GoogleTranslate)}] Invalid culture : {ToCulture}");
 
-            string Url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl={FromCulture}&tl={ToCulture}&dt=t&q={Uri.EscapeDataString(Text)}";
+            if (CanGoogleTranslate)
+                throw new HttpRequestException($"[{nameof(GoogleTranslate)}] Google Translate is not available.");
 
-            string Json = await GetGoogleTranslateResult(Url);
+            (string FromCulture, string ToCulture) Key = (FromCulture, ToCulture);
+            if (!CacheTranslate.TryGetValue(Key, out ConcurrentDictionary<string, Lazy<string>> Caches))
+                Caches = CacheTranslate.GetOrAdd(Key, k => []);
+
+            Lazy<string> LazyResult = Caches.GetOrAdd(Text, k => new Lazy<string>(() => InternalGoogleTranslate(k, FromCulture, ToCulture)));
+            return LazyResult.IsValueCreated ? LazyResult.Value : await Task.Run(() => LazyResult.Value);
+        }
+
+        internal static string InternalGoogleTranslate(string Text, string FromCulture, string ToCulture)
+        {
+            string Url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl={FromCulture.ToLower()}&tl={ToCulture.ToLower()}&dt=t&q={Uri.EscapeDataString(Text)}";
+            string Json = GetGoogleTranslateResult(Url).Result;
             if (string.IsNullOrEmpty(Json))
                 return null;
 
             string Result = ParseGoogleTranslateResult(Json);
             if (string.IsNullOrEmpty(Result))
             {
-                Debug.WriteLine($"[{nameof(GoogleTranslate)}] InvalidSearchResult : {Json}");
+                Debug.WriteLine($"[{nameof(InternalGoogleTranslate)}] Invalid search result : {Json}");
                 return null;
             }
 
