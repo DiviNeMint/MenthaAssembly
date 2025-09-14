@@ -37,9 +37,8 @@ namespace MenthaAssembly.Media.Imaging
 
         public bool Contain(int X)
         {
-            for (int i = 0; i < Length; i += 2)
-                if (X < Datas[i])
-                    return i != 0 && Datas[i - 1] < X;
+            for (int i = 1; i < Length; i += 2)
+                return Datas[i - 1] <= X && X <= Datas[i];
 
             return false;
         }
