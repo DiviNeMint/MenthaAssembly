@@ -504,9 +504,9 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Y++;
 
                 Seed = Context.GetAdapter(X, Y);
-                if (-1 < Y && Y < Height &&
-                    !Contour.Contain(X, Y))
-                    for (; X <= Rx; X++)
+                if (-1 < Y && Y < Height && !Contour.Contain(X, Y))
+                {
+                    for (; X <= Rx; X++, Seed.MoveNextX())
                     {
                         while (X <= Rx && !Predicate(X, Y, Seed))
                         {
@@ -522,6 +522,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             NeedFill = false;
                         }
                     }
+                }
 
                 // Upper ScanLine's Seed
                 NeedFill = false;
@@ -529,9 +530,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Y -= 2;
 
                 Seed = Context.GetAdapter(X, Y);
-                if (0 <= Y && Y < Height &&
-                    !Contour.Contain(X, Y))
-                    for (; X <= Rx; X++)
+                if (0 <= Y && Y < Height && !Contour.Contain(X, Y))
+                {
+
+                    for (; X <= Rx; X++, Seed.MoveNextX())
                     {
                         while (X <= Rx && !Predicate(X, Y, Seed))
                         {
@@ -547,6 +549,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             NeedFill = false;
                         }
                     }
+                }
             }
 
             return Contour;
