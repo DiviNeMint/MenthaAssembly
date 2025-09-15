@@ -164,8 +164,48 @@ namespace MenthaAssembly
             }
         }
 
-        internal static readonly ConcurrentDictionary<(string, string), ConcurrentDictionary<string, Lazy<string>>> CacheTranslate = [];
+        /// <summary>
+        /// Gets the language content from key.
+        /// </summary>
+        public static string Translate(string Text)
+            => Translate(Text, Text);
+        /// <summary>
+        /// Gets the language content from key.
+        /// </summary>
+        public static string Translate(string Text, string Default)
+        {
+            if (string.IsNullOrEmpty(Text))
+                return Default;
 
+            // Current
+            string Result = Custom?[Text];
+            if (!string.IsNullOrEmpty(Result))
+                return Result;
+
+            // Windows System Build-in String
+            Result = System[Text];
+            if (!string.IsNullOrEmpty(Result))
+                return Result;
+
+            // GoogleTranslate
+            string ToCulture = Custom?.CultureCode?.ToLower();
+            if (!string.IsNullOrEmpty(ToCulture) &&
+                EnableGoogleTranslate && CanGoogleTranslate)
+            {
+                (string FromCulture, string ToCulture) Key = ("en-us", ToCulture);
+                if (!CacheTranslate.TryGetValue(Key, out ConcurrentDictionary<string, Lazy<string>> Caches))
+                    Caches = CacheTranslate.GetOrAdd(Key, k => []);
+
+                Lazy<string> LazyResult = Caches.GetOrAdd(Text, k => new Lazy<string>(() => InternalGoogleTranslate(k, "en-us", ToCulture)));
+                Result = LazyResult.Value;
+                if (!string.IsNullOrEmpty(Result))
+                    return Result;
+            }
+
+            return Default ?? Text;
+        }
+
+        internal static readonly ConcurrentDictionary<(string, string), ConcurrentDictionary<string, Lazy<string>>> CacheTranslate = [];
         /// <summary>
         /// Translates a string into another language using Google's translate API JSON calls.
         /// </summary>
