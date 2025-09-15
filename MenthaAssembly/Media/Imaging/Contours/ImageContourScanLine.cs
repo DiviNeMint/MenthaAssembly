@@ -23,7 +23,7 @@ namespace MenthaAssembly.Media.Imaging
         }
         public ImageContourScanLine(ImageContourScanLine ScanLine)
         {
-            Datas = new List<int>(ScanLine.Datas);
+            Datas = [.. ScanLine.Datas];
         }
 
         public int Length
@@ -38,7 +38,10 @@ namespace MenthaAssembly.Media.Imaging
         public bool Contain(int X)
         {
             for (int i = 1; i < Length; i += 2)
-                return Datas[i - 1] <= X && X <= Datas[i];
+            {
+                if (Datas[i - 1] <= X && X <= Datas[i])
+                    return true;
+            }
 
             return false;
         }
