@@ -101,8 +101,8 @@ namespace MenthaAssembly.Network
             CancellationTokenSource CancelToken = CancellationTokenSource.CreateLinkedTokenSource(Token);
             CancelToken.Token.Register(() =>
             {
-                if (ConnectToken.TrySetResult(false))
-                    Socket.CancelConnectAsync(e);
+                Socket.CancelConnectAsync(e);
+                ConnectToken.TrySetResult(false);
             }, false);
 
             try
@@ -117,8 +117,9 @@ namespace MenthaAssembly.Network
             }
             finally
             {
-                // Release Operator
-                EnqueueOperator(e);
+                // EnqueueOperator cannot be used here.
+                // Instead, confirm the cancellation of the connection and trigger the Complete event to execute.
+                //EnqueueOperator(e);
 
                 // Release Cancel Token
                 CancelToken.Dispose();
@@ -407,6 +408,13 @@ namespace MenthaAssembly.Network
                     }
                 case SocketAsyncOperation.Connect:
                     {
+                        // Operation Aborted
+                        if (e.SocketError == SocketError.OperationAborted)
+                        {
+                            EnqueueOperator(e);
+                            break;
+                        }
+
                         OnConnectProcess(e);
                         break;
                     }
