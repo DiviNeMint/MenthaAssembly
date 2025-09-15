@@ -180,14 +180,14 @@ namespace System.Reflection
             => InternalTryGetFieldValue(This?.GetType(), This, Name, Modifier, out Value);
 
         public static bool TrySetStaticFieldValue<T>(this Type This, string Name, T Value)
-            => InternalTrySetFieldValue(This?.GetType(), null, Name, PublicStaticModifier, Value);
+            => InternalTrySetFieldValue(This, null, Name, PublicStaticModifier, Value);
         public static bool TryGetStaticFieldValue<T>(this Type This, string Name, out T Value)
-            => InternalTryGetFieldValue(This?.GetType(), null, Name, PublicStaticModifier, out Value);
+            => InternalTryGetFieldValue(This, null, Name, PublicStaticModifier, out Value);
 
         public static bool TrySetStaticInternalFieldValue<T>(this Type This, string Name, T Value)
-            => InternalTrySetFieldValue(This?.GetType(), null, Name, InternalStaticModifier, Value);
+            => InternalTrySetFieldValue(This, null, Name, InternalStaticModifier, Value);
         public static bool TryGetStaticInternalFieldValue<T>(this Type This, string Name, out T Value)
-            => InternalTryGetFieldValue(This?.GetType(), null, Name, InternalStaticModifier, out Value);
+            => InternalTryGetFieldValue(This, null, Name, InternalStaticModifier, out Value);
 
         private static bool InternalTrySetFieldValue<T>(Type Type, object Object, string Name, BindingFlags Modifier, T Value)
         {
