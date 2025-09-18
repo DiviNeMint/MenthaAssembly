@@ -28,7 +28,7 @@ namespace MenthaAssembly.Media.Imaging
                     return Pixel;
 
                 IPixelAdapter Adapter = Adapters[Cy, Cx].Clone();
-                Adapter.Move(this.X + X - Cx, this.Y + Y - Cy);
+                Adapter.DangerousMove(MathHelper.Clamp(this.X + X - Cx, 0, XLength - 1), MathHelper.Clamp(this.Y + Y - Cy, 0, YLength - 1));
                 Adapters[Y, X] = Adapter;
                 return Adapter;
             }
