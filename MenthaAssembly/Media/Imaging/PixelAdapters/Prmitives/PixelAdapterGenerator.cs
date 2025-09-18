@@ -20,7 +20,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             {
                 Type PixelType = typeof(U);
                 return Context.PixelType == PixelType ? new PixelAdapter1<U>(Context, X, Y) :
-                                                        PixelHelper.IsCalculatedPixel(PixelType) ? new CastPixelAdapter<T, U>(new PixelAdapter1<T>(Context, X, Y)) :
+                                                        PixelHelper.IsCalculatedPixel(PixelType) ? new CastPixelAdapter<U>(new PixelAdapter1<T>(Context, X, Y)) :
                                                                                                    new PixelAdapter1<T, U>(Context, X, Y);
             }
         }
@@ -28,7 +28,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private sealed class PixelAdapterGenerator3 : PixelAdapterGenerator
         {
             public override PixelAdapter<U> GetAdapter<T, U>(IImageContext Context, int X, int Y)
-                => PixelHelper.IsCalculatedPixel(typeof(U)) ? new CastPixelAdapter<T, U>(new PixelAdapter3<T>(Context, X, Y)) :
+                => PixelHelper.IsCalculatedPixel(typeof(U)) ? new CastPixelAdapter<U>(new PixelAdapter3<T>(Context, X, Y)) :
                                                               new PixelAdapter3<U>(Context, X, Y);
 
         }
@@ -36,7 +36,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
         private sealed class PixelAdapterGenerator4 : PixelAdapterGenerator
         {
             public override PixelAdapter<U> GetAdapter<T, U>(IImageContext Context, int X, int Y)
-                => PixelHelper.IsCalculatedPixel(typeof(U)) ? new CastPixelAdapter<T, U>(new PixelAdapter4<T>(Context, X, Y)) :
+                => PixelHelper.IsCalculatedPixel(typeof(U)) ? new CastPixelAdapter<U>(new PixelAdapter4<T>(Context, X, Y)) :
                                                               new PixelAdapter4<U>(Context, X, Y);
 
         }

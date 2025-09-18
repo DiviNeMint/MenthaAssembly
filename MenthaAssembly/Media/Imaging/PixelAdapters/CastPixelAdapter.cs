@@ -1,10 +1,9 @@
 ﻿namespace MenthaAssembly.Media.Imaging.Utils
 {
-    public sealed unsafe class CastPixelAdapter<T, U> : PixelAdapter<U>
+    public sealed unsafe class CastPixelAdapter<T> : PixelAdapter<T>
         where T : unmanaged, IPixel
-        where U : unmanaged, IPixel
     {
-        private readonly PixelAdapter<T> Adapter;
+        private readonly IPixelAdapter Adapter;
 
         public override int XLength { get; }
 
@@ -12,7 +11,7 @@
 
 #pragma warning disable IDE0044 // 新增唯讀修飾元
         // If sets readonly, it will cause pixel's value can't change.
-        private U Pixel;
+        private T Pixel;
 #pragma warning restore IDE0044 // 新增唯讀修飾元
 
         public override byte A
@@ -53,14 +52,14 @@
 
         public override int BitsPerPixel { get; }
 
-        private CastPixelAdapter(CastPixelAdapter<T, U> Adapter)
+        private CastPixelAdapter(CastPixelAdapter<T> Adapter)
         {
             X = Adapter.X;
             Y = Adapter.Y;
             XLength = Adapter.XLength;
             YLength = Adapter.YLength;
             BitsPerPixel = Adapter.BitsPerPixel;
-            this.Adapter = Adapter.Adapter;
+            this.Adapter = Adapter.Adapter.Clone();
 
             if (Adapter.IsPixelValid)
             {
@@ -68,7 +67,7 @@
                 Pixel = Adapter.Pixel;
             }
         }
-        public CastPixelAdapter(PixelAdapter<T> Adapter)
+        public CastPixelAdapter(IPixelAdapter Adapter)
         {
             X = Adapter.X;
             Y = Adapter.Y;
@@ -78,14 +77,14 @@
             this.Adapter = Adapter;
         }
 
-        public override void Override(U Pixel)
+        public override void Override(T Pixel)
             => Override(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
-        public override void Override(PixelAdapter<U> Adapter)
+        public override void Override(PixelAdapter<T> Adapter)
             => Override(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public override void Override(byte A, byte R, byte G, byte B)
             => Adapter.Override(A, R, G, B);
 
-        public override void OverrideTo(U* pData)
+        public override void OverrideTo(T* pData)
         {
             EnsurePixel();
             *pData = Pixel;
@@ -106,9 +105,9 @@
             *pDataB = Pixel.B;
         }
 
-        public override void Overlay(U Pixel)
+        public override void Overlay(T Pixel)
             => Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
-        public override void Overlay(PixelAdapter<U> Adapter)
+        public override void Overlay(PixelAdapter<T> Adapter)
             => Overlay(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
         public override void Overlay(byte A, byte R, byte G, byte B)
         {
@@ -118,7 +117,7 @@
                 Adapter.Overlay(A, R, G, B);
         }
 
-        public override void OverlayTo(U* pData)
+        public override void OverlayTo(T* pData)
         {
             EnsurePixel();
             if (Pixel.A == byte.MaxValue)
@@ -204,8 +203,8 @@
             IsPixelValid = false;
         }
 
-        public override PixelAdapter<U> Clone()
-            => new CastPixelAdapter<T, U>(this);
+        public override PixelAdapter<T> Clone()
+            => new CastPixelAdapter<T>(this);
 
     }
 }
