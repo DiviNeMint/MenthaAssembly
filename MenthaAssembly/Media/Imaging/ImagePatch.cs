@@ -1,7 +1,5 @@
 ﻿using MenthaAssembly.Media.Imaging.Utils;
 using System;
-using System.Data.SqlTypes;
-using System.Diagnostics;
 using System.Text;
 
 namespace MenthaAssembly.Media.Imaging
