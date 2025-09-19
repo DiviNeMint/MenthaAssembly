@@ -82,7 +82,7 @@ namespace MenthaAssembly.Media.Imaging
 
         public static void GetHSV(byte R, byte G, byte B, out double H, out double S, out double V)
         {
-            MathHelper.MinAndMax(out byte Max, out byte Min, R, G, B);
+            MathHelper.MinAndMax(out byte Min, out byte Max, R, G, B);
 
             double Delta = Max - Min;
             V = Max / 255d;
