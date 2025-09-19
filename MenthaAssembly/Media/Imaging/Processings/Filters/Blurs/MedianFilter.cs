@@ -17,10 +17,10 @@ namespace MenthaAssembly.Media.Imaging
 
         public override void Filter(ImagePatch Patch, ImageFilterArgs Args, out byte A, out byte R, out byte G, out byte B)
         {
-            List<byte> DatasA = Args.ByteListA,
-                       DatasR = Args.ByteListR,
-                       DatasG = Args.ByteListG,
-                       DatasB = Args.ByteListB;
+            List<byte> DatasA = Args.ByteListA ?? [],
+                       DatasR = Args.ByteListR ?? [],
+                       DatasG = Args.ByteListG ?? [],
+                       DatasB = Args.ByteListB ?? [];
 
             IReadOnlyPixel p;
             int W = PatchWidth,
