@@ -3568,6 +3568,42 @@ namespace MenthaAssembly.Media.Imaging
 
         #endregion
 
+        #region Contour Processing
+        /// <summary>
+        /// Detects all contours in the image. <para/>
+        /// It uses <paramref name="SeedPredicate"/> to find starting points for the detection and <paramref name="EdgePredicate"/> to define the contour boundaries.
+        /// </summary>
+        /// <param name="SeedPredicate">
+        /// A predicate function used to determine whether a pixel can be used as a starting point (seed) for contour detection.
+        /// </param>
+        /// <param name="EdgePredicate">
+        /// A predicate function used to determine whether a pixel belongs to the contour boundary.
+        /// </param>
+        /// <returns>
+        /// An <see cref="IEnumerable{T}"/> of all detected <see cref="ImageContour"/> objects in the image.
+        /// </returns>
+        public IEnumerable<ImageContour> DetectContours(ImagePredicate SeedPredicate, ImagePredicate EdgePredicate)
+            => ContourAlgorithms.DetectContours(this, SeedPredicate, EdgePredicate);
+        /// <summary>
+        /// Uses a Flood Fill algorithm starting from the given seed coordinates (<paramref name="X"/>, <paramref name="Y"/>) to detect an image contour.
+        /// </summary>
+        /// <param name="X">
+        /// The seed X-coordinate (SeedX) used as the starting point of the Flood Fill algorithm.
+        /// </param>
+        /// <param name="Y">
+        /// The seed Y-coordinate (SeedY) used as the starting point of the Flood Fill algorithm.
+        /// </param>
+        /// <param name="EdgePredicate">
+        /// A predicate function used to determine whether a pixel belongs to the contour boundary.
+        /// </param>
+        /// <returns>
+        /// An <see cref="ImageContour"/> representing the detected boundary starting from the seed point.
+        /// </returns>
+        public ImageContour DetectContour(int X, int Y, ImagePredicate EdgePredicate)
+            => ContourAlgorithms.DetectContour(GetAdapter(0, 0), Width, Height, X, Y, EdgePredicate);
+
+        #endregion
+
         #region Buffer Processing
 
         #region BlockCopy
