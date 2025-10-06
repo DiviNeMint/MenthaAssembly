@@ -1,26 +1,27 @@
-﻿using System;
+﻿using Microsoft.Win32.SafeHandles;
+using System;
 using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.Utils
 {
-    public class HGlobalIntPtr : SafeHandle
+    public class HGlobalIntPtr : SafeHandleZeroOrMinusOneIsInvalid
     {
-        private bool _IsInvalid = false;
-        public override bool IsInvalid => _IsInvalid;
-
-        public HGlobalIntPtr(long Length) : base(Marshal.AllocHGlobal(new IntPtr(Length)), true)
+        public HGlobalIntPtr(long Length) : base(true)
         {
-
+            SetHandle(Marshal.AllocHGlobal(new IntPtr(Length)));
         }
-        public HGlobalIntPtr(IntPtr AllocHGlobal) : base(AllocHGlobal, true)
+        public HGlobalIntPtr(IntPtr AllocHGlobal) : base(true)
         {
-
+            SetHandle(AllocHGlobal);
         }
 
         protected override bool ReleaseHandle()
         {
-            Marshal.FreeHGlobal(handle);
-            _IsInvalid = true;
+            if (!IsInvalid)
+            {
+                Marshal.FreeHGlobal(handle);
+                handle = IntPtr.Zero;
+            }
             return true;
         }
     }
