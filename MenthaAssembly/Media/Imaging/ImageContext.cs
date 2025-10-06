@@ -3078,6 +3078,76 @@ namespace MenthaAssembly.Media.Imaging
             return Result;
         }
 
+        public ImageContext<T> ApplyContrast<T>(double Contrast)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new(Width, Height);
+            PixelAdapter<T> Sorc = new AdjustContrastPixelAdapter<T>(GetAdapter(0, 0), Contrast),
+                            Dest = Result.GetAdapter<T>(0, 0);
+
+            int Dx = -Width;
+            for (int j = 0; j < Height; j++, Sorc.DangerousMoveNextY(), Dest.DangerousMoveNextY())
+            {
+                for (int i = 0; i < Width; i++, Sorc.DangerousMoveNextX(), Dest.DangerousMoveNextX())
+                    Dest.Override(Sorc);
+
+                Sorc.DangerousOffsetX(Dx);
+                Dest.DangerousOffsetX(Dx);
+            }
+
+            return Result;
+        }
+        public ImageContext<T> ApplyContrast<T>(double Contrast, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new(Width, Height);
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
+            {
+                PixelAdapter<T> Sorc = new AdjustContrastPixelAdapter<T>(GetAdapter(0, y), Contrast),
+                                Dest = Result.GetAdapter<T>(0, y);
+
+                for (int i = 0; i < Width; i++, Sorc.DangerousMoveNextX(), Dest.DangerousMoveNextX())
+                    Dest.Override(Sorc);
+            });
+
+            return Result;
+        }
+
+        public ImageContext<T> ApplyGamma<T>(double Gamma)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new(Width, Height);
+            PixelAdapter<T> Sorc = new AdjustGammaPixelAdapter<T>(GetAdapter(0, 0), Gamma),
+                            Dest = Result.GetAdapter<T>(0, 0);
+
+            int Dx = -Width;
+            for (int j = 0; j < Height; j++, Sorc.DangerousMoveNextY(), Dest.DangerousMoveNextY())
+            {
+                for (int i = 0; i < Width; i++, Sorc.DangerousMoveNextX(), Dest.DangerousMoveNextX())
+                    Dest.Override(Sorc);
+
+                Sorc.DangerousOffsetX(Dx);
+                Dest.DangerousOffsetX(Dx);
+            }
+
+            return Result;
+        }
+        public ImageContext<T> ApplyGamma<T>(double Gamma, ParallelOptions Options)
+            where T : unmanaged, IPixel
+        {
+            ImageContext<T> Result = new(Width, Height);
+            _ = Parallel.For(0, Height, Options ?? DefaultParallelOptions, y =>
+            {
+                PixelAdapter<T> Sorc = new AdjustGammaPixelAdapter<T>(GetAdapter(0, y), Gamma),
+                                Dest = Result.GetAdapter<T>(0, y);
+
+                for (int i = 0; i < Width; i++, Sorc.DangerousMoveNextX(), Dest.DangerousMoveNextX())
+                    Dest.Override(Sorc);
+            });
+
+            return Result;
+        }
+
         public ImageContext<T> Quantizate<T>(QuantizationTypes Type, int Count)
             where T : unmanaged, IPixel
         {

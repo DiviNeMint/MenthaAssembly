@@ -1697,6 +1697,36 @@ namespace MenthaAssembly.Media.Imaging
         public ImageContext<T> Filter<T>(ImageFilter Filter, ParallelOptions Options) where T : unmanaged, IPixel;
 
         /// <summary>
+        /// Creates a new <see cref="ImageContext{T}"/> with adjusted contrast.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Contrast">The level of contrast to apply.</param>
+        public ImageContext<T> ApplyContrast<T>(double Contrast) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Creates a new <see cref="ImageContext{T}"/> with adjusted contrast.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Contrast">The level of contrast to apply.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T> ApplyContrast<T>(double Contrast, ParallelOptions Options) where T : unmanaged, IPixel;
+
+        /// <summary>
+        /// Creates a new <see cref="ImageContext{T}"/> with adjusted Gamma.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Gamma">The level of Gamma to apply.</param>
+        public ImageContext<T> ApplyGamma<T>(double Gamma) where T : unmanaged, IPixel;
+        /// <summary>
+        /// Creates a new <see cref="ImageContext{T}"/> with adjusted Gamma.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Gamma">The level of Gamma to apply.</param>
+        /// <param name="Options">An object that configures the behavior of this operation.<para/>
+        /// If it is null, the function will run with default options. </param>
+        public ImageContext<T> ApplyGamma<T>(double Gamma, ParallelOptions Options) where T : unmanaged, IPixel;
+
+        /// <summary>
         /// Creates a new quantized <see cref="ImageContext{T}"/>.
         /// </summary>
         /// <typeparam name="T"></typeparam>
