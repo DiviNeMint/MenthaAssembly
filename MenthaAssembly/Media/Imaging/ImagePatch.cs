@@ -98,7 +98,7 @@ namespace MenthaAssembly.Media.Imaging
             Cx = PatchWidth >> 1;
             Cy = PatchHeight >> 1;
 
-            Adapters = new IPixelAdapter[PatchWidth, PatchHeight];
+            Adapters = new IPixelAdapter[PatchHeight, PatchWidth];
             Adapters[Cy, Cx] = Adapter;
             Adapter.Move(0, 0);
         }
@@ -118,7 +118,7 @@ namespace MenthaAssembly.Media.Imaging
             Cx = PatchWidth >> 1;
             Cy = PatchHeight >> 1;
 
-            Adapters = new IPixelAdapter[PatchWidth, PatchHeight];
+            Adapters = new IPixelAdapter[PatchHeight, PatchWidth];
             Adapters[Cy, Cx] = Adapter;
             Adapter.Move(X, Y);
         }
