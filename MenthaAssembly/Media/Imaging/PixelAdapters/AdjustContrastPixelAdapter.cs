@@ -186,7 +186,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             if (IsPixelValid)
                 return;
 
-            Pixel.Override(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
+            Adjuster();
             IsPixelValid = true;
         }
         private byte Adjust(byte Value)
