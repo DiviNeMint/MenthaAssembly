@@ -257,7 +257,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 });
                 #endregion
 
-                ImageContextHelper.FillContour(Context, Contour, 0d, 0d, Handler);
+                ContourAlgorithms.FillContour(Context, Contour, 0d, 0d, Handler);
             }
             else
             {
@@ -403,156 +403,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 Stamp.DangerousOffsetX(-Pw);
                 Context.DangerousOffsetX(-Pw);
             }
-        }
-
-        public static void FillContour<T>(PixelAdapter<T> Context, IImageContour Contour, double OffsetX, double OffsetY, Action<PixelAdapter<T>> Handler)
-            where T : unmanaged, IPixel
-        {
-            Contour.EnsureContents();
-            int Dx = (int)Math.Round(Contour.OffsetX + OffsetX),
-                Dy = (int)Math.Round(Contour.OffsetY + OffsetY);
-
-            int MaxX = Context.XLength - 1,
-                MaxY = Context.YLength - 1,
-                Ty;
-            foreach (KeyValuePair<int, ImageContourScanLine> Content in Contour.Contents)
-            {
-                Ty = Content.Key + Dy;
-                if (Ty < 0 || MaxY < Ty)
-                    continue;
-
-                Context.DangerousMove(0, Ty);
-
-                int CurrentX = 0;
-                List<int> Data = Content.Value.Datas;
-                for (int i = 0; i < Data.Count;)
-                {
-                    int Sx = Dx + Data[i++];
-                    if (MaxX < Sx)
-                        return;
-
-                    int Ex = Dx + Data[i++];
-                    if (Ex < 0)
-                        continue;
-
-                    Sx = Math.Max(Sx, 0);
-                    Ex = Math.Min(Ex, MaxX);
-
-                    Context.DangerousOffsetX(Sx - CurrentX);
-                    for (int j = Sx; j <= Ex; j++, Context.DangerousMoveNextX())
-                        Handler(Context);
-
-                    CurrentX = Ex + 1;
-                }
-            }
-        }
-
-        public static ImageContour FindBound(this IImageContext Context, int SeedX, int SeedY, ImagePredicate Predicate)
-        {
-            int Width = Context.Width,
-                Height = Context.Height;
-
-            if (SeedX < 0 || Width <= SeedX ||
-                SeedY < 0 || Height <= SeedY)
-                return null;
-
-            ImageContour Contour = new();
-            Stack<int> StackX = new(),
-                       StackY = new();
-            StackX.Push(SeedX);
-            StackY.Push(SeedY);
-
-            int X, Y, SaveX, Rx, Lx;
-
-            IPixelAdapter Seed, Pixel;
-            while (StackX.Count > 0)
-            {
-                X = StackX.Pop();
-                Y = StackY.Pop();
-                SaveX = X;
-
-                Seed = Context.GetAdapter(X, Y);
-                Pixel = Seed.Clone();
-
-                // Find Right Bound
-                while (X < Width && !Predicate(X, Y, Pixel))
-                {
-                    X++;
-                    Pixel.MoveNextX();
-                }
-
-                // Find Left Bound
-                Rx = X - 1;
-                X = SaveX - 1;
-
-                Pixel = Seed.Clone();
-                Pixel.MovePreviousX();
-                while (-1 < X && !Predicate(X, Y, Pixel))
-                {
-                    X--;
-                    Pixel.MovePreviousX();
-                }
-
-                Lx = X + 1;
-
-                // Log Region
-                Contour[Y].Union(Lx, Rx);
-
-                // Lower ScanLine's Seed
-                bool NeedFill = false;
-                X = Lx;
-                Y++;
-
-                Seed = Context.GetAdapter(X, Y);
-                if (-1 < Y && Y < Height && !Contour.Contain(X, Y))
-                {
-                    for (; X <= Rx; X++, Seed.MoveNextX())
-                    {
-                        while (X <= Rx && !Predicate(X, Y, Seed))
-                        {
-                            NeedFill = true;
-                            X++;
-                            Seed.MoveNextX();
-                        }
-
-                        if (NeedFill)
-                        {
-                            StackX.Push(X - 1);
-                            StackY.Push(Y);
-                            NeedFill = false;
-                        }
-                    }
-                }
-
-                // Upper ScanLine's Seed
-                NeedFill = false;
-                X = Lx;
-                Y -= 2;
-
-                Seed = Context.GetAdapter(X, Y);
-                if (0 <= Y && Y < Height && !Contour.Contain(X, Y))
-                {
-
-                    for (; X <= Rx; X++, Seed.MoveNextX())
-                    {
-                        while (X <= Rx && !Predicate(X, Y, Seed))
-                        {
-                            NeedFill = true;
-                            X++;
-                            Seed.MoveNextX();
-                        }
-
-                        if (NeedFill)
-                        {
-                            StackX.Push(X - 1);
-                            StackY.Push(Y);
-                            NeedFill = false;
-                        }
-                    }
-                }
-            }
-
-            return Contour;
         }
 
         public static IEnumerable<QuantizationBox> BoxQuantize<T>(PixelAdapter<T> Adapter, QuantizationTypes Type, int Count, out Func<QuantizationBox, PixelAdapter<T>, bool> Contain, out Func<QuantizationBox, T> GetColor)
@@ -1303,6 +1153,24 @@ namespace MenthaAssembly.Media.Imaging.Utils
             return Clusters;
         }
 
+        public static void ApplyMask<T>(PixelAdapter<T> Context, IPixelAdapter Mask)
+            where T : unmanaged, IPixel
+        {
+            int MaxX = Math.Min(Context.XLength, Mask.XLength),
+                MaxY = Math.Min(Context.YLength, Mask.YLength);
+
+            T Empty = default;
+            PixelAdapter<T> ASorc = Context.Clone();
+            IPixelAdapter AMask = Mask.Clone();
+            for (int y = 0; y < MaxY; y++)
+            {
+                ASorc.DangerousMove(0, y);
+                AMask.DangerousMove(0, y);
+                for (int x = 0; x < MaxX; x++, ASorc.DangerousMoveNextX(), AMask.DangerousMoveNextX())
+                    if (AMask.R == byte.MinValue)
+                        ASorc.Override(Empty);
+            }
+        }
 
     }
 }

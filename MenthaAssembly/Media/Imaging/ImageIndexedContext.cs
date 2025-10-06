@@ -468,7 +468,7 @@ namespace MenthaAssembly.Media.Imaging
                 SmallRightBound.Clear();
             }
 
-            ImageContextHelper.FillContour(GetAdapter<T>(0, 0), ArcContour, 0d, 0d, Handler);
+            ContourAlgorithms.FillContour(GetAdapter<T>(0, 0), ArcContour, 0d, 0d, Handler);
         }
 
         #endregion
@@ -1985,7 +1985,7 @@ namespace MenthaAssembly.Media.Imaging
                     LastDy = Dy;
                 });
 
-            ImageContextHelper.FillContour(GetAdapter<T>(0, 0), EllipseContour, 0d, 0d, Handler);
+            ContourAlgorithms.FillContour(GetAdapter<T>(0, 0), EllipseContour, 0d, 0d, Handler);
         }
 
         public void FillEllipse<T>(Bound<int> Bound, T Fill) where T : unmanaged, IPixel
@@ -2026,7 +2026,7 @@ namespace MenthaAssembly.Media.Imaging
                 _ => throw new NotSupportedException(),
             };
 
-            ImageContextHelper.FillContour(GetAdapter<T>(0, 0), ImageContour.CreateFillEllipse(Cx, Cy, Rx, Ry), 0, 0, Handler);
+            ContourAlgorithms.FillContour(GetAdapter<T>(0, 0), ImageContour.CreateFillEllipse(Cx, Cy, Rx, Ry), 0, 0, Handler);
         }
 
         #endregion
@@ -2513,7 +2513,7 @@ namespace MenthaAssembly.Media.Imaging
                 _ => throw new NotSupportedException(),
             };
 
-            ImageContextHelper.FillContour(GetAdapter<T>(0, 0), Contour, OffsetX, OffsetY, Handler);
+            ContourAlgorithms.FillContour(GetAdapter<T>(0, 0), Contour, OffsetX, OffsetY, Handler);
         }
 
         public void SeedFill<T>(Point<int> SeedPoint, T Fill, ImagePredicate Predicate) where T : unmanaged, IPixel
@@ -2526,6 +2526,13 @@ namespace MenthaAssembly.Media.Imaging
         public void SeedFill<T>(int SeedX, int SeedY, T Fill, BlendMode Blend, ImagePredicate Predicate)
             where T : unmanaged, IPixel
         {
+            int Iw = Width,
+                Ih = Height;
+
+            if (SeedX < 0 || Iw <= SeedX ||
+                SeedY < 0 || Ih <= SeedY)
+                return;
+
             if (Blend == BlendMode.Overlay)
             {
                 byte Alpha = Fill.A;
@@ -2543,9 +2550,10 @@ namespace MenthaAssembly.Media.Imaging
                 _ => throw new NotSupportedException(),
             };
 
-            if (this.FindBound(SeedX, SeedY, Predicate) is ImageContour Contour)
+            PixelAdapter<T> Adapter = GetAdapter<T>(0, 0);
+            if (ContourAlgorithms.DetectContour(Adapter, Iw, Ih, SeedX, SeedY, Predicate) is ImageContour Contour)
             {
-                ImageContextHelper.FillContour(GetAdapter<T>(0, 0), Contour, 0d, 0d, Handler);
+                ContourAlgorithms.FillContour(Adapter, Contour, 0d, 0d, Handler);
                 Contour.Clear();
             }
         }
@@ -2590,7 +2598,7 @@ namespace MenthaAssembly.Media.Imaging
                 _ => throw new NotSupportedException(),
             };
 
-            ImageContextHelper.FillContour(GetAdapter<T>(0, 0), Contour, 0d, 0d, Handler);
+            ContourAlgorithms.FillContour(GetAdapter<T>(0, 0), Contour, 0d, 0d, Handler);
         }
 
         #endregion
