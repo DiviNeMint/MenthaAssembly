@@ -341,6 +341,7 @@ namespace System.Linq
                     else
                     {
                         Max = x;
+                        Result = Item;
                         HasValue = true;
                     }
                 }
@@ -394,6 +395,7 @@ namespace System.Linq
                     else
                     {
                         Min = x;
+                        Result = Item;
                         HasValue = true;
                     }
                 }
