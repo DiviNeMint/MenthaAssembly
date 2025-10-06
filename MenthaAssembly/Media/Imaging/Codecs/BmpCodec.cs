@@ -215,7 +215,7 @@ namespace MenthaAssembly.Media.Imaging
                 PaletteSize = 0,
                 DataOffset = 54;
 
-            if (Bits < 8)
+            if (Bits <= 8)
             {
                 PaletteNum = 1 << Bits;
                 PaletteSize = PaletteNum << 2;
