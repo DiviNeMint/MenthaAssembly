@@ -10,7 +10,7 @@ namespace MenthaAssembly.Media.Imaging
     [Serializable]
     public sealed class ImageContour : IImageContour, ICloneable
     {
-        private readonly Dictionary<int, ImageContourScanLine> Contents;
+        internal readonly Dictionary<int, ImageContourScanLine> Contents;
         IReadOnlyDictionary<int, ImageContourScanLine> IImageContour.Contents
             => Contents;
 
@@ -40,7 +40,8 @@ namespace MenthaAssembly.Media.Imaging
                         T = Content.Key;
                         if (T < Y0)
                             Y0 = T;
-                        else if (Y1 < T)
+
+                        if (Y1 < T)
                             Y1 = T;
 
                         T = XDatas[0];
