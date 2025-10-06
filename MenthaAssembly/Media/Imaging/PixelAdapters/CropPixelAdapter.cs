@@ -40,8 +40,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public CropPixelAdapter(IImageContext Context, int X, int Y, int Width, int Height)
         {
-            X = 0;
-            Y = 0;
+            this.X = 0;
+            this.Y = 0;
             Source = Context.GetAdapter<T>(X, Y);
 
             Sx = X;
@@ -51,9 +51,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public CropPixelAdapter(PixelAdapter<T> Adapter, int X, int Y, int Width, int Height)
         {
-            X = Adapter.X;
-            Y = Adapter.Y;
+            this.X = 0;
+            this.Y = 0;
             Source = Adapter;
+            Adapter.DangerousMove(X, Y);
 
             Sx = X;
             Sy = Y;
@@ -152,8 +153,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public CropPixelAdapter(IImageContext Context, int X, int Y, int Width, int Height)
         {
-            X = 0;
-            Y = 0;
+            this.X = 0;
+            this.Y = 0;
             Source = Context.GetAdapter(X, Y);
 
             Sx = X;
@@ -163,9 +164,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
         }
         public CropPixelAdapter(IPixelAdapter Adapter, int X, int Y, int Width, int Height)
         {
-            X = Adapter.X;
-            Y = Adapter.Y;
+            this.X = 0;
+            this.Y = 0;
             Source = Adapter;
+            Adapter.DangerousMove(X, Y);
 
             Sx = X;
             Sy = Y;
