@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+
 
 #if NET7_0_OR_GREATER
 using System.Numerics;
@@ -276,6 +278,47 @@ namespace MenthaAssembly
             double DInterval = Cast<T, double>(Interval);
             return Cast<double, T>(Math.Round(Cast<T, double>(Value) / DInterval, Mode) * DInterval);
 #endif
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct FloatIntUnion
+        {
+            [FieldOffset(0)] public float f;
+            [FieldOffset(0)] public int i;
+        }
+        /// <summary>
+        /// Computes an approximation of the inverse square root (1 / √X) 
+        /// using the "Fast Inverse Square Root" algorithm, made famous by Quake III Arena.
+        /// </summary>
+        /// <param name="X">The input X to compute the inverse square root for.</param>
+        /// <returns>An approximation of 1 / √X.</returns>
+        public static float InvSqrt(float X)
+            => InvSqrt(X, 1);
+        /// <summary>
+        /// Computes an approximation of the inverse square root (1 / √X) 
+        /// using the "Fast Inverse Square Root" algorithm.
+        /// Allows specifying the number of Newton-Raphson refinement iterations.
+        /// </summary>
+        /// <param name="X">The input X to compute the inverse square root for.</param>
+        /// <param name="Iterations">
+        /// The number of Newton-Raphson refinement iterations to perform. 
+        /// More iterations improve accuracy at the cost of performance.
+        /// </param>
+        /// <returns>An approximation of 1 / √X.</returns>
+        public static float InvSqrt(float X, int Iterations)
+        {
+            FloatIntUnion u;
+            u.i = 0;
+            u.f = X;
+
+            float xhalf = 0.5f * X;
+            u.i = 0x5f3759df - (u.i >> 1);  // 魔數
+            float y = u.f;
+
+            for (int i = 0; i < Iterations; i++)
+                y *= 1.5f - xhalf * y * y;
+
+            return y;
         }
 
         /// <summary>
