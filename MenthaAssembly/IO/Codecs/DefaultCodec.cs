@@ -16,10 +16,12 @@ namespace MenthaAssembly.IO
         private static readonly Type TypeOfType = typeof(Type).GetType();
         private static readonly Type StringType = ReflectionHelper.TypeAlias["string"];
         private static readonly Type ObjectType = ReflectionHelper.TypeAlias["object"];
+        private static readonly Type DateTimeType = typeof(DateTime);
         private static readonly Type IEnumerableType = typeof(IEnumerable);
         private static readonly Type IEnumerableGenericType = typeof(IEnumerable<>);
         private static readonly Type IDictionaryType = typeof(IDictionary);
         private static readonly Type IDictionaryGenericType = typeof(IDictionary<,>);
+        private static readonly int SizeOfDateTime = sizeof(DateTime);
 
         protected override void EncodeValue(Stream Stream, Type Type, object Value)
         {
@@ -43,8 +45,11 @@ namespace MenthaAssembly.IO
                 using PinnedIntPtr Handle = new(Value);
                 IntPtr pValue = Handle.DangerousGetHandle();
 
-                Type SizeOfType = Type.IsEnum ? Enum.GetUnderlyingType(Type) : Type;
-                Stream.Write(pValue, Marshal.SizeOf(SizeOfType));
+                int Size = Type.IsEnum ? Marshal.SizeOf(Enum.GetUnderlyingType(Type)) :
+                           Type == DateTimeType ? SizeOfDateTime :
+                           Marshal.SizeOf(Type);
+
+                Stream.Write(pValue, Size);
                 return;
             }
 
@@ -167,7 +172,9 @@ namespace MenthaAssembly.IO
             {
                 object Struct = Activator.CreateInstance(Type);
 
-                int Size = Type.IsEnum ? Marshal.SizeOf(Enum.GetUnderlyingType(Type)) : Marshal.SizeOf(Struct);
+                int Size = Type.IsEnum ? Marshal.SizeOf(Enum.GetUnderlyingType(Type)) :
+                           Type == DateTimeType ? SizeOfDateTime :
+                           Marshal.SizeOf(Struct);
                 byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
                 try
                 {
