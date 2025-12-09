@@ -67,7 +67,7 @@ namespace MenthaAssembly.IO
                     Stream.Write(Array.GetLength(i));
 
                 // Elements
-                if (ElementType == typeof(object))
+                if (ElementType == typeof(object) || ElementType.IsAbstract || ElementType.IsInterface)
                 {
                     foreach (object Element in Array)
                         Encode(Stream, Element);
@@ -248,9 +248,9 @@ namespace MenthaAssembly.IO
                     Func<Stream, object>[] Decoders = new Func<Stream, object>[Length];
                     for (int i = 0; i < Length; i++)
                     {
-                        int Index = i;
-                        Decoders[i] = AddParams[i] == ObjectType ? s => Decode(s, Arguments) :
-                                                                   s => DecodeValue(s, AddParams[Index], Arguments);
+                        Type ItemType = AddParams[i];
+                        Decoders[i] = ItemType == ObjectType || ItemType.IsAbstract || ItemType .IsInterface? s => Decode(s, Arguments) :
+                                                                                                              s => DecodeValue(s, ItemType, Arguments);
                     }
 
                     object[] Parameters = new object[Length];
