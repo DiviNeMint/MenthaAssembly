@@ -12,319 +12,248 @@ namespace System.Collections.Generic
         private const string CountName = nameof(Count);
         private const string IndexerName = "Item[]";
 
+        private int BlockReentrancyCount;
+
         public event PropertyChangedEventHandler PropertyChanged;
         public event NotifyCollectionChangedEventHandler CollectionChanged;
 
-        public ConcurrentObservableCollection() : base()
+        public ConcurrentObservableCollection()
+            : base()
         {
+            RegisterWpfCollectionSynchronization();
         }
-        public ConcurrentObservableCollection(IEnumerable<T> Items) : base(Items)
+        public ConcurrentObservableCollection(IEnumerable<T> Items)
+            : base(Items)
         {
+            RegisterWpfCollectionSynchronization();
+        }
+        private void RegisterWpfCollectionSynchronization()
+        {
+            AssemblyName WPFCore = Assembly.GetEntryAssembly()?
+                                           .GetReferencedAssemblies()
+                                           .Where(AssemblyHelper.IsDotNetAssembly)
+                                           .FirstOrDefault(i => i.Name == "PresentationFramework");
+            if (WPFCore is null)
+                return;
+
+            Assembly WPFAssembly = Assembly.Load(WPFCore);
+            if (WPFAssembly.GetType("System.Windows.Data.BindingOperations", false) is Type BindingOperationsType &&
+                BindingOperationsType.TryGetStaticMethod("EnableCollectionSynchronization", [typeof(IEnumerable), typeof(object)], out MethodInfo EnableMethod))
+                ReflectionHelper.InvokeOnUIThread(() =>
+                {
+                    try
+                    {
+                        EnableMethod.Invoke(null, [this, SyncRoot]);
+                    }
+                    catch (TargetInvocationException ex)
+                    {
+                        throw ex.InnerException ?? ex;
+                    }
+                });
         }
 
         protected override void SetItem(int Index, T Value)
             => Handle(() =>
             {
-                T originalItem = Items[Index];
+                CheckReentrancy();
+
+                T OriginalItem = Items[Index];
+                if (EqualityComparer<T>.Default.Equals(OriginalItem, Value))
+                    return;
+
                 Items[Index] = Value;
 
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, originalItem, Value, Index));
                 OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(
+                    NotifyCollectionChangedAction.Replace,
+                    Value,
+                    OriginalItem,
+                    Index));
             });
 
-        public override void Add(T item)
+        public override void Add(T Item)
             => Handle(() =>
             {
-                Items.Add(item);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
+                CheckReentrancy();
+
+                int Index = Items.Count;
+                Items.Add(Item);
+
                 OnPropertyChanged(CountName);
                 OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(
+                    NotifyCollectionChangedAction.Add,
+                    Item,
+                    Index));
             });
+
+        public override bool Remove(T Item)
+            => Handle(() =>
+            {
+                CheckReentrancy();
+
+                int Index = Items.IndexOf(Item);
+                if (Index < 0)
+                    return false;
+
+                T RemovedItem = Items[Index];
+                Items.RemoveAt(Index);
+
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(
+                    NotifyCollectionChangedAction.Remove,
+                    RemovedItem,
+                    Index));
+                return true;
+            });
+
+        public override void RemoveAt(int Index)
+            => Handle(() =>
+            {
+                CheckReentrancy();
+
+                T RemovedItem = Items[Index];
+                Items.RemoveAt(Index);
+
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(
+                    NotifyCollectionChangedAction.Remove,
+                    RemovedItem,
+                    Index));
+            });
+
+        public override void Insert(int Index, T Item)
+            => Handle(() =>
+            {
+                CheckReentrancy();
+
+                Items.Insert(Index, Item);
+
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(
+                    NotifyCollectionChangedAction.Add,
+                    Item,
+                    Index));
+            });
+
+
         public override void AddRange(IEnumerable<T> Items)
             => Handle(() =>
             {
-                this.Items.AddRange(Items);
+                if (Items is null)
+                    throw new ArgumentNullException(nameof(Items));
+
+                List<T> Buffer = Items as List<T> ?? new List<T>(Items);
+                if (Buffer.Count == 0)
+                    return;
+
+                CheckReentrancy();
+
+                this.Items.AddRange(Buffer);
+
+                OnPropertyChanged(CountName);
+                OnPropertyChanged(IndexerName);
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
             });
 
-        public override bool Remove(T item)
-            => Handle(() =>
-            {
-                if (!Items.Remove(item))
-                    return false;
-
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
-                return true;
-            });
         public override void Remove(Predicate<T> Predict)
             => Handle(() =>
             {
+                if (Predict is null)
+                    throw new ArgumentNullException(nameof(Predict));
+
+                CheckReentrancy();
+
+                bool Changed = false;
+
                 for (int i = Items.Count - 1; i >= 0; i--)
                 {
-                    T RemovedItem = Items[i];
-                    if (Predict(RemovedItem))
-                    {
-                        Items.RemoveAt(i);
-                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, i));
-                    }
+                    if (!Predict(Items[i]))
+                        continue;
+
+                    Items.RemoveAt(i);
+                    Changed = true;
                 }
+
+                if (!Changed)
+                    return;
 
                 OnPropertyChanged(CountName);
                 OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             });
+
         public override void Remove(IEnumerable<T> Items)
             => Handle(() =>
             {
-                if (Items is not T[] and not IList and not ICollection)
-                    Items = Items.ToArray();
+                if (Items is null)
+                    throw new ArgumentNullException(nameof(Items));
 
-                foreach (T item in Items)
-                    if (this.Items.Remove(item))
-                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+                CheckReentrancy();
 
-                OnPropertyChanged(CountName);
-                OnPropertyChanged(IndexerName);
-            });
-        public override void RemoveAt(int index)
-            => Handle(() =>
-            {
-                T RemovedItem = Items[index];
-                if (Items.Remove(RemovedItem))
+                bool Changed = false;
+                IEnumerable<T> Buffer = Items is ICollection<T> ? Items : new List<T>(Items);
+
+                foreach (T Item in Buffer)
                 {
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, index));
-                    OnPropertyChanged(CountName);
-                    OnPropertyChanged(IndexerName);
+                    int Index = this.Items.IndexOf(Item);
+                    if (Index < 0)
+                        continue;
+
+                    this.Items.RemoveAt(Index);
+                    Changed = true;
                 }
-            });
 
-        public override bool TryRemove(Predicate<T> Predict, out T Item)
-        {
-            T Temp = default;
-            try
-            {
-                return Handle(() =>
-                {
-                    for (int i = Items.Count - 1; i >= 0; i--)
-                    {
-                        Temp = Items[i];
-                        if (Predict(Temp))
-                        {
-                            Items.RemoveAt(i);
-                            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, Temp, i));
+                if (!Changed)
+                    return;
 
-                            OnPropertyChanged(CountName);
-                            OnPropertyChanged(IndexerName);
-                            return true;
-                        }
-                    }
-
-                    return false;
-                });
-            }
-            finally
-            {
-                Item = Temp;
-            }
-        }
-
-        public override void Insert(int index, T item)
-            => Handle(() =>
-            {
-                Items.Insert(index, item);
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
                 OnPropertyChanged(CountName);
                 OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             });
 
         public override void Clear()
             => Handle(() =>
             {
+                if (Items.Count == 0)
+                    return;
+
+                CheckReentrancy();
+
                 Items.Clear();
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+
                 OnPropertyChanged(CountName);
                 OnPropertyChanged(IndexerName);
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             });
 
-        protected internal override void Handle(Action Action)
-            => ReflectionHelper.InvokeOnUIThread(Action);
-        protected internal override U Handle<U>(Func<U> Func)
-            => ReflectionHelper.InvokeOnUIThread(Func);
 
-        protected void OnPropertyChanged([CallerMemberName] string PropertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string PropertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));
-        protected void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
-            => CollectionChanged?.Invoke(this, e);
+
+        protected virtual void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+        {
+            BlockReentrancyCount++;
+            try
+            {
+                CollectionChanged?.Invoke(this, e);
+            }
+            finally
+            {
+                BlockReentrancyCount--;
+            }
+        }
+
+        protected void CheckReentrancy()
+        {
+            if (BlockReentrancyCount > 0 &&
+                CollectionChanged != null &&
+                CollectionChanged.GetInvocationList().Length > 1)
+                throw new InvalidOperationException("Cannot modify the collection during a CollectionChanged event.");
+        }
 
     }
-
-    //[Serializable]
-    //public class ConcurrentObservableCollection<T> : ConcurrentCollection<T>, INotifyCollectionChanged, INotifyPropertyChanged
-    //{
-    //    private readonly SynchronizationContext OriginalSynchronizationContext = ReflectionHelper.Invoke(() => SynchronizationContext.Current);
-    //    private const string CountName = nameof(Count);
-    //    private const string IndexerName = "Item[]";
-
-    //    public event PropertyChangedEventHandler PropertyChanged;
-    //    public event NotifyCollectionChangedEventHandler CollectionChanged;
-
-    //    public ConcurrentObservableCollection() : base()
-    //    {
-    //    }
-    //    public ConcurrentObservableCollection(IEnumerable<T> Items) : base(Items)
-    //    {
-    //    }
-
-    //    protected override void SetItem(int Index, T Value)
-    //        => Handle(() =>
-    //        {
-    //            T originalItem = Items[Index];
-    //            Items[Index] = Value;
-
-    //            RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, originalItem, Value, Index));
-    //            RaisePropertyChanged(IndexerName);
-    //        });
-
-    //    public override void Add(T item)
-    //        => Handle(() =>
-    //        {
-    //            Items.Add(item);
-    //            RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
-    //            RaisePropertyChanged(CountName);
-    //            RaisePropertyChanged(IndexerName);
-    //        });
-    //    public override void AddRange(IEnumerable<T> Items)
-    //        => Handle(() =>
-    //        {
-    //            this.Items.AddRange(Items);
-    //            RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-    //            RaisePropertyChanged(CountName);
-    //            RaisePropertyChanged(IndexerName);
-    //        });
-
-    //    public override bool Remove(T item)
-    //        => Handle(() =>
-    //        {
-    //            if (!Items.Remove(item))
-    //                return false;
-
-    //            RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
-    //            RaisePropertyChanged(CountName);
-    //            RaisePropertyChanged(IndexerName);
-    //            return true;
-    //        });
-    //    public override void Remove(Predicate<T> Predict)
-    //        => Handle(() =>
-    //        {
-    //            for (int i = Items.Count - 1; i >= 0; i--)
-    //            {
-    //                T RemovedItem = Items[i];
-    //                if (Predict(RemovedItem))
-    //                {
-    //                    Items.RemoveAt(i);
-    //                    RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, i));
-    //                }
-    //            }
-
-    //            RaisePropertyChanged(CountName);
-    //            RaisePropertyChanged(IndexerName);
-    //        });
-    //    public override void Remove(IEnumerable<T> Items)
-    //        => Handle(() =>
-    //        {
-    //            if (Items is not T[] and not IList and not ICollection)
-    //                Items = Items.ToArray();
-
-    //            foreach (T item in Items)
-    //                if (this.Items.Remove(item))
-    //                    RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
-
-    //            RaisePropertyChanged(CountName);
-    //            RaisePropertyChanged(IndexerName);
-    //        });
-    //    public override void RemoveAt(int index)
-    //        => Handle(() =>
-    //        {
-    //            T RemovedItem = Items[index];
-    //            if (Items.Remove(RemovedItem))
-    //            {
-    //                RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, RemovedItem, index));
-    //                RaisePropertyChanged(CountName);
-    //                RaisePropertyChanged(IndexerName);
-    //            }
-    //        });
-
-    //    public override bool TryRemove(Predicate<T> Predict, out T Item)
-    //    {
-    //        bool InternalTryRemove(out T Item)
-    //        {
-    //            for (int i = Items.Count - 1; i >= 0; i--)
-    //            {
-    //                Item = Items[i];
-    //                if (Predict(Item))
-    //                {
-    //                    Items.RemoveAt(i);
-    //                    RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, Item, i));
-
-    //                    RaisePropertyChanged(CountName);
-    //                    RaisePropertyChanged(IndexerName);
-    //                    return true;
-    //                }
-    //            }
-
-    //            Item = default;
-    //            return false;
-    //        }
-
-    //        return Handle(InternalTryRemove, out Item);
-    //    }
-
-    //    public override void Insert(int index, T item)
-    //        => Handle(() =>
-    //        {
-    //            Items.Insert(index, item);
-    //            RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
-    //            RaisePropertyChanged(CountName);
-    //            RaisePropertyChanged(IndexerName);
-    //        });
-
-    //    public override void Clear()
-    //        => Handle(() =>
-    //        {
-    //            Items.Clear();
-    //            RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-    //            RaisePropertyChanged(CountName);
-    //            RaisePropertyChanged(IndexerName);
-    //        });
-
-    //    protected internal void RaisePropertyChanged([CallerMemberName] string PropertyName = null)
-    //    {
-    //        if (PropertyChanged is null)
-    //            return;
-
-    //        if (SynchronizationContext.Current == OriginalSynchronizationContext)
-    //            OnPropertyChanged(PropertyName);
-    //        else
-    //            OriginalSynchronizationContext.Send((s) => OnPropertyChanged(PropertyName), null);
-    //    }
-    //    private void OnPropertyChanged(string PropertyName)
-    //        => PropertyChanged.Invoke(this, new PropertyChangedEventArgs(PropertyName));
-
-    //    protected internal void RaiseCollectionChanged(NotifyCollectionChangedEventArgs e)
-    //    {
-    //        if (CollectionChanged is null)
-    //            return;
-
-    //        if (SynchronizationContext.Current == OriginalSynchronizationContext)
-    //            OnCollectionChanged(e);
-    //        else
-    //            OriginalSynchronizationContext.Send((s) => OnCollectionChanged(e), null);
-    //    }
-    //    private void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
-    //        => CollectionChanged.Invoke(this, e);
-
-    //}
 }

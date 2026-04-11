@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using System.Threading;
+﻿using System.Threading;
 
 namespace System.Collections.Generic
 {
@@ -8,36 +7,58 @@ namespace System.Collections.Generic
     /// </summary>
     /// <typeparam name="T">The type of elements in the list.</typeparam>
     [Serializable]
-    public class ConcurrentCollection<T> : IList<T>, ICollection<T>, IEnumerable<T>, IEnumerable, IList, ICollection, IReadOnlyList<T>, IReadOnlyCollection<T>
+    public class ConcurrentCollection<T> : IList<T>, IList, IReadOnlyList<T>
     {
+        protected readonly List<T> Items;
+        protected readonly object SyncRoot = new();
+
         public virtual T this[int Index]
         {
             get => GetItem(Index);
             set => SetItem(Index, value);
         }
 
-        public int Count
-            => Items.Count;
+        object IList.this[int Index]
+        {
+            get => GetItem(Index);
+            set
+            {
+                if (value is T Item)
+                    SetItem(Index, Item);
+            }
+        }
 
-        protected readonly List<T> Items = [];
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ConcurrentCollection{T}"/> class that is empty and has the default initial capacity.
-        /// </summary>
+        public int Count
+            => Handle(() => Items.Count);
+
+        bool IList.IsReadOnly
+            => false;
+        bool ICollection<T>.IsReadOnly
+            => false;
+
+        bool IList.IsFixedSize
+            => false;
+
+        bool ICollection.IsSynchronized
+            => true;
+
+        object ICollection.SyncRoot
+            => SyncRoot;
+
         public ConcurrentCollection()
         {
             Items = [];
         }
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ConcurrentCollection{T}"/> class that contains elements copied from the specified collection and has sufficient capacity to accommodate the number of elements copied.
-        /// </summary>
-        /// <param name="Items">The collection whose elements are copied to the new collection.</param>
         public ConcurrentCollection(IEnumerable<T> Items)
         {
-            this.Items = new List<T>(Items);
+            if (Items is null)
+                throw new ArgumentNullException(nameof(Items));
+
+            this.Items = [.. Items];
         }
 
         protected virtual T GetItem(int Index)
-            => (Monitor.IsEntered(LockObj) ? Items : [.. Items])[Index];
+            => Handle(() => Items[Index]);
 
         protected virtual void SetItem(int Index, T Value)
             => Handle(() => Items[Index] = Value);
@@ -45,176 +66,115 @@ namespace System.Collections.Generic
         public virtual void Add(T Item)
             => Handle(() => Items.Add(Item));
 
-        /// <summary>
-        /// Adds items to the <see cref="ConcurrentCollection{T}"/>.
-        /// </summary>
-        /// <param name="Items">The objects to add to the <see cref="ConcurrentCollection{T}"/>.</param>
         public virtual void AddRange(IEnumerable<T> Items)
-            => Handle(() => this.Items.AddRange(Items));
+            => Handle(() =>
+            {
+                if (Items is null)
+                    throw new ArgumentNullException(nameof(Items));
+
+                this.Items.AddRange(Items);
+            });
 
         public virtual bool Remove(T Item)
             => Handle(() => Items.Remove(Item));
 
-        /// <summary>
-        /// Remove objects from <see cref="ConcurrentCollection{T}"/> that satisfy predictions.
-        /// </summary>
-        /// <param name="Predict">The predictions to be met.</param>
         public virtual void Remove(Predicate<T> Predict)
             => Handle(() =>
             {
+                if (Predict is null)
+                    throw new ArgumentNullException(nameof(Predict));
+
                 for (int i = Items.Count - 1; i >= 0; i--)
                     if (Predict(Items[i]))
                         Items.RemoveAt(i);
             });
 
-        /// <summary>
-        /// Removes all specific objects from <see cref="ConcurrentCollection{T}"/>.
-        /// </summary>
-        /// <param name="Items">The objects to remove from <see cref="ConcurrentCollection{T}"/>.</param>
         public virtual void Remove(IEnumerable<T> Items)
             => Handle(() =>
             {
-                if (Items is not T[] and not IList and not ICollection)
-                    Items = Items.ToArray();
+                if (Items is null)
+                    throw new ArgumentNullException(nameof(Items));
 
-                foreach (T Item in Items)
+                IEnumerable<T> Buffer = Items is ICollection<T> ? Items : new List<T>(Items);
+                foreach (T Item in Buffer)
                     this.Items.Remove(Item);
             });
 
         public virtual void RemoveAt(int Index)
             => Handle(() => Items.RemoveAt(Index));
 
-        /// <summary>
-        /// Attempts to remove and return the value that satisfies the prediction from the <see cref="ConcurrentCollection{T}"/>.
-        /// </summary>
-        /// <param name="Predict">The prediction of the element to remove and return.</param>
-        /// <param name="Item">When this method returns, contains the object removed from the <see cref="ConcurrentCollection{T}"/>, or the default value of the <typeparamref name="T"/> type if no object meets the prediction.</param>
-        /// <returns>true if the object was removed successfully; otherwise, false.</returns>
         public virtual bool TryRemove(Predicate<T> Predict, out T Item)
         {
-            T Temp = default;
-            try
-            {
-                return Handle(() =>
-                {
-                    for (int i = Items.Count - 1; i >= 0; i--)
-                    {
-                        Temp = Items[i];
-                        if (Predict(Temp))
-                        {
-                            Items.RemoveAt(i);
-                            return true;
-                        }
-                    }
+            if (Predict is null)
+                throw new ArgumentNullException(nameof(Predict));
 
-                    return false;
-                });
-            }
-            finally
+            T Result = default(T);
+            bool Removed = Handle(() =>
             {
-                Item = Temp;
-            }
+                for (int i = Items.Count - 1; i >= 0; i--)
+                {
+                    T Current = Items[i];
+                    if (!Predict(Current))
+                        continue;
+
+                    Items.RemoveAt(i);
+                    Result = Current;
+                    return true;
+                }
+
+                return false;
+            });
+
+            Item = Result;
+            return Removed;
         }
 
         public virtual void Insert(int Index, T Item)
             => Handle(() => Items.Insert(Index, Item));
 
         public virtual void Clear()
-            => Handle(Items.Clear);
+            => Handle(() => Items.Clear());
 
         public virtual bool Contains(T Item)
-            => (Monitor.IsEntered(LockObj) ? Items : [.. Items]).Contains(Item);
-
-        public virtual void CopyTo(T[] Array, int ArrayIndex)
-            => (Monitor.IsEntered(LockObj) ? Items : [.. Items]).CopyTo(Array, ArrayIndex);
+            => Handle(() => Items.Contains(Item));
 
         public virtual int IndexOf(T Item)
-            => (Monitor.IsEntered(LockObj) ? Items : [.. Items]).IndexOf(Item);
+            => Handle(() => Items.IndexOf(Item));
 
-        public void ForEach(Action<T> Action)
-            => Handle(() =>
-            {
-                foreach (T item in Items)
-                    Action(item);
-            });
+        public virtual void CopyTo(T[] Array, int ArrayIndex)
+            => Handle(() => Items.CopyTo(Array, ArrayIndex));
+
+        void ICollection.CopyTo(Array Array, int Index)
+            => Handle(() => ((ICollection)Items.ToArray()).CopyTo(Array, Index));
+
+        protected virtual T[] ToArray()
+            => Handle(Items.ToArray);
+
+        protected virtual List<T> ToList()
+            => Handle(() => new List<T>(Items));
 
         public IEnumerator<T> GetEnumerator()
-            => Items.ToList().GetEnumerator();
+            => ((IEnumerable<T>)ToArray()).GetEnumerator();
+
         IEnumerator IEnumerable.GetEnumerator()
-            => Items.ToArray().GetEnumerator();
-
-        private readonly object LockObj = new();
-        protected internal virtual U Handle<U>(Func<U> Func)
-        {
-            bool Token = false;
-            try
-            {
-                Monitor.Enter(LockObj, ref Token);
-                return Func();
-            }
-            finally
-            {
-                if (Token)
-                    Monitor.Exit(LockObj);
-            }
-        }
-        protected internal virtual void Handle(Action Action)
-        {
-            bool Token = false;
-            try
-            {
-                Monitor.Enter(LockObj, ref Token);
-                Action();
-            }
-            finally
-            {
-                if (Token)
-                    Monitor.Exit(LockObj);
-            }
-        }
-
-        //public virtual void Lock()
-        //    => Monitor.Enter(LockObj);
-        //public virtual void Unlock()
-        //{
-        //    if (Monitor.IsEntered(LockObj))
-        //        Monitor.Exit(LockObj);
-        //}
-
-        #region IList
-
-        object IList.this[int Index]
-        {
-            get => GetItem(Index);
-            set
-            {
-                if (value is T i)
-                    SetItem(Index, i);
-            }
-        }
-
-        bool IList.IsFixedSize
-            => ((IList)Items).IsFixedSize;
-
-        bool IList.IsReadOnly
-            => ((IList)Items).IsReadOnly;
+            => ToArray().GetEnumerator();
 
         int IList.Add(object Value)
         {
             if (Value is T Item)
             {
                 Add(Item);
-                return Items.Count;
+                return Count - 1;
             }
 
             return -1;
         }
 
-        void IList.Remove(object Item)
-        {
-            if (Item is T i)
-                Handle(() => Remove(i));
-        }
+        bool IList.Contains(object Value)
+            => Value is T Item && Contains(Item);
+
+        int IList.IndexOf(object Value)
+            => Value is T Item ? IndexOf(Item) : -1;
 
         void IList.Insert(int Index, object Value)
         {
@@ -222,28 +182,47 @@ namespace System.Collections.Generic
                 Insert(Index, Item);
         }
 
-        bool IList.Contains(object Item)
-            => Item is T i && Contains(i);
+        void IList.Remove(object Value)
+        {
+            if (Value is T Item)
+                Remove(Item);
+        }
 
-        int IList.IndexOf(object Value)
-            => Value is T Item ? IndexOf(Item) : -1;
+        protected internal virtual U Handle<U>(Func<U> Func)
+        {
+            if (Func is null)
+                throw new ArgumentNullException(nameof(Func));
 
-        #endregion
+            bool LockTaken = false;
+            try
+            {
+                Monitor.Enter(SyncRoot, ref LockTaken);
+                return Func();
+            }
+            finally
+            {
+                if (LockTaken)
+                    Monitor.Exit(SyncRoot);
+            }
+        }
 
-        #region ICollection
-        bool ICollection<T>.IsReadOnly
-            => ((ICollection<T>)Items).IsReadOnly;
+        protected internal virtual void Handle(Action Action)
+        {
+            if (Action is null)
+                throw new ArgumentNullException(nameof(Action));
 
-        bool ICollection.IsSynchronized
-            => ((ICollection)Items).IsSynchronized;
-
-        object ICollection.SyncRoot
-            => ((ICollection)Items).SyncRoot;
-
-        void ICollection.CopyTo(Array Array, int Index)
-            => Handle(() => ((ICollection)Items).CopyTo(Array, Index));
-
-        #endregion
+            bool LockTaken = false;
+            try
+            {
+                Monitor.Enter(SyncRoot, ref LockTaken);
+                Action();
+            }
+            finally
+            {
+                if (LockTaken)
+                    Monitor.Exit(SyncRoot);
+            }
+        }
 
         public override string ToString()
             => $"Count = {Count}";
