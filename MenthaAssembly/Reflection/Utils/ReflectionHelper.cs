@@ -1226,7 +1226,7 @@ namespace System.Reflection
                 }
 
                 // Winform
-                if (References?.FirstOrDefault(i => i.Name == "System.Windows.Forms") is AssemblyName WinformAssemblyName)
+                else if (References?.FirstOrDefault(i => i.Name == "System.Windows.Forms") is AssemblyName WinformAssemblyName)
                 {
                     Assembly Assembly = Assembly.Load(WinformAssemblyName);
                     if (Assembly.GetType("System.Windows.Forms.Application", false) is Type AppType &&
