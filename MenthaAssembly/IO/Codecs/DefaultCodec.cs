@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace MenthaAssembly.IO
@@ -16,10 +17,12 @@ namespace MenthaAssembly.IO
         private static readonly Type TypeOfType = typeof(Type).GetType();
         private static readonly Type StringType = ReflectionHelper.TypeAlias["string"];
         private static readonly Type ObjectType = ReflectionHelper.TypeAlias["object"];
+        private static readonly Type DateTimeType = typeof(DateTime);
         private static readonly Type IEnumerableType = typeof(IEnumerable);
         private static readonly Type IEnumerableGenericType = typeof(IEnumerable<>);
         private static readonly Type IDictionaryType = typeof(IDictionary);
         private static readonly Type IDictionaryGenericType = typeof(IDictionary<,>);
+        private static readonly int SizeOfDateTime = sizeof(DateTime);
 
         protected override void EncodeValue(Stream Stream, Type Type, object Value)
         {
@@ -43,8 +46,11 @@ namespace MenthaAssembly.IO
                 using PinnedIntPtr Handle = new(Value);
                 IntPtr pValue = Handle.DangerousGetHandle();
 
-                Type SizeOfType = Type.IsEnum ? Enum.GetUnderlyingType(Type) : Type;
-                Stream.Write(pValue, Marshal.SizeOf(SizeOfType));
+                int Size = Type.IsEnum ? Marshal.SizeOf(Enum.GetUnderlyingType(Type)) :
+                           Type == DateTimeType ? SizeOfDateTime :
+                           Marshal.SizeOf(Type);
+
+                Stream.Write(pValue, Size);
                 return;
             }
 
@@ -62,16 +68,10 @@ namespace MenthaAssembly.IO
                     Stream.Write(Array.GetLength(i));
 
                 // Elements
-                if (ElementType == typeof(object))
-                {
-                    foreach (object Element in Array)
-                        Encode(Stream, Element);
-                }
-                else
-                {
-                    foreach (object Element in Array)
-                        EncodeValue(Stream, ElementType, Element);
-                }
+                Action<Stream, object> Encoder = GetEncoder(ElementType);
+                foreach (object Element in Array)
+                    Encoder(Stream, Element);
+
                 return;
             }
 
@@ -98,11 +98,8 @@ namespace MenthaAssembly.IO
                             if (GenericTypes.Length != 2)
                                 throw new InvalidDataException($"The generic member length of this type {Inherited} is invalid.");
 
-                            if (GenericTypes[0] != ObjectType)
-                                KeyEncoder = (s, k) => EncodeValue(Stream, GenericTypes[0], k);
-
-                            if (GenericTypes[1] != ObjectType)
-                                ValueEncoder = (s, v) => EncodeValue(Stream, GenericTypes[1], v);
+                            KeyEncoder = GetEncoder(GenericTypes[0]);
+                            ValueEncoder = GetEncoder(GenericTypes[1]);
                         }
 
                         foreach (object Key in Dictionary.Keys)
@@ -124,7 +121,7 @@ namespace MenthaAssembly.IO
                         TryGetSpecifiedMethodWithSingleParameter(Type, nameof(Stack.Push), out Add, out AddParams) ||       // Push
                         TryGetSpecifiedMethodWithSingleParameter(Type, "TryAdd", out Add, out AddParams))                   // IProducerConsumerCollection<>
                     {
-                        Action<Stream, object> Encoder = AddParams[0] == ObjectType ? Encode : (s, v) => EncodeValue(Stream, AddParams[0], v);
+                        Action<Stream, object> Encoder = GetEncoder(AddParams[0]);
                         foreach (object Item in Enumerable)
                             Encoder(Stream, Item);
                     }
@@ -150,7 +147,10 @@ namespace MenthaAssembly.IO
                 Stream.WriteStringAndLength(Property.Name);
                 Encode(Stream, Property.GetValue(Value));
             }
+
         }
+        private Action<Stream, object> GetEncoder(Type Type)
+            => Type == ObjectType || Type.IsAbstract || Type.IsInterface ? Encode : (s, v) => EncodeValue(s, Type, v);
 
         protected override object DecodeValue(Stream Stream, Type Type, object[] Arguments)
         {
@@ -167,7 +167,9 @@ namespace MenthaAssembly.IO
             {
                 object Struct = Activator.CreateInstance(Type);
 
-                int Size = Type.IsEnum ? Marshal.SizeOf(Enum.GetUnderlyingType(Type)) : Marshal.SizeOf(Struct);
+                int Size = Type.IsEnum ? Marshal.SizeOf(Enum.GetUnderlyingType(Type)) :
+                           Type == DateTimeType ? SizeOfDateTime :
+                           Marshal.SizeOf(Struct);
                 byte[] Buffer = ArrayPool<byte>.Shared.Rent(Size);
                 try
                 {
@@ -241,9 +243,9 @@ namespace MenthaAssembly.IO
                     Func<Stream, object>[] Decoders = new Func<Stream, object>[Length];
                     for (int i = 0; i < Length; i++)
                     {
-                        int Index = i;
-                        Decoders[i] = AddParams[i] == ObjectType ? s => Decode(s, Arguments) :
-                                                                   s => DecodeValue(s, AddParams[Index], Arguments);
+                        Type ItemType = AddParams[i];
+                        Decoders[i] = ItemType == ObjectType || ItemType.IsAbstract || ItemType.IsInterface ? s => Decode(s, Arguments) :
+                                                                                                              s => DecodeValue(s, ItemType, Arguments);
                     }
 
                     object[] Parameters = new object[Length];
