@@ -111,6 +111,31 @@ namespace System.Reflection
             return true;
         }
 
+        public static string[] GetReferencedAssemblyNames(string Filename)
+        {
+            if (string.IsNullOrWhiteSpace(Filename))
+                throw new ArgumentException("Filename cannot be null or empty.", nameof(Filename));
+
+            if (!File.Exists(Filename))
+                throw new FileNotFoundException(string.Empty, Filename);
+
+            PEImage Image = new(File.ReadAllBytes(Filename));
+            return Image.TryReadReferencedAssemblyNames(out string[] Names) ? Names : [];
+        }
+        public static bool TryGetReferencedAssemblyNames(string Filename, out string[] Names)
+        {
+            try
+            {
+                Names = GetReferencedAssemblyNames(Filename);
+                return true;
+            }
+            catch
+            {
+                Names = [];
+                return false;
+            }
+        }
+
         public static IEnumerable<string> EnumerateManagedAssemblyFiles(string RootDirectory, SearchOption Option = SearchOption.AllDirectories)
         {
             if (string.IsNullOrWhiteSpace(RootDirectory) || !Directory.Exists(RootDirectory))

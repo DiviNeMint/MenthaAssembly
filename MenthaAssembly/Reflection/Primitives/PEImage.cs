@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
-#if NET6_0_OR_GREATER
-using System.Runtime.Loader;
-#endif
 
 namespace System.Reflection
 {
@@ -23,7 +21,11 @@ namespace System.Reflection
         private readonly int MetadataSize;
 
         private readonly int StringsHeapOffset;
+        private readonly int StringsHeapSize;
+
         private readonly int BlobHeapOffset;
+        private readonly int BlobHeapSize;
+
         private readonly int TablesHeapOffset;
 
         private readonly bool StringIndexIsLarge;
@@ -99,7 +101,10 @@ namespace System.Reflection
             uint metadataSize = ReadUInt32(cliHeaderOffset + 12);
 
             MetadataOffset = RvaToOffset(metadataRva);
-            MetadataSize = (int)metadataSize;
+            MetadataSize = checked((int)metadataSize);
+
+            if (MetadataOffset < 0 || MetadataSize <= 0 || MetadataOffset + MetadataSize > RawData.Length)
+                throw new BadImageFormatException("Invalid CLR metadata range.");
 
             // Metadata Root
             int md = MetadataOffset;
@@ -113,7 +118,11 @@ namespace System.Reflection
             int streamHeaderOffset = streamCountOffset + 4;
 
             int stringsHeapOffset = -1;
+            int stringsHeapSize = 0;
+
             int blobHeapOffset = -1;
+            int blobHeapSize = 0;
+
             int tablesHeapOffset = -1;
 
             for (int i = 0; i < streamCount; i++)
@@ -125,17 +134,26 @@ namespace System.Reflection
                 string name = ReadZeroTerminatedAscii(nameOffset, out int consumedNameBytes);
                 int alignedNameBytes = Align4(consumedNameBytes);
 
+                int absoluteOffset = checked(MetadataOffset + (int)offset);
+                int absoluteEnd = checked(absoluteOffset + (int)size);
+                if (absoluteOffset < MetadataOffset || absoluteEnd > MetadataOffset + MetadataSize)
+                    throw new BadImageFormatException($"Metadata stream '{name}' is out of metadata bounds.");
+
                 switch (name)
                 {
                     case "#Strings":
-                        stringsHeapOffset = MetadataOffset + (int)offset;
+                        stringsHeapOffset = absoluteOffset;
+                        stringsHeapSize = checked((int)size);
                         break;
+
                     case "#Blob":
-                        blobHeapOffset = MetadataOffset + (int)offset;
+                        blobHeapOffset = absoluteOffset;
+                        blobHeapSize = checked((int)size);
                         break;
+
                     case "#~":
                     case "#-":
-                        tablesHeapOffset = MetadataOffset + (int)offset;
+                        tablesHeapOffset = absoluteOffset;
                         break;
                 }
 
@@ -146,11 +164,17 @@ namespace System.Reflection
                 throw new BadImageFormatException("Required metadata streams not found.");
 
             StringsHeapOffset = stringsHeapOffset;
+            StringsHeapSize = stringsHeapSize;
+
             BlobHeapOffset = blobHeapOffset;
+            BlobHeapSize = blobHeapSize;
+
             TablesHeapOffset = tablesHeapOffset;
 
             // Tables Stream
             int tables = TablesHeapOffset;
+            EnsureRange(tables, 24, "Metadata tables header");
+
             byte heapSizes = RawData[tables + 6];
             StringIndexIsLarge = (heapSizes & 0x01) != 0;
             GuidIndexIsLarge = (heapSizes & 0x02) != 0;
@@ -196,22 +220,25 @@ namespace System.Reflection
             uint assemblyRid = 1;
             uint assemblyParentToken = EncodeHasCustomAttribute(AssemblyTable, assemblyRid);
 
-            List<string> results = new();
+            List<string> results = new List<string>();
 
             int rowCount = checked((int)TableRowCounts[CustomAttributeTable]);
             for (uint rid = 1; rid <= rowCount; rid++)
             {
                 int rowOffset = GetTableRowOffset(CustomAttributeTable, rid);
 
-                uint parent = ReadIndex(rowOffset, GetCodedIndexSize(HasCustomAttributeTables, 5));
-                rowOffset += GetCodedIndexSize(HasCustomAttributeTables, 5);
+                int parentSize = GetCodedIndexSize(HasCustomAttributeTables, 5);
+                uint parent = ReadIndex(rowOffset, parentSize);
+                rowOffset += parentSize;
 
-                uint type = ReadIndex(rowOffset, GetCodedIndexSize(CustomAttributeTypeTables, 3));
+                int typeSize = GetCodedIndexSize(CustomAttributeTypeTables, 3);
+                uint type = ReadIndex(rowOffset, typeSize);
 
                 if (parent != assemblyParentToken)
                     continue;
 
-                if (TryResolveCustomAttributeTypeFullName(type, out string fullName) &&
+                string fullName;
+                if (TryResolveCustomAttributeTypeFullName(type, out fullName) &&
                     !string.IsNullOrEmpty(fullName) &&
                     !results.Contains(fullName))
                 {
@@ -233,7 +260,8 @@ namespace System.Reflection
             switch (tag)
             {
                 case 2: // MethodDef
-                    if (TryGetMethodDefOwnerTypeDefRid(rid, out uint ownerTypeRid))
+                    uint ownerTypeRid;
+                    if (TryGetMethodDefOwnerTypeDefRid(rid, out ownerTypeRid))
                         return TryGetTypeDefFullName(ownerTypeRid, out FullName);
                     break;
 
@@ -270,7 +298,8 @@ namespace System.Reflection
                     return TryGetTypeRefFullName(rid, out FullName);
 
                 case 3: // MethodDef
-                    if (TryGetMethodDefOwnerTypeDefRid(rid, out uint ownerTypeRid))
+                    uint ownerTypeRid;
+                    if (TryGetMethodDefOwnerTypeDefRid(rid, out ownerTypeRid))
                         return TryGetTypeDefFullName(ownerTypeRid, out FullName);
                     break;
             }
@@ -282,40 +311,46 @@ namespace System.Reflection
         private bool TryGetMethodDefOwnerTypeDefRid(uint methodDefRid, out uint TypeDefRid)
         {
             const int TypeDefTable = 2;
+            const int MethodDefTable = 6;
 
             uint typeCount = TableRowCounts[TypeDefTable];
-            if (typeCount == 0 || methodDefRid == 0)
+            if (typeCount == 0 || methodDefRid == 0 || methodDefRid > TableRowCounts[MethodDefTable])
             {
                 TypeDefRid = 0;
                 return false;
             }
 
+            int stringIndexSize = GetStringIndexSize();
+            int extendsSize = GetCodedIndexSize(TypeDefOrRefTables, 2);
+            int fieldIndexSize = GetTableIndexSize(4);
+            int methodIndexSize = GetTableIndexSize(6);
+
             for (uint typeRid = 1; typeRid <= typeCount; typeRid++)
             {
                 int rowOffset = GetTableRowOffset(TypeDefTable, typeRid);
 
-                rowOffset += 4; // Flags
-                rowOffset += GetStringIndexSize();
-                rowOffset += GetStringIndexSize();
-                rowOffset += GetCodedIndexSize(TypeDefOrRefTables, 2);
-                rowOffset += GetTableIndexSize(4); // Field
+                rowOffset += 4;               // Flags
+                rowOffset += stringIndexSize; // Name
+                rowOffset += stringIndexSize; // Namespace
+                rowOffset += extendsSize;     // Extends
+                rowOffset += fieldIndexSize;  // FieldList
 
-                uint methodList = ReadIndex(rowOffset, GetTableIndexSize(6));
+                uint methodList = ReadIndex(rowOffset, methodIndexSize);
                 uint nextMethodList;
 
                 if (typeRid < typeCount)
                 {
                     int nextRowOffset = GetTableRowOffset(TypeDefTable, typeRid + 1);
                     nextRowOffset += 4;
-                    nextRowOffset += GetStringIndexSize();
-                    nextRowOffset += GetStringIndexSize();
-                    nextRowOffset += GetCodedIndexSize(TypeDefOrRefTables, 2);
-                    nextRowOffset += GetTableIndexSize(4);
-                    nextMethodList = ReadIndex(nextRowOffset, GetTableIndexSize(6));
+                    nextRowOffset += stringIndexSize;
+                    nextRowOffset += stringIndexSize;
+                    nextRowOffset += extendsSize;
+                    nextRowOffset += fieldIndexSize;
+                    nextMethodList = ReadIndex(nextRowOffset, methodIndexSize);
                 }
                 else
                 {
-                    nextMethodList = TableRowCounts[6] + 1;
+                    nextMethodList = TableRowCounts[MethodDefTable] + 1;
                 }
 
                 if (methodList <= methodDefRid && methodDefRid < nextMethodList)
@@ -355,15 +390,16 @@ namespace System.Reflection
             if (TableRowCounts[NestedClassTable] > 0)
                 TryGetEnclosingTypeDefRid(rid, out enclosingRid);
 
-            if (enclosingRid > 0 && TryGetTypeDefFullName(enclosingRid, out string parentName))
+            string parentName;
+            if (enclosingRid > 0 && TryGetTypeDefFullName(enclosingRid, out parentName))
             {
                 string localName = ExtractTypeNameOnly(parentName) + "+" + name;
                 string parentNs = ExtractNamespaceOnly(parentName);
-                FullName = string.IsNullOrEmpty(parentNs) ? localName : $"{parentNs}.{localName}";
+                FullName = string.IsNullOrEmpty(parentNs) ? localName : parentNs + "." + localName;
                 return true;
             }
 
-            FullName = string.IsNullOrEmpty(ns) ? name : $"{ns}.{name}";
+            FullName = string.IsNullOrEmpty(ns) ? name : ns + "." + name;
             return true;
         }
 
@@ -395,16 +431,17 @@ namespace System.Reflection
 
             if (scopeTag == 3 && scopeRid > 0) // TypeRef (nested)
             {
-                if (TryGetTypeRefFullName(scopeRid, out string parentName))
+                string parentName;
+                if (TryGetTypeRefFullName(scopeRid, out parentName))
                 {
                     string localName = ExtractTypeNameOnly(parentName) + "+" + name;
                     string parentNs = ExtractNamespaceOnly(parentName);
-                    FullName = string.IsNullOrEmpty(parentNs) ? localName : $"{parentNs}.{localName}";
+                    FullName = string.IsNullOrEmpty(parentNs) ? localName : parentNs + "." + localName;
                     return true;
                 }
             }
 
-            FullName = string.IsNullOrEmpty(ns) ? name : $"{ns}.{name}";
+            FullName = string.IsNullOrEmpty(ns) ? name : ns + "." + name;
             return true;
         }
 
@@ -435,9 +472,63 @@ namespace System.Reflection
             return false;
         }
 
+        public bool TryReadReferencedAssemblyNames(out string[] Names)
+        {
+            try
+            {
+                Names = ReadReferencedAssemblyNames();
+                return true;
+            }
+            catch
+            {
+                Names = Array.Empty<string>();
+                return false;
+            }
+        }
+
+        private string[] ReadReferencedAssemblyNames()
+        {
+            const int AssemblyRefTable = 35;
+
+            if (TableRowCounts[AssemblyRefTable] == 0)
+                return Array.Empty<string>();
+
+            List<string> results = new List<string>();
+
+            int rowCount = checked((int)TableRowCounts[AssemblyRefTable]);
+            for (uint rid = 1; rid <= rowCount; rid++)
+            {
+                int rowOffset = GetTableRowOffset(AssemblyRefTable, rid);
+
+                rowOffset += 2; // MajorVersion
+                rowOffset += 2; // MinorVersion
+                rowOffset += 2; // BuildNumber
+                rowOffset += 2; // RevisionNumber
+                rowOffset += 4; // Flags
+
+                rowOffset += GetBlobIndexSize();   // PublicKeyOrToken
+
+                uint nameIndex = ReadIndex(rowOffset, GetStringIndexSize());
+                rowOffset += GetStringIndexSize();
+
+                rowOffset += GetStringIndexSize(); // Culture
+                rowOffset += GetBlobIndexSize();   // HashValue
+
+                string name = ReadString(nameIndex);
+                if (!string.IsNullOrWhiteSpace(name) &&
+                    !results.Contains(name, StringComparer.OrdinalIgnoreCase))
+                {
+                    results.Add(name);
+                }
+            }
+
+            return results.ToArray();
+        }
+
         private void BuildTableLayout(int startOffset)
         {
             int currentOffset = startOffset;
+            int metadataEnd = checked(MetadataOffset + MetadataSize);
 
             for (int table = 0; table < 64; table++)
             {
@@ -446,7 +537,12 @@ namespace System.Reflection
 
                 TableOffsets[table] = currentOffset;
                 TableRowSizes[table] = GetTableRowSize(table);
-                currentOffset += checked((int)(TableRowCounts[table] * (uint)TableRowSizes[table]));
+
+                long nextOffset = (long)currentOffset + ((long)TableRowCounts[table] * TableRowSizes[table]);
+                if (nextOffset > metadataEnd)
+                    throw new BadImageFormatException($"Metadata table {table} exceeds metadata bounds.");
+
+                currentOffset = checked((int)nextOffset);
             }
         }
 
@@ -468,13 +564,22 @@ namespace System.Reflection
                          + GetTableIndexSize(6);
 
                 case 4: // Field
-                    return 2 + 2 + GetStringIndexSize() + GetBlobIndexSize();
+                    return 2
+                         + GetStringIndexSize()
+                         + GetBlobIndexSize();
 
                 case 6: // MethodDef
-                    return 4 + 2 + 2 + GetStringIndexSize() + GetBlobIndexSize() + GetTableIndexSize(8);
+                    return 4
+                         + 2
+                         + 2
+                         + GetStringIndexSize()
+                         + GetBlobIndexSize()
+                         + GetTableIndexSize(8);
 
                 case 8: // Param
-                    return 2 + 2 + GetStringIndexSize();
+                    return 2
+                         + 2
+                         + GetStringIndexSize();
 
                 case 10: // MemberRef
                     return GetCodedIndexSize(MemberRefParentTables, 3)
@@ -487,10 +592,19 @@ namespace System.Reflection
                          + GetBlobIndexSize();
 
                 case 32: // Assembly
-                    return 4 + 2 + 2 + 2 + 2 + 4 + GetBlobIndexSize() + GetStringIndexSize() + GetStringIndexSize();
+                    return 4
+                         + 2
+                         + 2
+                         + 2
+                         + 2
+                         + 4
+                         + GetBlobIndexSize()
+                         + GetStringIndexSize()
+                         + GetStringIndexSize();
 
                 case 41: // NestedClass
-                    return GetTableIndexSize(2) + GetTableIndexSize(2);
+                    return GetTableIndexSize(2)
+                         + GetTableIndexSize(2);
 
                 default:
                     return ComputeUnsupportedTableRowSize(table);
@@ -499,45 +613,269 @@ namespace System.Reflection
 
         private int ComputeUnsupportedTableRowSize(int table)
         {
-            // 只要這些表存在於 #~ 中，就需要正確跳過它們。
-            // 這裡補上常見 metadata tables 的 row size 計算。
             switch (table)
             {
-                case 0: return 2 + GetStringIndexSize() + GetGuidIndexSize() * 3;                                   // Module
-                case 9: return GetTableIndexSize(2) + GetCodedIndexSize(TypeDefOrRefTables, 2);                    // InterfaceImpl
-                case 11: return GetCodedIndexSize(HasConstantTables, 2) + GetBlobIndexSize();                        // Constant
-                case 13: return GetCodedIndexSize(HasFieldMarshalTables, 1) + GetBlobIndexSize();                    // FieldMarshal
-                case 14: return 2 + GetCodedIndexSize(HasDeclSecurityTables, 2) + GetBlobIndexSize();                // DeclSecurity
-                case 15: return 2 + 4 + GetTableIndexSize(2);                                                        // ClassLayout
-                case 16: return 4 + GetTableIndexSize(4);                                                            // FieldLayout
-                case 17: return GetBlobIndexSize();                                                                   // StandAloneSig
-                case 18: return GetTableIndexSize(2) + GetTableIndexSize(20);                                        // EventMap
-                case 20: return 2 + GetStringIndexSize() + GetCodedIndexSize(TypeDefOrRefTables, 2);                // Event
-                case 21: return GetTableIndexSize(2) + GetTableIndexSize(23);                                        // PropertyMap
-                case 23: return 2 + GetStringIndexSize() + GetBlobIndexSize();                                       // Property
-                case 24: return 2 + GetTableIndexSize(6) + GetCodedIndexSize(HasSemanticTables, 1);                 // MethodSemantics
-                case 25: return GetTableIndexSize(2) + GetCodedIndexSize(MethodDefOrRefTables, 1) + GetCodedIndexSize(MethodDefOrRefTables, 1); // MethodImpl
-                case 26: return GetStringIndexSize();                                                                 // ModuleRef
-                case 27: return GetBlobIndexSize();                                                                   // TypeSpec
-                case 28: return 2 + GetCodedIndexSize(MemberForwardedTables, 1) + GetStringIndexSize() + GetTableIndexSize(26); // ImplMap
-                case 29: return 4 + GetTableIndexSize(4);                                                            // FieldRVA
-                case 33: return 4;                                                                                   // AssemblyProcessor
-                case 34: return 4 + 4 + 4;                                                                           // AssemblyOS
-                case 35: return 2 + 2 + 2 + 2 + 4 + GetBlobIndexSize() + GetStringIndexSize() + GetStringIndexSize() + GetBlobIndexSize(); // AssemblyRef
-                case 36: return 4 + GetTableIndexSize(35);                                                           // AssemblyRefProcessor
-                case 37: return 4 + 4 + 4 + GetTableIndexSize(35);                                                   // AssemblyRefOS
-                case 38: return 4 + GetStringIndexSize() + GetBlobIndexSize();                                       // File
-                case 39: return 4 + 4 + GetStringIndexSize() + GetStringIndexSize() + GetCodedIndexSize(ImplementationTables, 2); // ExportedType
-                case 40: return 4 + GetStringIndexSize() + GetCodedIndexSize(ImplementationTables, 2);              // ManifestResource
-                case 42: return 2 + 2 + GetCodedIndexSize(TypeOrMethodDefTables, 1) + GetStringIndexSize();         // GenericParam
-                case 43: return GetCodedIndexSize(MethodDefOrRefTables, 1) + GetBlobIndexSize();                     // MethodSpec
-                case 44: return GetTableIndexSize(42) + GetCodedIndexSize(TypeDefOrRefTables, 2);                   // GenericParamConstraint
+                case 0:  // Module
+                    return 2 + GetStringIndexSize() + (GetGuidIndexSize() * 3);
+
+                case 9:  // InterfaceImpl
+                    return GetTableIndexSize(2) + GetCodedIndexSize(TypeDefOrRefTables, 2);
+
+                case 11: // Constant
+                    return 2 + GetCodedIndexSize(HasConstantTables, 2) + GetBlobIndexSize();
+
+                case 13: // FieldMarshal
+                    return GetCodedIndexSize(HasFieldMarshalTables, 1) + GetBlobIndexSize();
+
+                case 14: // DeclSecurity
+                    return 2 + GetCodedIndexSize(HasDeclSecurityTables, 2) + GetBlobIndexSize();
+
+                case 15: // ClassLayout
+                    return 2 + 4 + GetTableIndexSize(2);
+
+                case 16: // FieldLayout
+                    return 4 + GetTableIndexSize(4);
+
+                case 17: // StandAloneSig
+                    return GetBlobIndexSize();
+
+                case 18: // EventMap
+                    return GetTableIndexSize(2) + GetTableIndexSize(20);
+
+                case 20: // Event
+                    return 2 + GetStringIndexSize() + GetCodedIndexSize(TypeDefOrRefTables, 2);
+
+                case 21: // PropertyMap
+                    return GetTableIndexSize(2) + GetTableIndexSize(23);
+
+                case 23: // Property
+                    return 2 + GetStringIndexSize() + GetBlobIndexSize();
+
+                case 24: // MethodSemantics
+                    return 2 + GetTableIndexSize(6) + GetCodedIndexSize(HasSemanticTables, 1);
+
+                case 25: // MethodImpl
+                    return GetTableIndexSize(2)
+                         + GetCodedIndexSize(MethodDefOrRefTables, 1)
+                         + GetCodedIndexSize(MethodDefOrRefTables, 1);
+
+                case 26: // ModuleRef
+                    return GetStringIndexSize();
+
+                case 27: // TypeSpec
+                    return GetBlobIndexSize();
+
+                case 28: // ImplMap
+                    return 2
+                         + GetCodedIndexSize(MemberForwardedTables, 1)
+                         + GetStringIndexSize()
+                         + GetTableIndexSize(26);
+
+                case 29: // FieldRVA
+                    return 4 + GetTableIndexSize(4);
+
+                case 33: // AssemblyProcessor
+                    return 4;
+
+                case 34: // AssemblyOS
+                    return 4 + 4 + 4;
+
+                case 35: // AssemblyRef
+                    return 2
+                         + 2
+                         + 2
+                         + 2
+                         + 4
+                         + GetBlobIndexSize()
+                         + GetStringIndexSize()
+                         + GetStringIndexSize()
+                         + GetBlobIndexSize();
+
+                case 36: // AssemblyRefProcessor
+                    return 4 + GetTableIndexSize(35);
+
+                case 37: // AssemblyRefOS
+                    return 4 + 4 + 4 + GetTableIndexSize(35);
+
+                case 38: // File
+                    return 4 + GetStringIndexSize() + GetBlobIndexSize();
+
+                case 39: // ExportedType
+                    return 4
+                         + 4
+                         + GetStringIndexSize()
+                         + GetStringIndexSize()
+                         + GetCodedIndexSize(ImplementationTables, 2);
+
+                case 40: // ManifestResource
+                    return 4
+                         + 4
+                         + GetStringIndexSize()
+                         + GetCodedIndexSize(ImplementationTables, 2);
+
+                case 42: // GenericParam
+                    return 2
+                         + 2
+                         + GetCodedIndexSize(TypeOrMethodDefTables, 1)
+                         + GetStringIndexSize();
+
+                case 43: // MethodSpec
+                    return GetCodedIndexSize(MethodDefOrRefTables, 1) + GetBlobIndexSize();
+
+                case 44: // GenericParamConstraint
+                    return GetTableIndexSize(42) + GetCodedIndexSize(TypeDefOrRefTables, 2);
+
                 default:
                     throw new NotSupportedException($"Unsupported metadata table: {table}");
             }
         }
 
-        private uint EncodeHasCustomAttribute(int table, uint rid)
+        private int GetTableRowOffset(int table, uint rid)
+        {
+            if (rid == 0 || rid > TableRowCounts[table])
+                throw new ArgumentOutOfRangeException(nameof(rid));
+
+            int rowSize = TableRowSizes[table];
+            if (rowSize <= 0)
+                throw new BadImageFormatException($"Invalid row size for table {table}.");
+
+            int offset = checked(TableOffsets[table] + (int)((rid - 1) * (uint)rowSize));
+            EnsureRange(offset, rowSize, $"Metadata table {table} row {rid}");
+            return offset;
+        }
+
+        private int GetStringIndexSize()
+            => StringIndexIsLarge ? 4 : 2;
+
+        private int GetBlobIndexSize()
+            => BlobIndexIsLarge ? 4 : 2;
+
+        private int GetGuidIndexSize()
+            => GuidIndexIsLarge ? 4 : 2;
+
+        private int GetTableIndexSize(int table)
+            => TableRowCounts[table] < 0x10000 ? 2 : 4;
+
+        private int GetCodedIndexSize(int[] tables, int tagBits)
+        {
+            uint maxRows = 0;
+            for (int i = 0; i < tables.Length; i++)
+            {
+                uint rows = TableRowCounts[tables[i]];
+                if (rows > maxRows)
+                    maxRows = rows;
+            }
+
+            return maxRows < (1u << (16 - tagBits)) ? 2 : 4;
+        }
+
+        private uint ReadIndex(int offset, int size)
+        {
+            EnsureRange(offset, size, "Metadata index");
+
+            switch (size)
+            {
+                case 2:
+                    return ReadUInt16(offset);
+                case 4:
+                    return ReadUInt32(offset);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(size), "Index size must be 2 or 4.");
+            }
+        }
+
+        private string ReadString(uint index)
+        {
+            if (index == 0)
+                return string.Empty;
+
+            if (index >= (uint)StringsHeapSize)
+                throw new BadImageFormatException($"Invalid #Strings heap index: {index}.");
+
+            int offset = checked(StringsHeapOffset + (int)index);
+            int heapEnd = checked(StringsHeapOffset + StringsHeapSize);
+
+            if (offset < StringsHeapOffset || offset >= heapEnd)
+                throw new BadImageFormatException($"String heap offset out of range: {offset}.");
+
+            int end = offset;
+            while (end < heapEnd && RawData[end] != 0)
+                end++;
+
+            return Encoding.UTF8.GetString(RawData, offset, end - offset);
+        }
+
+        private string ReadZeroTerminatedAscii(int offset, out int consumedBytes)
+        {
+            EnsureRange(offset, 1, "Zero-terminated ASCII string");
+
+            int start = offset;
+            while (offset < RawData.Length && RawData[offset] != 0)
+                offset++;
+
+            if (offset >= RawData.Length)
+                throw new BadImageFormatException("Unterminated ASCII string.");
+
+            string result = Encoding.ASCII.GetString(RawData, start, offset - start);
+
+            consumedBytes = (offset - start) + 1;
+            return result;
+        }
+
+        private int RvaToOffset(uint rva)
+        {
+            for (int i = 0; i < Sections.Length; i++)
+            {
+                PESection section = Sections[i];
+                uint mappedSize = Math.Max(section.VirtualSize, section.SizeOfRawData);
+
+                if (section.VirtualAddress <= rva && rva < section.VirtualAddress + mappedSize)
+                {
+                    uint delta = rva - section.VirtualAddress;
+                    if (delta >= section.SizeOfRawData)
+                        throw new BadImageFormatException($"RVA 0x{rva:X8} maps outside section raw data.");
+
+                    return checked((int)(section.PointerToRawData + delta));
+                }
+            }
+
+            throw new BadImageFormatException($"Unable to map RVA 0x{rva:X8}.");
+        }
+
+        private static int Align4(int value)
+            => (value + 3) & ~3;
+
+        private void EnsureRange(int offset, int size, string name)
+        {
+            if (offset < 0 || size < 0 || offset > RawData.Length - size)
+                throw new BadImageFormatException($"{name} is out of raw data bounds. Offset={offset}, Size={size}.");
+        }
+
+        private ushort ReadUInt16(int offset)
+        {
+            EnsureRange(offset, 2, "UInt16");
+            return BitConverter.ToUInt16(RawData, offset);
+        }
+
+        private uint ReadUInt32(int offset)
+        {
+            EnsureRange(offset, 4, "UInt32");
+            return BitConverter.ToUInt32(RawData, offset);
+        }
+
+        private ulong ReadUInt64(int offset)
+        {
+            EnsureRange(offset, 8, "UInt64");
+            return BitConverter.ToUInt64(RawData, offset);
+        }
+
+        private int ReadInt32(int offset)
+        {
+            EnsureRange(offset, 4, "Int32");
+            return BitConverter.ToInt32(RawData, offset);
+        }
+
+        private static uint EncodeHasCustomAttribute(int table, uint rid)
         {
             uint tag;
             switch (table)
@@ -571,97 +909,6 @@ namespace System.Reflection
             return (rid << 5) | tag;
         }
 
-        private int GetTableRowOffset(int table, uint rid)
-        {
-            if (rid == 0 || rid > TableRowCounts[table])
-                throw new ArgumentOutOfRangeException(nameof(rid));
-
-            return TableOffsets[table] + checked((int)((rid - 1) * (uint)TableRowSizes[table]));
-        }
-
-        private int GetStringIndexSize()
-            => StringIndexIsLarge ? 4 : 2;
-
-        private int GetBlobIndexSize()
-            => BlobIndexIsLarge ? 4 : 2;
-
-        private int GetGuidIndexSize()
-            => GuidIndexIsLarge ? 4 : 2;
-
-        private int GetTableIndexSize(int table)
-            => TableRowCounts[table] < 0x10000 ? 2 : 4;
-
-        private int GetCodedIndexSize(int[] tables, int tagBits)
-        {
-            uint maxRows = 0;
-            for (int i = 0; i < tables.Length; i++)
-            {
-                uint rows = TableRowCounts[tables[i]];
-                if (rows > maxRows)
-                    maxRows = rows;
-            }
-
-            return maxRows < (1u << (16 - tagBits)) ? 2 : 4;
-        }
-
-        private uint ReadIndex(int offset, int size)
-            => size == 2 ? ReadUInt16(offset) : ReadUInt32(offset);
-
-        private string ReadString(uint index)
-        {
-            if (index == 0)
-                return string.Empty;
-
-            int offset = StringsHeapOffset + checked((int)index);
-            int end = offset;
-            while (end < RawData.Length && RawData[end] != 0)
-                end++;
-
-            return Encoding.UTF8.GetString(RawData, offset, end - offset);
-        }
-
-        private string ReadZeroTerminatedAscii(int offset, out int consumedBytes)
-        {
-            int start = offset;
-            while (offset < RawData.Length && RawData[offset] != 0)
-                offset++;
-
-            string result = Encoding.ASCII.GetString(RawData, start, offset - start);
-
-            // include terminator
-            consumedBytes = (offset - start) + 1;
-            return result;
-        }
-
-        private int RvaToOffset(uint rva)
-        {
-            for (int i = 0; i < Sections.Length; i++)
-            {
-                PESection section = Sections[i];
-                uint size = Math.Max(section.VirtualSize, section.SizeOfRawData);
-
-                if (section.VirtualAddress <= rva && rva < section.VirtualAddress + size)
-                    return checked((int)(section.PointerToRawData + (rva - section.VirtualAddress)));
-            }
-
-            throw new BadImageFormatException($"Unable to map RVA 0x{rva:X8}.");
-        }
-
-        private static int Align4(int value)
-            => (value + 3) & ~3;
-
-        private ushort ReadUInt16(int offset)
-            => BitConverter.ToUInt16(RawData, offset);
-
-        private uint ReadUInt32(int offset)
-            => BitConverter.ToUInt32(RawData, offset);
-
-        private ulong ReadUInt64(int offset)
-            => BitConverter.ToUInt64(RawData, offset);
-
-        private int ReadInt32(int offset)
-            => BitConverter.ToInt32(RawData, offset);
-
         private static string ExtractNamespaceOnly(string fullName)
         {
             if (string.IsNullOrEmpty(fullName))
@@ -687,19 +934,19 @@ namespace System.Reflection
             return dotIndex >= 0 ? fullName.Substring(dotIndex + 1) : fullName;
         }
 
-        private static readonly int[] ResolutionScopeTables = [0, 26, 35, 1];
-        private static readonly int[] TypeDefOrRefTables = [2, 1, 27];
-        private static readonly int[] HasConstantTables = [4, 8, 23];
-        private static readonly int[] HasCustomAttributeTables = [6, 4, 1, 2, 8, 9, 10, 0, 14, 23, 20, 17, 26, 27, 32, 35, 38, 39, 40, 42, 44, 43];
-        private static readonly int[] HasFieldMarshalTables = [4, 8];
-        private static readonly int[] HasDeclSecurityTables = [2, 6, 32];
-        private static readonly int[] MemberRefParentTables = [2, 1, 26, 6, 27];
-        private static readonly int[] HasSemanticTables = [20, 23];
-        private static readonly int[] MethodDefOrRefTables = [6, 10];
-        private static readonly int[] MemberForwardedTables = [4, 6];
-        private static readonly int[] ImplementationTables = [38, 35, 39];
-        private static readonly int[] CustomAttributeTypeTables = [0, 0, 6, 10, 0];
-        private static readonly int[] TypeOrMethodDefTables = [2, 6];
-    }
+        private static readonly int[] ResolutionScopeTables = new int[] { 0, 26, 35, 1 };
+        private static readonly int[] TypeDefOrRefTables = new int[] { 2, 1, 27 };
+        private static readonly int[] HasConstantTables = new int[] { 4, 8, 23 };
+        private static readonly int[] HasCustomAttributeTables = new int[] { 6, 4, 1, 2, 8, 9, 10, 0, 14, 23, 20, 17, 26, 27, 32, 35, 38, 39, 40, 42, 44, 43 };
+        private static readonly int[] HasFieldMarshalTables = new int[] { 4, 8 };
+        private static readonly int[] HasDeclSecurityTables = new int[] { 2, 6, 32 };
+        private static readonly int[] MemberRefParentTables = new int[] { 2, 1, 26, 6, 27 };
+        private static readonly int[] HasSemanticTables = new int[] { 20, 23 };
+        private static readonly int[] MethodDefOrRefTables = new int[] { 6, 10 };
+        private static readonly int[] MemberForwardedTables = new int[] { 4, 6 };
+        private static readonly int[] ImplementationTables = new int[] { 38, 35, 39 };
+        private static readonly int[] CustomAttributeTypeTables = new int[] { 0, 0, 6, 10, 0 };
+        private static readonly int[] TypeOrMethodDefTables = new int[] { 2, 6 };
 
+    }
 }
