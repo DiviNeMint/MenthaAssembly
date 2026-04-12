@@ -11,14 +11,36 @@ namespace MenthaAssembly
 {
     public sealed class ManagedLibrary : DynamicLibrary
     {
-        private readonly Assembly Assembly;
         private readonly string RootFolder;
+        private readonly Assembly Assembly;
+        private readonly Func<AssemblyName, Assembly> Resolver;
+
+        public string RootDirectory => RootFolder;
+
+        public string Location => Filename;
+
+        public AssemblyName Name => Assembly.GetName();
+
+        public string FullName => Assembly.FullName;
 
 #if NET6_0_OR_GREATER
         private readonly AssemblyLoadContext Context;
-        internal ManagedLibrary(string Fullname, LibraryType Type) : base(Fullname, Type)
+        internal ManagedLibrary(string Fullname, LibraryType Type, Func<AssemblyName, Assembly> Resolver = null) : base(Fullname, Type)
         {
             RootFolder = Path.GetDirectoryName(Fullname);
+            this.Resolver = Resolver;
+
+            if (Resolver is null)
+            {
+                AssemblyName targetName = AssemblyName.GetAssemblyName(Fullname);
+                Assembly hostAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                                                               .FirstOrDefault(i => string.Equals(i.FullName, targetName.FullName, StringComparison.Ordinal));
+                if (hostAssembly != null)
+                {
+                    Assembly = hostAssembly;
+                    return;
+                }
+            }
 
             Context = new AssemblyLoadContext(Guid.NewGuid().ToString(), true);
             Context.Resolving += OnResolving;
@@ -30,66 +52,104 @@ namespace MenthaAssembly
 
             Assembly = Context.LoadFromStream(Memory);
         }
+
         private Assembly OnResolving(AssemblyLoadContext Context, AssemblyName Name)
         {
-            string Filename = $"{Path.Combine(RootFolder, Name.Name)}.dll";
+            string Filename = Path.Combine(RootFolder, $"{Name.Name}.dll");
             if (File.Exists(Filename))
                 return Context.LoadFromAssemblyPath(Filename);
 
-            return null;
+            return Resolver?.Invoke(Name);
         }
 
         private bool IsDisposed;
-        protected override void Dispose(bool IsDisposing)
+        protected override void OnDispose()
         {
-            if (!IsDisposed)
-            {
-                if (IsDisposing)
-                    Context.Unload();
+            if (IsDisposed)
+                return;
 
-                IsDisposed = true;
-            }
+            Context?.Unload();
+            IsDisposed = true;
         }
-
 #else
         private readonly AppDomain Domain;
-        internal ManagedLibrary(string FullName, LibraryType Type) : base(FullName, Type)
+        internal ManagedLibrary(string Fullname, LibraryType Type, Func<AssemblyName, Assembly> Resolver = null) : base(Fullname, Type)
         {
-            RootFolder = Path.GetDirectoryName(FullName);
+            RootFolder = Path.GetDirectoryName(Fullname);
+            this.Resolver = Resolver;
+
+            if (Resolver is null)
+            {
+                AssemblyName targetName = AssemblyName.GetAssemblyName(Fullname);
+                Assembly hostAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                                                               .FirstOrDefault(i => string.Equals(i.FullName, targetName.FullName, StringComparison.Ordinal));
+                if (hostAssembly != null)
+                {
+                    Assembly = hostAssembly;
+                    return;
+                }
+            }
 
             Domain = AppDomain.CreateDomain(Guid.NewGuid().ToString());
             Domain.AssemblyResolve += OnDomainAssemblyResolve;
 
-            byte[] RawDatas = File.ReadAllBytes(FullName);
+            byte[] RawDatas = File.ReadAllBytes(Fullname);
             Assembly = Domain.Load(RawDatas);
         }
+
         private Assembly OnDomainAssemblyResolve(object sender, ResolveEventArgs e)
         {
-            string Filename = $"{Path.Combine(RootFolder, e.Name)}.dll";
+            AssemblyName Name = new(e.Name);
+
+            string Filename = Path.Combine(RootFolder, $"{Name.Name}.dll");
             if (File.Exists(Filename))
             {
                 byte[] RawDatas = File.ReadAllBytes(Filename);
                 return Domain.Load(RawDatas);
             }
 
-            return null;
+            return Resolver?.Invoke(Name);
         }
 
         private bool IsDisposed;
-        protected override void Dispose(bool IsDisposing)
+        protected override void OnDispose()
         {
-            if (!IsDisposed)
-            {
-                if (IsDisposing)
-                    AppDomain.Unload(Domain);
+            if (IsDisposed)
+                return;
 
-                IsDisposed = true;
-            }
+            if (Domain != null)
+                AppDomain.Unload(Domain);
+
+            IsDisposed = true;
         }
 #endif
 
+        public AssemblyName[] GetReferencedAssemblies()
+            => Assembly.GetReferencedAssemblies();
+
+        public T GetCustomAttribute<T>()
+            where T : Attribute
+            => Assembly.GetCustomAttribute<T>();
+
+        public object[] GetCustomAttributes(Type AttributeType, bool Inherit = false)
+            => Assembly.GetCustomAttributes(AttributeType, Inherit);
+
         public Type[] GetTypes()
             => Assembly.GetTypes();
+
+        public bool TryGetTypes(out Type[] Types)
+        {
+            try
+            {
+                Types = Assembly.GetTypes();
+                return true;
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                Types = [.. ex.Types.Where(i => i != null)];
+                return false;
+            }
+        }
 
         public IEnumerable<AssemblyInfo> EnumDependencyLibraryInfos()
         {
@@ -101,26 +161,30 @@ namespace MenthaAssembly
                                                 .Distinct()
                                                 .ToArray();
 
-            // Managed
-            Dictionary<string, Assembly> Managed =
-#if NET6_0_OR_GREATER
-                AssemblyHelper.GetDependencyManagedNonSystemAssemblyTable(Assembly, Context);
-#else
-                AssemblyHelper.GetDependencyManagedNonSystemAssemblyTable(Assembly, Domain);
-#endif
-            foreach (string Key in Managed.Keys.Where(i => LoadedAssemblies.Contains(i)))
+            Dictionary<string, string> Managed = AssemblyHelper.GetDependencyManagedAssemblyPathTable(Assembly, RootFolder);
+            foreach (string Key in Managed.Keys.Where(i => LoadedAssemblies.Contains(i)).ToArray())
                 Managed.Remove(Key);
 
             LibraryType ManagedType = (Environment.Is64BitProcess ? LibraryType.x64 : LibraryType.x86) | LibraryType.Managed;
-            foreach (KeyValuePair<string, Assembly> Data in Managed)
-                yield return new AssemblyInfo(Data.Key, Data.Value.Location, ManagedType);
+            foreach (KeyValuePair<string, string> Data in Managed)
+                yield return new AssemblyInfo(Data.Key, Data.Value, ManagedType);
 
-            // Unmanage
             LibraryType UnmanagedType = (Environment.Is64BitProcess ? LibraryType.x64 : LibraryType.x86) | LibraryType.Unmanaged;
-            IEnumerable<string> Unmanaged = Assembly.GetUnmanagedDependencyAssemblyNames()
-                                                    .Concat(Managed.Values.TrySelectMany(i => i.GetUnmanagedDependencyAssemblyNames()));
+            IEnumerable<string> Unmanaged = Assembly.GetUnmanagedDependencyAssemblyNames();
 
-            foreach (string UnmanagedName in Unmanaged)
+            foreach (string ManagedPath in Managed.Values)
+            {
+                try
+                {
+                    Assembly Dependency = Assembly.LoadFrom(ManagedPath);
+                    Unmanaged = Unmanaged.Concat(Dependency.GetUnmanagedDependencyAssemblyNames());
+                }
+                catch
+                {
+                }
+            }
+
+            foreach (string UnmanagedName in Unmanaged.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 string FullName = Path.Combine(RootFolder, UnmanagedName);
                 if (!File.Exists(FullName))
@@ -130,6 +194,5 @@ namespace MenthaAssembly
                     yield return new AssemblyInfo(UnmanagedName, FullName, UnmanagedType);
             }
         }
-
     }
 }

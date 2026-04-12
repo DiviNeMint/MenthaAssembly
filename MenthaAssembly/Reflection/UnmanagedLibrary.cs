@@ -395,15 +395,12 @@ namespace MenthaAssembly
         }
 
         private bool IsDisposed;
-        protected override void Dispose(bool IsDisposing)
+        protected override void OnDispose()
         {
             if (!IsDisposed)
             {
-                if (IsDisposing)
-                {
-                    DllEntry?.Invoke(CodeBase, 0, IntPtr.Zero);
-                    DllEntry = null;
-                }
+                DllEntry?.Invoke(CodeBase, 0, IntPtr.Zero);
+                DllEntry = null;
 
                 foreach (IntPtr pLibrary in ImportLibraries)
                     FreeLibrary(pLibrary);
@@ -418,11 +415,6 @@ namespace MenthaAssembly
 
                 IsDisposed = true;
             }
-        }
-
-        ~UnmanagedLibrary()
-        {
-            Dispose(false);
         }
 
         #region Window API Version (Old)
