@@ -158,7 +158,7 @@ namespace MenthaAssembly.Globalization
                     // Content
                     ParseContent(Line, 0, ref Builder, out string Key, out string Value);
                     if (!string.IsNullOrEmpty(Key))
-                        Contexts[Key] = Value;
+                        Contexts[Key] = Value.Replace("\\r", "\r").Replace("\\n", "\n");
                 }
             }
             finally
@@ -259,7 +259,7 @@ namespace MenthaAssembly.Globalization
             {
                 Writer.Write(Context.Key);
                 Writer.Write('=');
-                Writer.WriteLine(Context.Value);
+                Writer.WriteLine(Context.Value.Replace("\r", "\\r").Replace("\n", "\\n"));
             }
         }
 
