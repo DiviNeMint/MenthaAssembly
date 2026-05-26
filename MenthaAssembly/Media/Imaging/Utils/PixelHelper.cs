@@ -156,6 +156,24 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
+        public static void Overlay(byte DestR, byte DestG, byte DestB, byte A, byte R, byte G, byte B, out byte NewR, out byte NewG, out byte NewB)
+        {
+            int rA = 255 - A;
+            NewR = (byte)((R * A + DestR * rA) / 255);
+            NewG = (byte)((G * A + DestG * rA) / 255);
+            NewB = (byte)((B * A + DestB * rA) / 255);
+        }
+        public static void Overlay(byte DestA, byte DestR, byte DestG, byte DestB, byte A, byte R, byte G, byte B, out byte NewA, out byte NewR, out byte NewG, out byte NewB)
+        {
+            int A1 = DestA,
+                rA = 255 - A,
+                Alpha = 65025 - rA * (255 - A1);
+
+            NewA = (byte)(Alpha / 255);
+            NewR = (byte)((R * A * 255 + DestR * A1 * rA) / Alpha);
+            NewG = (byte)((G * A * 255 + DestG * A1 * rA) / Alpha);
+            NewB = (byte)((B * A * 255 + DestB * A1 * rA) / Alpha);
+        }
         public static void Overlay(ref byte* pDestR, ref byte* pDestG, ref byte* pDestB, byte A, byte R, byte G, byte B)
         {
             int rA = 255 - A;

@@ -2324,7 +2324,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             Tx = MinX - Sx;
 
                             Output.Add(MinX);
-                            Output.Add(Sy + Dy * Tx / Dx);
+                            Output.Add((int)(Sy + (long)Dy * Tx / Dx));
                         }
 
                         Output.Add(Ex);
@@ -2337,7 +2337,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Tx = MinX - Sx;
 
                         Output.Add(MinX);
-                        Output.Add(Sy + Dy * Tx / Dx);
+                        Output.Add((int)(Sy + (long)Dy * Tx / Dx));
                     }
 
                     Sx = Ex;
@@ -2371,7 +2371,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             Dy = Ey - Sy;
                             Ty = MinY - Sy;
 
-                            Output.Add(Sx + Dx * Ty / Dy);
+                            Output.Add((int)(Sx + (long)Dx * Ty / Dy));
                             Output.Add(MinY);
                         }
 
@@ -2384,7 +2384,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Dy = Ey - Sy;
                         Ty = MinY - Sy;
 
-                        Output.Add(Sx + Dx * Ty / Dy);
+                        Output.Add((int)(Sx + (long)Dx * Ty / Dy));
                         Output.Add(MinY);
                     }
 
@@ -2420,7 +2420,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             Tx = MaxX - Sx;
 
                             Output.Add(MaxX);
-                            Output.Add(Sy + Dy * Tx / Dx);
+                            Output.Add((int)(Sy + (long)Dy * Tx / Dx));
                         }
 
                         Output.Add(Ex);
@@ -2433,7 +2433,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Tx = MaxX - Sx;
 
                         Output.Add(MaxX);
-                        Output.Add(Sy + Dy * Tx / Dx);
+                        Output.Add((int)(Sy + (long)Dy * Tx / Dx));
                     }
 
                     Sx = Ex;
@@ -2467,7 +2467,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             Dy = Ey - Sy;
                             Ty = MaxY - Sy;
 
-                            Output.Add(Sx + Dx * Ty / Dy);
+                            Output.Add((int)(Sx + (long)Dx * Ty / Dy));
                             Output.Add(MaxY);
                         }
 
@@ -2480,7 +2480,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Dy = Ey - Sy;
                         Ty = MaxY - Sy;
 
-                        Output.Add(Sx + Dx * Ty / Dy);
+                        Output.Add((int)(Sx + (long)Dx * Ty / Dy));
                         Output.Add(MaxY);
                     }
 
@@ -2552,7 +2552,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             Dy = Ey - Sy;
                             Tx = MinX - Sx;
 
-                            int Cy = Sy + Dy * Tx / Dx;
+                            int Cy = (int)(Sy + (long)Dy * Tx / Dx);
 
                             Output.Add(new Point<int>(MinX, Cy));
                         }
@@ -2565,7 +2565,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Dy = Ey - Sy;
                         Tx = MinX - Sx;
 
-                        int Cy = Sy + Dy * Tx / Dx;
+                        int Cy = (int)(Sy + (long)Dy * Tx / Dx);
 
                         Output.Add(new Point<int>(MinX, Cy));
                     }
@@ -2603,7 +2603,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             Dy = Ey - Sy;
                             Ty = MinY - Sy;
 
-                            int Cx = Sx + Dx * Ty / Dy;
+                            int Cx = (int)(Sx + (long)Dx * Ty / Dy);
                             Output.Add(new Point<int>(Cx, MinY));
                         }
 
@@ -2615,7 +2615,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Dy = Ey - Sy;
                         Ty = MinY - Sy;
 
-                        int Cx = Sx + Dx * Ty / Dy;
+                        int Cx = (int)(Sx + (long)Dx * Ty / Dy);
                         Output.Add(new Point<int>(Cx, MinY));
                     }
 
@@ -2652,7 +2652,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             Dy = Ey - Sy;
                             Tx = MaxX - Sx;
 
-                            int Cy = Sy + Dy * Tx / Dx;
+                            int Cy = (int)(Sy + (long)Dy * Tx / Dx);
 
                             Output.Add(new Point<int>(MaxX, Cy));
                         }
@@ -2665,7 +2665,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Dy = Ey - Sy;
                         Tx = MaxX - Sx;
 
-                        int Cy = Sy + Dy * Tx / Dx;
+                        int Cy = (int)(Sy + (long)Dy * Tx / Dx);
 
                         Output.Add(new Point<int>(MaxX, Cy));
                     }
@@ -2703,7 +2703,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                             Dy = Ey - Sy;
                             Ty = MaxY - Sy;
 
-                            int Cx = Sx + Dx * Ty / Dy;
+                            int Cx = (int)(Sx + (long)Dx * Ty / Dy);
                             Output.Add(new Point<int>(Cx, MaxY));
                         }
 
@@ -2715,7 +2715,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         Dy = Ey - Sy;
                         Ty = MaxY - Sy;
 
-                        int Cx = Sx + Dx * Ty / Dy;
+                        int Cx = (int)(Sx + (long)Dx * Ty / Dy);
                         Output.Add(new Point<int>(Cx, MaxY));
                     }
 

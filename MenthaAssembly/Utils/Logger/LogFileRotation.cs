@@ -14,5 +14,6 @@ namespace MenthaAssembly
         /// Writes one file per day: yyyyMMdd.txt
         /// </summary>
         Daily = 1,
+
     }
 }

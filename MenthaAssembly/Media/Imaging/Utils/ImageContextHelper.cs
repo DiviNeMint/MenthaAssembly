@@ -47,7 +47,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 RTy = Y0 + Dy;
                 if (-1 < RTy && RTy < Ih)
                 {
-                    RTx = Math.Min(Math.Max(X0 + Dx, 0), MaxX);
+                    RTx = X0 + Dx;
 
                     // Left
                     if (LeftBound.TryGetValue(RTy, out int LastRx))
@@ -77,11 +77,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
             #region Fill
             foreach (KeyValuePair<int, int> Data in RightBound)
             {
-                int Y = Data.Key,
-                    TRx = Data.Value;
+                int TRx = Data.Value;
+                if (TRx < 0)
+                    continue;
+
+                int Y = Data.Key;
                 if (LeftBound.TryGetValue(Y, out int TLx))
                 {
                     LeftBound.Remove(Y);
+                    if (TLx >= MaxX)
+                        continue;
 
                     Context.DangerousMove(TLx, Y);
                     for (; TLx <= TRx; TLx++, Context.DangerousMoveNextX())
@@ -274,19 +279,19 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     MathHelper.Swap(ref Uy, ref Ly);
                 }
 
-                GraphicDeltaHandler FoundLineBodyBound = DeltaX * DeltaY < 0 ?
+                GraphicDeltaHandler FoundLineBodyBound = (DeltaX ^ DeltaY) < 0 ?
                     new GraphicDeltaHandler(
                         (Dx, Dy) =>
                         {
                             // Right
-                            RTx = Math.Min(Math.Max(Ux + Dx, 0), MaxX);
+                            RTx = Ux + Dx;
                             RTy = Uy + Dy;
                             if (-1 < RTy && RTy < Ih &&
                                 (!RightBound.TryGetValue(RTy, out int LastRx) || LastRx < RTx))
                                 RightBound[RTy] = RTx;
 
                             // Left
-                            RTx = Math.Min(Math.Max(Lx + Dx, 0), MaxX);
+                            RTx = Lx + Dx;
                             RTy = Ly + Dy;
                             if (-1 < RTy && RTy < Ih &&
                                 (!LeftBound.TryGetValue(RTy, out LastRx) || LastRx > RTx))
@@ -295,14 +300,14 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         (Dx, Dy) =>
                         {
                             // Left
-                            RTx = Math.Min(Math.Max(Ux + Dx, 0), MaxX);
+                            RTx = Ux + Dx;
                             RTy = Uy + Dy;
                             if (-1 < RTy && RTy < Ih &&
                                 (!LeftBound.TryGetValue(RTy, out int LastRx) || LastRx > RTx))
                                 LeftBound[RTy] = RTx;
 
                             // Right
-                            RTx = Math.Min(Math.Max(Lx + Dx, 0), MaxX);
+                            RTx = Lx + Dx;
                             RTy = Ly + Dy;
                             if (-1 < RTy && RTy < Ih &&
                                 (!RightBound.TryGetValue(RTy, out LastRx) || LastRx < RTx))
@@ -315,11 +320,16 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 #region Fill
                 foreach (KeyValuePair<int, int> Data in RightBound)
                 {
-                    int Y = Data.Key,
-                        TRx = Data.Value;
+                    int TRx = Data.Value;
+                    if (TRx < 0)
+                        continue;
+
+                    int Y = Data.Key;
                     if (LeftBound.TryGetValue(Y, out int TLx))
                     {
                         LeftBound.Remove(Y);
+                        if (TLx >= MaxX)
+                            continue;
 
                         Context.DangerousMove(TLx, Y);
                         for (; TLx <= TRx; TLx++, Context.DangerousMoveNextX())

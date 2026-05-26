@@ -1310,7 +1310,7 @@ namespace MenthaAssembly.Media.Imaging
                     MathHelper.Swap(ref Uy, ref Ly);
                 }
 
-                GraphicDeltaHandler FoundLineBodyBound = DeltaX * DeltaY < 0 ?
+                GraphicDeltaHandler FoundLineBodyBound = (DeltaX ^ DeltaY) < 0 ?
                     new GraphicDeltaHandler(
                         (Dx, Dy) =>
                         {
