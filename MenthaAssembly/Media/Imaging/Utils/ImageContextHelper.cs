@@ -8,7 +8,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 {
     public delegate bool ImagePredicate(int X, int Y, IReadOnlyPixel Pixel);
 
-    internal static unsafe class ImageContextHelper
+    internal static class ImageContextHelper
     {
         public static void DrawLine<T>(PixelAdapter<T> Context, int X0, int Y0, int X1, int Y1, PixelAdapter<T> Pen, BlendMode Blend)
             where T : unmanaged, IPixel
@@ -81,12 +81,22 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 if (TRx < 0)
                     continue;
 
+                if (MaxX < TRx)
+                    TRx = MaxX;
+
                 int Y = Data.Key;
                 if (LeftBound.TryGetValue(Y, out int TLx))
                 {
                     LeftBound.Remove(Y);
-                    if (TLx >= MaxX)
+
+                    if (MaxX < TLx)
                         continue;
+
+                    if (TLx < TRx && TRx == 0)
+                        continue;
+
+                    if (TLx < 0)
+                        TLx = 0;
 
                     Context.DangerousMove(TLx, Y);
                     for (; TLx <= TRx; TLx++, Context.DangerousMoveNextX())
@@ -324,12 +334,22 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     if (TRx < 0)
                         continue;
 
+                    if (MaxX < TRx)
+                        TRx = MaxX;
+
                     int Y = Data.Key;
                     if (LeftBound.TryGetValue(Y, out int TLx))
                     {
                         LeftBound.Remove(Y);
-                        if (TLx >= MaxX)
+
+                        if (MaxX < TLx)
                             continue;
+
+                        if (TLx < TRx && TRx == 0)
+                            continue;
+
+                        if (TLx < 0)
+                            TLx = 0;
 
                         Context.DangerousMove(TLx, Y);
                         for (; TLx <= TRx; TLx++, Context.DangerousMoveNextX())
