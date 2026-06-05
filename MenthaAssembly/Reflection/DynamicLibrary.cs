@@ -6,21 +6,54 @@ using System.Threading;
 
 namespace MenthaAssembly
 {
+    /// <summary>
+    /// Represents a dynamically loaded managed or unmanaged library.
+    /// </summary>
+    /// <remarks>
+    /// Libraries are pooled by full path. Loading the same path returns the same instance and increments an internal load count.
+    /// Each successful load must be released by calling <see cref="Dispose"/>.
+    /// </remarks>
     public abstract class DynamicLibrary(string Filename, LibraryType Type) : IDisposable
     {
         private static readonly ConcurrentDictionary<string, DynamicLibrary> LibraryPool = new(StringComparer.OrdinalIgnoreCase);
 
         private int _referenceCount = 1;
 
+        /// <summary>
+        /// Gets the full path of the loaded library file.
+        /// </summary>
         public string Filename { get; } = Path.GetFullPath(Filename);
 
+        /// <summary>
+        /// Gets the detected library type.
+        /// </summary>
         public LibraryType Type { get; } = Type;
 
-        internal int ReferenceCount
-            => _referenceCount;
-
+        /// <summary>
+        /// Loads the specified dynamic library.
+        /// </summary>
+        /// <remarks>
+        /// The pool returns the same library instance for the same path.
+        /// Each successful <see cref="Load(string)"/> or <see cref="TryLoad(string, out DynamicLibrary)"/> call must be paired with one <see cref="Dispose"/> call.
+        /// </remarks>
+        /// <param name="Fullname">The full path of the library file to load.</param>
+        /// <returns>The loaded dynamic library.</returns>
+        /// <exception cref="FileNotFoundException">The library file does not exist.</exception>
+        /// <exception cref="BadImageFormatException">The file is not a supported dynamic library.</exception>
         public static DynamicLibrary Load(string Fullname)
             => Load(Fullname, null);
+        /// <summary>
+        /// Loads the specified dynamic library and uses the specified resolver for managed assembly dependencies.
+        /// </summary>
+        /// <remarks>
+        /// The pool returns the same library instance for the same path.
+        /// Each successful <see cref="Load(string, Func{AssemblyName, Assembly})"/> or <see cref="TryLoad(string, out DynamicLibrary, Func{AssemblyName, Assembly})"/> call must be paired with one <see cref="Dispose"/> call.
+        /// </remarks>
+        /// <param name="Fullname">The full path of the library file to load.</param>
+        /// <param name="Resolver">The resolver used to resolve managed assembly dependencies.</param>
+        /// <returns>The loaded dynamic library.</returns>
+        /// <exception cref="FileNotFoundException">The library file does not exist.</exception>
+        /// <exception cref="BadImageFormatException">The file is not a supported dynamic library.</exception>
         public static DynamicLibrary Load(string Fullname, Func<AssemblyName, Assembly> Resolver)
         {
             if (!File.Exists(Fullname))
@@ -67,8 +100,29 @@ namespace MenthaAssembly
                 library.OnDispose();
             }
         }
+        /// <summary>
+        /// Attempts to load the specified dynamic library.
+        /// </summary>
+        /// <remarks>
+        /// The pool returns the same library instance for the same path.
+        /// Each successful <see cref="Load(string)"/> or <see cref="TryLoad(string, out DynamicLibrary)"/> call must be paired with one <see cref="Dispose"/> call.
+        /// </remarks>
+        /// <param name="Fullname">The full path of the library file to load.</param>
+        /// <param name="Library">When this method returns, contains the loaded dynamic library if loading succeeded; otherwise, <see langword="null"/>.</param>
+        /// <returns><see langword="true"/> if the library was loaded; otherwise, <see langword="false"/>.</returns>
         public static bool TryLoad(string Fullname, out DynamicLibrary Library)
             => TryLoad(Fullname, out Library, null);
+        /// <summary>
+        /// Attempts to load the specified dynamic library and uses the specified resolver for managed assembly dependencies.
+        /// </summary>
+        /// <remarks>
+        /// The pool returns the same library instance for the same path.
+        /// Each successful <see cref="Load(string, Func{AssemblyName, Assembly})"/> or <see cref="TryLoad(string, out DynamicLibrary, Func{AssemblyName, Assembly})"/> call must be paired with one <see cref="Dispose"/> call.
+        /// </remarks>
+        /// <param name="Fullname">The full path of the library file to load.</param>
+        /// <param name="Library">When this method returns, contains the loaded dynamic library if loading succeeded; otherwise, <see langword="null"/>.</param>
+        /// <param name="Resolver">The resolver used to resolve managed assembly dependencies.</param>
+        /// <returns><see langword="true"/> if the library was loaded; otherwise, <see langword="false"/>.</returns>
         public static bool TryLoad(string Fullname, out DynamicLibrary Library, Func<AssemblyName, Assembly> Resolver)
         {
             if (!File.Exists(Fullname))
@@ -131,8 +185,16 @@ namespace MenthaAssembly
         }
 
         private int _isDisposed;
+        /// <summary>
+        /// Releases one successful load reference for this library.
+        /// </summary>
+        /// <remarks>
+        /// The underlying library is released only when the pooled load count reaches zero.
+        /// </remarks>
         public void Dispose()
         {
+            // Dispose releases one successful Load/TryLoad reference.
+            // The real library is released only after the pooled count reaches zero.
             if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
                 return;
 

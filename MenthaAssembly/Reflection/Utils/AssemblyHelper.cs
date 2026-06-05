@@ -163,12 +163,12 @@ namespace System.Reflection
         public static Dictionary<string, string> GetDependencyManagedAssemblyPathTable(this Assembly This, string RootDirectory, Func<AssemblyName, bool> SkipFilter = null)
         {
             Dictionary<string, string> Dependency = new(StringComparer.OrdinalIgnoreCase);
-            GetDependencyManagedAssemblyPathTable(This, RootDirectory, SkipFilter, Dependency);
+            GetDependencyManagedAssemblyPathTable(This.GetReferencedAssemblies(), RootDirectory, SkipFilter, Dependency);
             return Dependency;
         }
-        private static void GetDependencyManagedAssemblyPathTable(Assembly This, string RootDirectory, Func<AssemblyName, bool> SkipFilter, Dictionary<string, string> Dependency)
+        private static void GetDependencyManagedAssemblyPathTable(IEnumerable<AssemblyName> References, string RootDirectory, Func<AssemblyName, bool> SkipFilter, Dictionary<string, string> Dependency)
         {
-            foreach (AssemblyName AssemblyName in This.GetReferencedAssemblies())
+            foreach (AssemblyName AssemblyName in References)
             {
                 string Name = AssemblyName.Name;
                 if (string.IsNullOrWhiteSpace(Name))
@@ -188,17 +188,17 @@ namespace System.Reflection
 
                 Dependency[Name] = Path;
 
-                Assembly ChildAssembly;
+                string[] ChildNames;
                 try
                 {
-                    ChildAssembly = Assembly.LoadFrom(Path);
+                    ChildNames = GetReferencedAssemblyNames(Path);
                 }
                 catch
                 {
                     continue;
                 }
 
-                GetDependencyManagedAssemblyPathTable(ChildAssembly, RootDirectory, SkipFilter, Dependency);
+                GetDependencyManagedAssemblyPathTable(ChildNames.Select(i => new AssemblyName(i)), RootDirectory, SkipFilter, Dependency);
             }
         }
 
@@ -422,54 +422,154 @@ namespace System.Reflection
 
 #endif
 
-        public static LibraryType GetLibraryType(string Filename)
+        public static LibraryType GetLibraryType(string filename)
         {
-            // PE Struct
-            // https://web.archive.org/web/20160202125049/http://blogs.msdn.com/b/kstanton/archive/2004/03/31/105060.aspx
+            using FileStream s = new(filename, FileMode.Open, FileAccess.Read);
 
-            using FileStream s = new(Filename, FileMode.Open, FileAccess.Read);
-
-            ushort Magic = s.Read<ushort>();
-            if (Magic != 0x5A4D)
+            // Verify DOS header (MZ)
+            if (s.Read<ushort>() != 0x5A4D)
                 return LibraryType.Unknown;
 
-            // Skip to DosHeader.e_lfanew
-            s.Seek(60, SeekOrigin.Begin);
+            // Locate PE header
+            s.Seek(0x3C, SeekOrigin.Begin);
+            int peOffset = s.Read<int>();
 
-            // FileHeader Position
-            int FileHeaderPosition = s.Read<int>() + sizeof(uint);
-
-            // Skip to FileHeader.Characteristics
-            s.Seek(FileHeaderPosition + 18, SeekOrigin.Begin);
-
-            ImageFileCharFlags FileFlags = s.Read<ImageFileCharFlags>();
-            if ((FileFlags & ImageFileCharFlags.Dll) == 0)
+            // Verify PE signature (PE\0\0)
+            s.Seek(peOffset, SeekOrigin.Begin);
+            if (s.Read<uint>() != 0x00004550)
                 return LibraryType.Unknown;
 
-            ImageOptionalMagicType p = s.Read<ImageOptionalMagicType>();
+            // Read File Header information
+            long fileHeaderOffset = s.Position;
 
-            LibraryType r;
-            switch (p)
+            ushort machine = s.Read<ushort>();
+            ushort numberOfSections = s.Read<ushort>();
+
+            // Read Optional Header size and file characteristics
+            s.Seek(fileHeaderOffset + 16, SeekOrigin.Begin);
+            ushort sizeOfOptionalHeader = s.Read<ushort>();
+            ImageFileCharFlags characteristics = s.Read<ImageFileCharFlags>();
+
+            // Only process DLL files
+            if ((characteristics & ImageFileCharFlags.Dll) == 0)
+                return LibraryType.Unknown;
+
+            long optionalHeaderOffset = fileHeaderOffset + 20;
+
+            // Determine PE32 / PE32+
+            s.Seek(optionalHeaderOffset, SeekOrigin.Begin);
+            ImageOptionalMagicType magic = s.Read<ImageOptionalMagicType>();
+
+            bool isPE32Plus;
+            int dataDirectoryOffset;
+
+            switch (magic)
             {
                 case ImageOptionalMagicType.HDR32_MAGIC:
-                    // Skip to OptionalHeader.DataDirectory.Size
-                    s.Seek(206 + sizeof(uint), SeekOrigin.Current);
-                    r = LibraryType.x86;
+                    // PE32 Optional Header
+                    isPE32Plus = false;
+                    dataDirectoryOffset = 96;
                     break;
 
                 case ImageOptionalMagicType.HDR64_MAGIC:
-                    // Skip to OptionalHeader.DataDirectory.Size
-                    s.Seek(222 + sizeof(uint), SeekOrigin.Current);
-                    r = LibraryType.x64;
+                    // PE32+ Optional Header
+                    isPE32Plus = true;
+                    dataDirectoryOffset = 112;
                     break;
 
-                case ImageOptionalMagicType.ROM_OPTIONAL_HDR_MAGIC:
                 default:
                     return LibraryType.Unknown;
             }
 
-            int DataDirectorySize = s.Read<int>();
-            return r | (DataDirectorySize > 0 ? LibraryType.Managed : LibraryType.Unmanaged);
+            // Read NumberOfRvaAndSizes field
+            s.Seek(optionalHeaderOffset + dataDirectoryOffset - 4, SeekOrigin.Begin);
+            uint numberOfRvaAndSizes = s.Read<uint>();
+
+            // COM Descriptor = DataDirectory[14]
+            // Missing entry means this is a native DLL
+            if (numberOfRvaAndSizes <= 14)
+                return GetNativeType(machine);
+
+            // Read CLR Runtime Header directory entry
+            long comDescriptorEntryOffset =
+                optionalHeaderOffset + dataDirectoryOffset + (14 * 8);
+
+            s.Seek(comDescriptorEntryOffset, SeekOrigin.Begin);
+
+            uint clrRva = s.Read<uint>();
+            uint clrSize = s.Read<uint>();
+
+            // Missing CLR header means this is a native DLL
+            if (clrRva == 0 || clrSize == 0)
+                return GetNativeType(machine);
+
+            // Resolve CLR header RVA to file offset
+            uint clrFileOffset =
+                RvaToFileOffset(s, peOffset, numberOfSections, clrRva);
+
+            if (clrFileOffset == 0)
+                return LibraryType.Managed | LibraryType.Unknown;
+
+            // Read CLR Header Flags
+            s.Seek(clrFileOffset + 16, SeekOrigin.Begin);
+            uint clrFlags = s.Read<uint>();
+
+            const uint COMIMAGE_FLAGS_32BITREQUIRED = 0x00000002;
+
+            // Managed x86 assembly
+            if ((clrFlags & COMIMAGE_FLAGS_32BITREQUIRED) != 0)
+                return LibraryType.Managed | LibraryType.x86;
+
+            // Managed x64 assembly
+            if (isPE32Plus)
+                return LibraryType.Managed | LibraryType.x64;
+
+            // Managed AnyCPU assembly
+            return LibraryType.Managed | LibraryType.AnyCPU;
+        }
+        private static LibraryType GetNativeType(ushort machine)
+            => machine switch
+            {
+                // IMAGE_FILE_MACHINE_I386
+                0x014c => LibraryType.Unmanaged | LibraryType.x86,
+
+                // IMAGE_FILE_MACHINE_AMD64
+                0x8664 => LibraryType.Unmanaged | LibraryType.x64,
+
+                _ => LibraryType.Unknown
+            };
+        private static uint RvaToFileOffset(FileStream s, int peOffset, ushort numberOfSections, uint rva)
+        {
+            // Locate section table
+            s.Seek(peOffset + 4 + 16, SeekOrigin.Begin);
+            ushort sizeOfOptionalHeader = s.Read<ushort>();
+
+            long sectionTableOffset =
+                peOffset + 4 + 20 + sizeOfOptionalHeader;
+
+            // Search section containing the target RVA
+            for (int i = 0; i < numberOfSections; i++)
+            {
+                long sectionOffset = sectionTableOffset + (i * 40);
+
+                s.Seek(sectionOffset + 8, SeekOrigin.Begin);
+
+                uint virtualSize = s.Read<uint>();
+                uint virtualAddress = s.Read<uint>();
+                uint sizeOfRawData = s.Read<uint>();
+                uint pointerToRawData = s.Read<uint>();
+
+                uint sectionSize = Math.Max(virtualSize, sizeOfRawData);
+
+                if (rva >= virtualAddress &&
+                    rva < virtualAddress + sectionSize)
+                {
+                    // Convert RVA to file offset
+                    return pointerToRawData + (rva - virtualAddress);
+                }
+            }
+
+            return 0;
         }
 
         public static IEnumerable<string> GetUnmanagedDependencyAssemblyNames(this Assembly This)
@@ -479,6 +579,43 @@ namespace System.Reflection
                    .Where(i => i != null)
                    .Select(i => i.Value)
                    .Distinct();
+
+        /// <summary>
+        /// Gets unmanaged library names referenced by P/Invoke metadata in the specified managed assembly file.
+        /// </summary>
+        /// <param name="Filename">The managed assembly file to inspect.</param>
+        /// <returns>An array that contains unmanaged library names referenced by the assembly.</returns>
+        public static string[] GetUnmanagedDependencyAssemblyNames(string Filename)
+        {
+            if (string.IsNullOrWhiteSpace(Filename))
+                throw new ArgumentException("Filename cannot be null or empty.", nameof(Filename));
+
+            if (!File.Exists(Filename))
+                throw new FileNotFoundException(string.Empty, Filename);
+
+            PEImage Image = new(File.ReadAllBytes(Filename));
+            return Image.TryReadUnmanagedDependencyAssemblyNames(out string[] Names) ? Names : [];
+        }
+
+        /// <summary>
+        /// Attempts to get unmanaged library names referenced by P/Invoke metadata in the specified managed assembly file.
+        /// </summary>
+        /// <param name="Filename">The managed assembly file to inspect.</param>
+        /// <param name="Names">When this method returns, contains the unmanaged library names if the operation succeeded.</param>
+        /// <returns><see langword="true"/> if the unmanaged library names were read; otherwise, <see langword="false"/>.</returns>
+        public static bool TryGetUnmanagedDependencyAssemblyNames(string Filename, out string[] Names)
+        {
+            try
+            {
+                Names = GetUnmanagedDependencyAssemblyNames(Filename);
+                return true;
+            }
+            catch
+            {
+                Names = [];
+                return false;
+            }
+        }
         public static string GetUnmanagedLibraryFullName(string DllName)
         {
             // Absolute path

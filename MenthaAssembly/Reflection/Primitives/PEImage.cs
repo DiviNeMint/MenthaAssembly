@@ -486,6 +486,58 @@ namespace System.Reflection
             }
         }
 
+        public bool TryReadUnmanagedDependencyAssemblyNames(out string[] Names)
+        {
+            try
+            {
+                Names = ReadUnmanagedDependencyAssemblyNames();
+                return true;
+            }
+            catch
+            {
+                Names = Array.Empty<string>();
+                return false;
+            }
+        }
+
+        private string[] ReadUnmanagedDependencyAssemblyNames()
+        {
+            const int ModuleRefTable = 26;
+            const int ImplMapTable = 28;
+
+            if (TableRowCounts[ModuleRefTable] == 0 || TableRowCounts[ImplMapTable] == 0)
+                return Array.Empty<string>();
+
+            List<string> results = new List<string>();
+
+            int memberForwardedSize = GetCodedIndexSize(MemberForwardedTables, 1);
+            int moduleRefIndexSize = GetTableIndexSize(ModuleRefTable);
+            int rowCount = checked((int)TableRowCounts[ImplMapTable]);
+            for (uint rid = 1; rid <= rowCount; rid++)
+            {
+                int rowOffset = GetTableRowOffset(ImplMapTable, rid);
+
+                rowOffset += 2; // MappingFlags
+                rowOffset += memberForwardedSize; // MemberForwarded
+                rowOffset += GetStringIndexSize(); // ImportName
+
+                uint moduleRefRid = ReadIndex(rowOffset, moduleRefIndexSize);
+                if (moduleRefRid == 0 || moduleRefRid > TableRowCounts[ModuleRefTable])
+                    continue;
+
+                int moduleRefRowOffset = GetTableRowOffset(ModuleRefTable, moduleRefRid);
+                uint nameIndex = ReadIndex(moduleRefRowOffset, GetStringIndexSize());
+                string name = ReadString(nameIndex);
+                if (!string.IsNullOrWhiteSpace(name) &&
+                    !results.Contains(name, StringComparer.OrdinalIgnoreCase))
+                {
+                    results.Add(name);
+                }
+            }
+
+            return results.ToArray();
+        }
+
         private string[] ReadReferencedAssemblyNames()
         {
             const int AssemblyRefTable = 35;

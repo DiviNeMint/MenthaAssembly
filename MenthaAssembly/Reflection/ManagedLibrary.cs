@@ -9,19 +9,40 @@ using System.Runtime.Loader;
 
 namespace MenthaAssembly
 {
+    /// <summary>
+    /// Represents a dynamically loaded managed assembly.
+    /// </summary>
     public sealed class ManagedLibrary : DynamicLibrary
     {
         private readonly string RootFolder;
-        private readonly Assembly Assembly;
         private readonly Func<AssemblyName, Assembly> Resolver;
+        private readonly List<DynamicLibrary> DependencyLibraries = [];
 
+        /// <summary>
+        /// Gets the root directory used to resolve local assembly dependencies.
+        /// </summary>
         public string RootDirectory => RootFolder;
 
+        /// <summary>
+        /// Gets the full path of the loaded assembly file.
+        /// </summary>
         public string Location => Filename;
 
-        public AssemblyName Name => Assembly.GetName();
+        private Assembly _Assembly;
+        /// <summary>
+        /// Gets the loaded assembly instance.
+        /// </summary>
+        public Assembly Assembly => _Assembly;
 
-        public string FullName => Assembly.FullName;
+        /// <summary>
+        /// Gets the identity of the loaded assembly.
+        /// </summary>
+        public AssemblyName Name => _Assembly.GetName();
+
+        /// <summary>
+        /// Gets the display name of the loaded assembly.
+        /// </summary>
+        public string FullName => _Assembly.FullName;
 
 #if NET6_0_OR_GREATER
         private readonly AssemblyLoadContext Context;
@@ -29,18 +50,6 @@ namespace MenthaAssembly
         {
             RootFolder = Path.GetDirectoryName(Fullname);
             this.Resolver = Resolver;
-
-            if (Resolver is null)
-            {
-                AssemblyName targetName = AssemblyName.GetAssemblyName(Fullname);
-                Assembly hostAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                                                               .FirstOrDefault(i => string.Equals(i.FullName, targetName.FullName, StringComparison.Ordinal));
-                if (hostAssembly != null)
-                {
-                    Assembly = hostAssembly;
-                    return;
-                }
-            }
 
             Context = new AssemblyLoadContext(Guid.NewGuid().ToString(), true);
             Context.Resolving += OnResolving;
@@ -50,14 +59,18 @@ namespace MenthaAssembly
             Stream.CopyTo(Memory);
             Memory.Position = 0;
 
-            Assembly = Context.LoadFromStream(Memory);
+            _Assembly = Context.LoadFromStream(Memory);
         }
 
         private Assembly OnResolving(AssemblyLoadContext Context, AssemblyName Name)
         {
             string Filename = Path.Combine(RootFolder, $"{Name.Name}.dll");
-            if (File.Exists(Filename))
-                return Context.LoadFromAssemblyPath(Filename);
+            if (DynamicLibrary.TryLoad(Filename, out DynamicLibrary Library) &&
+                Library is ManagedLibrary Managed)
+            {
+                DependencyLibraries.Add(Managed);
+                return Managed._Assembly;
+            }
 
             return Resolver?.Invoke(Name);
         }
@@ -68,7 +81,12 @@ namespace MenthaAssembly
             if (IsDisposed)
                 return;
 
+            foreach (DynamicLibrary Library in DependencyLibraries)
+                Library.Dispose();
+
+            DependencyLibraries.Clear();
             Context?.Unload();
+            _Assembly = null;
             IsDisposed = true;
         }
 #else
@@ -78,23 +96,11 @@ namespace MenthaAssembly
             RootFolder = Path.GetDirectoryName(Fullname);
             this.Resolver = Resolver;
 
-            if (Resolver is null)
-            {
-                AssemblyName targetName = AssemblyName.GetAssemblyName(Fullname);
-                Assembly hostAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                                                               .FirstOrDefault(i => string.Equals(i.FullName, targetName.FullName, StringComparison.Ordinal));
-                if (hostAssembly != null)
-                {
-                    Assembly = hostAssembly;
-                    return;
-                }
-            }
-
             Domain = AppDomain.CreateDomain(Guid.NewGuid().ToString());
             Domain.AssemblyResolve += OnDomainAssemblyResolve;
 
             byte[] RawDatas = File.ReadAllBytes(Fullname);
-            Assembly = Domain.Load(RawDatas);
+            _Assembly = Domain.Load(RawDatas);
         }
 
         private Assembly OnDomainAssemblyResolve(object sender, ResolveEventArgs e)
@@ -102,10 +108,11 @@ namespace MenthaAssembly
             AssemblyName Name = new(e.Name);
 
             string Filename = Path.Combine(RootFolder, $"{Name.Name}.dll");
-            if (File.Exists(Filename))
+            if (DynamicLibrary.TryLoad(Filename, out DynamicLibrary Library) &&
+                Library is ManagedLibrary Managed)
             {
-                byte[] RawDatas = File.ReadAllBytes(Filename);
-                return Domain.Load(RawDatas);
+                DependencyLibraries.Add(Managed);
+                return Managed._Assembly;
             }
 
             return Resolver?.Invoke(Name);
@@ -117,31 +124,60 @@ namespace MenthaAssembly
             if (IsDisposed)
                 return;
 
+            foreach (DynamicLibrary Library in DependencyLibraries)
+                Library.Dispose();
+
+            DependencyLibraries.Clear();
             if (Domain != null)
                 AppDomain.Unload(Domain);
 
+            _Assembly = null;
             IsDisposed = true;
         }
 #endif
 
+        /// <summary>
+        /// Gets the assemblies referenced by the loaded assembly.
+        /// </summary>
+        /// <returns>An array of referenced assembly names.</returns>
         public AssemblyName[] GetReferencedAssemblies()
-            => Assembly.GetReferencedAssemblies();
+            => _Assembly.GetReferencedAssemblies();
 
+        /// <summary>
+        /// Gets a custom attribute of the specified type from the loaded assembly.
+        /// </summary>
+        /// <typeparam name="T">The type of custom attribute to retrieve.</typeparam>
+        /// <returns>The custom attribute if it exists; otherwise, <see langword="null"/>.</returns>
         public T GetCustomAttribute<T>()
             where T : Attribute
-            => Assembly.GetCustomAttribute<T>();
+            => _Assembly.GetCustomAttribute<T>();
 
+        /// <summary>
+        /// Gets custom attributes of the specified type from the loaded assembly.
+        /// </summary>
+        /// <param name="AttributeType">The type of custom attribute to retrieve.</param>
+        /// <param name="Inherit">A value that indicates whether inherited attributes should be searched.</param>
+        /// <returns>An array that contains the matching custom attributes.</returns>
         public object[] GetCustomAttributes(Type AttributeType, bool Inherit = false)
-            => Assembly.GetCustomAttributes(AttributeType, Inherit);
+            => _Assembly.GetCustomAttributes(AttributeType, Inherit);
 
+        /// <summary>
+        /// Gets all types defined in the loaded assembly.
+        /// </summary>
+        /// <returns>An array that contains the types defined in the assembly.</returns>
         public Type[] GetTypes()
-            => Assembly.GetTypes();
+            => _Assembly.GetTypes();
 
+        /// <summary>
+        /// Attempts to get the types defined in the loaded assembly.
+        /// </summary>
+        /// <param name="Types">When this method returns, contains the loaded types that could be resolved.</param>
+        /// <returns><see langword="true"/> if all types were resolved; otherwise, <see langword="false"/>.</returns>
         public bool TryGetTypes(out Type[] Types)
         {
             try
             {
-                Types = Assembly.GetTypes();
+                Types = _Assembly.GetTypes();
                 return true;
             }
             catch (ReflectionTypeLoadException ex)
@@ -151,6 +187,10 @@ namespace MenthaAssembly
             }
         }
 
+        /// <summary>
+        /// Enumerates managed and unmanaged dependency library information for the loaded assembly.
+        /// </summary>
+        /// <returns>A sequence of dependency library information.</returns>
         public IEnumerable<AssemblyInfo> EnumDependencyLibraryInfos()
         {
             string[] LoadedAssemblies = Assembly.GetEntryAssembly()
@@ -161,7 +201,7 @@ namespace MenthaAssembly
                                                 .Distinct()
                                                 .ToArray();
 
-            Dictionary<string, string> Managed = AssemblyHelper.GetDependencyManagedAssemblyPathTable(Assembly, RootFolder);
+            Dictionary<string, string> Managed = AssemblyHelper.GetDependencyManagedAssemblyPathTable(_Assembly, RootFolder);
             foreach (string Key in Managed.Keys.Where(i => LoadedAssemblies.Contains(i)).ToArray())
                 Managed.Remove(Key);
 
@@ -170,21 +210,17 @@ namespace MenthaAssembly
                 yield return new AssemblyInfo(Data.Key, Data.Value, ManagedType);
 
             LibraryType UnmanagedType = (Environment.Is64BitProcess ? LibraryType.x64 : LibraryType.x86) | LibraryType.Unmanaged;
-            IEnumerable<string> Unmanaged = Assembly.GetUnmanagedDependencyAssemblyNames();
-
+            HashSet<string> Unmanaged = new(_Assembly.GetUnmanagedDependencyAssemblyNames(), StringComparer.OrdinalIgnoreCase);
             foreach (string ManagedPath in Managed.Values)
             {
-                try
-                {
-                    Assembly Dependency = Assembly.LoadFrom(ManagedPath);
-                    Unmanaged = Unmanaged.Concat(Dependency.GetUnmanagedDependencyAssemblyNames());
-                }
-                catch
-                {
-                }
+                if (!AssemblyHelper.TryGetUnmanagedDependencyAssemblyNames(ManagedPath, out string[] Names))
+                    continue;
+
+                foreach (string Name in Names)
+                    Unmanaged.Add(Name);
             }
 
-            foreach (string UnmanagedName in Unmanaged.Distinct(StringComparer.OrdinalIgnoreCase))
+            foreach (string UnmanagedName in Unmanaged)
             {
                 string FullName = Path.Combine(RootFolder, UnmanagedName);
                 if (!File.Exists(FullName))
@@ -194,5 +230,6 @@ namespace MenthaAssembly
                     yield return new AssemblyInfo(UnmanagedName, FullName, UnmanagedType);
             }
         }
+
     }
 }

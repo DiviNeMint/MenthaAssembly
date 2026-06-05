@@ -10,6 +10,9 @@ namespace MenthaAssembly
 {
     // https://github.com/dretax/DynamicDllLoader/blob/master/DynamicDLLLoader/DynamicDllLoader.cs
     // https://github.com/fancycode/MemoryModule/blob/master/MemoryModule.c
+    /// <summary>
+    /// Represents a dynamically loaded unmanaged library.
+    /// </summary>
     public sealed unsafe class UnmanagedLibrary : DynamicLibrary
     {
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
@@ -338,6 +341,12 @@ namespace MenthaAssembly
             return true;
         }
 
+        /// <summary>
+        /// Gets an exported function as a managed delegate.
+        /// </summary>
+        /// <typeparam name="TDelegate">The delegate type that represents the exported function signature.</typeparam>
+        /// <param name="FunctionName">The name of the exported function.</param>
+        /// <returns>The delegate that invokes the exported function.</returns>
         public TDelegate GetMethod<TDelegate>(string FunctionName)
             where TDelegate : Delegate
         {
@@ -352,8 +361,22 @@ namespace MenthaAssembly
             return Method;
         }
 
+        /// <summary>
+        /// Invokes an exported function.
+        /// </summary>
+        /// <typeparam name="TDelegate">The delegate type that represents the exported function signature.</typeparam>
+        /// <param name="FunctionName">The name of the exported function.</param>
+        /// <param name="Args">The arguments to pass to the exported function.</param>
         public void Invoke<TDelegate>(string FunctionName, params object[] Args) where TDelegate : Delegate
             => GetMethod<TDelegate>(FunctionName).DynamicInvoke(Args);
+        /// <summary>
+        /// Invokes an exported function and returns its result.
+        /// </summary>
+        /// <typeparam name="TDelegate">The delegate type that represents the exported function signature.</typeparam>
+        /// <typeparam name="TResult">The result type returned by the exported function.</typeparam>
+        /// <param name="FunctionName">The name of the exported function.</param>
+        /// <param name="Args">The arguments to pass to the exported function.</param>
+        /// <returns>The function result.</returns>
         public TResult Invoke<TDelegate, TResult>(string FunctionName, params object[] Args) where TDelegate : Delegate
             => (TResult)GetMethod<TDelegate>(FunctionName).DynamicInvoke(Args);
 
@@ -378,6 +401,10 @@ namespace MenthaAssembly
             return IntPtr.Zero;
         }
 
+        /// <summary>
+        /// Gets the names of exported functions in the unmanaged library.
+        /// </summary>
+        /// <returns>A sequence of exported function names.</returns>
         public IEnumerable<string> GetMethodNames()
         {
             if (ExportDirectory.Size == 0)
