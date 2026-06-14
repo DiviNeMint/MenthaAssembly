@@ -1306,8 +1306,11 @@ namespace MenthaAssembly.Media.Imaging
 
                 if (DeltaX == 0 && DeltaY < 0)
                 {
-                    MathHelper.Swap(ref Ux, ref Lx);
-                    MathHelper.Swap(ref Uy, ref Ly);
+                    if (Ux < Lx)
+                        MathHelper.Swap(ref Ux, ref Lx);
+
+                    if (Uy < Ly)
+                        MathHelper.Swap(ref Uy, ref Ly);
                 }
 
                 GraphicDeltaHandler FoundLineBodyBound = (DeltaX ^ DeltaY) < 0 ?
