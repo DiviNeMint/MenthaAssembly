@@ -52,14 +52,14 @@ namespace MenthaAssembly.Devices
             LeftDown = 2,
             LeftUp = 4,
             RightDown = 8,
-            RightUp = 10,
-            MiddleDown = 20,
-            MiddleUp = 40,
-            XDown = 90,
-            XUp = 100,
-            Wheel = 800,
-            VirtualDesk = 4000,
-            Absolute = 8000,
+            RightUp = 0x10,
+            MiddleDown = 0x20,
+            MiddleUp = 0x40,
+            XDown = 0x80,
+            XUp = 0x100,
+            Wheel = 0x800,
+            VirtualDesk = 0x4000,
+            Absolute = 0x8000,
         }
 
         private delegate int HookProc(int nCode, int wParam, IntPtr lParam);
@@ -312,19 +312,19 @@ namespace MenthaAssembly.Devices
             switch (Button)
             {
                 case MouseKey.Left:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.LeftDown, X, Y, 0, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.LeftDown, X, Y, 0, 0);
                     break;
                 case MouseKey.Right:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.RightDown, X, Y, 0, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.RightDown, X, Y, 0, 0);
                     break;
                 case MouseKey.Middle:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.MiddleDown, X, Y, 0, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.MiddleDown, X, Y, 0, 0);
                     break;
                 case MouseKey.XButton1:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.XDown, X, Y, (int)MouseData.XButton1, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.XDown, X, Y, (int)MouseData.XButton1, 0);
                     break;
                 case MouseKey.XButton2:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.XDown, X, Y, (int)MouseData.XButton2, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.XDown, X, Y, (int)MouseData.XButton2, 0);
                     break;
             }
         }
@@ -357,19 +357,19 @@ namespace MenthaAssembly.Devices
             switch (Button)
             {
                 case MouseKey.Left:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.LeftUp, X, Y, 0, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.LeftUp, X, Y, 0, 0);
                     break;
                 case MouseKey.Right:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.RightUp, X, Y, 0, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.RightUp, X, Y, 0, 0);
                     break;
                 case MouseKey.Middle:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.MiddleUp, X, Y, 0, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.MiddleUp, X, Y, 0, 0);
                     break;
                 case MouseKey.XButton1:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.XUp, X, Y, (int)MouseData.XButton1, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.XUp, X, Y, (int)MouseData.XButton1, 0);
                     break;
                 case MouseKey.XButton2:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.XUp, X, Y, (int)MouseData.XButton2, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.XUp, X, Y, (int)MouseData.XButton2, 0);
                     break;
             }
         }
@@ -400,19 +400,19 @@ namespace MenthaAssembly.Devices
             switch (Button)
             {
                 case MouseKey.Left:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.LeftDown | MouseFlag.LeftUp, X, Y, 0, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.LeftDown | MouseFlag.LeftUp, X, Y, 0, 0);
                     break;
                 case MouseKey.Right:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.RightDown | MouseFlag.RightUp, X, Y, 0, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.RightDown | MouseFlag.RightUp, X, Y, 0, 0);
                     break;
                 case MouseKey.Middle:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.MiddleDown | MouseFlag.MiddleUp, X, Y, 0, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.MiddleDown | MouseFlag.MiddleUp, X, Y, 0, 0);
                     break;
                 case MouseKey.XButton1:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.XDown | MouseFlag.XUp, X, Y, (int)MouseData.XButton1, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.XDown | MouseFlag.XUp, X, Y, (int)MouseData.XButton1, 0);
                     break;
                 case MouseKey.XButton2:
-                    mouse_event(MouseFlag.Absolute | MouseFlag.XDown | MouseFlag.XUp, X, Y, (int)MouseData.XButton2, 0);
+                    mouse_event(MouseFlag.Move | MouseFlag.Absolute | MouseFlag.XDown | MouseFlag.XUp, X, Y, (int)MouseData.XButton2, 0);
                     break;
             }
         }
