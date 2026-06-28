@@ -100,9 +100,30 @@ namespace MenthaAssembly.Globalization
 
         private void Parse(Stream Stream)
         {
-            if (ArchiveHelper.IsZipArchive(Stream))
+            if (!Stream.CanSeek)
             {
-                ZipArchive Archive = new(Stream, ZipArchiveMode.Read);
+                MemoryStream Buffer = new();
+                try
+                {
+                    Stream.CopyTo(Buffer);
+                    Buffer.Position = 0L;
+                    Parse(Buffer);
+                }
+                finally
+                {
+                    Buffer.Dispose();
+                }
+
+                return;
+            }
+
+            long Position = Stream.Position;
+            bool IsArchive = ArchiveHelper.IsZipArchive(Stream);
+            Stream.Seek(Position, SeekOrigin.Begin);
+
+            if (IsArchive)
+            {
+                using ZipArchive Archive = new(Stream, ZipArchiveMode.Read);
                 foreach (ZipArchiveEntry Entry in Archive.Entries.OrderBy(i => i.LastWriteTime))
                 {
                     Stream Content = Entry.Open();
@@ -118,7 +139,6 @@ namespace MenthaAssembly.Globalization
             }
             else
             {
-                Stream.Seek(0L, SeekOrigin.Begin);
                 ParsePacket(Stream);
             }
         }
