@@ -3,7 +3,7 @@
 namespace MenthaAssembly.Win32
 {
     [Flags]
-    internal enum WindowPrintFlags : uint
+    public enum WindowPrintFlags : uint
     {
         /// <summary>
         /// The entire window is copied to hdcBlt.

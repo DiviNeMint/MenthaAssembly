@@ -12,6 +12,9 @@ namespace MenthaAssembly.Devices
         [DllImport("user32")]
         private static extern IntPtr MonitorFromPoint(Point<int>* Position, MonitorOptions dwFlags);
 
+        [DllImport("user32")]
+        private static extern IntPtr MonitorFromWindow(IntPtr Hwnd, MonitorOptions dwFlags);
+
         [DllImport("user32", CharSet = CharSet.Unicode)]
         internal static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo lpmi);
 
@@ -75,6 +78,19 @@ namespace MenthaAssembly.Devices
 
                 return null;
             }
+        }
+
+        public static ScreenInfo GetScreenByWindow(IntPtr Hwnd)
+        {
+            IntPtr pScreen = MonitorFromWindow(Hwnd, MonitorOptions.Monitor_DefaultToNearest);
+
+            MonitorInfo Info = new MonitorInfo();
+            Info.cbSize = Marshal.SizeOf(Info);
+
+            if (GetMonitorInfo(pScreen, ref Info))
+                return new ScreenInfo(pScreen, Info);
+
+            return null;
         }
 
     }

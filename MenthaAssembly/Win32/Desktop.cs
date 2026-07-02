@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 using static MenthaAssembly.Win32.Graphic;
 
 namespace MenthaAssembly.Win32
@@ -21,10 +22,20 @@ namespace MenthaAssembly.Win32
         internal static extern IntPtr FindWindowEx(IntPtr pParent, IntPtr pChild, string ClassName, string WindowName);
 
         [DllImport(User32)]
+        internal static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+        internal delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport(User32, SetLastError = true)]
+        internal static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+        [DllImport(User32, SetLastError = true)]
+        internal static extern int GetWindowText(IntPtr hWnd, StringBuilder lpWindowText, int nMaxCount);
+
+        [DllImport(User32)]
         internal static extern IntPtr GetDesktopWindow();
 
         [DllImport(User32)]
-        internal static extern bool GetWindowInfo(IntPtr Hwnd, out WindowInfo Info);
+        internal static extern bool GetWindowInfo(IntPtr Hwnd, ref WindowInfo Info);
 
         [DllImport(User32)]
         internal static extern bool GetWindowRect(IntPtr Hwnd, Bound<int>* Bound);
@@ -37,7 +48,7 @@ namespace MenthaAssembly.Win32
         [DllImport(User32, SetLastError = true)]
         internal static extern bool SetWindowPlacement(IntPtr Hwnd, ref WindowPlacementData lpwndpl);
         [DllImport(User32)]
-        internal static extern bool GetWindowPlacement(IntPtr Hwnd, out WindowPlacementData lpwndpl);
+        internal static extern bool GetWindowPlacement(IntPtr Hwnd, ref WindowPlacementData lpwndpl);
 
         [DllImport(User32, SetLastError = true)]
         internal static extern bool SetWindowPos(IntPtr Hwnd, IntPtr HwndInsertAfter, int X, int Y, int Width, int Height, WindowPosFlags uFlags);
@@ -338,6 +349,17 @@ namespace MenthaAssembly.Win32
             }
         }
 
+        public static bool IsWindowMaximized(IntPtr Hwnd)
+        {
+            WindowPlacementData PlacementData = new WindowPlacementData();
+            PlacementData.cbSize = Marshal.SizeOf<WindowPlacementData>();
+
+            if (!GetWindowPlacement(Hwnd, ref PlacementData))
+                return false;
+
+            return PlacementData.showCmd == WindowShowType.Maximize;
+        }
+
         /// <summary>
         /// Screenshots the current screen.
         /// </summary>
@@ -413,117 +435,164 @@ namespace MenthaAssembly.Win32
         /// </summary>
         /// <param name="Hwnd">A handle to the window that will be snapshotted.</param>
         public static ImageContext<BGR> Snapshot(IntPtr Hwnd)
+            => Snapshot(Hwnd, WindowPrintFlags.EntireWindow, 0, 0, int.MaxValue, int.MaxValue);
+        /// <summary>
+        /// Snapshots the specified window.
+        /// </summary>
+        /// <param name="Hwnd">A handle to the window that will be snapshotted.</param>
+        /// <param name="PrintMode">PrintWindow flags.</param>
+        /// <param name="X">X offset of region (relative to window).</param>
+        /// <param name="Y">Y offset of region (relative to window).</param>
+        /// <param name="Width">Region width.</param>
+        /// <param name="Height">Region height.</param>
+        public static ImageContext<BGR> Snapshot(IntPtr Hwnd, WindowPrintFlags PrintMode, int X, int Y, int Width, int Height)
         {
-            if (GetWindowPlacement(Hwnd, out WindowPlacementData PlacementData))
+            WindowPlacementData PlacementData = new WindowPlacementData();
+            PlacementData.cbSize = Marshal.SizeOf<WindowPlacementData>();
+
+            if (!GetWindowPlacement(Hwnd, ref PlacementData))
+                return null;
+
+            ImageContext<BGR> DoSnapshot()
             {
-                ImageContext<BGR> DoSnapshot()
+                WindowInfo Info = new WindowInfo();
+                Info.cbSize = Marshal.SizeOf<WindowInfo>();
+
+                if (!GetWindowInfo(Hwnd, ref Info))
+                    return null;
+
+                int WinWidth, WinHeight;
+                if (PrintMode == WindowPrintFlags.ClientOnly)
                 {
-                    if (!GetWindowInfo(Hwnd, out WindowInfo Info))
+                    WinWidth = Info.rcClient.Width;
+                    WinHeight = Info.rcClient.Height;
+                }
+                else
+                {
+                    WinWidth = Info.rcWindow.Width;
+                    WinHeight = Info.rcWindow.Height;
+                }
+
+                int Rx = X + Width,
+                    By = Y + Height;
+
+                if (WinWidth < Rx)
+                    Width = WinWidth - X;
+
+                if (WinHeight < By)
+                    Height = WinHeight - Y;
+
+                // 建立完整視窗大小的暫存 DC/Bitmap (PrintWindow 必須畫全視窗)
+                IntPtr hdcScreen = GetWindowDC(Hwnd),
+                       hdcFull = CreateCompatibleDC(hdcScreen),
+                       hBmpFull = CreateCompatibleBitmap(hdcScreen, Math.Min(Rx, WinWidth), Math.Min(By, WinHeight)),
+                       hOldFull = SelectObject(hdcFull, hBmpFull);
+
+                // 建立目標 DC/Bitmap (只存放區域)
+                IntPtr hdcRegion = CreateCompatibleDC(hdcScreen),
+                       hBmpRegion = CreateCompatibleBitmap(hdcScreen, Width, Height),
+                       hOldRegion = SelectObject(hdcRegion, hBmpRegion);
+
+                try
+                {
+                    // 把整個視窗畫到暫存 DC
+                    if (!PrintWindow(Hwnd, hdcFull, PrintMode))
                         return null;
 
-                    int Width = Info.rcWindow.Width,
-                        Height = Info.rcWindow.Height;
+                    // 從完整視窗 DC 拷貝指定區域到目標 DC
+                    if (!BitBlt(hdcRegion, 0, 0, Width, Height, hdcFull, X, Y, TernaryRasterOperations.SourceCopy))
+                        return null;
 
-                    IntPtr hdcSrc = GetWindowDC(Hwnd),
-                           hdcDest = CreateCompatibleDC(hdcSrc),
-                           hBitmap = CreateCompatibleBitmap(hdcSrc, Width, Height),
-                           hObject = SelectObject(hdcDest, hBitmap);
-                    try
+                    BitmapInfoHeader BmpHeader = new BitmapInfoHeader
                     {
-                        if (PrintWindow(Hwnd, hdcDest, WindowPrintFlags.EntireWindow))
+                        biSize = sizeof(BitmapInfoHeader),
+                        biWidth = Width,
+                        biHeight = -Height,
+                        biPlanes = 1,
+                        biBitCount = 24,
+                        biCompression = BitmapCompressionMode.RGB,
+                        biSizeImage = 0,
+                        biXPelsPerMeter = 0,
+                        biYPelsPerMeter = 0,
+                        biClrUsed = 0,
+                        biClrImportant = 0,
+                    };
+
+                    if (GetDIBits(hdcScreen, hBmpRegion, 0, 0, null, &BmpHeader, DIBColorMode.RGB_Colors) == 0)
+                        return null;
+
+                    byte[] Datas = new byte[BmpHeader.biSizeImage];
+                    fixed (byte* pDatas = Datas)
+                    {
+                        if (GetDIBits(hdcScreen, hBmpRegion, 0, BmpHeader.biHeight, pDatas, &BmpHeader, DIBColorMode.RGB_Colors) == 0)
+                            return null;
+
+                        ImageContext<BGR> Snap = new(Width, Height, Datas);
+
+                        // Maximized
+                        if (PrintMode != WindowPrintFlags.ClientOnly && Info.rcWindow.Top < 0)
                         {
-                            SelectObject(hdcDest, hObject);
-
-                            BitmapInfoHeader BmpHeader = new BitmapInfoHeader
-                            {
-                                biSize = sizeof(BitmapInfoHeader),
-                                biWidth = Width,
-                                biHeight = -Height,
-                                biPlanes = 1,
-                                biBitCount = 24,
-                                biCompression = BitmapCompressionMode.RGB,
-                                biSizeImage = 0,
-                                biXPelsPerMeter = 0,
-                                biYPelsPerMeter = 0,
-                                biClrUsed = 0,
-                                biClrImportant = 0,
-                            };
-                            if (GetDIBits(hdcSrc, hBitmap, 0, 0, null, &BmpHeader, DIBColorMode.RGB_Colors) != 0)
-                            {
-                                byte[] Datas = new byte[BmpHeader.biSizeImage];
-                                fixed (byte* pDatas = Datas)
-                                {
-                                    if (GetDIBits(hdcSrc, hBitmap, 0, BmpHeader.biHeight, pDatas, &BmpHeader, DIBColorMode.RGB_Colors) != 0)
-                                    {
-                                        ImageContext<BGR> Snap = new ImageContext<BGR>(Width, Height, Datas);
-
-                                        // Maximized
-                                        if (Info.rcWindow.Top < 0)
-                                        {
-                                            int ThicknessX = Info.cxWindowBorders,
-                                                ThicknessY = Info.cyWindowBorders;
-                                            return Snap.Crop<BGR>(ThicknessX, ThicknessY, Snap.Width - ThicknessX * 2, Snap.Height - ThicknessY * 2);
-                                        }
-
-                                        return Snap;
-                                    }
-                                }
-                            }
+                            int ThicknessX = Info.cxWindowBorders,
+                                ThicknessY = Info.cyWindowBorders;
+                            return Snap.Crop<BGR>(ThicknessX, ThicknessY, Snap.Width - ThicknessX * 2, Snap.Height - ThicknessY * 2);
                         }
-                    }
-                    finally
-                    {
-                        // Release
-                        ReleaseDC(Hwnd, hdcSrc);
-                        ReleaseDC(Hwnd, hdcDest);
-                        DeleteDC(hdcDest);
-                        DeleteDC(hdcSrc);
-                        DeleteObject(hBitmap);
-                        DeleteObject(hObject);
-                    }
 
-                    return null;
+                        return Snap;
+                    }
                 }
-
-                if (PlacementData.showCmd == WindowShowType.ShowMinimized)
+                finally
                 {
-                    bool EnableMinMaxAnimation = default;
-                    WindowExStyles ExStyles = default;
-                    WindowLayeredAttributeFlags LayeredAttributeFlag = default;
-                    int ColorKey = default;
-                    byte Alpha = default;
-                    try
-                    {
-                        // Backup Datas
-                        EnableMinMaxAnimation = System.EnableMinMaxAnimation;
-                        ExStyles = (WindowExStyles)GetWindowLong(Hwnd, WindowLongType.ExStyle);
-                        GetLayeredWindowAttributes(Hwnd, out ColorKey, out Alpha, out LayeredAttributeFlag);
+                    // 釋放完整 DC
+                    SelectObject(hdcFull, hOldFull);
+                    DeleteObject(hBmpFull);
+                    DeleteDC(hdcFull);
+                    ReleaseDC(Hwnd, hdcFull);
 
-                        // Disable Show Animation
-                        System.EnableMinMaxAnimation = false;
+                    // 釋放區域 DC
+                    SelectObject(hdcRegion, hOldRegion);
+                    DeleteObject(hBmpRegion);
+                    DeleteDC(hdcRegion);
+                    ReleaseDC(Hwnd, hdcRegion);
 
-                        // Set Window Transparent
-                        SetWindowLong(Hwnd, WindowLongType.ExStyle, (long)(ExStyles | WindowExStyles.Layered));
-                        SetLayeredWindowAttributes(Hwnd, 0, 1, WindowLayeredAttributeFlags.Alpha);
-
-                        // Show Window
-                        ShowWindow(Hwnd, WindowShowType.Restore);
-
-                        return DoSnapshot();
-                    }
-                    finally
-                    {
-                        ShowWindow(Hwnd, WindowShowType.ShowMinimized);
-                        SetLayeredWindowAttributes(Hwnd, ColorKey, Alpha, LayeredAttributeFlag);
-                        SetWindowLong(Hwnd, WindowLongType.ExStyle, (long)ExStyles);
-                        System.EnableMinMaxAnimation = EnableMinMaxAnimation;
-                    }
+                    // 釋放螢幕 DC
+                    ReleaseDC(Hwnd, hdcScreen);
                 }
+            }
+
+            if (PlacementData.showCmd != WindowShowType.ShowMinimized)
+                return DoSnapshot();
+
+            bool EnableMinMaxAnimation = default;
+            WindowExStyles ExStyles = default;
+            WindowLayeredAttributeFlags LayeredAttributeFlag = default;
+            int ColorKey = default;
+            byte Alpha = default;
+            try
+            {
+                // Backup Datas
+                EnableMinMaxAnimation = System.EnableMinMaxAnimation;
+                ExStyles = (WindowExStyles)GetWindowLong(Hwnd, WindowLongType.ExStyle);
+                GetLayeredWindowAttributes(Hwnd, out ColorKey, out Alpha, out LayeredAttributeFlag);
+
+                // Disable Show Animation
+                System.EnableMinMaxAnimation = false;
+
+                // Set Window Transparent
+                SetWindowLong(Hwnd, WindowLongType.ExStyle, (long)(ExStyles | WindowExStyles.Layered));
+                SetLayeredWindowAttributes(Hwnd, 0, 1, WindowLayeredAttributeFlags.Alpha);
+
+                // Show Window
+                ShowWindow(Hwnd, WindowShowType.Restore);
 
                 return DoSnapshot();
             }
-
-            return null;
+            finally
+            {
+                ShowWindow(Hwnd, WindowShowType.ShowMinimized);
+                SetLayeredWindowAttributes(Hwnd, ColorKey, Alpha, LayeredAttributeFlag);
+                SetWindowLong(Hwnd, WindowLongType.ExStyle, (long)ExStyles);
+                System.EnableMinMaxAnimation = EnableMinMaxAnimation;
+            }
         }
 
         /// <summary>

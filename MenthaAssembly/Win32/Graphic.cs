@@ -399,18 +399,62 @@ namespace MenthaAssembly.Win32
             return CreateIconIndirect(ref Info);
         }
 
+        public static ImageContext<BGRA> GetFileIcon(string Path, bool SmallIcon = true, bool UseFileAttributes = false)
+        {
+            if (string.IsNullOrWhiteSpace(Path))
+                throw new ArgumentException("Path cannot be null or empty.", nameof(Path));
+
+            SHGetFileInfoFlags Flags = SHGetFileInfoFlags.Icon | (SmallIcon ? SHGetFileInfoFlags.SmallIcon : SHGetFileInfoFlags.LargeIcon);
+            SHFileAttributes Attributes = 0;
+            if (UseFileAttributes)
+            {
+                Flags |= SHGetFileInfoFlags.UseFileAttributes;
+                Attributes = SHFileAttributes.Normal;
+            }
+
+            int Result = Desktop.SHGetFileInfo(Path, Attributes, out SHFileInfo Info, Marshal.SizeOf<SHFileInfo>(), Flags);
+            if (Result == 0 ||
+                Info.hIcon == IntPtr.Zero)
+                throw new InvalidOperationException($"Failed to get file icon: {Path}");
+
+            try
+            {
+                if (TryDecodeHIcon(Info.hIcon, out ImageContext<BGRA> Icon))
+                    return Icon;
+
+                throw new InvalidOperationException($"Failed to decode file icon: {Path}");
+            }
+            finally
+            {
+                DestroyIcon(Info.hIcon);
+            }
+        }
+
         public static bool TryDecodeHIcon(IntPtr HIcon, out ImageContext<BGRA> Icon)
         {
             Icon = null;
-            GetIconInfo(HIcon, out IconInfo Info);
+            if (HIcon == IntPtr.Zero ||
+                !GetIconInfo(HIcon, out IconInfo Info))
+                return false;
 
-            if (TryDecodeHBitmap(Info.hbmColor, out IImageContext Context))
+            try
             {
-                Icon = Context is ImageContext<BGRA> BGRAContext ? BGRAContext : Context.Cast<BGRA>();
-                return true;
-            }
+                if (TryDecodeHBitmap(Info.hbmColor, out IImageContext Context))
+                {
+                    Icon = Context is ImageContext<BGRA> BGRAContext ? BGRAContext : Context.Cast<BGRA>();
+                    return true;
+                }
 
-            return false;
+                return false;
+            }
+            finally
+            {
+                if (Info.hbmColor != IntPtr.Zero)
+                    DeleteObject(Info.hbmColor);
+
+                if (Info.hbmMask != IntPtr.Zero)
+                    DeleteObject(Info.hbmMask);
+            }
         }
 
         internal static ImageContour CreateTextContour(int X, int Y, string Text, FontData Font)
