@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -42,6 +43,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 _ => throw new NotSupportedException($"Not supported template match mode: {Mode}."),
             };
 
+            List<TemplateMatchResult> RawResults = [];
             if (EnabledPreFilter)
             {
                 double Threshold = Options.Threshold;
@@ -64,14 +66,19 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     }
 
                     if (!double.IsNegativeInfinity(BScore))
-                        yield return new TemplateMatchResult(Lx + BMx, Ty + BMy, BScore);
+                        RawResults.Add(new TemplateMatchResult(Lx + BMx, Ty + BMy, BScore));
                 }
             }
             else
             {
                 foreach ((int X, int Y, double Score) in Matcher(Image, Template, Channel, Options.Threshold, imgCache, tplCache))
-                    yield return new TemplateMatchResult(X, Y, Score);
+                    RawResults.Add(new TemplateMatchResult(X, Y, Score));
             }
+
+            if (Options.PostProcess.EnableNonMaximumSuppression)
+                RawResults = ApplyNonMaximumSuppression(RawResults, Options.PostProcess.NmsRadius);
+
+            return RawResults;
         }
         public static IEnumerable<TemplateMatchResult> MatchTemplate(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, TemplateMatchOptions Options, ParallelOptions ParallelOptions)
         {
@@ -94,6 +101,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 _ => throw new NotSupportedException($"Not supported template match mode: {Mode}."),
             };
 
+            List<TemplateMatchResult> RawResults = [];
             if (EnabledPreFilter)
             {
                 double Threshold = Options.Threshold;
@@ -116,14 +124,19 @@ namespace MenthaAssembly.Media.Imaging.Utils
                     }
 
                     if (!double.IsNegativeInfinity(BScore))
-                        yield return new TemplateMatchResult(Lx + BMx, Ty + BMy, BScore);
+                        RawResults.Add(new TemplateMatchResult(Lx + BMx, Ty + BMy, BScore));
                 }
             }
             else
             {
                 foreach ((int X, int Y, double Score) in Matcher(Image, Template, Channel, Options.Threshold, imgCache, tplCache, ParallelOptions))
-                    yield return new TemplateMatchResult(X, Y, Score);
+                    RawResults.Add(new TemplateMatchResult(X, Y, Score));
             }
+
+            if (Options.PostProcess.EnableNonMaximumSuppression)
+                RawResults = ApplyNonMaximumSuppression(RawResults, Options.PostProcess.NmsRadius);
+
+            return RawResults;
         }
         private static void DecideModeAndFilter(int Iw, int Ih, int Tw, int Th, ref bool EnabledPreFilter, ref TemplateMatchMode Mode)
         {
@@ -165,7 +178,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             EnabledPreFilter = CandidateCount >= 1e6 || !(CandidateCount <= 4 || Mode == TemplateMatchMode.Fourier || tplSize < 1024 || Iw * Ih < 16384);
         }
 
-        internal static IEnumerable<(int X, int Y, double Score)> MatchTemplateFFT(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache)
+        public static IEnumerable<(int X, int Y, double Score)> MatchTemplateFFT(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache)
         {
             CreateAccessors(Image, Channel, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, Channel, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -189,7 +202,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             {
                 tplMean = 0.0;
                 tplVar = 0.0;
-                tplPixelCount = 0;
+                tplPixelCount = Tw * Th;
                 tplData = new double[Tw, Th];
 
                 IPixelAdapter TAdt = TCreateAdapter();
@@ -203,7 +216,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
                         tplMean += Value;
                         tplVar += Value * Value;
-                        tplPixelCount++;
                     }
                 }
 
@@ -321,7 +333,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
-        internal static IEnumerable<(int X, int Y, double Score)> MatchTemplateFFT(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
+        public static IEnumerable<(int X, int Y, double Score)> MatchTemplateFFT(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
         {
             CreateAccessors(Image, Channel, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, Channel, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -345,12 +357,12 @@ namespace MenthaAssembly.Media.Imaging.Utils
             {
                 tplMean = 0.0;
                 tplVar = 0.0;
-                tplPixelCount = 0;
+                tplPixelCount = Tw * Th;
                 tplData = new double[Tw, Th];
 
-                Parallel.For(0, Th, ParallelOptions,
-                () => (0.0, 0.0, 0),
-                (j, loopState, local) =>
+                double[] tplMeanTemp = new double[Th],
+                         tplVarTemp = new double[Th];
+                Parallel.For(0, Th, ParallelOptions, j =>
                 {
                     IPixelAdapter TAdt = TCreateAdapter();
                     TAdt.DangerousMove(0, j);
@@ -359,20 +371,13 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         double Value = TExtractValue(TAdt);
                         tplData[i, j] = Value;
 
-                        local.Item1 += Value;
-                        local.Item2 += Value * Value;
-                        local.Item3++;
+                        tplMeanTemp[j] += Value;
+                        tplVarTemp[j] += Value * Value;
                     }
-
-                    return local;
-                },
-                local =>
-                {
-                    Interlocked.Exchange(ref tplMean, tplMean + local.Item1);
-                    Interlocked.Exchange(ref tplVar, tplVar + local.Item2);
-                    Interlocked.Add(ref tplPixelCount, local.Item3);
                 });
 
+                tplMean = tplMeanTemp.Sum();
+                tplVar = tplVarTemp.Sum();
                 tplCache.SumOfValue = tplMean;
                 tplCache.SumOfSquares = tplVar;
                 tplCache.ValidPixelCount = tplPixelCount;
@@ -496,7 +501,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             return Results;
         }
-        internal static IEnumerable<(int X, int Y, double Score)> MatchTemplateFFTWithMask(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache)
+        public static IEnumerable<(int X, int Y, double Score)> MatchTemplateFFTWithMask(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache)
         {
             CreateAccessors(Image, Channel, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, Channel, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -702,7 +707,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
-        internal static IEnumerable<(int X, int Y, double Score)> MatchTemplateFFTWithMask(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
+        public static IEnumerable<(int X, int Y, double Score)> MatchTemplateFFTWithMask(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
         {
             CreateAccessors(Image, Channel, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, Channel, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -730,9 +735,10 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 tplMask = new bool[Tw, Th];
                 tplData = new double[Tw, Th];
 
-                Parallel.For(0, Th, ParallelOptions,
-                () => (0.0, 0.0, 0),
-                (j, loopState, local) =>
+                int[] ValidPixelCountTemp = new int[Th];
+                double[] tplMeanTemp = new double[Th],
+                         tplVarTemp = new double[Th];
+                Parallel.For(0, Th, ParallelOptions, j =>
                 {
                     IPixelAdapter TAdt = TCreateAdapter();
                     TAdt.DangerousMove(0, j);
@@ -746,20 +752,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
                         double Value = TExtractValue(TAdt);
                         tplData[i, j] = Value;
 
-                        local.Item1 += Value;
-                        local.Item2 += Value * Value;
-                        local.Item3++;
+                        tplMeanTemp[j] += Value;
+                        tplVarTemp[j] += Value * Value;
+                        ValidPixelCountTemp[j]++;
                     }
-
-                    return local;
-                },
-                local =>
-                {
-                    Interlocked.Exchange(ref tplMean, tplMean + local.Item1);
-                    Interlocked.Exchange(ref tplVar, tplVar + local.Item2);
-                    Interlocked.Add(ref tplPixelCount, local.Item3);
                 });
 
+                tplMean = tplMeanTemp.Sum();
+                tplVar = tplVarTemp.Sum();
+                tplPixelCount = ValidPixelCountTemp.Sum();
                 tplCache.SumOfValue = tplMean;
                 tplCache.SumOfSquares = tplVar;
                 tplCache.ValidPixelCount = tplPixelCount;
@@ -892,7 +893,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             return Results;
         }
 
-        internal static IEnumerable<(int X, int Y, double Score)> MatchTemplateSpatial(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache)
+        public static IEnumerable<(int X, int Y, double Score)> MatchTemplateSpatial(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache)
         {
             CreateAccessors(Image, ImageChannel.All, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, ImageChannel.All, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -1017,7 +1018,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
-        internal static IEnumerable<(int X, int Y, double Score)> MatchTemplateSpatial(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
+        public static IEnumerable<(int X, int Y, double Score)> MatchTemplateSpatial(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
         {
             CreateAccessors(Image, Channel, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, Channel, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -1155,7 +1156,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             return Results;
         }
-        internal static IEnumerable<(int X, int Y, double Score)> MatchTemplateSpatialWithMask(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache)
+        public static IEnumerable<(int X, int Y, double Score)> MatchTemplateSpatialWithMask(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache)
         {
             CreateAccessors(Image, Channel, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, Channel, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -1293,7 +1294,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             }
         }
-        internal static IEnumerable<(int X, int Y, double Score)> MatchTemplateSpatialWithMask(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
+        public static IEnumerable<(int X, int Y, double Score)> MatchTemplateSpatialWithMask(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, double Threshold, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
         {
             CreateAccessors(Image, Channel, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, Channel, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -1442,7 +1443,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             return Results;
         }
 
-        internal static IEnumerable<(int X, int Y)> FilterCandidates(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, TemplateMatchPreFilterOptions Options, MatchCache imgCache, MatchCache tplCache)
+        public static IEnumerable<(int X, int Y)> FilterCandidates(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, TemplateMatchPreFilterOptions Options, MatchCache imgCache, MatchCache tplCache)
         {
             CreateAccessors(Image, Channel, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, Channel, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -1585,7 +1586,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
                 }
             }
         }
-        internal static IEnumerable<(int X, int Y)> FilterCandidates(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, TemplateMatchPreFilterOptions Options, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
+        public static IEnumerable<(int X, int Y)> FilterCandidates(IPixelAdapter Image, IPixelAdapter Template, ImageChannel Channel, TemplateMatchPreFilterOptions Options, MatchCache imgCache, MatchCache tplCache, ParallelOptions ParallelOptions)
         {
             CreateAccessors(Image, Channel, out Func<IPixelAdapter> ICreateAdapter, out Func<IPixelAdapter, byte> IExtractValue);
             CreateAccessors(Template, Channel, out Func<IPixelAdapter> TCreateAdapter, out Func<IPixelAdapter, byte> TExtractValue);
@@ -1750,7 +1751,8 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             return Results;
         }
-        internal static List<(int Lx, int Ty, int Rx, int By)> MergeCandidates(IEnumerable<(int X, int Y)> Candidates, int Radius)
+
+        public static List<(int Lx, int Ty, int Rx, int By)> MergeCandidates(IEnumerable<(int X, int Y)> Candidates, int Radius)
         {
             List<(int Lx, int Ty, int Rx, int By)> Result = [];
 
@@ -1807,6 +1809,28 @@ namespace MenthaAssembly.Media.Imaging.Utils
             }
 
             return Result;
+        }
+
+        public static List<TemplateMatchResult> ApplyNonMaximumSuppression(IEnumerable<TemplateMatchResult> Results, int Radius)
+        {
+            List<TemplateMatchResult> Filtered = [];
+            foreach (TemplateMatchResult r in Results.OrderByDescending(i => i.Score))
+            {
+                bool Suppressed = false;
+                foreach (TemplateMatchResult Kept in Filtered)
+                {
+                    if (Math.Abs(r.X - Kept.X) <= Radius && Math.Abs(r.Y - Kept.Y) <= Radius)
+                    {
+                        Suppressed = true;
+                        break;
+                    }
+                }
+
+                if (!Suppressed)
+                    Filtered.Add(r);
+            }
+
+            return Filtered;
         }
 
         private static void CreateAccessors(IPixelAdapter Source, ImageChannel Channel, out Func<IPixelAdapter> CreateAdapter, out Func<IPixelAdapter, byte> ExtractValue)
@@ -2040,7 +2064,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             return integral[y2, x2] - integral[y, x2] - integral[y2, x] + integral[y, x];
         }
 
-        internal class MatchCache
+        public class MatchCache
         {
             public double SumOfValue = double.NegativeInfinity;
 

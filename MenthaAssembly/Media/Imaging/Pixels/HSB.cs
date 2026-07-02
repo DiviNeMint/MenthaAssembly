@@ -10,7 +10,17 @@ namespace MenthaAssembly.Media.Imaging
     [Serializable]
     public struct HSB : IPixel
     {
+        private byte _A;
         private double _H, _S, _B;
+
+        /// <summary>
+        /// Gets the alpha for this pixel.
+        /// </summary>
+        public byte Alpha
+        {
+            get => _A;
+            set => _A = value;
+        }
 
         /// <summary>
         /// Gets the hue value for this pixel.
@@ -39,8 +49,8 @@ namespace MenthaAssembly.Media.Imaging
             set => _B = NormalizationB(value);
         }
 
-        byte IReadOnlyPixel.A
-            => byte.MaxValue;
+        readonly byte IReadOnlyPixel.A
+            => _A;
 
         byte IReadOnlyPixel.R
         {
@@ -99,24 +109,33 @@ namespace MenthaAssembly.Media.Imaging
             }
         }
 
-        int IPixelBase.BitsPerPixel => 24;
+        int IPixelBase.BitsPerPixel => 32;
 
-        public HSB(byte R, byte G, byte B)
+        public HSB(byte A, byte R, byte G, byte B)
         {
+            _A = A;
             PixelHelper.GetHSV(R, G, B, out _H, out _S, out _B);
         }
-        public HSB(double H, double S, double B)
+        public HSB(byte Alpha, double H, double S, double B)
         {
+            _A = Alpha;
             _H = NormalizationH(H);
             _S = NormalizationS(S);
             _B = NormalizationB(B);
         }
 
         void IPixel.Overlay(byte A, byte R, byte G, byte B)
-            => throw new NotImplementedException();
+        {
+            PixelHelper.GetRGB(_H, _S, _B, out byte r, out byte g, out byte b);
+            PixelHelper.Overlay(_A, r, g, b, A, R, G, B, out _A, out byte NewR, out byte NewG, out byte NewB);
+            PixelHelper.GetHSV(NewR, NewG, NewB, out _H, out _S, out _B);
+        }
 
         void IPixel.Override(byte A, byte R, byte G, byte B)
-            => throw new NotImplementedException();
+        {
+            _A = A;
+            PixelHelper.GetHSV(R, G, B, out _H, out _S, out _B);
+        }
 
         public override int GetHashCode()
         {
@@ -147,19 +166,19 @@ namespace MenthaAssembly.Media.Imaging
             => MathHelper.Clamp(V, 0d, 1d);
 
         public static implicit operator HSB(RGB Target)
-            => new(Target.R, Target.G, Target.B);
+            => new(byte.MaxValue, Target.R, Target.G, Target.B);
         public static implicit operator HSB(BGR Target)
-            => new(Target.R, Target.G, Target.B);
+            => new(byte.MaxValue, Target.R, Target.G, Target.B);
         public static implicit operator HSB(RGBA Target)
-            => new(Target.R, Target.G, Target.B);
+            => new(Target.A, Target.R, Target.G, Target.B);
         public static implicit operator HSB(ARGB Target)
-            => new(Target.R, Target.G, Target.B);
+            => new(Target.A, Target.R, Target.G, Target.B);
         public static implicit operator HSB(BGRA Target)
-            => new(Target.R, Target.G, Target.B);
+            => new(Target.A, Target.R, Target.G, Target.B);
         public static implicit operator HSB(ABGR Target)
-            => new(Target.R, Target.G, Target.B);
+            => new(Target.A, Target.R, Target.G, Target.B);
         public static implicit operator HSB(Gray8 Target)
-            => new(0d, 0d, Target.Gray / 255d);
+            => new(byte.MaxValue, 0d, 0d, Target.Gray / 255d);
 
         public static bool operator ==(HSB This, HSB Target)
             => This.Equals(Target);

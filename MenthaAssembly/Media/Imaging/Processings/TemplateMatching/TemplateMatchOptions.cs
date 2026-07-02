@@ -14,6 +14,12 @@ namespace MenthaAssembly.Media.Imaging
         public TemplateMatchPreFilterOptions PreFilter { get; } = new();
 
         /// <summary>
+        /// Post-processing settings applied after matching,
+        /// such as non-maximum suppression and subpixel refinement.
+        /// </summary>
+        public TemplateMatchPostProcessOptions PostProcess { get; } = new();
+
+        /// <summary>
         /// The similarity threshold for template matching, ranging from 0 to 1. 
         /// Only matches with a similarity above this threshold are considered successful. 
         /// Default is 0.8.

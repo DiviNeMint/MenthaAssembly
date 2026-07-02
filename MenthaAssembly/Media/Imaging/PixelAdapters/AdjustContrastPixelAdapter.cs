@@ -69,7 +69,7 @@ namespace MenthaAssembly.Media.Imaging.Utils
             YLength = Adapter.YLength;
             BitsPerPixel = Adapter.BitsPerPixel;
             Cache = Adapter.Cache;
-            Adjuster = Adapter.Adjuster;
+            Adjuster = typeof(T) == GrayType ? EnhanceGray : EnhanceRGB;
             Contrast = Adapter.Contrast;
             this.Adapter = Adapter.Adapter.Clone();
 
@@ -90,16 +90,6 @@ namespace MenthaAssembly.Media.Imaging.Utils
             Adjuster = typeof(T) == GrayType ? EnhanceGray : EnhanceRGB;
             this.Contrast = Contrast;
             this.Adapter = Adapter;
-
-            void EnhanceGray()
-            {
-                byte Gray = Adjust(Adapter.R);
-                Pixel.Override(Adapter.A, Gray, Gray, Gray);
-            }
-            void EnhanceRGB()
-            {
-                Pixel.Override(Adapter.A, Adjust(Adapter.R), Adjust(Adapter.G), Adjust(Adapter.B));
-            }
         }
 
         public override void Override(T Pixel)
@@ -188,6 +178,15 @@ namespace MenthaAssembly.Media.Imaging.Utils
 
             Adjuster();
             IsPixelValid = true;
+        }
+        private void EnhanceGray()
+        {
+            byte Gray = Adjust(Adapter.R);
+            Pixel.Override(Adapter.A, Gray, Gray, Gray);
+        }
+        private void EnhanceRGB()
+        {
+            Pixel.Override(Adapter.A, Adjust(Adapter.R), Adjust(Adapter.G), Adjust(Adapter.B));
         }
         private byte Adjust(byte Value)
         {

@@ -11,15 +11,23 @@
 
 #pragma warning disable IDE0044 // 新增唯讀修飾元
         // If sets readonly, it will cause pixel's value can't change.
-        private T Pixel;
+        private T _Pixel;
 #pragma warning restore IDE0044 // 新增唯讀修飾元
+        public T Pixel
+        {
+            get
+            {
+                EnsurePixel();
+                return _Pixel;
+            }
+        }
 
         public override byte A
         {
             get
             {
                 EnsurePixel();
-                return Pixel.A;
+                return _Pixel.A;
             }
         }
 
@@ -28,7 +36,7 @@
             get
             {
                 EnsurePixel();
-                return Pixel.R;
+                return _Pixel.R;
             }
         }
 
@@ -37,7 +45,7 @@
             get
             {
                 EnsurePixel();
-                return Pixel.G;
+                return _Pixel.G;
             }
         }
 
@@ -46,7 +54,7 @@
             get
             {
                 EnsurePixel();
-                return Pixel.B;
+                return _Pixel.B;
             }
         }
 
@@ -64,7 +72,7 @@
             if (Adapter.IsPixelValid)
             {
                 IsPixelValid = true;
-                Pixel = Adapter.Pixel;
+                _Pixel = Adapter._Pixel;
             }
         }
         public CastPixelAdapter(IPixelAdapter Adapter)
@@ -87,22 +95,22 @@
         public override void OverrideTo(T* pData)
         {
             EnsurePixel();
-            *pData = Pixel;
+            *pData = _Pixel;
         }
         public override void OverrideTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            *pDataR = Pixel.R;
-            *pDataG = Pixel.G;
-            *pDataB = Pixel.B;
+            *pDataR = _Pixel.R;
+            *pDataG = _Pixel.G;
+            *pDataB = _Pixel.B;
         }
         public override void OverrideTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            *pDataA = Pixel.A;
-            *pDataR = Pixel.R;
-            *pDataG = Pixel.G;
-            *pDataB = Pixel.B;
+            *pDataA = _Pixel.A;
+            *pDataR = _Pixel.R;
+            *pDataG = _Pixel.G;
+            *pDataB = _Pixel.B;
         }
 
         public override void Overlay(T Pixel)
@@ -120,38 +128,38 @@
         public override void OverlayTo(T* pData)
         {
             EnsurePixel();
-            if (Pixel.A == byte.MaxValue)
-                *pData = Pixel;
+            if (_Pixel.A == byte.MaxValue)
+                *pData = _Pixel;
             else
-                pData->Overlay(Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+                pData->Overlay(_Pixel.A, _Pixel.R, _Pixel.G, _Pixel.B);
         }
         public override void OverlayTo(byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            if (Pixel.A == byte.MaxValue)
+            if (_Pixel.A == byte.MaxValue)
             {
-                *pDataR = Pixel.R;
-                *pDataG = Pixel.G;
-                *pDataB = Pixel.B;
+                *pDataR = _Pixel.R;
+                *pDataG = _Pixel.G;
+                *pDataB = _Pixel.B;
             }
             else
             {
-                PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+                PixelHelper.Overlay(ref pDataR, ref pDataG, ref pDataB, _Pixel.A, _Pixel.R, _Pixel.G, _Pixel.B);
             }
         }
         public override void OverlayTo(byte* pDataA, byte* pDataR, byte* pDataG, byte* pDataB)
         {
             EnsurePixel();
-            if (Pixel.A == byte.MaxValue)
+            if (_Pixel.A == byte.MaxValue)
             {
                 *pDataA = byte.MaxValue;
-                *pDataR = Pixel.R;
-                *pDataG = Pixel.G;
-                *pDataB = Pixel.B;
+                *pDataR = _Pixel.R;
+                *pDataG = _Pixel.G;
+                *pDataB = _Pixel.B;
             }
             else
             {
-                PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, Pixel.A, Pixel.R, Pixel.G, Pixel.B);
+                PixelHelper.Overlay(ref pDataA, ref pDataR, ref pDataG, ref pDataB, _Pixel.A, _Pixel.R, _Pixel.G, _Pixel.B);
             }
         }
 
@@ -161,7 +169,7 @@
             if (IsPixelValid)
                 return;
 
-            Pixel.Override(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
+            _Pixel.Override(Adapter.A, Adapter.R, Adapter.G, Adapter.B);
             IsPixelValid = true;
         }
 
