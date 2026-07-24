@@ -11,6 +11,7 @@ namespace MenthaAssembly.Win32
 {
     public static unsafe class Desktop
     {
+        private const string DwmApi = "Dwmapi.dll";
         private const string Shell32 = "Shell32.dll";
         private const string User32 = "User32.dll";
 
@@ -86,6 +87,12 @@ namespace MenthaAssembly.Win32
 
         [DllImport("Comctl32.dll")]
         internal static extern int DefSubclassProc(IntPtr hwnd, uint uMsg, IntPtr wParam, IntPtr lParam);
+
+        #endregion
+
+        #region Windows API (DWM)
+        [DllImport(DwmApi)]
+        internal static extern int DwmSetWindowAttribute(IntPtr Hwnd, DwmWindowAttribute Attribute, void* AttributeValue, int AttributeSize);
 
         #endregion
 
