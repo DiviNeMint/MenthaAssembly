@@ -42,6 +42,9 @@ namespace MenthaAssembly.Win32
         internal static extern bool GetWindowRect(IntPtr Hwnd, Bound<int>* Bound);
 
         [DllImport(User32)]
+        internal static extern bool ScreenToClient(IntPtr Hwnd, Point<int>* Point);
+
+        [DllImport(User32)]
         internal static extern long GetWindowLong(IntPtr Hwnd, WindowLongType Type);
         [DllImport(User32)]
         internal static extern long SetWindowLong(IntPtr Hwnd, WindowLongType Type, long dwNewLong);
