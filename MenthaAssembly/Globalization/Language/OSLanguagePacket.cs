@@ -33,12 +33,19 @@ namespace MenthaAssembly.Globalization
 
         public bool ContainsKey(string Key)
         {
+            if (string.IsNullOrEmpty(Key))
+                return false;
+
             Key = Key.ToLower();
             return Key.Contains(' ') ? Complex.ContainsKey(Key) : Single.ContainsKey(Key) || ComplexWithoutSpace.ContainsKey(Key);
         }
 
         public bool TryGetValue(string Key, out string Value)
         {
+            Value = null;
+            if (string.IsNullOrEmpty(Key))
+                return false;
+
             Key = Key.ToLower();
             return Key.Contains(' ') ? Complex.TryGetValue(Key, out Value) : Single.TryGetValue(Key, out Value) || ComplexWithoutSpace.TryGetValue(Key, out Value);
         }
