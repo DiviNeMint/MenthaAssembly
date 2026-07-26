@@ -65,6 +65,54 @@ namespace System.Reflection
             return null;
         }
 
+        public static Type[] TryGetTypes(this Assembly Target)
+        {
+            try
+            {
+                return Target.GetTypes();
+            }
+            catch (ReflectionTypeLoadException Ex)
+            {
+                return Ex.Types;
+            }
+            catch
+            {
+                return Array.Empty<Type>();
+            }
+        }
+
+        public static Type[] GetTypesWithAttribute(this Assembly This, Type AttributeType)
+        {
+            if (This is null)
+                throw new ArgumentNullException(nameof(This));
+
+            if (AttributeType is null)
+                throw new ArgumentNullException(nameof(AttributeType));
+
+            if (!typeof(Attribute).IsAssignableFrom(AttributeType))
+                throw new ArgumentException("The specified type must inherit Attribute.", nameof(AttributeType));
+
+            if (string.IsNullOrWhiteSpace(AttributeType.FullName) ||
+                This.IsDynamic || string.IsNullOrWhiteSpace(This.Location) || !File.Exists(This.Location))
+                return [.. This.TryGetTypes().Where(i => i?.GetCustomAttribute(AttributeType, false) is not null)];
+
+            try
+            {
+                PEImage Image = new(File.ReadAllBytes(This.Location));
+                if (Image.TryReadTypeFullNamesWithAttribute(AttributeType.FullName, out string[] AttributedTypeFullNames))
+                    return [.. AttributedTypeFullNames.Select(Name => This.GetType(Name, false)).Where(Type => Type is not null)];
+            }
+            catch
+            {
+
+            }
+
+
+            return [.. This.TryGetTypes().Where(i => i?.GetCustomAttribute(AttributeType, false) is not null)];
+        }
+        public static Type[] GetTypesWithAttribute<T>(this Assembly This) where T : Attribute
+            => GetTypesWithAttribute(This, typeof(T));
+
         public static string[] GetAssemblyAttributeTypeFullNames(string Filename)
         {
             if (string.IsNullOrWhiteSpace(Filename))

@@ -249,6 +249,58 @@ namespace System.Reflection
             return results.ToArray();
         }
 
+        public bool TryReadTypeFullNamesWithAttribute(string AttributeTypeFullName, out string[] TypeFullNames)
+        {
+            try
+            {
+                TypeFullNames = ReadTypeFullNamesWithAttribute(AttributeTypeFullName);
+                return true;
+            }
+            catch
+            {
+                TypeFullNames = Array.Empty<string>();
+                return false;
+            }
+        }
+
+        private string[] ReadTypeFullNamesWithAttribute(string AttributeTypeFullName)
+        {
+            const int TypeDefTable = 2;
+            const int CustomAttributeTable = 12;
+
+            if (string.IsNullOrWhiteSpace(AttributeTypeFullName) ||
+                TableRowCounts[TypeDefTable] == 0 ||
+                TableRowCounts[CustomAttributeTable] == 0)
+                return Array.Empty<string>();
+
+            HashSet<string> results = new HashSet<string>(StringComparer.Ordinal);
+            int parentSize = GetCodedIndexSize(HasCustomAttributeTables, 5);
+            int typeSize = GetCodedIndexSize(CustomAttributeTypeTables, 3);
+            int rowCount = checked((int)TableRowCounts[CustomAttributeTable]);
+            for (uint rid = 1; rid <= rowCount; rid++)
+            {
+                int rowOffset = GetTableRowOffset(CustomAttributeTable, rid);
+                uint parent = ReadIndex(rowOffset, parentSize);
+                rowOffset += parentSize;
+
+                uint parentTag = parent & 0x1F;
+                uint parentRid = parent >> 5;
+                if (parentTag >= HasCustomAttributeTables.Length ||
+                    HasCustomAttributeTables[parentTag] != TypeDefTable)
+                    continue;
+
+                uint type = ReadIndex(rowOffset, typeSize);
+                if (!TryResolveCustomAttributeTypeFullName(type, out string fullName) ||
+                    !string.Equals(fullName, AttributeTypeFullName, StringComparison.Ordinal))
+                    continue;
+
+                if (TryGetTypeDefFullName(parentRid, out string typeFullName))
+                    results.Add(typeFullName);
+            }
+
+            return results.ToArray();
+        }
+
         private bool TryResolveCustomAttributeTypeFullName(uint codedIndex, out string FullName)
         {
             // CustomAttributeType:
