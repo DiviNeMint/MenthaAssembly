@@ -3,10 +3,12 @@ using System.Runtime.Loader;
 #endif
 using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace MenthaAssembly.IO
@@ -17,28 +19,85 @@ namespace MenthaAssembly.IO
 
         protected abstract object DecodeValue(Stream Stream, Type Type, object[] Arguments);
 
+        private static readonly Type CodecType = typeof(Codec);
+        private static readonly Assembly CoreAssembly;
+        private static readonly AssemblyName CoreAssemblyName;
         private static readonly Codec Default = new DefaultCodec();
-        private static readonly Dictionary<Type, Codec> Instances;          // CodecType , Codec
-        private static readonly Dictionary<Type, Codec> CacheMap = [];      // TargetType, Codec
+        private static readonly ConditionalWeakTable<Assembly, object> ScannedAssemblies = new();
+        private static readonly ConcurrentDictionary<Type, Codec> Instances = [];     // CodecType , Codec
+        private static readonly ConcurrentDictionary<Type, Codec> CacheMap = [];      // TargetType, Codec
         static Codec()
         {
-            Instances = AppDomain.CurrentDomain.GetAssemblies()
-                                               .TrySelectMany(i => i.GetTypes())
-                                               .Where(IsInheritedCodec)
-                                               .ToDictionary(t => t, t => (Codec)Activator.CreateInstance(t));
+            CoreAssembly = typeof(Codec).Assembly;
+            CoreAssemblyName = CoreAssembly.GetName();
 
+            // Scan before subscribing to avoid AssemblyLoad reentrancy during static initialization.
+            ScanCodecAssemblies();
             AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
 
+            // Catch assemblies loaded while the initial scan created codec instances.
+            ScanCodecAssemblies();
         }
         private static void OnAssemblyLoad(object sender, AssemblyLoadEventArgs e)
         {
-            foreach (Type t in e.LoadedAssembly.GetTypes().Where(IsInheritedCodec))
-                Instances[t] = (Codec)Activator.CreateInstance(t);
-        }
+            if (e.LoadedAssembly.IsDotNetAssembly())
+                return;
 
-        private static readonly Type CodecType = typeof(Codec);
-        private static bool IsInheritedCodec(Type Type)
-            => CodecType.IsAssignableFrom(Type) && Type.IsClass && !Type.IsAbstract && Type.GetConstructor(Type.EmptyTypes) != null;
+            ScanCodecAssemblies();
+        }
+        private static void ScanCodecAssemblies()
+        {
+            Assembly[] Assemblies = AppDomain.CurrentDomain.GetAssemblies()
+                                                           .Where(i => !i.IsDotNetAssembly())
+                                                           .ToArray();
+            foreach (Assembly Assembly in Assemblies.Where(i => !ScannedAssemblies.TryGetValue(i, out _))
+                                                    .Where(i => IsCodecAssembly(i, Assemblies, [])))
+            {
+                object Marker = new();
+                if (!ReferenceEquals(ScannedAssemblies.GetValue(Assembly, i => Marker), Marker))
+                    continue;
+
+                foreach (Type TargetType in Assembly.GetTypesWithAttribute<CodecAttribute>())
+                {
+                    CodecAttribute Attribute;
+                    try
+                    {
+                        Attribute = TargetType.GetCustomAttribute<CodecAttribute>(false);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    Type CodecType = Attribute?.CodecType;
+                    if (!CodecType.IsBaseOn(Codec.CodecType) || !CodecType.IsClass || CodecType.IsAbstract || CodecType.GetConstructor(Type.EmptyTypes) is null)
+                        continue;
+
+                    Instances.GetOrAdd(CodecType, static Type => (Codec)Activator.CreateInstance(Type));
+                }
+            }
+        }
+        private static bool IsCodecAssembly(Assembly Assembly, Assembly[] Assemblies, HashSet<Assembly> SearchedAssemblies)
+        {
+            if (Assembly == CoreAssembly)
+                return true;
+
+            if (!SearchedAssemblies.Add(Assembly))
+                return false;
+
+            foreach (AssemblyName Reference in Assembly.GetReferencedAssemblies())
+            {
+                if (AssemblyName.ReferenceMatchesDefinition(Reference, CoreAssemblyName))
+                    return true;
+
+                Assembly ReferencedAssembly = Assemblies.FirstOrDefault(i => AssemblyName.ReferenceMatchesDefinition(Reference, i.GetName()));
+                if (ReferencedAssembly is not null &&
+                    IsCodecAssembly(ReferencedAssembly, Assemblies, SearchedAssemblies))
+                    return true;
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// Encodes the specified object using the default codec or the codec set from <see cref="CodecAttribute"/>.
@@ -200,19 +259,11 @@ namespace MenthaAssembly.IO
 
         private static Codec GetCodec(Type Type)
         {
-            if (!CacheMap.TryGetValue(Type, out Codec Codec))
-            {
-                if (Type.GetCustomAttribute<CodecAttribute>() is CodecAttribute Attribute &&
-                    !Instances.TryGetValue(Attribute.CodecType, out Codec))
-                {
-                    Codec = (Codec)Activator.CreateInstance(Attribute.CodecType);
-                    Instances[Type] = Codec;
-                }
+            if (CacheMap.TryGetValue(Type, out Codec Codec))
+                return Codec;
 
-                CacheMap[Type] = Codec;
-            }
-
-            return Codec ?? Default;
+            Codec = Type.GetCustomAttribute<CodecAttribute>() is CodecAttribute Attribute ? Instances.GetOrAdd(Attribute.CodecType, static Type => (Codec)Activator.CreateInstance(Type)) : Default;
+            return CacheMap.GetOrAdd(Type, Codec);
         }
 
         protected static void EncodeType(Stream Stream, Type Type)
