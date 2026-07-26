@@ -94,7 +94,7 @@ namespace System.Reflection
 
             if (string.IsNullOrWhiteSpace(AttributeType.FullName) ||
                 This.IsDynamic || string.IsNullOrWhiteSpace(This.Location) || !File.Exists(This.Location))
-                return [.. This.TryGetTypes().Where(i => i?.GetCustomAttribute(AttributeType, false) is not null)];
+                return [.. This.TryGetTypes().TryWhere(i => i?.GetCustomAttribute(AttributeType, false) is not null)];
 
             try
             {
@@ -107,8 +107,7 @@ namespace System.Reflection
 
             }
 
-
-            return [.. This.TryGetTypes().Where(i => i?.GetCustomAttribute(AttributeType, false) is not null)];
+            return [.. This.TryGetTypes().TryWhere(i => i?.GetCustomAttribute(AttributeType, false) is not null)];
         }
         public static Type[] GetTypesWithAttribute<T>(this Assembly This) where T : Attribute
             => GetTypesWithAttribute(This, typeof(T));

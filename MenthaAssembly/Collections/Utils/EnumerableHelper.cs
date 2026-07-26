@@ -252,6 +252,24 @@ namespace System.Linq
             }
         }
 
+        public static IEnumerable<TSource> TryWhere<TSource>(this IEnumerable<TSource> Source, Predicate<TSource> predicate)
+        {
+            foreach (TSource Item in Source)
+            {
+                try
+                {
+                    if (!predicate(Item))
+                        continue;
+                }
+                catch
+                {
+                    continue;
+                }
+
+                yield return Item;
+            }
+        }
+
 #if !NETSTANDARD1_6_OR_GREATER && !NETCOREAPP2_0_OR_GREATER
         /// <summary>
         /// Appends a value to the end of the sequence.
