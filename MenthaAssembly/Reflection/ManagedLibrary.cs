@@ -45,9 +45,11 @@ namespace MenthaAssembly
         public string FullName => _Assembly.FullName;
 
 #if NET6_0_OR_GREATER
-        private readonly AssemblyLoadContext Context;
+        private AssemblyLoadContext Context;
         internal ManagedLibrary(string Fullname, LibraryType Type, Func<AssemblyName, Assembly> Resolver = null) : base(Fullname, Type)
         {
+            CollectPendingUnloads(Fullname);
+
             RootFolder = Path.GetDirectoryName(Fullname);
             this.Resolver = Resolver;
 
@@ -85,12 +87,21 @@ namespace MenthaAssembly
                 Library.Dispose();
 
             DependencyLibraries.Clear();
-            Context?.Unload();
+            AssemblyLoadContext context = Context;
+            Context = null;
             _Assembly = null;
             IsDisposed = true;
+
+            if (context is null)
+                return;
+
+            context.Resolving -= OnResolving;
+            WeakReference reference = new(context);
+            context.Unload();
+            RegisterPendingUnload(Filename, reference);
         }
 #else
-        private readonly AppDomain Domain;
+        private AppDomain Domain;
         internal ManagedLibrary(string Fullname, LibraryType Type, Func<AssemblyName, Assembly> Resolver = null) : base(Fullname, Type)
         {
             RootFolder = Path.GetDirectoryName(Fullname);
@@ -128,11 +139,16 @@ namespace MenthaAssembly
                 Library.Dispose();
 
             DependencyLibraries.Clear();
-            if (Domain != null)
-                AppDomain.Unload(Domain);
-
+            AppDomain domain = Domain;
+            Domain = null;
             _Assembly = null;
             IsDisposed = true;
+
+            if (domain is null)
+                return;
+
+            domain.AssemblyResolve -= OnDomainAssemblyResolve;
+            AppDomain.Unload(domain);
         }
 #endif
 
@@ -230,6 +246,58 @@ namespace MenthaAssembly
                     yield return new AssemblyInfo(UnmanagedName, FullName, UnmanagedType);
             }
         }
+
+#if NET6_0_OR_GREATER
+        private static readonly Dictionary<string, List<WeakReference>> PendingUnloadReferences = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly object PendingUnloadSync = new();
+        private static void CollectPendingUnloads(string Fullname)
+        {
+            Fullname = Path.GetFullPath(Fullname);
+
+            WeakReference[] references;
+            lock (PendingUnloadSync)
+            {
+                if (!PendingUnloadReferences.TryGetValue(Fullname, out List<WeakReference> pendingReferences))
+                    return;
+
+                references = pendingReferences.ToArray();
+            }
+
+            for (int i = 0; i < 5 && references.Any(Reference => Reference.IsAlive); i++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+            }
+
+            lock (PendingUnloadSync)
+            {
+                if (PendingUnloadReferences.TryGetValue(Fullname, out List<WeakReference> pendingReferences))
+                {
+                    foreach (WeakReference reference in references.Where(Reference => !Reference.IsAlive))
+                        pendingReferences.Remove(reference);
+
+                    if (pendingReferences.Count == 0)
+                        PendingUnloadReferences.Remove(Fullname);
+                }
+            }
+        }
+
+        private static void RegisterPendingUnload(string Fullname, WeakReference Reference)
+        {
+            Fullname = Path.GetFullPath(Fullname);
+            lock (PendingUnloadSync)
+            {
+                if (!PendingUnloadReferences.TryGetValue(Fullname, out List<WeakReference> references))
+                {
+                    references = [];
+                    PendingUnloadReferences[Fullname] = references;
+                }
+
+                references.Add(Reference);
+            }
+        }
+#endif
 
     }
 }
