@@ -2,7 +2,7 @@
 
 namespace MenthaAssembly.IO
 {
-    [AttributeUsage(AttributeTargets.Class)]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Constructor)]
     public sealed class CodecIgnoreAttribute() : Attribute
     {
     }

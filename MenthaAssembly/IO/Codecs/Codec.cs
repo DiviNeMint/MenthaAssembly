@@ -3,8 +3,8 @@ using System.Runtime.Loader;
 #endif
 using System;
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -15,6 +15,8 @@ namespace MenthaAssembly.IO
 {
     public abstract class Codec
     {
+        public static event EventHandler<CodecTypeResolveEventArgs> TypeResolving;
+
         protected abstract void EncodeValue(Stream Stream, Type Type, object Value);
 
         protected abstract object DecodeValue(Stream Stream, Type Type, object[] Arguments);
@@ -24,8 +26,8 @@ namespace MenthaAssembly.IO
         private static readonly AssemblyName CoreAssemblyName;
         private static readonly Codec Default = new DefaultCodec();
         private static readonly ConditionalWeakTable<Assembly, object> ScannedAssemblies = new();
-        private static readonly ConcurrentDictionary<Type, Codec> Instances = [];     // CodecType , Codec
-        private static readonly ConcurrentDictionary<Type, Codec> CacheMap = [];      // TargetType, Codec
+        private static readonly ConditionalWeakTable<Type, Codec> Instances = new();     // CodecType , Codec
+        private static readonly ConditionalWeakTable<Type, Codec> CacheMap = new();      // TargetType, Codec
         static Codec()
         {
             CoreAssembly = typeof(Codec).Assembly;
@@ -73,7 +75,7 @@ namespace MenthaAssembly.IO
                     if (!CodecType.IsBaseOn(Codec.CodecType) || !CodecType.IsClass || CodecType.IsAbstract || CodecType.GetConstructor(Type.EmptyTypes) is null)
                         continue;
 
-                    Instances.GetOrAdd(CodecType, static Type => (Codec)Activator.CreateInstance(Type));
+                    Instances.GetValue(CodecType, static Type => (Codec)Activator.CreateInstance(Type));
                 }
             }
         }
@@ -259,11 +261,13 @@ namespace MenthaAssembly.IO
 
         private static Codec GetCodec(Type Type)
         {
-            if (CacheMap.TryGetValue(Type, out Codec Codec))
-                return Codec;
+            return CacheMap.GetValue(Type, static Type =>
+            {
+                if (Type.GetCustomAttribute<CodecAttribute>() is not CodecAttribute Attribute)
+                    return Default;
 
-            Codec = Type.GetCustomAttribute<CodecAttribute>() is CodecAttribute Attribute ? Instances.GetOrAdd(Attribute.CodecType, static Type => (Codec)Activator.CreateInstance(Type)) : Default;
-            return CacheMap.GetOrAdd(Type, Codec);
+                return Instances.GetValue(Attribute.CodecType, static Type => (Codec)Activator.CreateInstance(Type));
+            });
         }
 
         protected static void EncodeType(Stream Stream, Type Type)
@@ -294,22 +298,45 @@ namespace MenthaAssembly.IO
 
             Stream.WriteStringAndLength(Type.FullName);
         }
+
         protected static Type DecodeType(Stream Stream)
         {
             string AssemblyName = Stream.ReadStringAndLength(Encoding.UTF8);
             if (string.IsNullOrEmpty(AssemblyName))
                 return null;
 
-            Assembly Assembly =
+            string CodecName = Stream.ReadStringAndLength(Encoding.UTF8);
+            Assembly[] Assemblies =
 #if NET5_0_OR_GREATER
                 AssemblyLoadContext.All.SelectMany(i => i.Assemblies)
 #else
                 AppDomain.CurrentDomain.GetAssemblies()
 #endif
-                                       .FirstOrDefault(i => i.GetName().Name == AssemblyName);
+                                       .Where(i => string.Equals(i.GetName().Name, AssemblyName, StringComparison.OrdinalIgnoreCase))
+                                       .ToArray();
 
-            string CodecName = Stream.ReadStringAndLength(Encoding.UTF8);
-            Type DefineType = Assembly.GetType(CodecName);
+            List<Type> ResolvedTypes = new();
+            foreach (Assembly Assembly in Assemblies)
+            {
+                try
+                {
+                    if (Assembly.GetType(CodecName, false) is Type Type)
+                        ResolvedTypes.Add(Type);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Default type resolution failed for '{CodecName}, {AssemblyName}': {ex.Message}");
+                }
+            }
+
+            Type DefineType = ResolvedTypes.Count == 1 ? ResolvedTypes[0] : ResolveType(AssemblyName, CodecName);
+            if (DefineType is null)
+            {
+                if (ResolvedTypes.Count > 1)
+                    throw new AmbiguousMatchException($"Multiple types named '{CodecName}' were found in assemblies named '{AssemblyName}'.");
+
+                throw new TypeLoadException($"Unable to resolve type '{CodecName}' from assembly '{AssemblyName}'.");
+            }
 
             // Generic
             if (DefineType.IsGenericType)
@@ -323,6 +350,32 @@ namespace MenthaAssembly.IO
             }
 
             return DefineType;
+        }
+
+        private static Type ResolveType(string AssemblyName, string TypeName)
+        {
+            CodecTypeResolveEventArgs e = new(AssemblyName, TypeName);
+            EventHandler<CodecTypeResolveEventArgs>[] Handlers = TypeResolving?.GetInvocationList()?.Cast<EventHandler<CodecTypeResolveEventArgs>>()?.ToArray();
+            if (Handlers is null || Handlers.Length == 0)
+                return null;
+
+            foreach (EventHandler<CodecTypeResolveEventArgs> Handler in Handlers)
+            {
+                try
+                {
+                    Handler(null, e);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Custom type resolver failed for '{TypeName}, {AssemblyName}': {ex.Message}");
+                    e.ResolvedType = null;
+                }
+
+                if (e.ResolvedType is not null)
+                    return e.ResolvedType;
+            }
+
+            return null;
         }
 
     }
