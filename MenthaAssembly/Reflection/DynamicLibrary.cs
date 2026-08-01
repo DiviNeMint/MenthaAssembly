@@ -47,7 +47,7 @@ namespace MenthaAssembly
         /// </summary>
         /// <remarks>
         /// The pool returns the same library instance for the same path.
-        /// Each successful <see cref="Load(string, Func{AssemblyName, Assembly})"/> or <see cref="TryLoad(string, out DynamicLibrary, Func{AssemblyName, Assembly})"/> call must be paired with one <see cref="Dispose"/> call.
+        /// Each successful <see cref="Load(string, Func{AssemblyName, Assembly})"/> or <see cref="TryLoad(string, Func{AssemblyName, Assembly}, out DynamicLibrary)"/> call must be paired with one <see cref="Dispose"/> call.
         /// </remarks>
         /// <param name="Fullname">The full path of the library file to load.</param>
         /// <param name="Resolver">The resolver used to resolve managed assembly dependencies.</param>
@@ -111,19 +111,19 @@ namespace MenthaAssembly
         /// <param name="Library">When this method returns, contains the loaded dynamic library if loading succeeded; otherwise, <see langword="null"/>.</param>
         /// <returns><see langword="true"/> if the library was loaded; otherwise, <see langword="false"/>.</returns>
         public static bool TryLoad(string Fullname, out DynamicLibrary Library)
-            => TryLoad(Fullname, out Library, null);
+            => TryLoad(Fullname, null, out Library);
         /// <summary>
         /// Attempts to load the specified dynamic library and uses the specified resolver for managed assembly dependencies.
         /// </summary>
         /// <remarks>
         /// The pool returns the same library instance for the same path.
-        /// Each successful <see cref="Load(string, Func{AssemblyName, Assembly})"/> or <see cref="TryLoad(string, out DynamicLibrary, Func{AssemblyName, Assembly})"/> call must be paired with one <see cref="Dispose"/> call.
+        /// Each successful <see cref="Load(string, Func{AssemblyName, Assembly})"/> or <see cref="TryLoad(string, Func{AssemblyName, Assembly}, out DynamicLibrary)"/> call must be paired with one <see cref="Dispose"/> call.
         /// </remarks>
         /// <param name="Fullname">The full path of the library file to load.</param>
-        /// <param name="Library">When this method returns, contains the loaded dynamic library if loading succeeded; otherwise, <see langword="null"/>.</param>
         /// <param name="Resolver">The resolver used to resolve managed assembly dependencies.</param>
+        /// <param name="Library">When this method returns, contains the loaded dynamic library if loading succeeded; otherwise, <see langword="null"/>.</param>
         /// <returns><see langword="true"/> if the library was loaded; otherwise, <see langword="false"/>.</returns>
-        public static bool TryLoad(string Fullname, out DynamicLibrary Library, Func<AssemblyName, Assembly> Resolver)
+        public static bool TryLoad(string Fullname, Func<AssemblyName, Assembly> Resolver, out DynamicLibrary Library)
         {
             if (!File.Exists(Fullname))
             {

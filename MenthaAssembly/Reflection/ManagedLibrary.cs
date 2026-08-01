@@ -67,7 +67,7 @@ namespace MenthaAssembly
         private Assembly OnResolving(AssemblyLoadContext Context, AssemblyName Name)
         {
             string Filename = Path.Combine(RootFolder, $"{Name.Name}.dll");
-            if (DynamicLibrary.TryLoad(Filename, out DynamicLibrary Library) &&
+            if (TryLoad(Filename, Resolver, out DynamicLibrary Library) &&
                 Library is ManagedLibrary Managed)
             {
                 DependencyLibraries.Add(Managed);
@@ -119,7 +119,7 @@ namespace MenthaAssembly
             AssemblyName Name = new(e.Name);
 
             string Filename = Path.Combine(RootFolder, $"{Name.Name}.dll");
-            if (DynamicLibrary.TryLoad(Filename, out DynamicLibrary Library) &&
+            if (DynamicLibrary.TryLoad(Filename, Resolver, out DynamicLibrary Library) &&
                 Library is ManagedLibrary Managed)
             {
                 DependencyLibraries.Add(Managed);
