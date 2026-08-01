@@ -120,6 +120,35 @@ namespace MenthaAssembly.Win32
 
         #endregion
 
+        #region Windows API (Shell Property)
+
+        [ComImport]
+        [Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        internal interface IPropertyStore
+        {
+            [PreserveSig]
+            int GetCount(out uint PropertyCount);
+
+            [PreserveSig]
+            int GetAt(uint PropertyIndex, out PropertyKey Key);
+
+            [PreserveSig]
+            int GetValue(ref PropertyKey Key, out PropVariant Value);
+
+            [PreserveSig]
+            int SetValue(ref PropertyKey Key, ref PropVariant Value);
+
+            [PreserveSig]
+            int Commit();
+
+        }
+
+        [DllImport(Shell32, PreserveSig = true)]
+        private static extern int SHGetPropertyStoreForWindow(IntPtr Hwnd, ref Guid InterfaceId, [MarshalAs(UnmanagedType.Interface)] out IPropertyStore PropertyStore);
+
+        #endregion
+
         #region  Windows API (COM Interface)
         //internal enum OBJID : uint
         //{
@@ -632,5 +661,53 @@ namespace MenthaAssembly.Win32
             return Handles;
         }
 
+        public static int SetAppUserModelID(IntPtr Hwnd, string AppUserModelID, bool PreventPinning)
+        {
+            Guid InterfaceId = typeof(IPropertyStore).GUID;
+            int Result = SHGetPropertyStoreForWindow(Hwnd, ref InterfaceId, out IPropertyStore PropertyStore);
+            if (Result < 0)
+                return Result;
+
+            try
+            {
+                if (PreventPinning)
+                {
+                    PropertyKey PreventPinningKey = new(new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), 9);
+                    PropVariant PreventPinningValue = new(true);
+                    try
+                    {
+                        Result = PropertyStore.SetValue(ref PreventPinningKey, ref PreventPinningValue);
+                        if (Result < 0)
+                            return Result;
+                    }
+                    finally
+                    {
+                        PreventPinningValue.Dispose();
+                    }
+                }
+
+                PropertyKey Key = new(new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), 5);
+                PropVariant Value = new(AppUserModelID);
+                try
+                {
+                    return PropertyStore.SetValue(ref Key, ref Value);
+                }
+                finally
+                {
+                    Value.Dispose();
+                }
+            }
+            finally
+            {
+#if NET6_0_OR_GREATER
+                if (OperatingSystem.IsWindows())
+                    Marshal.ReleaseComObject(PropertyStore);
+#else
+                Marshal.ReleaseComObject(PropertyStore);
+#endif
+            }
+        }
+
     }
+
 }
